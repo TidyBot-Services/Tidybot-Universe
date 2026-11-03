@@ -7,10 +7,10 @@ import json
 import re
 import secrets
 from urllib.parse import urlsplit
-from .dev_agent_provider import ProviderError, presets, probe, resolve_provider
+from .dev_agent_provider import ProviderError, list_models, presets, probe, resolve_provider
 from .dev_agent_secret import Secret, scrub
 
-ROUTE = re.compile(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test)?)?')
+ROUTE = re.compile(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test|/models)?)?')
 
 
 def owner_of(handler):
@@ -81,7 +81,17 @@ def handle(handler, *, vault, token, allow_custom=False, allow_private_hosts=(),
         if handler.command == 'DELETE' and not test:
             handler.reply(dict(ok=True, cleared=vault.clear(owner, name)))
             return
-        if handler.command == 'POST' and test:
+        if handler.command == 'GET' and test == '/models':
+            row = next((r for r in vault.list(owner) if r['credential_id'] == name), None)
+            if row is None:
+                raise ProviderError('provider_key_missing', 'Missing or expired credential')
+            keys = vault.take_for_run(owner, {'dev': dict(credential=name, provider=row['provider'], model='models')})
+            desc = keys.roles['dev']
+            secret = keys._keys[name]
+            values.append(secret)
+            handler.reply(dict(models=list_models(provider_spec(desc['provider'], desc['base_url']), secret)))
+            return
+        if handler.command == 'POST' and test == '/test':
             if set(body) - {'model', 'role'}:
                 raise ProviderError('provider_body_invalid', 'Unexpected test fields')
             model = body.get('model')

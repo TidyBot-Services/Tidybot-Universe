@@ -123,7 +123,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
     if public_gateway_mode and (not isinstance(gateway_secret,Secret) or not gateway_secret):
         raise ValueError('Public gateway mode requires a gateway secret fd')
     if budget_file:experiments.validate_budget_file(budget_file)
-    from .dev_agent_provider import ProviderError,presets,resolve_provider,probe
+    from .dev_agent_provider import ProviderError,presets,resolve_provider,probe,list_models
     from .dev_agent_secret import scrub
     from .dev_agent_key_vault import ProviderKeyVault,launch_run_with_keys,keyless_env
     if allow_custom is None:allow_custom=__import__('os').getenv('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL','').lower() in ('1','true','yes')
@@ -186,7 +186,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                 if path=='/api/provider/presets' and self.command=='GET':
                     self.obj([dict(id=p.id,label=p.label,needs_key=p.key_source=='user',base_url=p.chat_url.rsplit('/chat/completions',1)[0],
                                    suggested_models=p.suggested_models,capabilities=p.capabilities) for p in presets().values()]);return
-                match=re.fullmatch(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test)?)?',path)
+                match=re.fullmatch(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test|/models)?)?',path)
                 if not match:raise ProviderError('provider_route_unknown','Unknown provider resource')
                 name,test=match.groups()
                 if self.command=='PUT' and not test:
@@ -205,7 +205,13 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     self.obj(rows);return
                 if self.command=='DELETE' and not test:
                     count=vault.clear(owner,name);self.obj(dict(ok=True,cleared=count));return
-                if self.command=='POST' and test:
+                if self.command=='GET' and test=='/models':
+                    row=next((r for r in vault.list(owner) if r['credential_id']==name),None)
+                    if row is None:raise ProviderError('provider_key_missing','Missing or expired credential')
+                    keys=vault.take_for_run(owner,{'dev':dict(credential=name,provider=row['provider'],model='models')})
+                    desc=keys.roles['dev'];secret=keys._keys[name];values.append(secret)
+                    self.obj(dict(models=list_models(provider_spec(desc['provider'],desc['base_url']),secret)));return
+                if self.command=='POST' and test=='/test':
                     if set(body)-{'model','role'}:raise ProviderError('provider_body_invalid','Unexpected test fields')
                     model=body.get('model');role=body.get('role','dev')
                     if not isinstance(model,str) or not model.strip() or len(model)>128 or role not in ('dev','eval','advisor'):

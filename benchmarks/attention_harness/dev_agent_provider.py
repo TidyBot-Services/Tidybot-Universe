@@ -3,6 +3,7 @@ from dataclasses import dataclass, field, replace
 import ipaddress
 import json
 import os
+import re
 import socket
 import urllib.error
 import urllib.parse
@@ -38,7 +39,8 @@ def presets():
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
         'deepseek': ProviderSpec('deepseek', 'DeepSeek', 'https://api.deepseek.com/v1/chat/completions',
-                                 'https://api.deepseek.com/v1/models', response_format='json_object'),
+                                 'https://api.deepseek.com/v1/models', response_format='json_object',
+                                 suggested_models=('deepseek-chat','deepseek-reasoner')),
         'openai-compatible': ProviderSpec('openai-compatible', 'OpenAI compatible', '', None),
     }
 
@@ -153,3 +155,25 @@ def probe(spec, secret, model, *, role, transport=None):
         failed(exc, 'chat'); checks['streaming'] = 'fail'
         if role in ('eval','advisor'): checks['vision'] = 'fail'
     return ProbeResult(checks, errors)
+
+
+_NOT_CHAT = re.compile(r'embed|whisper|tts|dall-e|moderation|transcribe|image|audio|realtime|davinci|babbage', re.I)
+
+
+def list_models(spec, secret, *, transport=None):
+    """Model ids the provider's /models lists for this key, minus obvious non-chat ones; for a picker only."""
+    if not spec.models_url: raise ProviderError('models_unavailable', 'This provider does not list models')
+    send = transport or open_request
+    request = urllib.request.Request(spec.models_url, headers={'Authorization':'Bearer '+secret.reveal()})
+    try:
+        with send(request, timeout=20) as response: raw = response.read(1 << 20)
+        clean, _ = scrub(raw.decode(errors='replace'), [secret])
+        rows = json.loads(clean).get('data')
+        if not isinstance(rows, list): raise ValueError('models_list_invalid')
+    except Exception as exc:
+        status = getattr(exc, 'code', None)
+        detail = exc.read(2048).decode(errors='replace') if isinstance(exc, urllib.error.HTTPError) else '%s: %s' % (type(exc).__name__, exc)
+        message, _ = scrub(detail, [secret])
+        raise ProviderError('provider_models_failed', message if status is None else 'HTTP %s: %s' % (status, message)) from None
+    ids = {r['id'] for r in rows if isinstance(r, dict) and isinstance(r.get('id'), str) and 0 < len(r['id']) <= 128 and not _NOT_CHAT.search(r['id'])}
+    return sorted(ids)[:500]

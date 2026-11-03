@@ -114,8 +114,9 @@ test('the shared-key explanation follows the feature flag', () => {
 // Browser layout still requires the separate Chromium suite.
 function keyFixture() {
   const nodes=new Map(), events=[], requests=[], handlers=new Map();
-  let timer, failSave=false;
+  let timer, failSave=false, failModels=false;
   let creds=[];
+  const offered=['deepseek-chat','deepseek-reasoner','deepseek-v4'];
   const presets=['deepseek','openai','parcc','openai-compatible'].map(id=>({id,label:id,needs_key:true,suggested_models:['deepseek-chat']}));
   function node(selector) {
     if(nodes.has(selector))return nodes.get(selector);
@@ -140,7 +141,10 @@ function keyFixture() {
       requests.push({url,method:options.method,body});
       let value;
       if(url==='/api/provider/presets')value=presets;
-      else if(options.method==='GET')value=creds;
+      else if(options.method==='GET'&&url.endsWith('/models')){
+        if(failModels)throw new Error('models failed');
+        value={models:offered};
+      }else if(options.method==='GET')value=creds;
       else if(options.method==='PUT'){
         if(failSave)throw new Error('Save failed');
         value={credential_id:url.split('/').pop(),provider:body.provider,expires_at:Date.now()/1000+86400};
@@ -160,6 +164,8 @@ function keyFixture() {
     pick:async(role,value)=>{const n=node(`[data-role-choice="${role}"]`);n.dataset.roleChoice=role;n.value=value;n.closest=q=>q==='[data-role-choice]'?n:null;await emit('change',n);},
     expire(){creds.forEach(c=>c.expires_at=0);dialog.open=true;timer();},
     failSave(){failSave=true;},
+    failModels(){failModels=true;},
+    choose:async(role,value)=>{const n=node(`[data-model-pick="${role}"]`);n.dataset.modelPick=role;n.value=value;n.closest=q=>q==='[data-model-pick]'?n:null;await emit('change',n);},
     remove:name=>{const n=node('[data-key-remove]');n.dataset.keyRemove=name;return emit('click',n);},
   };
 }
@@ -249,4 +255,38 @@ test('run type buttons dispatch the original bubbling change and follow programm
   assert.equal(select.value,'fixed');assert.equal(buttons[1].attrs['aria-pressed'],'true');
   select.value='dev';select.dispatchEvent(new Event('change',{bubbles:true}));
   assert.equal(buttons[0].attrs['aria-pressed'],'true');assert.equal(buttons[1].attrs['aria-pressed'],'false');
+});
+
+test('a saved key fills the model picker from the provider and picking a model selects it',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');
+  // Before any key exists the picker only offers the preset's suggestion.
+  assert.match(f.node('[data-model-pick="add"]').innerHTML,/Pick from 1 model…/);
+  await saveKey(f,'deepseek','my-ds');await f.flush();
+  assert.ok(f.requests.some(r=>r.method==='GET'&&r.url==='/api/provider/credentials/my-ds/models'));
+  const add=f.node('[data-model-pick="add"]');
+  assert.equal(add.hidden,false);assert.match(add.innerHTML,/Pick from 3 models…/);
+  for(const m of ['deepseek-chat','deepseek-reasoner','deepseek-v4'])assert.ok(add.innerHTML.includes(`<option value="${m}">`));
+  await f.choose('add','deepseek-reasoner');
+  assert.equal(f.node('[data-key-model]').value,'deepseek-reasoner');
+  assert.equal(f.binding.summary().dev.model,'deepseek-reasoner');assert.equal(f.binding.selection().roles.eval.model,'deepseek-reasoner');
+  assert.equal(f.node('[data-model-pick="dev"]').hidden,true); // Per-role pickers stay out of the way in shared mode.
+});
+
+test('per-agent model pickers list the chosen key\'s models and write only that role',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('different');await saveKey(f,'deepseek','my-ds');await f.flush();
+  await f.pick('eval','key:my-ds');
+  const pick=f.node('[data-model-pick="eval"]');
+  assert.equal(pick.hidden,false);assert.match(pick.innerHTML,/Pick from 3 models…/);
+  assert.equal(f.node('[data-model-pick="advisor"]').hidden,true); // Advisor still uses the lab.
+  await f.choose('eval','deepseek-v4');
+  assert.equal(f.binding.selection().roles.eval.model,'deepseek-v4');
+  assert.notEqual(f.binding.selection().roles.dev.model,'deepseek-v4');
+});
+
+test('a failed model listing falls back to suggestions and keeps free typing',async()=>{
+  const f=keyFixture();await f.flush();await f.mode('all');f.failModels();
+  await saveKey(f,'deepseek','my-ds');await f.flush();
+  assert.match(f.node('[data-model-pick="add"]').innerHTML,/Pick from 1 model…/);
+  await f.input('[data-key-model]','anything-i-type');
+  assert.equal(f.binding.summary().dev.model,'anything-i-type');
 });

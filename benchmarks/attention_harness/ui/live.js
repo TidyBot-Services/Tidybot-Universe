@@ -2231,7 +2231,7 @@
       </fieldset>
       <div class="ab-launch-grid ab-keys-models" data-keys-models>${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model" data-role-model-wrap="${role}">
         <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option>${role==='advisor'?'':'<option>gpt-6-sol</option>'}</select></label>
-        <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
+        <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"><select class="ab-keys-model-pick" data-model-pick="${role}" aria-label="${title} models offered by the provider" hidden></select></label>
       </div>`).join('')}</div>
       <div class="ab-keys-shared" data-keys-shared hidden><div data-keys-shared-form></div>
         <p class="ab-run-hint" data-keys-phase2 ${BYOK_ALL_ROLES?'hidden':''}>Eval and Advisor use the lab's models until phase 2</p>
@@ -2249,7 +2249,7 @@
         <label class="ab-launch-field" data-key-name-field>Key name<input data-key-name maxlength="32" autocomplete="off" spellcheck="false" placeholder="e.g. my-deepseek"></label>
         <label class="ab-launch-field">Provider<select data-key-provider></select></label>
         <label class="ab-launch-field" data-key-base-field hidden>Base URL<input data-key-base autocomplete="off" spellcheck="false" placeholder="https://…"></label>
-        <label class="ab-launch-field">Model<input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"></label>
+        <label class="ab-launch-field">Model<input data-key-model maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name"><select class="ab-keys-model-pick" data-model-pick="add" aria-label="Models offered by the provider" hidden></select></label>
         <label class="ab-launch-field">API key <small class="ab-key-retention">· Held in server memory for 24 hours</small><input data-key-value type="password" autocomplete="off" spellcheck="false"></label>
       </div><div class="ab-keys-actions"><button type="button" class="ab-button-quiet" data-key-save>Save key</button></div></div></div></details>
       <p class="ab-run-hint ab-keys-note" data-keys-note role="status" aria-live="polite"></p></section>`;
@@ -2274,7 +2274,7 @@
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
     const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{}};
+      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{}};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2296,6 +2296,23 @@
         KEY_CHECKS.map(([key,name])=>`<span class="ab-keys-chip ${esc(result.checks[key]||'unknown')}">${name}</span>`).join('')+
         (result.errors||[]).map(e=>`<small class="ab-keys-bad">${esc(e.message||e.code||'')}${e.redacted?' (key fragment hidden)':''}</small>`).join('');
     }
+    // What the model picker offers: the provider's own list for a saved key, else the preset's suggestions.
+    const modelChoices=(id,provider)=>(state.models[id]?.length?state.models[id]:preset(provider)?.suggested_models)||[];
+    function drawPick(pick,choices,current,hidden=false) {
+      pick.hidden=hidden||!choices.length;
+      pick.innerHTML=`<option value="">Pick from ${choices.length} model${choices.length===1?'':'s'}…</option>`+choices.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+      pick.value=choices.includes(current)?current:'';
+    }
+    function drawAddPick() {
+      const saved=state.mode==='all'?cred(state.shared.credential):null;
+      drawPick(box.querySelector('[data-model-pick="add"]'),saved?modelChoices(saved.credential_id,saved.provider):modelChoices('',providerSelect.value),modelInput.value.trim());
+    }
+    async function loadModels(id) {
+      if(id in state.models)return;
+      state.models[id]=[]; // A failed or empty listing keeps the preset's suggestions; typing a name always works.
+      try { state.models[id]=(await call('GET',`/${encodeURIComponent(id)}/models`)).models||[]; } catch (error) { return; }
+      drawRoles();
+    }
     function drawRoles() {
       const assignments=keyRoleAssignments(state);
       KEY_ROLES.forEach(([role])=>{
@@ -2307,6 +2324,7 @@
         box.querySelector(`[data-key-own-model="${role}"]`).hidden=!own;
         const input=box.querySelector(`[data-role-model="${role}"]`);
         input.value=model;input.readOnly=state.mode==='all';
+        drawPick(box.querySelector(`[data-model-pick="${role}"]`),own?modelChoices(choice.slice(4),cred(choice.slice(4))?.provider):[],model,state.mode==='all');
         const result=cred(choice.slice(4))&&state.test[role]?.signature===signature(choice.slice(4),model)?state.test[role]:null;
         const button=rolesBox.querySelector(`[data-role-test="${role}"]`);
         button.hidden=!own;button.disabled=!!result?.busy||!cred(choice.slice(4));
@@ -2320,6 +2338,7 @@
       const sharedTest=box.querySelector('[data-key-shared-test]');
       sharedTest.hidden=!saved;sharedTest.disabled=!!sharedResult?.busy;
       tokens.textContent=assignments.dev.choice.startsWith('key:')?'Billed to your own key':labTokens;
+      drawAddPick();
       form.dispatchEvent(new CustomEvent('ab-keys-change'));
     }
     function drawList() {
@@ -2366,10 +2385,12 @@
     async function refreshList() {
       try { state.creds=await call('GET',''); } catch (error) { say(error.message,true); }
       drawList();drawRoles();
+      state.creds.forEach(c=>loadModels(c.credential_id));
     }
     function syncProvider() {
       baseField.hidden=providerSelect.value!=='openai-compatible';
       modelInput.value=preset(providerSelect.value)?.suggested_models?.[0]||'';
+      drawAddPick();
     }
     function nextKeyName(provider,creds,requested='') {
       if(requested.trim())return requested.trim();
@@ -2400,6 +2421,7 @@
         const value=await call('PUT',`/${encodeURIComponent(name)}`,{provider,key:valueInput.value,...(provider==='openai-compatible'&&baseInput.value.trim()?{base_url:baseInput.value.trim()}:{})});
         valueInput.value='';nameInput.value='';
         state.creds=state.creds.filter(c=>c.credential_id!==value.credential_id).concat(value);
+        delete state.models[value.credential_id];
         // Replacing a named key invalidates all previous checks for that credential.
         for(const [role,result] of Object.entries(state.test))if(result?.signature&&JSON.parse(result.signature)[0]===value.credential_id)delete state.test[role];
         if(shared)state.shared={credential:value.credential_id,model,baseUrl:baseInput.value.trim()};
@@ -2425,6 +2447,14 @@
       drawRoles();
     }
     box.addEventListener('change',event=>{
+      const modelPick=event.target.closest('[data-model-pick]');
+      if(modelPick){
+        if(!modelPick.value)return;
+        const role=modelPick.dataset.modelPick;
+        if(role==='add'){modelInput.value=modelPick.value;if(state.mode==='all'&&state.shared.credential)state.shared.model=modelPick.value;}
+        else{state.model[role]=modelPick.value;state.test[role]=null;}
+        drawRoles();return;
+      }
       const mode=event.target.closest('[data-keys-mode]');
       if(mode){
         valueInput.value='';state.mode=mode.value;details.open=state.mode==='different';
@@ -2449,6 +2479,7 @@
     box.addEventListener('input',event=>{
       const model=event.target.closest('[data-role-model]');
       if(model){state.model[model.dataset.roleModel]=model.value;state.test[model.dataset.roleModel]=null;drawRoles();}
+      if(event.target===modelInput)drawAddPick();
       if(event.target===modelInput&&state.mode==='all'&&state.shared.credential){
         // Editing the model of the saved shared key does not require re-entering its secret.
         state.shared.model=modelInput.value;drawRoles();
@@ -2466,6 +2497,7 @@
           await call('DELETE',`/${encodeURIComponent(remove.dataset.keyRemove)}`);
           say('Key removed from server memory.');
           state.creds=state.creds.filter(c=>c.credential_id!==remove.dataset.keyRemove);
+          delete state.models[remove.dataset.keyRemove];
         } catch (error) { say(error.message,true); }
         await refreshList();return;
       }

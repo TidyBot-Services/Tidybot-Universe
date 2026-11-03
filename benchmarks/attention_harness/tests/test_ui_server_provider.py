@@ -97,3 +97,14 @@ def test_a_rejecting_provider_cannot_echo_the_key_back(tmp_path):
         finally:
             server.shutdown()
             server.server_close()
+
+
+def test_models_route_lists_what_the_provider_offers(served):
+    base, token, fake = served
+    assert call(base, token, 'GET', '/api/provider/credentials/mine/models')[0] == 400  # nothing saved yet
+    call(base, token, 'PUT', '/api/provider/credentials/mine', {'provider': 'openai-compatible', 'key': KEY, 'base_url': fake.base_url})
+    status, raw, headers = call(base, token, 'GET', '/api/provider/credentials/mine/models')
+    assert status == 200 and json.loads(raw) == {'models': ['fake-model']} and headers['Cache-Control'] == 'no-store'
+    assert KEY not in raw
+    assert call(base, token, 'POST', '/api/provider/credentials/mine/models', {'model': 'm'})[0] == 400
+    assert call(base, 'wrong', 'GET', '/api/provider/credentials/mine/models')[0] == 403

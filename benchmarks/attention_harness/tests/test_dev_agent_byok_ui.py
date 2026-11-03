@@ -171,3 +171,26 @@ def test_ui_rejects_unsupported_lab_eval_role(tmp_path,monkeypatch):
     value=selection();value['agent_provider']['roles']['eval']=dict(credential='lab',provider='deepseek',model='gpt-6.1-sol')
     status,body,_=exchange(service,'POST','/api/dev/experiments',value,headers)
     assert status==400 and json.loads(body)['error']=='lab_provider_not_supported'
+
+
+def test_models_route_lists_chat_models_and_redacts(tmp_path,monkeypatch):
+    key=Secret('sk-'+secrets.token_urlsafe(32));service=server(tmp_path,monkeypatch);token=control(service)
+    headers={'X-Attention-Token':token};seen=[]
+    assert exchange(service,'GET','/api/provider/credentials/mine/models',None,headers)[0]==400  # no such key yet
+    assert exchange(service,'PUT','/api/provider/credentials/mine',dict(provider='deepseek',key=key.reveal()),headers)[0]==200
+    def listing(req,**kw):
+        seen.append((req.full_url,req.get_header('Authorization')))
+        rows=[dict(id='deepseek-reasoner'),dict(id='deepseek-chat'),dict(id='text-embedding-3'),dict(id=key.reveal())]
+        return io.BytesIO(json.dumps(dict(data=rows)).encode())
+    monkeypatch.setattr(providers,'open_request',listing)
+    status,body,head=exchange(service,'GET','/api/provider/credentials/mine/models',None,headers)
+    assert status==200 and seen==[('https://api.deepseek.com/v1/models','Bearer '+key.reveal())]
+    models=json.loads(body)['models']
+    assert models==['[REDACTED:key]','deepseek-chat','deepseek-reasoner']  # filtered, sorted, key echo scrubbed
+    def fail(req,**kw):raise urllib.error.HTTPError(req.full_url,401,'bad',{},io.BytesIO(key.reveal().encode()))
+    monkeypatch.setattr(providers,'open_request',fail)
+    status,body2,head2=exchange(service,'GET','/api/provider/credentials/mine/models',None,headers)
+    assert status==400 and json.loads(body2)['error']['code']=='provider_models_failed' and b'HTTP 401' in body2
+    assert exchange(service,'POST','/api/provider/credentials/mine/models',dict(model='m'),headers)[0]==400  # only GET lists
+    assert exchange(service,'GET','/api/provider/credentials/mine/models',None)[0]==403
+    assert not scan([key],roots=[tmp_path],extra_blobs=[body,head,body2,head2])
