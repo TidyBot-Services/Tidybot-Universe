@@ -19,7 +19,11 @@ DROP = {'uri','artifact_dir','manifest','ledger_path','owner','runtime_root','pl
 def clean(value):
     if isinstance(value,str):return SECRET.sub(r'\1[redacted]',HOST_PATH.sub('[host path]',value))
     if isinstance(value,list):return [clean(v) for v in value]
-    if isinstance(value,dict):return {k:clean(v) for k,v in value.items() if k not in DROP}
+    if isinstance(value,dict):
+        result={k:clean(v) for k,v in value.items() if k not in DROP}
+        from .dev_agent_config import all_user_roles
+        if all_user_roles(value) and 'model_source' in result:result['model_source']='byok'
+        return result
     return value
 
 
@@ -230,6 +234,10 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    if selection.get('agent_provider'):
+        from .dev_agent_config import display_source
+        result['agent']['model_source']=display_source(selection)
+        result['agent']['agent_provider']=clean(selection['agent_provider'])
     if selection.get('agent_limits'):
         result['agent']['reduced_budget']=dict(selection['agent_limits'],default_versions=10,default_wall_seconds=21600)
     if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':

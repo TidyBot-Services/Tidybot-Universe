@@ -352,18 +352,12 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                 manifest=experiments.verify_manifest(e)
                 run_keys=None
                 if 'agent_provider' in manifest:
-                    roles=manifest['agent_provider']['roles']
-                    run_keys=vault.take_for_run(owner_of(self),roles)
-                    for role,desc in run_keys.roles.items():
-                        secret=run_keys._keys[desc['credential']]
-                        spec=provider_spec(desc['provider'],desc['base_url'])
-                        if roles[role].get('base_url_host')!=urlsplit(spec.chat_url).hostname:
-                            self.obj(dict(error=dict(code='provider_mismatch',message='Credential host differs for role '+role,
-                                redacted=False,role=role)),409);return
-                        result=probe(spec,secret,desc['model'],role=role)
-                        if not result.ok:
-                            self.obj(dict(error=dict(code='provider_preflight_failed',message='\n'.join(e['message'] for e in result.errors),
-                                redacted=any(e['redacted'] for e in result.errors),role=role),checks=result.checks,errors=result.errors),409);return
+                    from .dev_agent_run_launch import preflight,RunPreflightError
+                    try:
+                        run_keys=preflight(lambda roles:vault.take_for_run(owner_of(self),roles),
+                            manifest['agent_provider']['roles'],provider_spec,probe_provider=probe)
+                    except RunPreflightError as exc:
+                        self.obj(exc.body,409);return
                 with worker_lock:
                     if any(p.poll() is None for p in workers.values()):raise DevConflict('serial UI worker already active')
                     if e['owner'] and experiments.owner_alive(e['owner']):raise DevConflict('experiment owner already active')

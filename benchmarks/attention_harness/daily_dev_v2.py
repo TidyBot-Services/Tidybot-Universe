@@ -171,7 +171,7 @@ class DailyDevV2:
             from .dev_agent_view import clean
             return clean(rows)
         return rows
-    def create(self,body):
+    def create(self,body,*,keys=None):
         from .dev_disk import require_start
         require_start(self.root)
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('explicit selection and start required')
@@ -282,46 +282,64 @@ class DailyDevV2:
                 immutable(budget,declaration)
                 with s.tx() as db:
                     gid=manifest.get('goal_id',s.goal_id);goal=s.get(db,'goals',gid);goal['authorized_until']=declaration['deadline_epoch'];s.put(db,'goals',gid,goal)
-        if body['start']:self.start(eid)
+        if body['start']:self.start(eid,keys=keys)
         value=experiments.snapshot(s,eid)
         if selection.get('dev_mode')=='agent':
             from .dev_agent_view import clean
             return clean(value)
         return value
-    def start(self,eid):
+    def start(self,eid,*,keys=None):
         from .dev_disk import require_start
         require_start(self.root)
         s=self.store(eid);e=experiments.snapshot(s,eid);directory,path,budget=self.paths(eid)
         if not self.per_run_budget and (not self.authorization or time.time()>=self.authorization['deadline_epoch']):raise DevBudgetExhausted('No current authorization: create offline or supply a new explicit run budget')
+        from .dev_agent_run_launch import prepare_run_keys
+        from .dev_agent_key_vault import launch_run_with_keys
+        ready=self._start_ready(eid,s)
+        if isinstance(ready,dict):return ready
+        if self.per_run_budget and 'agent_provider' in ready[1]:
+            self.dispatch_budget(s,ready[0],directory,budget,validate_only=True)
+        run_keys=prepare_run_keys(ready[1],keys)
         with self.mutex:
-            if (eid in self.workers and self.workers[eid].poll() is None) or (e.get('owner') and owner_alive(e['owner'])):
-                # Resume while the worker is still finishing its step means "keep running".
-                if experiments.withdraw_pause(s,eid):return {'experiment_id':eid,'pause_withdrawn':True}
-                return {'experiment_id':eid,'deduplicated':True}
-            if e['state']=='completed':return {'experiment_id':eid,'deduplicated':True}
-            if e['cancelled']:raise DevConflict('Cancelled experiment is read-only; create a new independent experiment')
-            for row in self.list():
-                if row['experiment_id']!=eid and row.get('owner') and owner_alive(row['owner']):raise DevConflict('Another daily experiment has a live external worker')
-            for receipt in self.root.glob('devexp-*/scheduler-process-*.json'):
-                identity=json.loads(receipt.read_bytes())
-                if owner_alive(identity):
-                    if receipt.parent.name==eid:return {'experiment_id':eid,'deduplicated':True}
-                    raise DevConflict('Another daily scheduler process is active')
-            if any(p.poll() is None for p in self.workers.values()):raise DevConflict('Daily Dev v2 worker is serial; another experiment is active')
-            if any(c['state']=='needs_review' for c in e['cells']):raise DevConflict('Unresolved work requires review; no automatic retry')
-            if sha(e['manifest']['uri'])!=e['manifest']['sha256']:raise DevConflict('manifest digest drift')
-            manifest=json.loads(Path(e['manifest']['uri']).read_bytes());lockref=manifest['identity_lock']
-            if sha(lockref['path'])!=lockref['sha256']:raise DevConflict('identity lock digest drift')
-            runtime=Path(json.loads(Path(lockref['path']).read_bytes())['source_root'])
-            if not runtime.is_dir():raise DevConflict('frozen experiment runtime missing')
+            ready=self._start_ready(eid,s)
+            if isinstance(ready,dict):return ready
+            e,manifest,runtime=ready
             if self.per_run_budget:budget=self.dispatch_budget(s,e,directory,budget)
             if e['state']=='paused':experiments.resume_paused(s,eid)
             else:experiments.withdraw_pause(s,eid)  # A worker lost while pausing leaves a stale request.
             with (directory/'scheduler.log').open('ab') as log:
-                p=subprocess.Popen([sys.executable,'-B','-u','-m',__name__,'--worker',eid,'--root',str(self.root),'--budget',str(budget)],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,start_new_session=True)
+                argv=[sys.executable,'-B','-u','-m',__name__,'--worker',eid,'--root',str(self.root),'--budget',str(budget)]
+                launch=subprocess.Popen
+                if run_keys is not None:
+                    if keys and keys.allow_private_hosts:argv+=['--allow-private-provider-hosts',','.join(keys.allow_private_hosts)]
+                    launch=lambda argv,**kwargs:launch_run_with_keys(argv,run_keys,**kwargs)
+                p=launch(argv,cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,start_new_session=True)
             self.workers[eid]=p;immutable(directory/f'scheduler-process-{p.pid}.json',process_identity(p.pid))
         return {'experiment_id':eid,'worker_started':True}
-    def dispatch_budget(self,store,experiment,directory,creation_budget):
+    def _start_ready(self,eid,s):
+        e=experiments.snapshot(s,eid)
+        if (eid in self.workers and self.workers[eid].poll() is None) or (e.get('owner') and owner_alive(e['owner'])):
+            # Resume while the worker is still finishing its step means "keep running".
+            if experiments.withdraw_pause(s,eid):return {'experiment_id':eid,'pause_withdrawn':True}
+            return {'experiment_id':eid,'deduplicated':True}
+        if e['state']=='completed':return {'experiment_id':eid,'deduplicated':True}
+        if e['cancelled']:raise DevConflict('Cancelled experiment is read-only; create a new independent experiment')
+        for row in self.list():
+            if row['experiment_id']!=eid and row.get('owner') and owner_alive(row['owner']):raise DevConflict('Another daily experiment has a live external worker')
+        for receipt in self.root.glob('devexp-*/scheduler-process-*.json'):
+            identity=json.loads(receipt.read_bytes())
+            if owner_alive(identity):
+                if receipt.parent.name==eid:return {'experiment_id':eid,'deduplicated':True}
+                raise DevConflict('Another daily scheduler process is active')
+        if any(p.poll() is None for p in self.workers.values()):raise DevConflict('Daily Dev v2 worker is serial; another experiment is active')
+        if any(c['state']=='needs_review' for c in e['cells']):raise DevConflict('Unresolved work requires review; no automatic retry')
+        if sha(e['manifest']['uri'])!=e['manifest']['sha256']:raise DevConflict('manifest digest drift')
+        manifest=json.loads(Path(e['manifest']['uri']).read_bytes());lockref=manifest['identity_lock']
+        if sha(lockref['path'])!=lockref['sha256']:raise DevConflict('identity lock digest drift')
+        runtime=Path(json.loads(Path(lockref['path']).read_bytes())['source_root'])
+        if not runtime.is_dir():raise DevConflict('frozen experiment runtime missing')
+        return e,manifest,runtime
+    def dispatch_budget(self,store,experiment,directory,creation_budget,*,validate_only=False):
         """Bind one finite deadline at first dispatch, never renew it on retry."""
         creation=json.loads(creation_budget.read_bytes())
         if creation.get('authorization_mode')!='per_run_budget':
@@ -338,8 +356,12 @@ class DailyDevV2:
             deadline=time.time()+(configuration['wall_seconds'] if configuration is not None else creation['wall_limit'])
             if goal.get('real_started_at') is not None:deadline=min(deadline,goal['real_started_at']+goal['wall_limit'])
             declaration={**creation,'deadline_epoch':deadline}
-            immutable(dispatch,declaration)
+            if not validate_only:immutable(dispatch,declaration)
         if declaration['deadline_epoch']+experiments.paused_seconds(store,experiment.get('goal_id'))<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
+        if validate_only:
+            goal=store.goal(experiment.get('goal_id'))
+            if goal.get('authorized_until') not in (None,declaration['deadline_epoch']):raise DevConflict('existing run deadline cannot be extended')
+            return dispatch
         with store.tx() as db:
             gid=experiment.get('goal_id',store.goal_id);goal=store.get(db,'goals',gid)
             if goal.get('authorized_until') not in (None,declaration['deadline_epoch']):raise DevConflict('existing run deadline cannot be extended')
@@ -471,10 +493,10 @@ class DailyDevV2:
             can_keep_running=pausing,resume_blocked_reason=None if state in {'running','pausing'} or (resumable and blocked is None) else blocked,
             current_step=step,paused_since=e.get('paused_at'),paused_seconds_total=g['paused_seconds_total'] if g else 0,interrupted_by_stop=interrupted,
             pause_reason=e.get('pause_reason'),pause_detail=e.get('pause_detail'))
-    def post(self,path,body,*,human_authorized=False):
+    def post(self,path,body,*,human_authorized=False,keys=None):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
-        if path=='/api/dev-v2/experiments':return self.create(body)
+        if path=='/api/dev-v2/experiments':return self.create(body,keys=keys)
         m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause|run-note-off)',path)
         if not m:raise FileNotFoundError('Unknown Dev v2 command')
         eid,command=m.groups();s=self.store(eid)
@@ -491,10 +513,13 @@ class DailyDevV2:
             if s.cell(body['cell'])['experiment_id']!=eid:raise ValueError('cell outside experiment')
             return experiments.switch(s,body['cell'],body['policy'])
         if body:raise ValueError('Command body must be empty')
-        return experiments.cancel(s,eid) if command=='cancel' else self.start(eid)
+        return experiments.cancel(s,eid) if command=='cancel' else self.start(eid,keys=keys)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--worker',required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--budget',type=Path,required=True);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--worker',required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--budget',type=Path,required=True);p.add_argument('--key-fd',type=int);p.add_argument('--allow-private-provider-hosts',default='');a=p.parse_args()
+    if a.key_fd is not None:
+        from .dev_agent_key_vault import harden_process,install_run_keys_from_fd
+        harden_process();install_run_keys_from_fd(a.key_fd)
     declaration=json.loads(a.budget.read_bytes());s=DevV2Store(a.root/a.worker/'ledger.sqlite3');done=threading.Event()
     # Pauses only accrue while no worker runs, so this worker's shift is fixed at start.
     end=declaration['deadline_epoch']+experiments.snapshot(s,a.worker)['resources']['paused_seconds_total']
@@ -503,7 +528,7 @@ def main():
             if time.time()>=end:
                 experiments.cancel(s,a.worker);return
     threading.Thread(target=deadline,daemon=True).start()
-    try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget)
+    try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget,**({'allow_private_hosts':tuple(a.allow_private_provider_hosts.split(','))} if a.allow_private_provider_hosts else {}))
     finally:
         done.set()
         # Opt-in (ATTENTION_MEMORY_AUTO_IMPORT_KEYS): detached importer for this

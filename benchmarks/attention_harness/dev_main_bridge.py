@@ -141,7 +141,7 @@ class DevMainBridge:
             recovery_available=bool(recovery) and can_start,recovery_error=recovery_error,waiting_owner=c.get('owner') if owned else None,
             basis='persisted experiment/cells/jobs/requests/goal clock and observed process identity')
 
-    def create(self,body):
+    def create(self,body,*,keys=None):
         from .dev_disk import require_start
         require_start(self.artifacts)
         if not isinstance(body,dict) or set(body)!={'selection','start'} or type(body['start']) is not bool:raise ValueError('selection and explicit start required')
@@ -207,10 +207,10 @@ class DevMainBridge:
         e=experiments.create(self.store,self.artifacts,selection)
         from .dev_v2_loop import immutable
         immutable(Path(e['artifact_dir'])/'ui-selection.json',v)
-        if body['start']:self.start(e['experiment_id'],wall_seconds=configuration['wall_seconds'])
+        if body['start']:self.start(e['experiment_id'],wall_seconds=configuration['wall_seconds'],keys=keys)
         return self.experiment(e['experiment_id'])
 
-    def start(self,eid,wall_seconds=None):
+    def start(self,eid,wall_seconds=None,*,keys=None):
         from .dev_disk import require_start
         require_start(self.artifacts)
         from .dev_wait_recovery import reconcile_waits
@@ -225,18 +225,12 @@ class DevMainBridge:
             frozen_wall=json.loads(selection_path.read_bytes())['configuration']['wall_seconds']
             if wall_seconds is not None and wall_seconds!=frozen_wall:raise DevConflict('dispatch wall differs from frozen UI selection')
             wall_seconds=frozen_wall
+        from .dev_agent_run_launch import prepare_run_keys
+        from .dev_agent_key_vault import launch_run_with_keys
+        self._start_ready(eid)
+        run_keys=prepare_run_keys(experiments.verify_manifest(e),keys)
         with self.mutex:
-            e=self.experiment(eid)
-            lifecycle=self.lifecycle(e['cells'][0],e)
-            if not lifecycle['can_start']:raise DevConflict('experiment is not startable; inspect lifecycle, owner, claims and original resources')
-            if any(p.poll() is None for p in self.workers.values()):raise DevConflict('serial worker already active')
-            for old in self.experiments():
-                if old.get('owner') and owner_alive(old['owner']):raise DevConflict('external scheduler already owns goal')
-            for receipt in self.artifacts.glob('devexp-*/scheduler-process-*.json'):
-                if owner_alive(json.loads(receipt.read_bytes())):raise DevConflict('external scheduler process still active')
-            if any((j['state']=='needs_review' or j['state']=='claimed' and j['kind']!='human') for c in e['cells'] for j in c['jobs']):raise DevConflict('unresolved claim requires independent review')
-            goal=self.store.goal(self.goal_id)
-            if goal['wall_remaining']<=0 or goal.get('real_finished_at'):raise DevBudgetExhausted('original goal wall is exhausted/closed')
+            e,lifecycle=self._start_ready(eid)
             # run_cell atomically starts the original clock before Memory. This
             # optional shorter deadline is monotone and cannot extend on retry.
             if wall_seconds is not None and not lifecycle['recovery_available']:
@@ -247,13 +241,29 @@ class DevMainBridge:
                     self.store.put(db,'goals',self.goal_id,raw)
             directory=Path(e['artifact_dir'])
             with (directory/'scheduler.log').open('ab') as log:
-                p=subprocess.Popen([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run',
-                    '--store',str(self.store.path),'--artifacts',str(self.artifacts),'--experiment',eid,'--max-cells',str(len(e['cells']))],
+                launch=subprocess.Popen if run_keys is None else lambda argv,**kwargs:launch_run_with_keys(argv,run_keys,**kwargs)
+                extra=['--allow-private-provider-hosts',','.join(keys.allow_private_hosts)] if run_keys is not None and keys and keys.allow_private_hosts else []
+                p=launch([sys.executable,'-B','-u','-m','benchmarks.attention_harness.dev_experiment','run',
+                    '--store',str(self.store.path),'--artifacts',str(self.artifacts),'--experiment',eid,'--max-cells',str(len(e['cells'])),*extra],
                     cwd=ROOT,env=execution_environment(ROOT,{'ATTENTION_PLANNER_UI_URL':self.ui_url or '', 'ATTENTION_PLANNER_APPROVAL_API_PREFIX':'/api/dev-v2'}),stdout=log,stderr=log,start_new_session=True)
             self.workers[eid]=p
             from .dev_v2_loop import immutable
             immutable(directory/f'scheduler-process-{p.pid}.json',process_identity(p.pid))
         return dict(experiment_id=eid,worker_started=True)
+
+    def _start_ready(self,eid):
+        e=self.experiment(eid)
+        lifecycle=self.lifecycle(e['cells'][0],e)
+        if not lifecycle['can_start']:raise DevConflict('experiment is not startable; inspect lifecycle, owner, claims and original resources')
+        if any(p.poll() is None for p in self.workers.values()):raise DevConflict('serial worker already active')
+        for old in self.experiments():
+            if old.get('owner') and owner_alive(old['owner']):raise DevConflict('external scheduler already owns goal')
+        for receipt in self.artifacts.glob('devexp-*/scheduler-process-*.json'):
+            if owner_alive(json.loads(receipt.read_bytes())):raise DevConflict('external scheduler process still active')
+        if any((j['state']=='needs_review' or j['state']=='claimed' and j['kind']!='human') for c in e['cells'] for j in c['jobs']):raise DevConflict('unresolved claim requires independent review')
+        goal=self.store.goal(self.goal_id)
+        if goal['wall_remaining']<=0 or goal.get('real_finished_at'):raise DevBudgetExhausted('original goal wall is exhausted/closed')
+        return e,lifecycle
 
     def view(self,c):
         from .codex_quota import run_quota_usage
@@ -302,8 +312,8 @@ class DevMainBridge:
         if not p.is_relative_to(root) or any(n.startswith('.') for n in p.relative_to(root).parts) or p.name not in allowed or not p.is_file():raise FileNotFoundError('unavailable public UI artifact')
         return p,'video/mp4' if p.suffix=='.mp4' else 'application/json' if p.suffix=='.json' else 'text/plain; charset=utf-8'
 
-    def post(self,path,body,*,human_authorized=False):
-        if path=='/api/dev-v2/experiments':return self.create(body)
+    def post(self,path,body,*,human_authorized=False,keys=None):
+        if path=='/api/dev-v2/experiments':return self.create(body,keys=keys)
         m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|approvals/(planner-[a-f0-9]{64})/decision)',path)
         if not m:raise FileNotFoundError('unknown command')
         eid,command,rid=m.groups();self.experiment(eid)
@@ -317,4 +327,4 @@ class DevMainBridge:
             if set(body)!={'cell','policy'} or self.store.cell(body['cell'])['experiment_id']!=eid:raise ValueError('exact cell/policy required')
             return experiments.switch(self.store,body['cell'],body['policy'])
         if body:raise ValueError('empty command body required')
-        return experiments.cancel(self.store,eid) if command=='cancel' else self.start(eid)
+        return experiments.cancel(self.store,eid) if command=='cancel' else self.start(eid,keys=keys)

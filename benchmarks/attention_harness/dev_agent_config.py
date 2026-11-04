@@ -14,6 +14,19 @@ ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
 DEV_MODELS=MODELS|{'parcc/GLM'}
 
 
+def all_user_roles(value):
+    provider=value.get('agent_provider')
+    if not isinstance(provider,dict):return False
+    roles=provider.get('roles')
+    return isinstance(roles,dict) and all(isinstance(roles.get(role),dict) and
+        roles[role].get('credential','lab')!='lab' for role in ('dev','eval','advisor'))
+
+
+def display_source(value):
+    """Keep the frozen execution schema; label user providers in public views."""
+    return 'byok' if all_user_roles(value) else value.get('model_source','codex')
+
+
 def reject_secret_fields(value):
     if isinstance(value,dict):
         if any(str(k).lower() in ('key','api_key','secret','token','authorization') for k in value):

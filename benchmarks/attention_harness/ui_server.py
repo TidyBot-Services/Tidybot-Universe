@@ -558,6 +558,8 @@ def create_server(
     # Session provider keys (BYOK): memory only, owner-scoped, served by provider_http.
     from . import provider_http
     from .dev_agent_key_vault import ProviderKeyVault
+    from .dev_agent_run_launch import RunCredentials,daily_error
+    from .dev_agent_provider import ProviderError
     vault = vault if vault is not None else ProviderKeyVault()
     if allow_custom is None:
         allow_custom = os.environ.get('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL', '').lower() in ('1', 'true', 'yes')
@@ -1112,10 +1114,22 @@ def create_server(
                     if self.headers.get('Content-Type','').split(';')[0]!='application/json' or not 0<size<=32768:raise ValueError('bounded JSON object required')
                     body=json.loads(self.rfile.read(size))
                     if not isinstance(body,dict):raise ValueError('JSON object required')
+                    if urlsplit(self.path).path=='/api/dev-v2/experiments':
+                        # The browser sends credential IDs, never custom URLs.
+                        selection=body.get('selection')
+                        if isinstance(selection,dict) and isinstance(selection.get('agent_provider'),dict):
+                            roles=selection['agent_provider'].get('roles',{})
+                            if isinstance(roles,dict) and any(isinstance(d,dict) and d.get('provider')=='openai-compatible' for d in roles.values()):
+                                known={r['credential_id']:r for r in vault.list(provider_http.owner_of(self))}
+                                for desc in roles.values():
+                                    if isinstance(desc,dict) and desc.get('provider')=='openai-compatible' and desc.get('credential') in known:
+                                        desc.setdefault('base_url_host',known[desc['credential']]['base_url_host'])
                     human=bool(human_token and secrets.compare_digest(self.headers.get('X-Attention-Human-Token',''),human_token))
-                    self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human))
+                    self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human,
+                        keys=RunCredentials(vault,provider_http.owner_of(self),allow_custom,allow_private_hosts)))
                 except PermissionError as error:self._json({'error':str(error)},403)
                 except FileNotFoundError as error:self._json({'error':str(error)},404)
+                except ProviderError as error:self._json(daily_error(error),409)
                 except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
                 return
             path = urlsplit(self.path).path
