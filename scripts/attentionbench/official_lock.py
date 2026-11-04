@@ -16,6 +16,7 @@ import sys
 
 from curobo_v2 import identity
 from curobo_v2 import official_normalization
+from curobo_v2.host_fingerprint import host_fingerprint
 
 DEPS = ('torch', 'sapien', 'numpy', 'scipy', 'fastapi', 'uvicorn', 'yaml',
         'warp', 'setuptools_scm', 'cuda.core', 'cuda.pathfinder')
@@ -162,6 +163,7 @@ def build(library, project, report, out, native_host):
                               'env_root': report_data['asset_env_root'], 'data_root': report_data['data_root'],
                               'file_count': report_data['count'], 'bytes': report_data['bytes']},
             'native_host_dependencies': {str(Path(path).resolve()): sha(path) for path in native_host},
+            'host_fingerprint': host_fingerprint(),
             'provenance': 'Fresh clone from https://github.com/NVlabs/curobo.git at exact upstream HEAD 78fd485; no solver edits or method replacement. Service/config kept separate.'}
     differences = official_differences(lock)
     if differences or not identity._official_content(lock):

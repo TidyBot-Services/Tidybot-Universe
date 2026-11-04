@@ -17,7 +17,7 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def run(library, lock_path, requests, output):
+def run(library, lock_path, requests, output, record_host=False):
     lock = json.loads(Path(lock_path).read_bytes())
     project = Path(lock['project_root']).resolve()
     library = Path(library).resolve()
@@ -37,7 +37,7 @@ def run(library, lock_path, requests, output):
         raise ValueError('Proof robot configuration escapes the d06 project')
     # Authorize a *process-local import context* from the built lock. This
     # validates runtime bytes but does not approve the lock for service use.
-    identity.authorize_service_import(lock, str(config))
+    identity.authorize_service_import(identity.record_host(lock) if record_host else lock, str(config))
     from curobo_v2.service.curobo_service.planner import PlannerAdapter
     from curobo_v2.service.curobo_service.world import WorldStore
 
@@ -63,14 +63,16 @@ def run(library, lock_path, requests, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps({'passed': True, 'request_set_sha256': sha(requests),
                                   'result_sha256': hashlib.sha256(raw).hexdigest()}, indent=2) + '\n')
+    output.with_suffix('.results.json').write_text(json.dumps(results, indent=2, sort_keys=True) + '\n')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('library', 'lock', 'requests', 'output'):
         parser.add_argument('--' + name, required=True, type=Path)
+    parser.add_argument('--record-host', action='store_true', help='host libraries may have changed since the lock was built')
     args = parser.parse_args()
-    run(args.library, args.lock, args.requests, args.output)
+    run(args.library, args.lock, args.requests, args.output, args.record_host)
 
 
 if __name__ == '__main__':

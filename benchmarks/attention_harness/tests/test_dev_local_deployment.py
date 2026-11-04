@@ -406,9 +406,16 @@ def test_summary_separates_deployments(base,monkeypatch):
 def test_guard_functions_unchanged():
     source=subprocess.check_output(['git','show',BASELINE+':curobo_v2/identity.py'],text=True)
     old=ast.parse(source);now=ast.parse(Path(auth.__file__).read_text())
+    def core(fn):
+        # Host policy B (user, 2026-11-04) changed only the host library check; all else stays pinned.
+        host=lambda s:isinstance(s,ast.Global) or any(w in ast.dump(s) for w in ('native_host_dependencies','_RecordHostLock'))
+        for block in fn.body:
+            if isinstance(block,ast.If):block.body=[s for s in block.body if not host(s)]
+        fn.body=[s for s in fn.body if not host(s) and 'last_host_drift' not in ast.dump(s)]
+        return ast.dump(fn)
     for name in ('verify_files','verify_runtime','verify_service'):
-        get=lambda tree:ast.dump(next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name==name))
-        assert get(old)==get(now)
+        get=lambda tree:next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name==name)
+        assert (core(get(old))==core(get(now))) if name=='verify_runtime' else ast.dump(get(old))==ast.dump(get(now))
     path='curobo_v2/native_auth.py'
     assert Path(path).read_bytes()==subprocess.check_output(['git','show',BASELINE+':'+path])
 

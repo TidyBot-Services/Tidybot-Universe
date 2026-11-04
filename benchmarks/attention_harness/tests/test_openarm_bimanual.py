@@ -5,6 +5,24 @@ from pathlib import Path
 import pytest
 
 
+def test_bimanual_host_policy_defaults_strict(tmp_path, monkeypatch):
+    import json
+    from openarm_bimanual.v2_adapter import identity
+    path = tmp_path / 'runtime-lock.json'
+    value = dict(schema='attentionbench.curobo-v2.runtime.v1', generation=2,
+                 prefix='/prefix', python='/prefix/bin/python', library_root='/library',
+                 service_root='/service', project_root='/project',
+                 library_revision=identity.OFFICIAL_COMMIT, library_base=identity.OFFICIAL_COMMIT,
+                 distribution_version='1', module_version='1', files={'/source': 'a'},
+                 dependencies={'numpy': {}}, distributions={}, robot_configs={}, official_only=True,
+                 host_policy='record')
+    path.write_text(json.dumps(value))
+    monkeypatch.setattr(identity, 'approved_deployment', lambda *args: True)
+    assert not isinstance(identity.load_lock(path)[0], identity._RecordHostLock)
+    assert not isinstance(identity.load_lock(path, tier='formal', boundary='formal')[0], identity._RecordHostLock)
+    assert isinstance(identity.load_lock(path, tier='dev', boundary='dev_loop')[0], identity._RecordHostLock)
+
+
 def test_both_identity_has_no_inactive_arm():
     from benchmarks.attention_harness.robocasa_native.robot_config import RobotSelection
     selected = RobotSelection('OpenArm', 'both')

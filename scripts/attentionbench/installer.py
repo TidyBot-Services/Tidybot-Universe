@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -18,10 +19,20 @@ import zipfile
 REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
+from curobo_v2.host_fingerprint import host_fingerprint, host_libraries, gate
 LOCK = REPO / 'attentionbench.lock.json'
 TEMPLATE = REPO / 'config/attentionbench/paths.template.json'
 DOCTOR_PATHS = REPO / 'config/attentionbench/doctor-paths.json'
 TRUST_MESSAGE = 'local planner chain or protected dev trust registry is missing'
+USERNS_REASON = 'Ubuntu 23.10+ AppArmor blocks unprivileged user namespaces for bwrap (kernel.apparmor_restrict_unprivileged_userns=1)'
+USERNS_PROFILE = REPO / 'config/attentionbench/apparmor/attentionbench-bwrap-userns'
+USERNS_TARGET = '/etc/apparmor.d/attentionbench-bwrap-userns'
+USERNS_FIX = ('C (recommended): AppArmor profile for /usr/bin/bwrap only; rerun setup with --fix-userns, or run '
+              f'sudo install -m 0644 {USERNS_PROFILE} {USERNS_TARGET} && sudo apparmor_parser -r {USERNS_TARGET}. '
+              'Keeps the machine-wide restriction; any local user can then use bwrap to create user namespaces. '
+              'A: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 (machine-wide, until reboot). '
+              "B: echo 'kernel.apparmor_restrict_unprivileged_userns=0' | sudo tee /etc/sysctl.d/60-attentionbench-userns.conf && sudo sysctl --system (machine-wide, permanent).")
+DEPLOYMENT_STEPS = ('project', 'official', 'd05', 'd06', 'proof', 'registry', 'snapshot')
 
 
 class StepError(RuntimeError):
@@ -39,6 +50,81 @@ def digest(path: Path) -> str:
 
 def data() -> dict:
     return json.loads(LOCK.read_text())
+
+
+def apparmor_userns_restricted(probe, policy: Path = Path('/proc/sys/kernel/apparmor_restrict_unprivileged_userns')) -> bool:
+    if probe is None or probe.returncode == 0 or not any(word in (probe.stderr or '') for word in ('uid map', 'Permission denied')):
+        return False
+    try:
+        return policy.read_text().strip() == '1'
+    except OSError:
+        return False
+
+
+def namespace_status() -> tuple[bool, str, str]:
+    bwrap = shutil.which('bwrap')
+    userns = Path('/proc/sys/kernel/unprivileged_userns_clone')
+    enabled = not userns.exists() or userns.read_text().strip() == '1'
+    probe = subprocess.run([bwrap, '--unshare-user', '--unshare-pid', '--unshare-net', '--ro-bind', '/', '/', '--proc', '/proc', '/bin/true'], capture_output=True, text=True) if bwrap and enabled else None
+    if probe and probe.returncode == 0:
+        return True, 'bwrap user/PID/network namespaces available', ''
+    if apparmor_userns_restricted(probe):
+        return False, USERNS_REASON, USERNS_FIX
+    reason = 'bwrap namespace probe failed: ' + probe.stderr[-300:].strip() if probe else 'bwrap missing or user namespaces disabled'
+    return False, reason, 'Install bubblewrap and enable unprivileged user namespaces; inspect kernel/container policy.'
+
+
+def _port_free(port: int) -> bool:
+    try:
+        with socket.socket() as sock:
+            sock.bind(('127.0.0.1', port))
+        return True
+    except OSError:
+        return False
+
+
+def validate_rebuild(ws: Path, args) -> None:
+    if args.skip_planner:
+        raise StepError('rebuild-planner', '--skip-planner conflicts with --rebuild-planner', 'Remove --skip-planner.')
+    if not (ws / 'paths.json').is_file():
+        raise StepError('rebuild-planner', 'paths.json missing', 'Run a first setup before rebuilding the planner.')
+    if not (ws / 'deployments').is_dir():
+        raise StepError('rebuild-planner', 'deployments missing', 'Restore the deployment tree or run a first setup.')
+    from scripts.attentionbench import control
+    if not _port_free(getattr(args, 'ui_port', 8769)) or not _port_free(getattr(args, 'memory_port', 8878)) or control.live_workers(ws):
+        raise StepError('rebuild-planner', 'UI, Memory, or a worker is running', 'Run stop.sh, then rerun setup.')
+
+
+def rebuild_planner(ws: Path, args) -> None:
+    validate_rebuild(ws, args)
+    old = ws / 'deployments'
+    target = ws / ('deployments.superseded-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
+    if target.exists():
+        raise StepError('rebuild-planner', f'{target} already exists', 'Wait a second and rerun setup.')
+    old.rename(target)
+    for step in DEPLOYMENT_STEPS:
+        stamp = ws / 'data/installer/stamps' / f'planner-{step}.json'
+        if stamp.exists():
+            (target / 'stamps').mkdir(exist_ok=True)
+            stamp.rename(target / 'stamps' / stamp.name)
+    print(f'Planner deployments moved to {target}. Keep superseded-* while old run manifests matter.')
+
+
+def reprove(ws: Path) -> Path:
+    """Rerun the planner proof on today's host. Writes only a new file under data/run."""
+    d06 = ws / 'deployments/dev06/runtime-lock.json'
+    if not d06.is_file():
+        raise StepError('reprove', 'existing d06 lock missing', 'Build the planner first.')
+    output = ws / 'data/run' / ('host-reproof-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    script = REPO / 'scripts/attentionbench'
+    command('reprove', [str(ws / 'envs/curobo-env/bin/python'), '-B', '-I', str(script / 'planner_proof.py'),
+                        '--library', str(ws / 'repos/curobo'), '--lock', str(d06),
+                        '--requests', str(script / 'planner-proof-requests.json'),
+                        '--output', str(output), '--record-host'])
+    if json.loads(output.read_text()).get('passed') is not True:
+        raise StepError('reprove', 'planner proof did not pass', f'Inspect {output}.')
+    return output
 
 
 def command(step: str, argv: list[str], *, cwd: Path | None = None, env: dict | None = None) -> None:
@@ -168,9 +254,13 @@ def bootstrap(args) -> int:
             'planner: official cuRobo env/assets/lock, d05/d06, proof, local trust, dev-local', 'paths: all template keys',
             'stores: UI, Memory, random 0600 keys.env']
     if args.dry_run:
+        if getattr(args, 'rebuild_planner', False):
+            validate_rebuild(ws, args)
         for line in plan:
             print(line)
         return 0
+    if getattr(args, 'rebuild_planner', False):
+        rebuild_planner(ws, args)
     for rel in ('repos', 'envs', 'sim', 'deployments', 'data'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
     repo_dirs = {'attentionbench': 'repos/attentionbench', 'robocasa365_sim': 'repos/robocasa365_sim',
@@ -255,12 +345,29 @@ def bootstrap(args) -> int:
         if getattr(args, 'planner_native_assets_from', None):
             argv += ['--native-assets-from', str(args.planner_native_assets_from)]
         command('planner', argv, cwd=REPO, env=os.environ | {'PYTHONPATH': str(REPO)})
+    fingerprint = host_fingerprint()
+    record = ws / 'data/run/host-fingerprint.json'
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(json.dumps(fingerprint, indent=2) + '\n')
+    print(f'Host: {fingerprint["os"]["PRETTY_NAME"]}; kernel {fingerprint["kernel"]}; '
+          f'glibc {fingerprint["glibc"]}; driver {fingerprint["driver"]}; gpu {fingerprint["gpu"]}')
+    print(f'Host fingerprint: {record}')
     print(f'Bootstrap complete{" without planner" if args.skip_planner else ""}: {ws}')
     return 0
 
 
 def _check(results: list, name: str, ok: bool | None, reason: str, fix: str) -> None:
     results.append({'check': name, 'status': 'SKIP' if ok is None else ('PASS' if ok else 'FAIL'), 'reason': reason, 'fix': fix})
+
+
+def check_host_gate(results: list, value=None) -> None:
+    failures, warnings = gate(value if value is not None else host_fingerprint())
+    _check(results, 'host-prerequisites', not failures,
+           '; '.join(failures) if failures else 'driver and glibc meet minimum versions',
+           'Upgrade the NVIDIA driver or Ubuntu release to the required versions.' if failures else '')
+    for warning in warnings:
+        results.append({'check': 'host-os', 'status': 'WARN', 'reason': warning,
+                        'fix': 'Upgrade to Ubuntu 22.04 or 24.04.'})
 
 
 def check_doctor_paths(results: list, ws: Path, paths: dict) -> None:
@@ -284,19 +391,57 @@ def check_doctor_paths(results: list, ws: Path, paths: dict) -> None:
             _check(results, 'path:' + key, None, f'optional ({entry["reason"]})', '')
 
 
+def _latest_host_upgrade() -> str:
+    try:
+        lines = Path('/var/log/apt/history.log').read_text().splitlines()
+    except OSError:
+        return ''
+    return next((line.strip() for line in reversed(lines) if 'libc6' in line or 'nvidia' in line.lower()), '')
+
+
+def check_host_libraries(results: list, ws: Path) -> None:
+    path = ws / 'deployments/official-parent/runtime-lock.json'
+    if not path.is_file():
+        _check(results, 'host-libraries', None, 'official parent runtime lock missing', '')
+        return
+    try:
+        dependencies = json.loads(path.read_text())['native_host_dependencies']
+        if not isinstance(dependencies, dict):
+            raise ValueError('native_host_dependencies is not an object')
+    except (OSError, ValueError, KeyError) as exc:
+        _check(results, 'host-libraries', False, f'unreadable native host dependencies: {exc}', 'Rebuild with setup.sh --workspace WS --rebuild-planner.')
+        return
+    resolved = host_libraries()
+    bad = []
+    for name, sha in dependencies.items():
+        file = Path(name)
+        token = 'libcuda.so.1' if file.name.startswith('libcuda') else 'libc.so.6' if file.name.startswith('libc') else None
+        current = resolved.get(token)
+        current_path = current['path'] if current else 'missing'
+        if not file.is_file():
+            bad.append(f'missing {name} (ldconfig now: {current_path})')
+        elif digest(file) != sha:
+            bad.append(f'changed {name} (ldconfig now: {current_path})')
+    upgrade = _latest_host_upgrade()
+    fix = ('The planner still starts in development tier; results are marked. Formal tier refuses. '
+           + (f'Latest apt entry: {upgrade}. ' if upgrade else '')
+           + 'setup.sh --workspace WS --reprove reruns the proof; --rebuild-planner makes a fresh lock.')
+    if bad:
+        results.append({'check': 'host-libraries', 'status': 'WARN', 'reason': '; '.join(bad), 'fix': fix})
+    else:
+        _check(results, 'host-libraries', True, 'native host dependency SHA256 values match', '')
+
+
 def doctor(args) -> int:
     lock = data(); ws = Path(args.workspace or os.environ.get('ATTENTIONBENCH_WORKSPACE', Path.cwd())).expanduser().resolve()
     results = []
+    check_host_gate(results)
     py = ws / 'envs/curobo-env/bin/python'
     probe = subprocess.run([str(py), '-c', 'import torch; print(torch.cuda.is_available())'], capture_output=True, text=True) if py.is_file() else None
     gpu_ok = bool(probe and probe.returncode == 0 and probe.stdout.strip() == 'True')
     _check(results, 'gpu', gpu_ok, 'torch CUDA available' if gpu_ok else 'GPU/driver not visible to cuRobo torch', 'Install a compatible NVIDIA driver and cuRobo env; verify torch.cuda.is_available().')
-    bwrap = shutil.which('bwrap')
-    userns = Path('/proc/sys/kernel/unprivileged_userns_clone')
-    enabled = not userns.exists() or userns.read_text().strip() == '1'
-    namespace_probe = subprocess.run([bwrap, '--unshare-user', '--unshare-pid', '--unshare-net', '--ro-bind', '/', '/', '--proc', '/proc', '/bin/true'], capture_output=True, text=True) if bwrap and enabled else None
-    isolated = bool(namespace_probe and namespace_probe.returncode == 0)
-    _check(results, 'isolation', isolated, 'bwrap user/PID/network namespaces available' if isolated else ('bwrap namespace probe failed: ' + namespace_probe.stderr[-300:].strip() if namespace_probe else 'bwrap missing or user namespaces disabled'), 'Install bubblewrap and enable unprivileged user namespaces; inspect kernel/container policy.')
+    isolated, reason, fix = namespace_status()
+    _check(results, 'isolation', isolated, reason, fix)
     codex = shutil.which('codex')
     version = subprocess.run(['codex', '--version'], capture_output=True, text=True).stdout.strip() if codex else ''
     _check(results, 'codex-version', version == lock['codex']['version'], version or 'codex missing', f'Install {lock["codex"]["version"]}.')
@@ -319,6 +464,7 @@ def doctor(args) -> int:
     except (OSError, ValueError, KeyError):
         bad = ['verification stamp missing or unreadable']
     _check(results, 'assets', not bad, 'all asset SHA256 values match' if not bad else 'asset SHA256 mismatch: ' + ', '.join(bad[:10]), 'Restore the complete official asset tree and rerun bootstrap.')
+    check_host_libraries(results, ws)
     for name in ('dev05', 'dev06'):
         p = ws / 'deployments' / name / 'runtime-lock.json'
         _check(results, 'deployment-' + name, p.is_file(), str(p) if p.is_file() else 'deployment lock missing', 'Build the local planner deployment after P5 is reviewed.')
@@ -345,7 +491,8 @@ def doctor(args) -> int:
                 ours = expected in cmdline and str(ws) in cmdline
         _check(results, f'port-{port}', free or ours, 'free' if free else ('our process' if ours else 'busy'), f'Stop the process using {port} or choose another start port.')
     free_gb = shutil.disk_usage(ws if ws.exists() else ws.parent).free / 1024**3
-    _check(results, 'disk', free_gb >= 60, f'{free_gb:.1f} GB free', 'Free at least 60 GB on the workspace filesystem.')
+    need = 10 if registry.is_file() else 60
+    _check(results, 'disk', free_gb >= need, f'{free_gb:.1f} GB free', f'Free at least {need} GB on the workspace filesystem.')
     if args.json:
         print(json.dumps(results, indent=2))
     else:
@@ -358,7 +505,7 @@ def doctor(args) -> int:
 def main() -> int:
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest='command', required=True)
-    b = sub.add_parser('bootstrap'); b.add_argument('--workspace', required=True); b.add_argument('--assets-from'); b.add_argument('--update', action='store_true'); b.add_argument('--skip-planner', action='store_true'); b.add_argument('--dry-run', action='store_true'); b.add_argument('--planner-project-from'); b.add_argument('--planner-native-assets-from')
+    b = sub.add_parser('bootstrap'); b.add_argument('--workspace', required=True); b.add_argument('--assets-from'); b.add_argument('--update', action='store_true'); b.add_argument('--skip-planner', action='store_true'); b.add_argument('--dry-run', action='store_true'); b.add_argument('--rebuild-planner', action='store_true'); b.add_argument('--planner-project-from'); b.add_argument('--planner-native-assets-from')
     d = sub.add_parser('doctor'); d.add_argument('--workspace'); d.add_argument('--json', action='store_true')
     args = p.parse_args()
     try:

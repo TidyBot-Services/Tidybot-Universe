@@ -6,6 +6,36 @@ from benchmarks.attention_harness.memory_validation_worker import tick,set_enabl
 from benchmarks.attention_harness.tests.autovalidate_fakes import FakeRunner
 
 
+def test_host_pair_review_rule():
+    from benchmarks.attention_harness.memory_validation_worker import host_pair_needs_review
+    assert host_pair_needs_review({'host_fingerprint_sha256': 'a'}, {'host_fingerprint_sha256': 'b'})
+    assert host_pair_needs_review({'host_fingerprint_sha256': 'a'}, {})
+    assert host_pair_needs_review({}, {'host_fingerprint_sha256': 'a'})
+    assert not host_pair_needs_review({}, {})
+    assert not host_pair_needs_review({'host_fingerprint_sha256': 'a'}, {'host_fingerprint_sha256': 'a'})
+
+
+@pytest.mark.parametrize('control,treatment,review', [('a', 'b', True), ('a', None, True),
+                                                       (None, 'b', True), (None, None, False)])
+def test_host_difference_stops_pair_verdict(tmp_path, control, treatment, review):
+    d = deps(tmp_path)
+    calls = []
+    d.client.record_dev_v2_pair = lambda **kwargs: calls.append(kwargs)
+    d.runner.finish = lambda current: dict(trial_import_id='trial-'+current['arm_id'],
+                                           **({'host_fingerprint_sha256': control if current['arm']=='control' else treatment}
+                                              if (control if current['arm']=='control' else treatment) else {}))
+    set_enabled(tmp_path, True)
+    state = {}
+    tick(state, d)
+    d.runner.phase = 'completed'
+    tick(state, d)
+    tick(state, d)
+    assert (state['current'].get('state') == 'needs_review') is review
+    assert bool(calls) is not review
+    if review:
+        assert 'Host fingerprint differs' in state['status']
+
+
 class Runner:
     def __init__(self):self.started=[];self.phase='running';self.pauses=0;self.resumes=0;self.begun=[]
     def begin(self,note,operation):

@@ -314,6 +314,15 @@ def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
+class _RecordHostLock(dict):
+    """A lock loaded for the dev tier. A type, not a key: it still equals the file's JSON, and
+    any plain copy falls back to strict."""
+
+
+def record_host(lock: dict) -> dict:
+    return _RecordHostLock(lock)
+
+
 def load_lock(path: str | Path | None = None, *, tier=None, boundary=None) -> tuple[dict, str]:
     configured = path or os.environ.get("CUROBO_V2_LOCK")
     if not configured or not Path(configured).is_absolute():
@@ -341,6 +350,8 @@ def load_lock(path: str | Path | None = None, *, tier=None, boundary=None) -> tu
         raise IdentityError('Unapproved V2 manifest; a version string or regenerated local hash cannot establish official identity')
     if source == 'local-dev-registry':
         lock = dict(lock, trust_source=source)
+    if tier == 'dev' and boundary == 'dev_loop':
+        lock = record_host(lock)
     return lock, lock_sha
 
 
@@ -388,7 +399,13 @@ def _distributions() -> dict[str, str]:
     return result
 
 
+last_host_drift = []
+
+
 def verify_runtime(lock: dict, *, full: bool = True, owner: bool = False) -> dict:
+    global last_host_drift
+    if full:
+        last_host_drift = []
     prefix = Path(lock["prefix"]).resolve()
     library = Path(lock["library_root"]).resolve()
     if (Path(sys.prefix).resolve() != prefix or Path(sys.base_prefix).resolve() != prefix
@@ -416,8 +433,20 @@ def verify_runtime(lock: dict, *, full: bool = True, owner: bool = False) -> dic
     if full:
         verify_files(lock)
         for path,expected in lock.get('native_host_dependencies',{}).items():
-            if digest(Path(path)) != expected:
-                raise IdentityError('Native host dependency changed: '+path)
+            try:
+                actual = digest(Path(path))
+            except FileNotFoundError:
+                actual = 'missing'
+            if actual != expected:
+                if isinstance(lock, _RecordHostLock):
+                    last_host_drift.append({'path': path, 'expected': expected, 'actual': actual})
+                else:
+                    raise IdentityError('Native host dependency changed: '+path)
+        if isinstance(lock, _RecordHostLock):
+            from .host_fingerprint import gate, host_fingerprint
+            failures, _ = gate(host_fingerprint())
+            if failures:
+                raise IdentityError('Host prerequisites failed: ' + '; '.join(failures))
         status = subprocess.check_output(["git","status","--porcelain","--untracked-files=no"],cwd=library,text=True)
         if status.strip():
             raise IdentityError("Official solver checkout has local changes")

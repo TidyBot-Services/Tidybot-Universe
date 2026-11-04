@@ -58,6 +58,8 @@ def read_experiment(store_path, experiment_id=None):
                 if execution is None:
                     continue  # generated or unresolved is not an executed version
                 receipt = execution.get('receipt') or {}
+                host_sha = receipt.get('host_fingerprint_sha256')
+                host_drift = receipt.get('host_drift')
                 obs = {'version': number, 'native_success': None, 'passed': None, 'mode': 'unavailable',
                        'settled_at': execution.get('settled_at')}
                 try:
@@ -87,6 +89,10 @@ def read_experiment(store_path, experiment_id=None):
                         except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
                             errors.append(f'v{number} Eval: {exc}')
                 observations.append(obs)
+                if host_sha:
+                    obs['host_fingerprint_sha256'] = host_sha
+                if host_drift:
+                    obs['host_drift'] = host_drift
             version_numbers = {v['version'] for v in versions}
             for orphan in jobs:
                 if orphan['kind'] == 'execute' and orphan['state'] == 'settled' and orphan['version'] not in version_numbers:
@@ -120,6 +126,8 @@ def read_experiment(store_path, experiment_id=None):
                           'repeat': cell.get('repeat', 0),
                           'state': cell['state'], 'reason': cell.get('reason'), 'created_at': cell.get('created_at'),
                           'versions': observations, 'generated_versions': len(versions),
+                          **({'host_fingerprint_sha256': next(v['host_fingerprint_sha256'] for v in reversed(observations) if v.get('host_fingerprint_sha256'))}
+                             if any(v.get('host_fingerprint_sha256') for v in observations) else {}),
                           'attention_budget_level': cell.get('attention_budget_level', manifest['selection'].get('help_budget')),
                           'request_units': sum(j.get('actual', {}).get('advisor_calls', 0) for j in requests if j['state'] == 'settled') + len(unanswered_advisor),
                           'logical_human_seconds': sum(j.get('actual', {}).get('hint_human_seconds', 0) for j in requests if j['state'] == 'settled'),
@@ -180,6 +188,13 @@ def summarize(experiment):
         shas=sorted({c['planner_lock_sha256'] for _,c in members})
         value.update(execution_profile=profile,grasp_generation=generation,
                      planner_lock_sha256=shas[0] if len(shas)==1 else shas)
+        hosts = sorted({sha for _, c in members for sha in
+                        [c.get('host_fingerprint_sha256'),
+                         *(v.get('host_fingerprint_sha256') for v in c.get('versions', []))] if sha})
+        if hosts:
+            value['host_fingerprint_sha256'] = hosts
+            if len(hosts) > 1:
+                value['host_differs'] = True
         if sdk_sha!='unsealed':
             value.update(dev_sdk_sha256=sdk_sha,dev_sdk_description=sdk_description)
         if kind=='dev-local':value.update(deployment_kind=kind,formal_eligible=False)
@@ -312,6 +327,7 @@ def markdown(value):
         return value['note']+'\n\n'+'\n'.join(markdown(group) for group in value['profiles'])
     rate = lambda x: 'unknown' if x is None else f'{x:.3f}'
     lines = [f"# Experiment {value['experiment_id']}", '',
+             *([f"host differs: {', '.join(value['host_fingerprint_sha256'])}", ''] if value.get('host_differs') else []),
              *([f"SDK description: {value['dev_sdk_description']}; SHA-256: {value['dev_sdk_sha256']}."] if 'dev_sdk_sha256' in value else []),
              f"Execution profile: {value.get('execution_profile','legacy')}; grasp generation: {value.get('grasp_generation','pre-0g')}; planner lock SHA: {value.get('planner_lock_sha256')}.", '',
              f"Mode: {value.get('mode')}; budget tier: {value.get('budget_tier')}; formal eligible: {value.get('formal_eligible')}.",

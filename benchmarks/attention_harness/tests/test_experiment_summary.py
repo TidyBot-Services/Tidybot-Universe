@@ -40,6 +40,7 @@ def test_experiment_eval_gate_prevents_creation(tmp_path, monkeypatch, r3_deploy
         raise ReachedArtifactCreation
     monkeypatch.setattr(dev_experiment, 'make_lock', reached)
     monkeypatch.setattr(dev_experiment, 'require_scene_gate', lambda *args: None)
+    monkeypatch.setattr(dev_experiment, 'new_execution_settings', lambda **kwargs: r3_deployment)
     for mode, configured in [('interactive', False), ('diagnostic', False), ('experiment', True)]:
         choice = {**selection, 'mode': mode, 'request_key': 'eval-required-' + mode}
         if configured:
