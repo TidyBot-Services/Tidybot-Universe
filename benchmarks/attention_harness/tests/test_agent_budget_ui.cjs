@@ -7,7 +7,7 @@ const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../ui/index.html'),'utf8');
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+'\n({agentBudgetCheck,agentLaunchSelection,runConfigDefaultsFromSelection})',{esc});
+const api=vm.runInNewContext(functions+'\n({agentBudgetCheck,agentLaunchSelection,runConfigDefaultsFromSelection,agentReasonText})',{esc});
 const base={request_key:'k-1234567',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'interactive',help_budget:5,configuration:{goal_id:'g',max_iterations:5,wall_seconds:300}};
 const gate={devMode:'agent',channel:'dev_v2',tier:'dev'};
 
@@ -54,7 +54,7 @@ test('05 is editable in Agent mode, only downwards, and the default is set once 
   form.dev_mode.value='agent';form.v2_policy.options=[];form.v2_policy.value='reactive_help';form.v2_mode.value='interactive';form.quota_stop_percent.value='90';
   form.max_attempts.value='5';form.wall_seconds.value='7200';form.eval_agent_enabled.checked=false;
   const context={form,options:{dev_v2:{budget_tier:'dev',policies:['a']}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,
-    launcherDevMode:(g,r)=>r,agentOptionGate:()=>'',devPolicyChoices:()=>[],fillOptions:()=>{},showQuota:()=>{}};
+    launcherDevMode:(g,r)=>r,agentReasonText:api.agentReasonText,agentOptionGate:()=>'',devPolicyChoices:()=>[],fillOptions:()=>{},showQuota:()=>{}};
   vm.runInNewContext(fragment+'syncAgentOptions();',context);
   assert.equal(form.max_attempts.value,'10');assert.equal(form.wall_seconds.value,'21600'); // entering Agent mode: official budget
   assert.equal(form.max_attempts.readOnly,false);assert.equal(form.wall_seconds.readOnly,false);
@@ -92,4 +92,18 @@ test('the dialog styles live in the run-dialog block and use theme tokens only',
   for(const name of ['ab-source-row','ab-bill','ab-meter','ab-chip','ab-reduced','ab-limit-error'])assert.ok(block.includes('.'+name),name);
   const mine=block.slice(block.indexOf('Model source row (03)'));
   assert.doesNotMatch(mine,/#[0-9a-fA-F]{3,8}\b/);
+});
+
+test('the 03 summary describes whoever pays: no quota stop next to an own key, no hard-coded limits',()=>{
+  const lab={versions:'2',wall:'7200',stop:'90',source:'codex'};
+  assert.match(api.agentReasonText(true,'lab',lab),/^2 formal versions .* 2 hours · stops at 90% quota\. Eval picks its own model/);
+  assert.doesNotMatch(api.agentReasonText(true,'lab',{...lab,source:'parcc'}),/quota/);
+  for(const mode of ['all','different']){
+    const text=api.agentReasonText(true,mode,lab);
+    assert.match(text,/Limits are set in 05/);
+    assert.doesNotMatch(text,/90%|stops at|formal versions|hours|Eval picks/);
+  }
+  assert.match(api.agentReasonText(true,'all',lab),/own key; the lab quota does not apply/);
+  assert.match(api.agentReasonText(true,'different',lab),/Agent models below/);
+  assert.match(api.agentReasonText(false,'all',lab),/^One call keeps/);
 });

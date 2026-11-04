@@ -2101,6 +2101,15 @@
   }
   // The Agent envelope: versions 1-10 and 1-6 hours. A run may lower both; the server refuses anything larger.
   const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=3600;
+  // The line under the 03 heading. It describes whoever pays: the lab quota only exists for Lab models, and the limits it
+  // used to quote live in 05, so an own key never shows a quota stop.
+  function agentReasonText(agent,mode,{versions,wall,stop,source}) {
+    if(!agent)return 'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.';
+    if(mode==='all')return 'Billed to your own key; the lab quota does not apply. Limits are set in 05. Native success ends the run.';
+    if(mode==='different')return 'Each agent is billed to the source chosen in Agent models below. Limits are set in 05. Native success ends the run.';
+    const v=Math.min(10,Math.max(1,Number(versions)||10)),hours=Math.min(21600,Math.max(3600,Number(wall)||21600))/3600;
+    return `${v} formal versions · 40 executions · 300 read-only probes · ${hours} hours${source==='codex'?` · stops at ${Number(stop)||90}% quota`:''}. Eval picks its own model; native success ends the run.`;
+  }
   function agentBudgetCheck(versions,wallSeconds) {
     const v=Number(versions),w=Number(wallSeconds),errors={};
     if(!Number.isInteger(v)||v<1)errors.versions='Enter 1 to 10 versions.';
@@ -2256,7 +2265,7 @@
     return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output><input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
       <div class="ab-source-row" data-model-source-field>
         <label class="ab-launch-field ab-model-source">Model source<select data-keys-source aria-label="Model source and billing"><option value="codex">Lab models · Codex subscription</option><option value="parcc">Lab models · PARCC (GLM + Qwen)</option><option value="all">My key for all agents</option><option value="different">Different per agent</option></select><small data-source-help></small></label>
-        <div class="ab-bill" data-bill role="status"><span class="ab-bill-k">Billed to</span><strong data-bill-name></strong><div class="ab-meter" data-bill-meter hidden aria-hidden="true"><i></i><b></b></div><small data-codex-quota hidden role="status"></small><small data-bill-note></small></div>
+        <div class="ab-bill-field"><span class="ab-bill-k">Billed to</span><div class="ab-bill" data-bill role="status"><strong data-bill-name></strong><div class="ab-meter" data-bill-meter hidden aria-hidden="true"><i></i><b></b></div><small data-codex-quota hidden role="status"></small><small data-bill-note></small></div></div>
       </div>
       <select name="model_source" aria-label="Model source" hidden tabindex="-1"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select>
       <fieldset class="ab-keys-modes" hidden><legend class="op-sr-only">Model setup</legend>
@@ -2706,7 +2715,7 @@
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–10 · Agent default 10</small><input name="max_attempts" type="number" min="1" max="10" value="5" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
             <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–6 hours · Agent default 6</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
-            <label class="ab-launch-field">AI thinking per task<small data-model-minutes-note hidden> · set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
+            <label class="ab-launch-field">AI thinking per task<small class="ab-range" data-model-minutes-note hidden>Set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
             <label class="ab-launch-field">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field" data-v2-tokens>AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
@@ -2766,6 +2775,9 @@
         select.querySelector('option[value="parcc"]').textContent=parcc||agent?`Lab models · PARCC (GLM + Qwen)${parcc?'':' · One call only'}`:'Lab models · PARCC (GLM + Qwen)';
         select.value=mode==='lab'?(form.model_source.value==='parcc'&&parcc?'parcc':'codex'):mode;
         const mine=agent?keys.summary():{},stop=Number(form.quota_stop_percent.value)||90;
+        // The 03 summary follows the source, so it never quotes the lab quota next to "billed to your own key".
+        const gate=agentOptionGate({channel:selectedProfile()?.channel,tier:options?.dev_v2?.budget_tier,policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart});
+        if(!gate)form.querySelector('[data-agent-reason]').textContent=agentReasonText(agent,mode,{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop,source:form.model_source.value});
         const name=form.querySelector('[data-bill-name]'),note=form.querySelector('[data-bill-note]'),help=form.querySelector('[data-source-help]');
         const meter=form.querySelector('[data-bill-meter]'),used=dialogQuota?.used_percent;
         const usable=typeof used==='number'&&Number.isFinite(used)&&used>=0&&used<=100;
@@ -2880,7 +2892,7 @@
         }
         form.model_seconds_minutes.disabled=agent;form.querySelector('[data-model-minutes-note]').hidden=!agent;
         form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
-        form.querySelector('[data-agent-reason]').textContent=reason||(agent?`${Math.min(10,Math.max(1,Number(form.max_attempts.value)||10))} formal versions · 40 executions · 300 read-only probes · ${Math.min(21600,Math.max(3600,Number(form.wall_seconds.value)||21600))/3600} hours · stops at ${Number(form.quota_stop_percent?.value)||90}% quota. Eval picks its own model; native success ends the run.`:'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.');
+        form.querySelector('[data-agent-reason]').textContent=reason||agentReasonText(agent,form.querySelector('[data-keys-mode]:checked')?.value||'lab',{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop:form.quota_stop_percent?.value,source:form.model_source.value});
         showQuota();
         form.querySelector('[data-run-config-section="reviewer"] .ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention. Its model follows the Model source in 03.';
       }

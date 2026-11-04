@@ -119,3 +119,80 @@ for (const [name, text] of [['max_attempts', '3'], ['wall_seconds', '7200'], ['n
     assert.equal(await input.inputValue(), text);
   });
 }
+
+// 03's line under the heading says who pays; it used to quote the lab quota next to "billed to your own key".
+test('MODEL-SOURCE-SUMMARY: the 03 summary follows the source and never mixes quota with an own key', async t => {
+  const {form, source} = await dialog(t);
+  const summary = form.locator('[data-agent-reason]');
+  assert.match(await summary.innerText(), /formal versions .* stops at 90% quota/);
+  await source.selectOption('all');
+  const own = await summary.innerText();
+  assert.match(own, /own key; the lab quota does not apply\. Limits are set in 05/);
+  assert.doesNotMatch(own, /90%|stops at|formal versions/);
+  await source.selectOption('different');
+  assert.match(await summary.innerText(), /Agent models below\. Limits are set in 05/);
+  await source.selectOption('codex');
+  assert.match(await summary.innerText(), /stops at 90% quota/);
+  await form.locator('input[name="max_attempts"]').fill('2');          // 05 still feeds the Lab line
+  assert.match(await summary.innerText(), /^2 formal versions/);
+});
+
+// Layout: 03 and 05 share one three-column grid, so the Billed to card, the key form and the role rows land on the
+// same column edges as the fields above and below them, and the two sides of the source row are as tall as each other.
+const box = locator => locator.evaluate(el => { const r = el.getBoundingClientRect(); return {x: r.x, y: r.y, r: r.right, b: r.bottom, w: r.width, h: r.height}; });
+const near = (a, b, message) => assert.ok(Math.abs(a - b) <= 1, `${message}: ${a} vs ${b}`);
+
+test('MODEL-SOURCE-LAYOUT: Billed to sits on the third column and is as tall as the source side', async t => {
+  const {form, source} = await dialog(t, {width: 1280});
+  for (const choice of ['codex', 'all', 'different']) {
+    await source.selectOption(choice);
+    const field = await box(form.locator('.ab-model-source'));
+    const bill = await box(form.locator('.ab-bill'));
+    const label = await box(form.locator('.ab-bill-k'));
+    const thirdColumn = await box(form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').nth(2));
+    near(bill.x, thirdColumn.x, `${choice}: card left edge = third column`); near(bill.r, thirdColumn.r, `${choice}: card right edge = third column`);
+    near(label.y, (await box(form.locator('.ab-model-source'))).y, `${choice}: the two labels share a line`);
+    const select = await box(source);
+    near(bill.y, select.y, `${choice}: card top = select top`);
+    if (choice !== 'codex') near(bill.b, field.b, `${choice}: card bottom = end of the help line`);
+    else assert.ok(bill.b >= field.b - 1);                              // Codex adds a meter line, so the card may be taller
+    assert.ok(field.r <= bill.x - 8, `${choice}: the two sides do not overlap`);
+  }
+});
+
+test('MODEL-SOURCE-LAYOUT: the key form and the Agent models rows use the same three columns', async t => {
+  const {form, source} = await dialog(t, {width: 1280});
+  await source.selectOption('all');
+  const columns = await form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').evaluateAll(els => els.slice(0, 3).map(e => { const r = e.getBoundingClientRect(); return [r.x, r.right]; }));
+  const provider = await box(form.locator('[data-key-provider-field]'));
+  const secret = await box(form.locator('[data-key-secret-field]'));
+  near(provider.x, columns[0][0], 'Provider = first column'); near(secret.r, columns[2][1], 'API key ends on the third column');
+  await source.selectOption('different');
+  await form.locator('[data-keys-details]').evaluate(el => { el.open = true; });
+  const role = form.locator('[data-key-role="eval"]');
+  near((await box(role.locator('.ab-keys-role-pick'))).x, columns[1][0], 'Source = second column');
+  near((await box(role.locator('[data-role-model-wrap], .ab-keys-role-model').first())).x, columns[2][0], 'Model = third column');
+  near((await box(role.locator('.ab-keys-role-pick'))).r, columns[1][1], 'Source ends on the second column');
+});
+
+test('MODEL-SOURCE-LAYOUT-NARROW: at 390px the card stacks under the select, full width, and headings are left aligned', async t => {
+  const {form, source, page} = await dialog(t, {width: 390});
+  await source.selectOption('all');
+  const select = await box(source), bill = await box(form.locator('.ab-bill'));
+  near(bill.x, select.x, 'card left = select left'); near(bill.r, select.r, 'card right = select right');
+  assert.ok(bill.y > select.b, 'the card is under the select');
+  const overflow = await form.evaluate(el => { const body = el.closest('.ab-launch-body') || el; const room = body.clientWidth; return [...el.querySelectorAll('[data-run-config-section="models"] *')].filter(n => n.getClientRects().length && n.getBoundingClientRect().right > body.getBoundingClientRect().left + room + 1).map(n => n.tagName + '.' + n.className); });
+  assert.deepEqual(overflow, []);                                     // nothing in 03 pokes out sideways
+  const field = await box(form.locator('[data-keys-source]'));
+  for (const section of ['models', 'limits']) near((await box(form.locator(`[data-run-config-section="${section}"] .ab-run-section-head h4`))).x, field.x, `${section} heading = field left`);
+});
+
+test('LIMITS-NOTE: the AI thinking note reads as a range line in Agent mode and is gone in One call', async t => {
+  const {page, form} = await dialog(t);
+  const note = form.locator('[data-model-minutes-note]');
+  assert.equal(await note.isVisible(), true);
+  assert.equal((await note.innerText()).trim(), 'Set by Agent mode');
+  await form.locator('select[name="dev_mode"]').selectOption('one_call');
+  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-model-minutes-note]').hidden);
+  assert.equal(await note.isVisible(), false);
+});
