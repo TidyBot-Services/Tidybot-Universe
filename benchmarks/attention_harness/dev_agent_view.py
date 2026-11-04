@@ -19,7 +19,11 @@ DROP = {'uri','artifact_dir','manifest','ledger_path','owner','runtime_root','pl
 def clean(value):
     if isinstance(value,str):return SECRET.sub(r'\1[redacted]',HOST_PATH.sub('[host path]',value))
     if isinstance(value,list):return [clean(v) for v in value]
-    if isinstance(value,dict):return {k:clean(v) for k,v in value.items() if k not in DROP}
+    if isinstance(value,dict):
+        result={k:clean(v) for k,v in value.items() if k not in DROP}
+        from .dev_agent_config import all_user_roles
+        if all_user_roles(value) and 'model_source' in result:result['model_source']='byok'
+        return result
     return value
 
 
@@ -230,6 +234,10 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    if selection.get('agent_provider'):
+        from .dev_agent_config import display_source
+        result['agent']['model_source']=display_source(selection)
+        result['agent']['agent_provider']=clean(selection['agent_provider'])
     if selection.get('agent_limits'):
         result['agent']['reduced_budget']=dict(selection['agent_limits'],default_versions=10,default_wall_seconds=21600)
     if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':
@@ -241,6 +249,24 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)
+    if not cell.get('artifact_dir') and not run and experiment.get('manifest') and cell.get('state')=='planned' and not experiment.get('cancelled'):
+        # Creation has no cell workspace yet. Read configuration from the frozen
+        # manifest; never fabricate artifact paths or initialize agent tables.
+        from .dev_loop import sha
+        from .core.dev_store import DevConflict
+        ref=experiment['manifest']
+        if sha(ref['uri'])!=ref['sha256']:raise DevConflict('Display evidence digest mismatch')
+        manifest=json.loads(Path(ref['uri']).read_bytes())
+        result.update(state='created',status='not started',
+            configuration=clean(manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]))
+        result['agent']['phase']='not started'
+        result['dev_v2_compat'].update(state='created',status='not started',
+            configuration=result['configuration'],# Same shape the page already renders as "Prepared / Not started" with a Start button.
+            lifecycle=dict(phase='prepared',can_start=True,can_stop=False,start_label='Start run',experiment_id=experiment['experiment_id'],
+                scope=[dict(task_id=cell['task_id'],seed=cell['seed'],state=cell['state'])],scope_count=1,scheduler_active=False),
+            run_controls=dict(state='created',can_start=True,can_pause=False,can_resume=False,
+                can_keep_running=False,resume_blocked_reason=None,current_step=None,
+                paused_since=None,paused_seconds_total=0,interrupted_by_stop=None))
     if experiment.get('pause_requested_at') or experiment.get('state')=='paused':
         from .daily_dev_v2 import DailyDevV2
         bridge=object.__new__(DailyDevV2);bridge.workers={};bridge.root=Path(experiment.get('disk_root') or experiment.get('artifact_dir','/missing'))

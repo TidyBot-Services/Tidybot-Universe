@@ -6,8 +6,8 @@ import time
 
 
 class FakeProvider:
-    def __init__(self, expected, *, mode=None, tools=True):
-        self.expected=expected;self.mode=mode;self.tools=tools;self.authorizations=[];self.requests=[]
+    def __init__(self, expected, *, mode=None, tools=True, vision=False):
+        self.expected=expected;self.mode=mode;self.tools=tools;self.vision=vision;self.authorizations=[];self.requests=[]
         provider=self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*args):pass
@@ -48,6 +48,8 @@ class FakeProvider:
         function=(body.get('tools') or [dict(function=dict(name='ping'))])[0]['function']['name']
         call=dict(index=0,id='call_test',type='function',function=dict(name=function,arguments='{}'))
         delta=dict(tool_calls=[call]) if self.tools and body.get('tools') else dict(content='ok')
+        if getattr(self,'vision',False) and any(isinstance(m.get('content'),list) and any(p.get('type')=='image_url' for p in m['content']) for m in body.get('messages',[])):
+            delta=dict(content='HELLO 4821')
         if body.get('response_format'):
             delta=dict(content=json.dumps(dict(passed=False,reason='Frame inspected.',evidence=[dict(claim='Frame inspected',source='frames/overview-000000-sim-0.000000s.png')],advice='Try again.')))
         usage=dict(prompt_tokens=3,completion_tokens=2,total_tokens=5)
