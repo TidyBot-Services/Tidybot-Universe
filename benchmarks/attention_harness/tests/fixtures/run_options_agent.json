@@ -1,0 +1,1365 @@
+{
+ "profiles": [
+  {
+   "id": "openarm-certified-v2-left-33",
+   "suite": "robocasa",
+   "task": "counter_to_sink",
+   "seed": 101,
+   "execution_target": "robocasa_sim",
+   "camera_width": null,
+   "camera_height": null,
+   "attempt_wall_seconds": 600,
+   "controller": null,
+   "approved_config_sha256": "2bb1c29c2f3bb82080fb487253693c4007016e01711ea13d37b695c868016cfd",
+   "robot": {
+    "model": "OpenArm",
+    "execution_arm": "left"
+   },
+   "certified_bimanual_v2": true,
+   "base_capability": "Stationary · official V2"
+  },
+  {
+   "id": "openarm-certified-v2-right-33",
+   "suite": "robocasa",
+   "task": "counter_to_sink",
+   "seed": 101,
+   "execution_target": "robocasa_sim",
+   "camera_width": null,
+   "camera_height": null,
+   "attempt_wall_seconds": 600,
+   "controller": null,
+   "approved_config_sha256": "b6d2edd8a61f26354a7683e5e78d997b72057f783b3f6f090af7edd2339d1622",
+   "robot": {
+    "model": "OpenArm",
+    "execution_arm": "right"
+   },
+   "certified_bimanual_v2": true,
+   "base_capability": "Stationary · official V2"
+  },
+  {
+   "id": "openarm-certified-v2-both-33",
+   "suite": "robocasa",
+   "task": "counter_to_sink",
+   "seed": 101,
+   "execution_target": "robocasa_sim",
+   "camera_width": null,
+   "camera_height": null,
+   "attempt_wall_seconds": 600,
+   "controller": null,
+   "approved_config_sha256": "bc5cd7f8709f18bee980d37a6b079876d98d746fd3d9c6f32653d5af888ecb51",
+   "robot": {
+    "model": "OpenArm",
+    "execution_arm": "both"
+   },
+   "certified_bimanual_v2": true,
+   "base_capability": "Stationary · official V2"
+  },
+  {
+   "id": "openarm-bimanual-stage-one-final-1-compat-0",
+   "suite": "robosuite",
+   "task": "cube_lift",
+   "seed": 101,
+   "execution_target": "robosuite_sim",
+   "camera_width": 1920,
+   "camera_height": 1080,
+   "attempt_wall_seconds": null,
+   "controller": null,
+   "approved_config_sha256": "cc7ca3b70bbc8e1293a23a8550ff90879b1399712a11036e2822b4695daadee4",
+   "attention_switching": true
+  }
+ ],
+ "attention_policies": [
+  "autonomous",
+  "demo_first",
+  "reactive_help",
+  "retry_k_then_ask",
+  "budget_matched_random_escalation",
+  "trace_aware_hint_only",
+  "full_trace_aware_attention_planner"
+ ],
+ "assistance_modes": [
+  "benchmark_proxy",
+  "live_human_first"
+ ],
+ "execution_targets": [
+  {
+   "id": "simulation",
+   "available": true,
+   "profiles": [
+    "openarm-certified-v2-left-33",
+    "openarm-certified-v2-right-33",
+    "openarm-certified-v2-both-33",
+    "openarm-bimanual-stage-one-final-1-compat-0",
+    "openarm-bimanual-stage-one-final-1-compat-1",
+    "openarm-bimanual-stage-one-final-1-compat-2",
+    "openarm-bimanual-stage-one-final-1-compat-3",
+    "openarm-bimanual-stage-one-final-1-compat-4",
+    "openarm-bimanual-stage-one-final-1-compat-5",
+    "openarm-bimanual-stage-one-final-1-compat-6",
+    "openarm-bimanual-stage-one-final-1-compat-7",
+    "openarm-bimanual-stage-one-final-1-compat-8",
+    "openarm-bimanual-stage-one-final-1-compat-9",
+    "openarm-bimanual-stage-one-final-1-both-handoff",
+    "robocasa365-pick_place_counter_to_sink-dev101",
+    "robocasa365-open_cabinet-dev101",
+    "openarm365-pick-place-counter-to-sink-dev101",
+    "openarm365-open-cabinet-dev101"
+   ]
+  },
+  {
+   "id": "real_robot",
+   "available": false,
+   "reason": "No attested real-robot runner or independent hardware safety system is configured; this build runs simulators only."
+  }
+ ],
+ "request_modes": [
+  {
+   "id": "async",
+   "default": true
+  },
+  {
+   "id": "blocking",
+   "default": false
+  }
+ ],
+ "limits": {
+  "max_attempts": 10,
+  "assistance_credits": 10,
+  "token_limit": 100000,
+  "human_deadline_seconds": 600,
+  "overall_deadline_seconds": 600,
+  "gpu_seconds": 86400
+ },
+ "dev_loop": {
+  "enabled": true,
+  "profiles": [
+   {
+    "id": "dev-v2-pick_place_counter_to_sink",
+    "suite": "robocasa365",
+    "task_id": "pick_place_counter_to_sink",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "stationary"
+   },
+   {
+    "id": "dev-v2-open_cabinet",
+    "suite": "robocasa365",
+    "task_id": "open_cabinet",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "stationary"
+   },
+   {
+    "id": "dev-v2-r5-open_cabinet",
+    "suite": "robocasa365",
+    "task_id": "open_cabinet",
+    "seed": 102,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "seeds": [
+     102
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-close_blender_lid",
+    "suite": "robocasa365",
+    "task_id": "close_blender_lid",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-open_drawer",
+    "suite": "robocasa365",
+    "task_id": "open_drawer",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": true,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-turn_on_microwave",
+    "suite": "robocasa365",
+    "task_id": "turn_on_microwave",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "B",
+    "family_label": "Buttons and knobs",
+    "held_out": false,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-turn_off_stove",
+    "suite": "robocasa365",
+    "task_id": "turn_off_stove",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "B",
+    "family_label": "Buttons and knobs",
+    "held_out": false,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-open_stand_mixer_head",
+    "suite": "robocasa365",
+    "task_id": "open_stand_mixer_head",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "B",
+    "family_label": "Buttons and knobs",
+    "held_out": true,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-coffee_setup_mug",
+    "suite": "robocasa365",
+    "task_id": "coffee_setup_mug",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "C",
+    "family_label": "Place and start",
+    "held_out": false,
+    "seeds": [
+     101,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     },
+     {
+      "seed": 104,
+      "enabled": false,
+      "task_id": "coffee_setup_mug",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-prepare_coffee",
+    "suite": "robocasa365",
+    "task_id": "prepare_coffee",
+    "seed": 102,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "C",
+    "family_label": "Place and start",
+    "held_out": false,
+    "seeds": [
+     102,
+     103,
+     104
+    ],
+    "seed_options": [
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     },
+     {
+      "seed": 104,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-kettle_boiling",
+    "suite": "robocasa365",
+    "task_id": "kettle_boiling",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "C",
+    "family_label": "Place and start",
+    "held_out": false,
+    "seeds": [
+     101,
+     102
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": false,
+      "task_id": "kettle_boiling",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-heat_kebab_sandwich",
+    "suite": "robocasa365",
+    "task_id": "heat_kebab_sandwich",
+    "seed": 103,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "C",
+    "family_label": "Place and start",
+    "held_out": true,
+    "seeds": [
+     103,
+     105,
+     106
+    ],
+    "seed_options": [
+     {
+      "seed": 103,
+      "enabled": true
+     },
+     {
+      "seed": 105,
+      "enabled": true
+     },
+     {
+      "seed": 106,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-pick_place_counter_to_cabinet",
+    "suite": "robocasa365",
+    "task_id": "pick_place_counter_to_cabinet",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "D",
+    "family_label": "Cabinet pick and place",
+    "held_out": false,
+    "seeds": [
+     101,
+     102,
+     107
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 107,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-categorize_condiments",
+    "suite": "robocasa365",
+    "task_id": "categorize_condiments",
+    "seed": 102,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "D",
+    "family_label": "Cabinet pick and place",
+    "held_out": false,
+    "seeds": [
+     102,
+     103,
+     105
+    ],
+    "seed_options": [
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     },
+     {
+      "seed": 105,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-weigh_ingredients",
+    "suite": "robocasa365",
+    "task_id": "weigh_ingredients",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "D",
+    "family_label": "Cabinet pick and place",
+    "held_out": false,
+    "seeds": [
+     101,
+     102
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": false,
+      "task_id": "weigh_ingredients",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-arrange_tea",
+    "suite": "robocasa365",
+    "task_id": "arrange_tea",
+    "seed": 104,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "D",
+    "family_label": "Cabinet pick and place",
+    "held_out": true,
+    "seeds": [
+     104,
+     105,
+     106
+    ],
+    "seed_options": [
+     {
+      "seed": 104,
+      "enabled": true
+     },
+     {
+      "seed": 105,
+      "enabled": true
+     },
+     {
+      "seed": 106,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "id": "robocasa365-openarm-dual-counter-sink-dev",
+    "label": "OpenArm365 · Both arms",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "suite": "robocasa365",
+    "task_id": "pick_place_counter_to_sink",
+    "seed": 101,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "wall_seconds": 1800,
+    "enabled": false,
+    "unavailable_reason": "OpenArm365 dual dev frozen configuration mismatch",
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 480,
+    "sdk_call_limit": 80
+   },
+   {
+    "id": "robocasa365-pick_place_counter_to_sink-dev101",
+    "label": "PandaOmron · Right arm",
+    "robot": "PandaOmron",
+    "execution_arm": "right",
+    "suite": "robocasa365",
+    "task_id": "pick_place_counter_to_sink",
+    "seed": 101,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 120,
+    "sdk_call_limit": 40,
+    "enabled": true,
+    "wall_seconds": 600
+   }
+  ],
+  "model": "parcc/GLM",
+  "budget": {
+   "executions": 3,
+   "model_calls": 3,
+   "tokens": 60000,
+   "sdk_calls": 120,
+   "execution_seconds": 360,
+   "wall_seconds": 600
+  },
+  "formal_eligible": false
+ },
+ "dev_v2": {
+  "fixture_tasks": [
+   {
+    "task_id": "open_cabinet",
+    "official_env": "OpenCabinet",
+    "task_prompt": "Open the cabinet door.",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "seeds": [
+     102
+    ],
+    "sdk": {
+     "groups": [
+      "sensors",
+      "left_arm",
+      "right_arm",
+      "left_gripper",
+      "right_gripper",
+      "bimanual"
+     ],
+     "frame": "world",
+     "sdk_calls": 320,
+     "attempt_seconds": 1920,
+     "control_steps": 9600
+    },
+    "rules_profile": "r5-fixture-20261031",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "explicit_only": true,
+    "rules_label": "fixture rules (R5)",
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "task_id": "close_blender_lid",
+    "official_env": "CloseBlenderLid",
+    "task_prompt": "Place the blender lid securely on the blender.",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "sdk": {
+     "groups": [
+      "sensors",
+      "left_arm",
+      "right_arm",
+      "left_gripper",
+      "right_gripper",
+      "bimanual"
+     ],
+     "frame": "world",
+     "sdk_calls": 320,
+     "attempt_seconds": 1920,
+     "control_steps": 9600
+    },
+    "rules_profile": "r5-fixture-20261031",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "explicit_only": true,
+    "rules_label": "fixture rules (R5)",
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   },
+   {
+    "task_id": "open_drawer",
+    "official_env": "OpenDrawer",
+    "task_prompt": "Open the drawer.",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "sdk": {
+     "groups": [
+      "sensors",
+      "left_arm",
+      "right_arm",
+      "left_gripper",
+      "right_gripper",
+      "bimanual"
+     ],
+     "frame": "world",
+     "sdk_calls": 320,
+     "attempt_seconds": 1920,
+     "control_steps": 9600
+    },
+    "rules_profile": "r5-fixture-20261031",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": true,
+    "explicit_only": true,
+    "rules_label": "fixture rules (R5)",
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   }
+  ],
+  "agent_policies": {
+   "agent_policy_version": "agent-policy-v2",
+   "policies": [
+    {
+     "policy_id": "autonomous",
+     "parameters": {},
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "demo_first",
+     "parameters": {},
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "reactive_help",
+     "parameters": {},
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "retry_k_then_ask",
+     "parameters": {
+      "k": 2
+     },
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "budget_matched_random_escalation",
+     "parameters": {
+      "target_request_count": 1,
+      "total_failure_slots": 10,
+      "seed": 101
+     },
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "trace_aware_hint_only",
+     "parameters": {
+      "m": 3,
+      "n": 2
+     },
+     "memory_exposed": false
+    },
+    {
+     "policy_id": "full_trace_aware_attention_planner",
+     "parameters": {
+      "m": 3,
+      "n": 2
+     },
+     "memory_exposed": true
+    },
+    {
+     "policy_id": "agent_initiated_help",
+     "parameters": {
+      "min_new_executions": 1
+     },
+     "memory_exposed": true
+    }
+   ]
+  },
+  "enabled": true,
+  "budget_tier": "dev",
+  "policies": [
+   "autonomous",
+   "demo_first",
+   "reactive_help",
+   "retry_k_then_ask",
+   "budget_matched_random_escalation",
+   "trace_aware_hint_only",
+   "full_trace_aware_attention_planner"
+  ],
+  "tasks": [
+   {
+    "task_id": "pick_place_counter_to_sink",
+    "official_env": "PickPlaceCounterToSink",
+    "task_prompt": "Pick the object from the counter and place it in the sink.",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "seeds": [
+     101,
+     102,
+     103,
+     104,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     112,
+     113,
+     114,
+     115,
+     116,
+     117,
+     118,
+     119,
+     120,
+     121,
+     122,
+     123,
+     124,
+     125
+    ],
+    "sdk": {
+     "groups": [
+      "sensors",
+      "left_arm",
+      "right_arm",
+      "left_gripper",
+      "right_gripper",
+      "bimanual"
+     ],
+     "frame": "world",
+     "sdk_calls": 320,
+     "attempt_seconds": 1920,
+     "control_steps": 9600
+    }
+   },
+   {
+    "task_id": "open_cabinet",
+    "official_env": "OpenCabinet",
+    "task_prompt": "Open the cabinet door.",
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "seeds": [
+     101,
+     102,
+     103,
+     104,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     112,
+     113,
+     114,
+     115,
+     116,
+     117,
+     118,
+     119,
+     120,
+     121,
+     122,
+     123,
+     124,
+     125
+    ],
+    "sdk": {
+     "groups": [
+      "sensors",
+      "left_arm",
+      "right_arm",
+      "left_gripper",
+      "right_gripper",
+      "bimanual"
+     ],
+     "frame": "world",
+     "sdk_calls": 320,
+     "attempt_seconds": 1920,
+     "control_steps": 9600
+    }
+   }
+  ],
+  "default_cell_budget": {
+   "dev_calls": 5,
+   "advisor_calls": 5,
+   "eval_calls": 5,
+   "provider_tokens": 1000000,
+   "input_tokens": 850000,
+   "output_tokens": 150000,
+   "executions": 5,
+   "sdk_calls": 1600,
+   "control_steps": 48000,
+   "help_credits": 5,
+   "help_count": 5,
+   "help_wait_seconds": 2100,
+   "hint_human_seconds": 7200,
+   "model_seconds": 1800,
+   "execution_seconds": 10800
+  },
+  "default_max_iterations": 5,
+  "registered_scene_seeds": [
+   101,
+   102,
+   103
+  ],
+  "formal_eligible": false,
+  "continue_from_attempt": true,
+  "authorization": null,
+  "matrix": [
+   {
+    "entry": "openarm-certified-v2-left-33",
+    "suite": "robocasa",
+    "task": "counter_to_sink",
+    "robot": "OpenArm",
+    "arm": "left",
+    "dev_v2_supported": false,
+    "reason": "Existing frozen entry is preserved. New Dev v2 requires the registered RoboCasa365 task, OpenArm365 and both arms; use its dedicated selection."
+   },
+   {
+    "entry": "openarm-certified-v2-right-33",
+    "suite": "robocasa",
+    "task": "counter_to_sink",
+    "robot": "OpenArm",
+    "arm": "right",
+    "dev_v2_supported": false,
+    "reason": "Existing frozen entry is preserved. New Dev v2 requires the registered RoboCasa365 task, OpenArm365 and both arms; use its dedicated selection."
+   },
+   {
+    "entry": "openarm-certified-v2-both-33",
+    "suite": "robocasa",
+    "task": "counter_to_sink",
+    "robot": "OpenArm",
+    "arm": "both",
+    "dev_v2_supported": false,
+    "reason": "Existing frozen entry is preserved. New Dev v2 requires the registered RoboCasa365 task, OpenArm365 and both arms; use its dedicated selection."
+   },
+   {
+    "entry": "openarm-bimanual-stage-one-final-1-compat-0",
+    "suite": "robosuite",
+    "task": "cube_lift",
+    "robot": "not declared in catalog",
+    "arm": "single",
+    "dev_v2_supported": false,
+    "reason": "Existing frozen entry is preserved. New Dev v2 requires the registered RoboCasa365 task, OpenArm365 and both arms; use its dedicated selection."
+   }
+  ],
+  "profiles": [
+   {
+    "id": "dev-v2-pick_place_counter_to_sink",
+    "suite": "robocasa365",
+    "task_id": "pick_place_counter_to_sink",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "stationary"
+   },
+   {
+    "id": "dev-v2-open_cabinet",
+    "suite": "robocasa365",
+    "task_id": "open_cabinet",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "stationary"
+   },
+   {
+    "id": "dev-v2-r5-open_cabinet",
+    "suite": "robocasa365",
+    "task_id": "open_cabinet",
+    "seed": 102,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "seeds": [
+     102
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": false,
+      "task_id": "open_cabinet",
+      "reason": "start_state_collision",
+      "evidence_paths": [
+       "wt-fixture-p1/phase2d-start-1031-0138",
+       "wt-fixture-p1/phase2d-start-1031-rest"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "dev-v2-r5-close_blender_lid",
+    "suite": "robocasa365",
+    "task_id": "close_blender_lid",
+    "seed": 101,
+    "robot": "OpenArm365",
+    "execution_arm": "both",
+    "channel": "dev_v2",
+    "enabled": true,
+    "execution_target": "robocasa365_sim",
+    "attempt_wall_seconds": 1920,
+    "sdk_call_limit": 320,
+    "control_step_limit": 9600,
+    "startup_cleanup_seconds": 240,
+    "wall_seconds": 21600,
+    "layout_id": 11,
+    "style_id": 34,
+    "base_mode": "commanded_motion",
+    "rules_profile": "r5-fixture-20261031",
+    "rules_label": "fixture rules (R5)",
+    "family": "A",
+    "family_label": "Open and close fixtures",
+    "held_out": false,
+    "seeds": [
+     101,
+     102,
+     103
+    ],
+    "seed_options": [
+     {
+      "seed": 101,
+      "enabled": true
+     },
+     {
+      "seed": 102,
+      "enabled": true
+     },
+     {
+      "seed": 103,
+      "enabled": true
+     }
+    ]
+   }
+  ]
+ }
+}

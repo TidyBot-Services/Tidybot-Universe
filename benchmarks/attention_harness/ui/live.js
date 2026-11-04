@@ -3063,18 +3063,23 @@
       form.addEventListener('change',budgetInput);
       form.model_source.addEventListener('change',showQuota);
       form.addEventListener('ab-keys-change',showQuota);
-      form.querySelector('[data-keys-source]').addEventListener('change',event=>{
+      // The browser fires input, then change, for one choice. The form's own input listener repaints this row from the
+      // radios, so the choice has to reach the radios in the input phase (the select's listener runs before the form's);
+      // otherwise drawSource writes the old value back before change is ever seen. Both events apply it, once.
+      const chooseSource=event=>{
         const value=event.target.value,radio=name=>form.querySelector(`[data-keys-mode][value="${name}"]`);
         if(value==='codex'||value==='parcc'){
-          form.model_source.value=value;form.model_source.dispatchEvent(new Event('change',{bubbles:true}));
+          if(form.model_source.value!==value){form.model_source.value=value;form.model_source.dispatchEvent(new Event('change',{bubbles:true}));}
           const lab=radio('lab');
           if(lab&&!lab.checked){lab.checked=true;lab.dispatchEvent(new Event('change',{bubbles:true}));}
         }else{
           const pick=radio(value);
-          if(pick&&!pick.disabled){pick.checked=true;pick.dispatchEvent(new Event('change',{bubbles:true}));}
+          if(pick&&!pick.disabled&&!pick.checked){pick.checked=true;pick.dispatchEvent(new Event('change',{bubbles:true}));}
         }
         showQuota();
-      });
+      };
+      form.querySelector('[data-keys-source]').addEventListener('input',chooseSource);
+      form.querySelector('[data-keys-source]').addEventListener('change',chooseSource);
       form.v2_mode.addEventListener('change',()=>{
         manualBudget=false;
         const experiment=form.v2_mode.value==='experiment';
