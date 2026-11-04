@@ -665,6 +665,7 @@ def quota_usage(cell):
 
 def execution_help_intervals(cell, agent, ledger_jobs):
     """One row per execution help, including practice before any formal submit."""
+    if not cell.get('artifact_dir'):return []
     from .dev_agent_view import _read, clean
     from .dev_request_view import display_request_view
     private = Path(cell['artifact_dir'])/'agent/private'

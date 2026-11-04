@@ -241,6 +241,24 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)
+    if not cell.get('artifact_dir') and not run and experiment.get('manifest') and cell.get('state')=='planned' and not experiment.get('cancelled'):
+        # Creation has no cell workspace yet. Read configuration from the frozen
+        # manifest; never fabricate artifact paths or initialize agent tables.
+        from .dev_loop import sha
+        from .core.dev_store import DevConflict
+        ref=experiment['manifest']
+        if sha(ref['uri'])!=ref['sha256']:raise DevConflict('Display evidence digest mismatch')
+        manifest=json.loads(Path(ref['uri']).read_bytes())
+        result.update(state='created',status='not started',
+            configuration=clean(manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]))
+        result['agent']['phase']='not started'
+        result['dev_v2_compat'].update(state='created',status='not started',
+            configuration=result['configuration'],# Same shape the page already renders as "Prepared / Not started" with a Start button.
+            lifecycle=dict(phase='prepared',can_start=True,can_stop=False,start_label='Start run',experiment_id=experiment['experiment_id'],
+                scope=[dict(task_id=cell['task_id'],seed=cell['seed'],state=cell['state'])],scope_count=1,scheduler_active=False),
+            run_controls=dict(state='created',can_start=True,can_pause=False,can_resume=False,
+                can_keep_running=False,resume_blocked_reason=None,current_step=None,
+                paused_since=None,paused_seconds_total=0,interrupted_by_stop=None))
     if experiment.get('pause_requested_at') or experiment.get('state')=='paused':
         from .daily_dev_v2 import DailyDevV2
         bridge=object.__new__(DailyDevV2);bridge.workers={};bridge.root=Path(experiment.get('disk_root') or experiment.get('artifact_dir','/missing'))
