@@ -186,7 +186,7 @@ def test_chat_parameters_usage_and_image(preset,monkeypatch):
     result=ByokChatClient(p).chat(model='parcc/Qwen',messages=messages,max_tokens=17,reasoning_effort='high')
     body=transport.fake.requests[-1][1]
     assert body['messages']==messages and body[p.spec.token_param]==17
-    assert ('reasoning_effort' in body)==bool(p.spec.reasoning_param)
+    assert ('reasoning_effort' in body)==(bool(p.spec.reasoning_param) and preset!='parcc')  # PARCC's Qwen rejects high.
     assert result.usage==dict(prompt_tokens=3,completion_tokens=2,total_tokens=5) and result.model=='parcc/Qwen'
     assert result.attempts==1 and result.content=='ok'
 
