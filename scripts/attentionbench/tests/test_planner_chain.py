@@ -1,3 +1,4 @@
+import hashlib
 """Offline coverage for the portable planner chain; no Conda, GPU or service runs."""
 import json
 from pathlib import Path
@@ -133,8 +134,8 @@ def test_proof_runs_isolated_built_python_without_approval(tmp_path, monkeypatch
         calls.append(argv)
         write(out, {'passed': True, 'request_set_sha256': identity.digest(requests),
                     'result_sha256': 'b' * 64})
-        return SimpleNamespace(returncode=0, stderr='', stdout='')
-    monkeypatch.setattr(planner.subprocess, 'run', fake_run)
+        return SimpleNamespace(wait=lambda timeout: 0)
+    monkeypatch.setattr(planner.subprocess, 'Popen', fake_run)
     planner.proof(tmp_path / 'env/bin/python', tmp_path / 'repos/curobo',
                   tmp_path / 'd06/runtime-lock.json', out, requests)
     argv = calls[0]
@@ -151,8 +152,8 @@ def test_proof_rejects_wrong_request_hash(tmp_path, monkeypatch):
     def fake_run(argv, **kwargs):
         write(out, {'passed': True, 'request_set_sha256': 'a' * 64,
                     'result_sha256': 'b' * 64})
-        return SimpleNamespace(returncode=0, stderr='', stdout='')
-    monkeypatch.setattr(planner.subprocess, 'run', fake_run)
+        return SimpleNamespace(wait=lambda timeout: 0)
+    monkeypatch.setattr(planner.subprocess, 'Popen', fake_run)
     with pytest.raises(ValueError, match='different request set'):
         planner.proof('python', 'curobo', 'lock', out)
 
@@ -193,3 +194,51 @@ def test_default_project_assembly_uses_pinned_sources(tmp_path, monkeypatch):
     assert str(project) in (project / 'config/openarm_fixed.yml').read_text()
     assert (project / 'config/openarm-model/robot.urdf').read_bytes() == (
         planner.REPO / 'openarm_phase0_recheck/model/compat_v6/robot.urdf').read_bytes()
+
+
+def test_interrupted_output_is_discarded(tmp_path):
+    tree = tmp_path / 'deployment/runtime'
+    tree.mkdir(parents=True)
+    (tree / 'lock').write_text('x')
+    (tree / 'lock').chmod(0o444)
+    tree.chmod(0o555)
+    planner.discard(tmp_path / 'deployment')
+    assert not (tmp_path / 'deployment').exists()
+    planner.discard(tmp_path / 'absent')
+    file = tmp_path / 'registry'
+    file.write_text('x')
+    file.chmod(0o444)
+    planner.discard(file)
+    assert not file.exists()
+
+
+def test_stale_stamp_needs_update_and_then_reruns(tmp_path):
+    runs = []
+    output = tmp_path / 'out'
+    def action():
+        runs.append(1)
+        output.write_text('x')
+    planner.stamp(tmp_path, 'step', {'a': 1}, [output], action)
+    planner.stamp(tmp_path, 'step', {'a': 1}, [output], action)
+    assert len(runs) == 1
+    with pytest.raises(planner.StepError, match='--update'):
+        planner.stamp(tmp_path, 'step', {'a': 2}, [output], action)
+    planner.stamp(tmp_path, 'step', {'a': 2}, [output], action, update=True)
+    assert len(runs) == 2
+
+
+def test_native_assets_accept_the_tree_built_in_place(tmp_path, monkeypatch):
+    dest = tmp_path / 'native'
+    file = dest / 'data/robots/a.txt'
+    file.parent.mkdir(parents=True)
+    file.write_text('a')
+    digest = planner.official_lock.sha(file)
+    encoded = json.dumps({'robots/a.txt': digest}, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()
+    manifests = tmp_path / 'manifests'
+    manifests.mkdir()
+    (manifests / 'r12-native-assets.json').write_text(json.dumps({
+        'count': 1, 'format': 'canonical-relative-path-sha256-v1', 'sha256': hashlib.sha256(encoded).hexdigest()}))
+    monkeypatch.setattr(planner.identity, 'OFFICIAL_MANIFESTS', manifests)
+    report = dest / 'native-assets-files.json'
+    planner.native_assets(dest, dest, report)
+    assert json.loads(report.read_text())['count'] == 1

@@ -77,7 +77,8 @@ def test_probe_blind_model_fails_vision(role,answer):
     """A 200 for an image part proves nothing: a model that answers something else did not see the picture."""
     key=Secret('sk-'+secrets.token_urlsafe(32))
     result=probe(presets()['openai'],key,'m',role=role,transport=vision_transport(key,[],answer=answer))
-    assert not result.ok and result.checks['vision']=='fail' and result.checks['tools']=='ok'
+    # The Advisor makes one plain chat call, so it is not asked about tools.
+    assert not result.ok and result.checks['vision']=='fail' and result.checks['tools']==('unknown' if role=='advisor' else 'ok')
     assert result.errors[-1]['code']=='provider_vision_failed' and 'Choose a model that can see images.' in result.errors[-1]['message']
 
 
@@ -132,3 +133,17 @@ def test_fake_provider_over_loopback(loopback,mode):
         assert result.ok==(mode in (None,'slow'))
         assert not scan([key],roots=[],include_processes=False,extra_blobs=[json.dumps(result.errors)])
         assert all(h=='Bearer '+key.reveal() for h in fake.authorizations)
+
+
+def test_advisor_needs_no_tool_calls():
+    key=Secret('x');seen=[]
+    result=probe(presets()['openai'],key,'m',role='advisor',transport=vision_transport(key,seen))
+    assert result.ok and result.checks['chat']=='ok' and result.checks['tools']=='unknown'
+    assert not any(body and body.get('tools') for body in seen)
+
+
+def test_a_text_only_advisor_is_not_asked_about_images():
+    key=Secret('x');seen=[]
+    result=probe(presets()['openai'],key,'m',role='advisor-text',transport=vision_transport(key,seen,answer='no idea'))
+    assert result.ok and result.checks['vision']=='unknown'
+    assert not any(body and isinstance(body['messages'][0]['content'],list) for body in seen if body)

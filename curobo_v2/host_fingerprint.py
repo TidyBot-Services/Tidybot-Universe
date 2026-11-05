@@ -25,16 +25,19 @@ def _digest(path):
     return h.hexdigest()
 
 
-def host_libraries():
-    output = ''
+def ldconfig_cache():
     # The planner service runs with a reduced environment, so PATH may not reach sbin.
     for ldconfig in ('ldconfig', '/sbin/ldconfig', '/usr/sbin/ldconfig'):
         try:
-            output = subprocess.run([ldconfig, '-p'], capture_output=True, text=True,
-                                    check=False, timeout=10).stdout
-            break
+            return subprocess.run([ldconfig, '-p'], capture_output=True, text=True,
+                                  check=False, timeout=10).stdout
         except (OSError, subprocess.SubprocessError):
             continue
+    return ''
+
+
+def host_libraries():
+    output = ldconfig_cache()
     found = {}
     for token in LIBRARIES:
         candidates = [line.rsplit('=>', 1)[1].strip() for line in output.splitlines()
@@ -103,8 +106,11 @@ def gate(value):
     driver = value.get('driver')
     glibc = value.get('glibc')
     os_version = (value.get('os') or {}).get('VERSION_ID')
-    if _version(driver) is None or _version(driver) < _version(DRIVER_MIN):
-        failures.append(f'NVIDIA driver {driver or "unreadable"}; requires >= {DRIVER_MIN}. Upgrade the NVIDIA driver.')
+    if _version(driver) is None:
+        failures.append('NVIDIA driver unreadable. Install the NVIDIA driver.')
+    elif _version(driver) < _version(DRIVER_MIN):
+        # Older drivers may still work on older GPUs; the planner proof on this GPU decides.
+        warnings.append(f'NVIDIA driver {driver} is older than {DRIVER_MIN}, the oldest expected to work. If the planner proof fails, upgrade the driver.')
     if _version(glibc) is None or _version(glibc) < _version(GLIBC_MIN):
         failures.append(f'glibc {glibc or "unreadable"}; requires >= {GLIBC_MIN}. Upgrade to Ubuntu 22.04 or 24.04.')
     if os_version not in SUPPORTED_OS:

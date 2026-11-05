@@ -5,8 +5,8 @@ path registry configured:
 
     PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD python scripts/attentionbench/scene_fingerprint_check.py
 
-Each invocation constructs and resets one scene, then closes it. This script
-does not start a planner or an agent.
+Each invocation constructs and resets one scene, renders one frame, then closes
+it. This script does not start a planner or an agent.
 """
 
 from __future__ import annotations
@@ -30,12 +30,15 @@ def main() -> None:
     try:
         env.reset()
         normalized = fingerprint(capture_state(env), rounded=True)
+        frame = env.sim.render(128, 128, camera_name='robot0_agentview_left', depth=False)
     finally:
         env.close()
     expected = seed_entry(load_contract(registered_contract_ref()), task_id, seed)['normalized_sha256']
     print(f'normalized_sha256: {normalized}')
     print(f'registered_sha256: {expected}')
     print(f'matches_registered: {normalized == expected}')
+    # A blank frame means the renderer started but drew nothing.
+    print(f'frame_rendered: {float(frame.std()) > 0}')
 
 
 if __name__ == '__main__':

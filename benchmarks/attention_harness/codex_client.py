@@ -19,8 +19,10 @@ REASONING_EFFORT = 'high'
 
 def codex_environment():
     """Only pass process settings and the home needed for Codex authentication."""
-    allowed = ('HOME', 'PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TERM',
-               'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME')
+    allowed = ('HOME', 'PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TERM', 'CODEX_HOME',
+               'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME',
+               'http_proxy', 'https_proxy', 'no_proxy', 'all_proxy', 'HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY', 'ALL_PROXY',
+               'SSL_CERT_FILE', 'SSL_CERT_DIR')
     return {key: os.environ[key] for key in allowed if key in os.environ}
 
 

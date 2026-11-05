@@ -1,3 +1,7 @@
+import hashlib
+import io
+import tarfile
+import zipfile
 import importlib.util
 import json
 import os
@@ -133,13 +137,17 @@ def test_doctor_failure_kinds_and_fix(tmp_path, monkeypatch, capsys):
         def __exit__(self, *a): pass
         def connect_ex(self, *a): return 0
     monkeypatch.setattr(installer.socket, 'socket', lambda: Busy())
+    monkeypatch.setattr(installer.routes, 'available', lambda: [])
     monkeypatch.setattr(installer.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=1, stdout='codex-cli 0.1', stderr=''))
     assert installer.doctor(SimpleNamespace(workspace=str(ws), json=True)) == 1
     rows = json.loads(capsys.readouterr().out)
     by_name = {row['check']: row for row in rows}
-    for name in ('gpu', 'codex-version', 'assets', 'port-8769', 'path:memory.m3_keys'):
+    for name in ('gpu', 'codex-version', 'assets', 'path:memory.m3_keys'):
         assert by_name[name]['status'] == 'FAIL'
         assert by_name[name]['fix']
+    # A busy port or a missing model route does not make a workspace broken.
+    assert by_name['port-8769']['status'] == 'WARN' and 'next free port' in by_name['port-8769']['reason']
+    assert by_name['model-routes']['status'] == 'WARN' and 'run.sh' in by_name['model-routes']['reason']
 
 
 def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
@@ -148,6 +156,7 @@ def test_keys_created_private_and_not_printed(tmp_path, monkeypatch, capsys):
     ws = tmp_path / 'workspace'
     (ws / 'repos/attentionbench').mkdir(parents=True)
     monkeypatch.setattr(installer, 'REPO', (ws / 'repos/attentionbench').resolve())
+    monkeypatch.setattr(installer.tools, 'ensure', lambda ws, pins: None)
     monkeypatch.setattr(installer, 'stamped', lambda ws, step, inputs, update, action: None)
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
@@ -188,6 +197,7 @@ def test_registration_roots_replace_old_empty_default(tmp_path):
 def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):
     (tmp_path / 'workspace/repos/attentionbench').mkdir(parents=True)
     monkeypatch.setattr(installer, 'REPO', (tmp_path / 'workspace/repos/attentionbench').resolve())
+    monkeypatch.setattr(installer.tools, 'ensure', lambda ws, pins: None)
     monkeypatch.setattr(installer, 'stamped', lambda *a: None)
     monkeypatch.setattr(installer, 'digest', lambda *a: installer.data()['assets']['runtime_manifest_sha256'])
     monkeypatch.setattr(installer, 'download_assets', lambda ws, lock: ws / 'assets')
@@ -201,3 +211,150 @@ def test_bootstrap_invokes_planner_chain(tmp_path, monkeypatch):
     assert planner[0][0] == str(tmp_path / 'workspace/envs/ui/bin/python')
     assert planner[0][1].endswith('scripts/attentionbench/build_planner_chain.py')
     assert planner[0][2:4] == ['--workspace', str(tmp_path / 'workspace')]
+
+
+def zip_with(path, members):
+    with zipfile.ZipFile(path, 'w') as bundle:
+        for name, data in members.items():
+            bundle.writestr(name, data)
+    return path
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def test_unpack_writes_only_files_the_manifest_lists_with_matching_bytes(tmp_path):
+    archive = zip_with(tmp_path / 'pack.zip', {'lightwheel/a.obj': b'good', 'lightwheel/b.obj': b'changed', 'README.md': b'not listed'})
+    wanted = {'objects/lightwheel/a.obj': sha(b'good'), 'objects/lightwheel/b.obj': sha(b'expected')}
+    root = tmp_path / 'assets'
+    assert installer.unpack_pack(archive, root, wanted, 'objects/') == 1
+    assert (root / 'objects/lightwheel/a.obj').read_bytes() == b'good'
+    assert not (root / 'objects/lightwheel/b.obj').exists() and not (root / 'README.md').exists()
+
+
+@pytest.mark.parametrize('name', ['../escape', '/absolute'])
+def test_unsafe_archive_member_is_refused(tmp_path, name):
+    archive = tmp_path / 'pack.zip'
+    with zipfile.ZipFile(archive, 'w') as bundle:
+        info = zipfile.ZipInfo(name)
+        bundle.writestr(info, b'x')
+    with pytest.raises(installer.StepError, match='unsafe'):
+        installer.unpack_pack(archive, tmp_path, {}, '')
+
+
+def asset_workspace(tmp_path, monkeypatch, packs):
+    ws = tmp_path / 'ws'
+    baseline = ws / 'sim/robocasa/robocasa/models/assets'
+    baseline.mkdir(parents=True)
+    (baseline / 'tracked.xml').write_bytes(b'tracked')
+    manifest = ws / 'manifest.json'
+    manifest.write_text(json.dumps({'tracked.xml': sha(b'tracked'), 'objects/a': sha(b'a'), 'objects/b': sha(b'b')}))
+    fetched = []
+    def fetch_pack(pack, downloads):
+        fetched.append(pack['name'])
+        downloads.mkdir(parents=True, exist_ok=True)
+        return zip_with(downloads / (pack['name'] + '.zip'), packs[pack['name']])
+    monkeypatch.setattr(installer, 'fetch_pack', fetch_pack)
+    monkeypatch.setattr(installer, 'asset_sources', lambda lock: {'robocasa': [
+        {'name': name, 'prefix': 'objects/'} for name in packs]})
+    return ws, {'assets': {'installed_manifest': 'manifest.json'}}, fetched
+
+
+def test_assets_combine_checkout_and_archives_and_drop_each_archive(tmp_path, monkeypatch):
+    ws, lock, fetched = asset_workspace(tmp_path, monkeypatch, {'one': {'a': b'a'}, 'two': {'b': b'b'}})
+    source = installer.download_assets(ws, lock)
+    assert {p.name for p in source.rglob('*') if p.is_file()} == {'tracked.xml', 'a', 'b'}
+    assert fetched == ['one', 'two'] and not list((ws / 'data/robocasa365/downloads').iterdir())
+
+
+def test_rerun_continues_after_the_last_finished_archive(tmp_path, monkeypatch):
+    ws, lock, fetched = asset_workspace(tmp_path, monkeypatch, {'one': {'a': b'a'}, 'two': {'b': b'b'}})
+    real = installer.unpack_pack
+    def interrupted(archive, root, wanted, prefix):
+        if archive.stem == 'two':
+            raise KeyboardInterrupt
+        return real(archive, root, wanted, prefix)
+    monkeypatch.setattr(installer, 'unpack_pack', interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        installer.download_assets(ws, lock)
+    monkeypatch.setattr(installer, 'unpack_pack', real)
+    fetched.clear()
+    source = installer.download_assets(ws, lock)
+    assert fetched == ['two'] and (source / 'objects/a').is_file() and (source / 'objects/b').is_file()
+
+
+def test_bad_archive_is_removed_for_the_next_run(tmp_path, monkeypatch):
+    ws, lock, _ = asset_workspace(tmp_path, monkeypatch, {'one': {'a': b'a'}})
+    def corrupt(pack, downloads):
+        downloads.mkdir(parents=True, exist_ok=True)
+        file = downloads / 'one.zip'
+        file.write_bytes(b'not a zip')
+        return file
+    monkeypatch.setattr(installer, 'fetch_pack', corrupt)
+    with pytest.raises(installer.StepError, match='removed'):
+        installer.download_assets(ws, lock)
+    assert not (ws / 'data/robocasa365/downloads/one.zip').exists()
+
+
+def test_native_tree_is_public_archives_plus_the_overlay(tmp_path, monkeypatch):
+    ws = tmp_path / 'ws'
+    dest = ws / 'sim/curobo-native-assets'
+    (dest / 'data/old').mkdir(parents=True)  # An interrupted attempt.
+    overlay = tmp_path / 'overlay.tar.gz'
+    with tarfile.open(overlay, 'w:gz') as bundle:
+        info = tarfile.TarInfo('scene/plate.obj')
+        info.size = 5
+        bundle.addfile(info, io.BytesIO(b'fixed'))
+    packs = {'scene': {'robocasa_dataset/plate.obj': b'public', 'robocasa_dataset/other': b'o'}, 'robot': {'top-1/r.urdf': b'u'}}
+    def fetch_pack(pack, downloads):
+        downloads.mkdir(parents=True, exist_ok=True)
+        return zip_with(downloads / (pack['name'] + '.zip'), packs[pack['name']])
+    monkeypatch.setattr(installer, 'fetch_pack', fetch_pack)
+    monkeypatch.setattr(installer, 'REPO', tmp_path)
+    monkeypatch.setattr(installer, 'asset_sources', lambda lock: {'native': {
+        'archives': [{'name': 'scene', 'strip': 'robocasa_dataset/', 'target': 'data/scene/'},
+                     {'name': 'robot', 'strip': 'top-1/', 'target': 'data/robots/'}],
+        'overlay': {'path': 'overlay.tar.gz', 'sha256': installer.digest(overlay), 'backups': ['scene/plate.obj']}}})
+    installer.download_native_assets(ws, {}, dest)
+    tree = {str(p.relative_to(dest / 'data')): p.read_bytes() for p in (dest / 'data').rglob('*') if p.is_file()}
+    assert tree == {'scene/plate.obj': b'fixed', 'scene/plate.obj.bak': b'public', 'scene/other': b'o', 'robots/r.urdf': b'u'}
+
+
+def test_lock_lists_every_public_source_and_tool():
+    lock = installer.data()
+    sources = installer.asset_sources(lock)
+    assert {pack['name'] for pack in sources['robocasa']} == {
+        'textures', 'generative_textures', 'fixtures_lightwheel', 'fixtures', 'objects_lightwheel', 'objaverse', 'aigen_objs'}
+    overlay = sources['native']['overlay']
+    assert installer.digest(ROOT / overlay['path']) == overlay['sha256'] and len(overlay['backups']) == 33
+    for name in ('codex', 'conda', 'uv'):
+        assert len(lock['tools'][name]['sha256']) == 64 and lock['tools'][name]['url'].startswith('https://')
+
+
+def test_changed_planner_inputs_rebuild_only_with_update(tmp_path, monkeypatch):
+    calls = []
+    def command(step, argv, **kw):
+        calls.append(step)
+        if len(calls) == 1:
+            raise installer.StepError('planner', installer.STALE_PLANNER, 'x')
+    monkeypatch.setattr(installer, 'command', command)
+    rebuilt = []
+    monkeypatch.setattr(installer, 'rebuild_planner', lambda ws, args: rebuilt.append(ws))
+    with pytest.raises(installer.StepError):
+        installer.run_planner(tmp_path, SimpleNamespace(update=False), ['x'])
+    assert not rebuilt
+    calls.clear()
+    installer.run_planner(tmp_path, SimpleNamespace(update=True), ['x'])
+    assert rebuilt == [tmp_path] and calls == ['planner', 'planner']
+
+
+def test_a_slow_command_reports_progress(monkeypatch, capsys):
+    monkeypatch.setattr(installer, 'HEARTBEAT_SECONDS', .05)
+    installer.command('slow', [sys.executable, '-c', 'import time; time.sleep(.2)'])
+    assert 'still running' in capsys.readouterr().out
+
+
+def test_failed_command_reports_its_output():
+    with pytest.raises(installer.StepError, match='boom'):
+        installer.command('bad', [sys.executable, '-c', 'import sys; print("boom"); sys.exit(3)'])

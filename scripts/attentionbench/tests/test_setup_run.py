@@ -52,7 +52,7 @@ def test_request_matches_l2_and_keys_are_unique():
 
 
 def test_cli_has_no_relaxing_options(capsys):
-    for entry in (setup.main, run.main):
+    for entry in (setup.main, run.main, setup.verify.main):
         with pytest.raises(SystemExit) as exc:
             entry(['--help'])
         assert exc.value.code == 0
@@ -64,12 +64,13 @@ def test_cli_has_no_relaxing_options(capsys):
 def fake_prereqs(tmp_path, monkeypatch):
     bindir = tmp_path / 'bin'
     bindir.mkdir()
-    for name in ('nvidia-smi', 'git', 'python3-config', 'cc', 'uv', 'conda', 'bwrap', 'codex'):
+    for name in ('nvidia-smi', 'git', 'cc', 'g++', 'ffmpeg', 'ffprobe', 'bwrap'):
         file = bindir / name
         file.write_text('#!/bin/sh\nexit 0\n')
         file.chmod(0o755)
     monkeypatch.setenv('PATH', str(bindir))
-    monkeypatch.setattr(setup, '_isolation_from_doctor', lambda ws: (True, 'probe passed'))
+    monkeypatch.setattr(setup, '_isolation', lambda: (True, 'probe passed'))
+    monkeypatch.setattr(setup.installer, 'missing_libraries', lambda: [])
     monkeypatch.setattr(setup, '_free_port', lambda port: True)
     monkeypatch.setattr(setup, '_run', lambda argv, timeout=10: SimpleNamespace(
         returncode=0, stdout='580.95\n' if Path(argv[0]).name == 'nvidia-smi' else
@@ -80,7 +81,29 @@ def fake_prereqs(tmp_path, monkeypatch):
     return bindir, tmp_path / 'workspace'
 
 
-@pytest.mark.parametrize('missing', ['nvidia-smi', 'git', 'cc', 'uv', 'conda', 'bwrap', 'codex'])
+def test_uv_conda_and_codex_are_not_prerequisites(fake_prereqs, capsys):
+    _, ws = fake_prereqs
+    assert setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    output = capsys.readouterr().out
+    assert 'FAIL' not in output and 'Codex' not in output and 'Conda' not in output
+
+
+@pytest.mark.parametrize('missing', ['ffmpeg', 'bwrap'])
+def test_a_tool_with_a_workspace_fallback_only_warns(fake_prereqs, capsys, missing):
+    bindir, ws = fake_prereqs
+    (bindir / missing).unlink()
+    assert setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'WARN' in capsys.readouterr().out
+
+
+def test_missing_system_library_names_its_package(fake_prereqs, monkeypatch, capsys):
+    _, ws = fake_prereqs
+    monkeypatch.setattr(setup.installer, 'missing_libraries', lambda: ['libEGL.so.1'])
+    assert not setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'sudo apt-get install libegl1' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('missing', ['nvidia-smi', 'git', 'cc', 'g++'])
 def test_prerequisite_missing_executable_has_install_instruction(fake_prereqs, capsys, missing):
     bindir, ws = fake_prereqs
     (bindir / missing).unlink()
@@ -95,9 +118,9 @@ def test_prerequisites_disk_and_port_and_dry_warning(fake_prereqs, monkeypatch, 
     monkeypatch.setattr(setup, '_free_port', lambda port: port != 8769)
     assert not setup.prerequisites(ws, dry_run=True, ui_port=8769, memory_port=8878)
     output = capsys.readouterr().out
-    assert 'FAIL disk:' in output and 'FAIL UI port:' in output
+    assert 'FAIL disk:' in output and 'WARN UI port:' in output and 'next free port' in output
     assert all('; install:' in line for line in output.splitlines() if line.startswith('FAIL'))
-    assert 'setup needs 70 GB' in output and 'uv cache clean' in output
+    assert f'setup needs {setup.installer.INSTALL_FREE_GB} GB' in output
 
 
 def test_disk_need_is_lower_for_an_installed_workspace(fake_prereqs, monkeypatch, capsys):
@@ -123,12 +146,13 @@ def test_prerequisites_platform_and_python(fake_prereqs, monkeypatch, capsys):
     monkeypatch.setattr(setup.sys, 'version_info', (3, 9))
     assert not setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
     output = capsys.readouterr().out
-    assert 'FAIL Linux x86_64:' in output and 'FAIL Python 3.10+ headers:' in output
+    assert 'FAIL Linux x86_64:' in output and 'FAIL Python 3.10+:' in output
     assert all('; install:' in line for line in output.splitlines() if line.startswith('FAIL'))
 
 
 def test_dry_run_creates_nothing(tmp_path, monkeypatch):
     ws = tmp_path / 'absent'
+    monkeypatch.setattr(setup, 'prepare_host', lambda dry_run: None)
     monkeypatch.setattr(setup, 'prerequisites', lambda *a, **k: True)
     monkeypatch.setattr(setup.installer, 'bootstrap', lambda args: None)
     monkeypatch.setattr(setup.installer, 'doctor', lambda args: pytest.fail('doctor should not run in dry-run'))
@@ -226,7 +250,8 @@ def server():
 
 def args(ws, port, **changes):
     (ws / 'paths.json').write_text('{}')  # a set-up workspace
-    values = dict(workspace=str(ws), task='pick_place_counter_to_sink', seed=101,
+    values = dict(workspace=str(ws), task='pick_place_counter_to_sink', seed=101, model='codex',
+                  dev_model=None, eval_model=None, advisor_model=None, base_url=None, api_key_env=None,
                   minutes=30, lock=None, no_stop=False, ui_port=port, memory_port=8878)
     values.update(changes)
     return argparse.Namespace(**values)
@@ -322,3 +347,250 @@ def test_create_waits_longer_than_the_ui_create_subprocess(monkeypatch):
     assert run.CREATE_TIMEOUT >= 120
     assert seen == {'http://x/api/dev-v2/experiments': run.CREATE_TIMEOUT,
                     'http://x/api/dev-v2/experiments/e/cancel': 15}
+
+
+@pytest.mark.parametrize('name', ['with space', 'a:b', 'a#b'])
+def test_workspace_paths_conda_cannot_use_fail_at_once(tmp_path, name):
+    with pytest.raises(setup.installer.StepError, match='space, colon or #'):
+        setup.workspace_path(str(tmp_path / name))
+
+
+def test_workspace_path_too_long_fails_at_once():
+    with pytest.raises(setup.installer.StepError, match='longer than'):
+        setup.workspace_path('/tmp/' + 'x' * setup.MAX_WORKSPACE_BYTES)
+
+
+def test_workspace_through_a_symlink_is_resolved(tmp_path):
+    real = tmp_path / 'real'
+    real.mkdir()
+    (tmp_path / 'link').symlink_to(real)
+    assert setup.workspace_path(str(tmp_path / 'link/ws')) == real / 'ws'
+
+
+def test_relative_workspace_is_accepted(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert setup.workspace_path('ws') == tmp_path.resolve() / 'ws'
+
+
+def test_a_checkout_elsewhere_moves_into_the_workspace_and_restarts(tmp_path, monkeypatch):
+    ws = tmp_path / 'ws'
+    commands, restarts = [], []
+    monkeypatch.setattr(setup, '_run', lambda argv, timeout=60: SimpleNamespace(
+        stdout='https://example.test/repo.git\n' if 'get-url' in argv else 'abc1234\n', returncode=0))
+    monkeypatch.setattr(setup.installer, 'command', lambda step, argv, **kw: commands.append(argv))
+    monkeypatch.setattr(setup.os, 'execv', lambda path, argv: restarts.append(argv))
+    setup.adopt_checkout(ws, ['--workspace', str(ws)])
+    assert commands[0][:2] == ['git', 'clone'] and commands[0][-1] == str(ws / 'repos/attentionbench')
+    assert ['git', '-C', str(ws / 'repos/attentionbench'), 'checkout', '--detach', 'abc1234'] in commands
+    assert commands[-1][-1] == 'https://example.test/repo.git'
+    assert restarts[0][1].endswith('repos/attentionbench/scripts/attentionbench/setup.py')
+
+
+def test_a_checkout_already_in_place_stays(tmp_path, monkeypatch):
+    ws = tmp_path / 'ws'
+    monkeypatch.setattr(setup, 'ROOT', ws / 'repos/attentionbench')
+    monkeypatch.setattr(setup.os, 'execv', lambda *a: pytest.fail('restarted'))
+    setup.adopt_checkout(ws, [])
+
+
+def successful_setup(monkeypatch, ws, *, verify_failures=0, logged_in=False):
+    calls = []
+    monkeypatch.setattr(setup, 'adopt_checkout', lambda ws, argv: None)
+    monkeypatch.setattr(setup, 'prepare_host', lambda dry_run: None)
+    monkeypatch.setattr(setup, 'prerequisites', lambda *a, **k: True)
+    monkeypatch.setattr(setup.installer, 'bootstrap', lambda args: calls.append('bootstrap'))
+    monkeypatch.setattr(setup.installer, 'doctor', lambda args: calls.append('doctor') or 0)
+    monkeypatch.setattr(setup.installer, 'clean_caches', lambda ws: calls.append('clean'))
+    monkeypatch.setattr(setup.verify, 'run', lambda ws: calls.append('verify') or verify_failures)
+    monkeypatch.setattr(setup.routes, 'codex_logged_in', lambda: logged_in)
+    monkeypatch.setattr(setup.routes, 'available', lambda: ['codex'] if logged_in else [])
+    monkeypatch.setattr(setup, 'warmup', lambda no_warmup: calls.append('warmup'))
+    return calls
+
+
+def test_setup_needs_no_model_account(tmp_path, monkeypatch, capsys):
+    calls = successful_setup(monkeypatch, tmp_path)
+    assert setup.main(['--workspace', str(tmp_path)]) == 0
+    assert calls == ['bootstrap', 'doctor', 'verify', 'clean']
+    output = capsys.readouterr().out
+    assert 'No model route is ready' in output and 'deepseek' in output
+
+
+def test_a_failed_self_test_keeps_the_caches_and_fails(tmp_path, monkeypatch, capsys):
+    calls = successful_setup(monkeypatch, tmp_path, verify_failures=1)
+    assert setup.main(['--workspace', str(tmp_path)]) == 1
+    assert 'clean' not in calls and 'self-test' in capsys.readouterr().err
+
+
+def test_a_failed_warm_up_does_not_fail_an_installed_workspace(tmp_path, monkeypatch, capsys):
+    successful_setup(monkeypatch, tmp_path, logged_in=True)
+    def fail(no_warmup):
+        raise setup.installer.StepError('codex warm-up', 'quota', 'later')
+    monkeypatch.setattr(setup, 'warmup', fail)
+    assert setup.main(['--workspace', str(tmp_path)]) == 0
+    assert 'WARN' in capsys.readouterr().out
+
+
+def route_args(**changes):
+    values = dict(api_key_env=None, base_url=None, dev_model=None, eval_model=None, advisor_model=None)
+    values.update(changes)
+    return argparse.Namespace(**values)
+
+
+def provider_server(monkeypatch, answers):
+    """answers maps (role, model) to the /test reply; anything else passes."""
+    calls = []
+    def post(url, token, body, timeout=15, method='POST'):
+        calls.append((method, url, body))
+        if url.endswith('/test'):
+            return answers.get((body['role'], body['model']), {'ok': True, 'checks': {}})
+        return {'ok': True}
+    monkeypatch.setattr(run, 'post_json', post)
+    return calls
+
+
+BLIND = {'ok': False, 'checks': {'auth': 'ok', 'chat': 'ok', 'vision': 'fail'}, 'errors': [{'message': 'no images'}]}
+DOWN = {'ok': False, 'checks': {'auth': 'fail', 'chat': 'fail'}, 'errors': [{'message': 'unreachable'}]}
+
+
+def test_key_goes_to_the_ui_and_never_into_the_request(monkeypatch):
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'secret-value')
+    calls = provider_server(monkeypatch, {})
+    provider, warnings = run.prepare_route('http://ui', 't', run.routes.ROUTES['deepseek'], route_args())
+    assert calls[0][0] == 'PUT' and calls[0][2] == {'provider': 'deepseek', 'key': 'secret-value'}
+    assert [body['role'] for method, url, body in calls[1:]] == ['dev', 'eval', 'advisor']
+    assert 'secret-value' not in json.dumps(provider) and warnings == []
+    assert provider['roles']['eval'] == {'credential': 'run-deepseek', 'provider': 'deepseek', 'model': 'deepseek-flash'}
+
+
+def test_a_model_that_cannot_read_images_runs_with_a_warning(monkeypatch):
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'k')
+    provider_server(monkeypatch, {('eval', 'blind'): BLIND, ('advisor', 'blind'): BLIND})
+    provider, warnings = run.prepare_route('http://ui', 't', run.routes.ROUTES['deepseek'],
+                                           route_args(dev_model='blind', eval_model='blind', advisor_model='blind'))
+    assert provider['roles']['eval']['vision'] is False and provider['roles']['advisor']['vision'] is False
+    assert 'vision' not in provider['roles']['dev']
+    assert any('Eval did not see images' in line for line in warnings)
+    assert any('Advisor did not see images' in line for line in warnings)
+
+
+def test_dev_has_to_pass_every_check(monkeypatch):
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'k')
+    provider_server(monkeypatch, {('dev', 'deepseek-flash'): BLIND})
+    with pytest.raises(setup.installer.StepError, match='dev check'):
+        run.prepare_route('http://ui', 't', run.routes.ROUTES['deepseek'], route_args())
+
+
+def test_a_default_eval_model_that_is_down_falls_back_to_dev_with_a_warning(monkeypatch, tmp_path):
+    monkeypatch.setenv('PARCC_API_KEY', 'k')
+    provider_server(monkeypatch, {('eval', 'parcc/Qwen'): DOWN, ('advisor', 'parcc/Qwen'): DOWN,
+                                  ('eval', 'parcc/GLM'): BLIND, ('advisor', 'parcc/GLM'): BLIND})
+    provider, warnings = run.prepare_route('http://ui', 't', run.routes.ROUTES['parcc'], route_args())
+    assert provider['roles']['eval']['model'] == 'parcc/GLM' and provider['roles']['eval']['vision'] is False
+    assert any('unreachable' in line for line in warnings)
+
+
+def test_a_named_model_that_fails_is_an_error(monkeypatch):
+    monkeypatch.setenv('PARCC_API_KEY', 'k')
+    provider_server(monkeypatch, {('eval', 'parcc/Qwen'): DOWN})
+    with pytest.raises(setup.installer.StepError, match='unreachable'):
+        run.prepare_route('http://ui', 't', run.routes.ROUTES['parcc'], route_args(eval_model='parcc/Qwen'))
+
+
+def test_a_route_without_a_key_says_how_to_add_one(monkeypatch, tmp_path):
+    monkeypatch.delenv('DEEPSEEK_API_KEY', raising=False)
+    with pytest.raises(setup.installer.StepError, match='DEEPSEEK_API_KEY'):
+        run.prepare_route('http://ui', 't', run.routes.ROUTES['deepseek'], route_args())
+
+
+def test_auto_route_prefers_a_logged_in_codex_then_keys(monkeypatch):
+    monkeypatch.setattr(run.routes, 'available', lambda: ['codex', 'deepseek'])
+    assert run.routes.choose('auto').name == 'codex'
+    monkeypatch.setattr(run.routes, 'available', lambda: ['deepseek'])
+    assert run.routes.choose('auto').name == 'deepseek'
+    monkeypatch.setattr(run.routes, 'available', lambda: [])
+    with pytest.raises(LookupError, match='codex login'):
+        run.routes.choose('auto')
+
+
+def test_key_comes_from_a_named_variable_or_the_key_file(monkeypatch, tmp_path):
+    (tmp_path / '.litellm-key').write_text('from-file\n')
+    monkeypatch.delenv('PARCC_API_KEY', raising=False)
+    monkeypatch.delenv('LITELLM_KEY', raising=False)
+    assert run.routes.find_key(run.routes.ROUTES['parcc'], home=tmp_path) == 'from-file'
+    monkeypatch.setenv('MY_KEY', 'from-env')
+    assert run.routes.find_key(run.routes.ROUTES['custom'], 'MY_KEY') == 'from-env'
+
+
+def test_openai_and_custom_need_a_model_name():
+    with pytest.raises(ValueError, match='--dev-model'):
+        run.routes.role_models(run.routes.ROUTES['openai'], None, None, None)
+    assert run.routes.role_models(run.routes.ROUTES['custom'], 'm', None, 'a') == {'dev': 'm', 'eval': 'm', 'advisor': 'a'}
+
+
+def test_custom_route_needs_its_three_options(tmp_path):
+    with pytest.raises(setup.installer.StepError, match='--base-url'):
+        run.execute(args(tmp_path, 8769, model='custom'))
+
+
+def test_run_on_a_key_route_skips_codex_and_records_the_warning(server, tmp_path, monkeypatch):
+    actions = []
+    monkeypatch.setenv('DEEPSEEK_API_KEY', 'k')
+    monkeypatch.setattr(run, 'command', lambda action, *a: actions.append(action))
+    monkeypatch.setattr(run.setup, 'warmup', lambda no_warmup: pytest.fail('a key route must not call Codex'))
+    roles = {role: {'credential': 'run-deepseek', 'provider': 'deepseek', 'model': 'm'} for role in run.routes.ROLES}
+    roles['eval']['vision'] = False
+    monkeypatch.setattr(run, 'prepare_route', lambda *a: ({'roles': roles}, ['Eval did not see images: m cannot read them.']))
+    assert run.execute(args(tmp_path, server.server_port, model='deepseek')) == 0
+    assert actions == ['start', 'stop']
+    selection = Handler.posts[0][3]['selection']
+    assert selection['agent_provider']['roles']['eval']['vision'] is False
+    assert selection['agent_limits'] == {'versions': 2, 'wall_seconds': 3600}
+    result = json.loads((tmp_path / 'data/run' / (Handler.eid + '-summary.json')).read_text())
+    assert result['model_route'] == 'deepseek' and 'Eval did not see images' in result['warnings'][0]
+
+
+def test_a_missed_poll_does_not_end_the_run(tmp_path, monkeypatch, capsys):
+    (tmp_path / 'paths.json').write_text('{}')
+    monkeypatch.setattr(run, 'command', lambda *a: None)
+    monkeypatch.setattr(run.setup, 'warmup', lambda no_warmup: None)
+    monkeypatch.setattr(run.control, 'control_token', lambda url: 't')
+    monkeypatch.setattr(run, 'post_json', lambda *a, **k: {'experiment_id': Handler.eid, 'state': 'running'})
+    monkeypatch.setattr(run.time, 'sleep', lambda seconds: None)
+    replies = [TimeoutError('slow'), OSError('reset'), {'state': 'completed', 'cells': []}]
+    def get(url):
+        reply = replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+    monkeypatch.setattr(run, 'get_json', get)
+    assert run.execute(args(tmp_path, 8769)) == 0
+    assert capsys.readouterr().out.count('trying again') == 2
+
+
+def test_a_ui_that_stays_down_ends_the_run_with_a_reason(tmp_path, monkeypatch):
+    (tmp_path / 'paths.json').write_text('{}')
+    stopped = []
+    monkeypatch.setattr(run, 'command', lambda action, *a: stopped.append(action))
+    monkeypatch.setattr(run.setup, 'warmup', lambda no_warmup: None)
+    monkeypatch.setattr(run.control, 'control_token', lambda url: 't')
+    monkeypatch.setattr(run, 'post_json', lambda *a, **k: {'experiment_id': Handler.eid, 'state': 'running'})
+    monkeypatch.setattr(run.time, 'sleep', lambda seconds: None)
+    monkeypatch.setattr(run, 'get_json', lambda url: (_ for _ in ()).throw(OSError('refused')))
+    with pytest.raises(RuntimeError, match='stopped answering'):
+        run.execute(args(tmp_path, 8769))
+    assert stopped[-1] == 'stop'
+
+
+@pytest.mark.parametrize('roles,source', [
+    ({'dev': 'deepseek-flash', 'eval': 'deepseek-flash', 'advisor': 'deepseek-flash'}, 'byok'),
+])
+def test_a_key_route_request_passes_the_agent_configuration(roles, source):
+    from benchmarks.attention_harness import dev_agent_config as config
+    described = {role: {'credential': 'run-deepseek', 'provider': 'deepseek', 'model': model} for role, model in roles.items()}
+    described['eval']['vision'] = False
+    selection = run.request_body('pick_place_counter_to_sink', 101, 45, provider={'roles': described})['selection']
+    frozen = config.normalize(selection)
+    assert frozen['agent_provider']['roles']['eval']['vision'] is False
+    assert frozen['agent_limits'] == {'versions': 2, 'wall_seconds': 3600}
+    assert config.display_source(selection) == source

@@ -15,8 +15,9 @@ import sys
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from curobo_v2 import identity
-from scripts.attentionbench import official_lock
-from scripts.attentionbench.installer import StepError, command, data, digest
+from curobo_v2.host_fingerprint import ldconfig_cache
+from scripts.attentionbench import official_lock, tools
+from scripts.attentionbench.installer import STALE_PLANNER, StepError, command, data, digest, download_native_assets
 
 REQUESTS = Path(__file__).with_name('planner-proof-requests.json')
 PROJECT_FILES = Path(__file__).with_name('r12-project-files.json')
@@ -25,7 +26,18 @@ NATIVE_COMMIT = 'b18bbf1585c42e370ae45ababdddad700cc2c71d'
 AUTHOR_PROJECT_ROOT = '/home/truares/Documents/Codex/2026-10-11/goal-curobov2-nvidia-service-1-service/outputs/revisions/r12/runtime/project'
 
 
-def stamp(ws, step, inputs, outputs, action):
+def discard(path):
+    """Remove what an interrupted step left behind; only reached for outputs without a stamp."""
+    path = Path(path)
+    if path.is_dir() and not path.is_symlink():
+        for root, _, _ in os.walk(path):
+            os.chmod(root, 0o755)
+        shutil.rmtree(path)
+    elif path.exists() or path.is_symlink():
+        path.unlink()
+
+
+def stamp(ws, step, inputs, outputs, action, *, update=False):
     path = ws / 'data/installer/stamps' / ('planner-' + step + '.json')
     key = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
     if path.is_file():
@@ -33,8 +45,9 @@ def stamp(ws, step, inputs, outputs, action):
         if old.get('input_sha256') == key and all(Path(p).exists() for p in outputs):
             print(f'[planner:{step}] already complete')
             return
-        raise StepError('planner:' + step, 'stamp inputs or outputs changed',
-                        'Restore the stamped outputs or remove this planner step and its stamp, then rerun.')
+        if not update:
+            raise StepError('planner:' + step, STALE_PLANNER, 'Rerun setup.sh with --update to rebuild from the current inputs.')
+        path.unlink()
     try:
         action()
         if not all(Path(p).exists() for p in outputs):
@@ -145,7 +158,7 @@ def native_assets(source, dest, report):
 
 def host_libraries():
     # ldconfig resolves SONAMEs to absolute host paths, as r12 native-maps did.
-    output = subprocess.check_output(['ldconfig', '-p'], text=True)
+    output = ldconfig_cache()
     result = []
     for token in ('libcuda.so.1', 'libc.so.6'):
         candidates = [line.rsplit('=>', 1)[1].strip() for line in output.splitlines()
@@ -180,7 +193,7 @@ def build(args):
     lock = data()
     if args.dry_run:
         for step in ('env: exact Conda/Pip pins and editable official cuRobo',
-                     'assets: native digest and local project snapshot',
+                     'assets: public native archives, their digest and local project snapshot',
                      'official: r12 schema and official-content checks',
                      'd05: pinned adapter sources and carried d02-d04 layer',
                      'd06: current checkout adapter differences',
@@ -209,9 +222,8 @@ def build(args):
             or not wheel.is_file() or digest(wheel) != lock['curobo_env']['toppra_wheel_sha256']):
         raise StepError('planner:env', 'committed environment spec or requirements digest differs', 'Restore committed installer inputs.')
     def make_env():
-        if prefix.exists():
-            raise ValueError('unstamped cuRobo environment exists: ' + str(prefix))
-        command('planner:env', ['conda', 'create', '--yes', '--prefix', str(prefix), '--file', str(spec)])
+        discard(prefix)
+        command('planner:env', ['conda', 'create', '--yes', '--prefix', str(prefix), '--file', str(spec)], env=tools.conda_env(ws))
         # Same installers as the author env: pip for the pinned set (no resolver additions), uv
         # for the five test packages (their INSTALLER/REQUESTED and launcher scripts come from
         # uv), and the editable cuRobo built with the env's own setuptools (no build isolation).
@@ -229,7 +241,7 @@ def build(args):
                 path.chmod(path.stat().st_mode & ~0o222)
     stamp(ws, 'env', {'spec': digest(spec), 'requirements': digest(req), 'uv_requirements': digest(uv_req),
                       'toppra_wheel': digest(wheel), 'commit': lock['repos']['curobo']['commit']},
-          [prefix / 'bin/python'], make_env)
+          [prefix / 'bin/python'], make_env, update=args.update)
     if getattr(args, 'report_official_diff', False):
         cmd = [str(prefix / 'bin/python'), '-B', '-I', str(Path(__file__).with_name('report_official_diff.py')),
                '--library', str(library), '--manifests', str(identity.OFFICIAL_MANIFESTS), '--workspace', str(ws)]
@@ -240,18 +252,23 @@ def build(args):
         return
     source = Path(args.project_from).resolve() if args.project_from else REPO
     native_source = ws / 'repos/robocasa_tasks'
+    def make_project():
+        discard(project)
+        project_snapshot(source, project, library=library, native_source=native_source)
     stamp(ws, 'project', {'source': str(source), 'inventory': digest(PROJECT_FILES),
           'native_commit': NATIVE_COMMIT if source == REPO else None,
           'robot_template': digest(Path(__file__).with_name('openarm_fixed.template.yml')) if source == REPO else None,
-          'omissions': digest(PROJECT_OMISSIONS) if source == REPO else None}, [project],
-          lambda: project_snapshot(source, project, library=library, native_source=native_source))
-    asset_source = Path(args.native_assets_from).resolve() if args.native_assets_from else ws / 'data/robocasa365/assets'
+          'omissions': digest(PROJECT_OMISSIONS) if source == REPO else None}, [project], make_project)
+    asset_source = Path(args.native_assets_from).resolve() if args.native_assets_from else native
+    def make_native():
+        if not args.native_assets_from:
+            download_native_assets(ws, lock, native)
+        native_assets(asset_source, native, report)
     stamp(ws, 'native-assets', {'source': str(asset_source), 'manifest': digest(identity.OFFICIAL_MANIFESTS / 'r12-native-assets.json')},
-          [report], lambda: native_assets(asset_source, native, report))
+          [report], make_native, update=args.update)
     parent_lock = parent / 'runtime-lock.json'
     def make_parent():
-        if parent_lock.exists():
-            raise ValueError('unstamped official parent lock exists')
+        discard(parent_lock)
         host = host_libraries()
         cmd = [str(prefix / 'bin/python'), '-B', str(Path(__file__).with_name('write_official_lock.py')),
                '--library', str(library), '--project', str(project), '--report', str(report),
@@ -262,17 +279,22 @@ def build(args):
     check_parent(parent_data)
     parent_sha = digest(parent_lock)
     from scripts.attentionbench.build_d05 import build as build_d05, LAYER, LAYER_FILES, SOURCE_LIST, AUTHOR_PROJECT_FILES
+    def make_d05():
+        discard(d05)
+        build_d05(d05, parent=parent, expected_parent_sha=parent_sha)
     stamp(ws, 'd05', {'parent': parent_sha, 'source_commit': lock['planner_author_provenance']['d05_source_commit'],
           'source_list': digest(SOURCE_LIST), 'author_project_files': digest(AUTHOR_PROJECT_FILES),
           'd04_layer': {name: digest(LAYER / name) for name in LAYER_FILES}},
-          [d05 / 'runtime-lock.json'], lambda: build_d05(d05, parent=parent, expected_parent_sha=parent_sha))
+          [d05 / 'runtime-lock.json'], make_d05)
     from scripts.build_d06 import build as build_d06
     d05_sha = digest(d05 / 'runtime-lock.json')
     d05_data = json.loads((d05 / 'runtime-lock.json').read_bytes())
     if not identity._derived_from_parent(d05_data, parent_data):
         raise StepError('planner:d05', 'derived lock changes official or external identity', 'Rebuild d05 from the verified official parent.')
-    stamp(ws, 'd06', {'parent': d05_sha, 'repo': str(REPO)}, [d06 / 'runtime-lock.json'],
-          lambda: build_d06(d06, parent=d05, repo=REPO, expected_parent_sha=d05_sha, expected_official_sha=parent_sha))
+    def make_d06():
+        discard(d06)
+        build_d06(d06, parent=d05, repo=REPO, expected_parent_sha=d05_sha, expected_official_sha=parent_sha)
+    stamp(ws, 'd06', {'parent': d05_sha, 'repo': str(REPO)}, [d06 / 'runtime-lock.json'], make_d06)
     d06_sha = digest(d06 / 'runtime-lock.json')
     d06_data = json.loads((d06 / 'runtime-lock.json').read_bytes())
     if not identity._derived_from_parent(d06_data, parent_data):
@@ -281,6 +303,7 @@ def build(args):
           lambda: proof(prefix / 'bin/python', library, d06 / 'runtime-lock.json', proof_path))
     def register():
         from scripts.attentionbench.register_local_dev_trust import register as register_trust
+        discard(registry)
         register_trust(parent_lock, d05 / 'runtime-lock.json', d06 / 'runtime-lock.json', snapshot, proof_path)
     stamp(ws, 'registry', {'parent': parent_sha, 'd05': d05_sha, 'd06': d06_sha, 'proof': digest(proof_path)},
           [registry], register)
@@ -296,8 +319,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--workspace', required=True)
     parser.add_argument('--project-from', help='complete r12 runtime/project input tree; defaults to this checkout')
-    parser.add_argument('--native-assets-from', help='complete native asset source tree; defaults to workspace data assets')
+    parser.add_argument('--native-assets-from', help='complete native asset source tree; by default the public archives are fetched')
     parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--update', action='store_true', help='rebuild the environment or native assets when their inputs changed')
     parser.add_argument('--report-official-diff', action='store_true',
                         help='build the cuRobo env, print exact official manifest byte differences, then stop')
     args = parser.parse_args()

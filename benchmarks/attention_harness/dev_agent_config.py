@@ -22,8 +22,8 @@ def lab_parcc(desc):
 
 
 def text_only(desc):
-    """A lab role on a model that reads no images; a user's key always answers the image check itself."""
-    return lab_parcc(desc) and desc.get('model') in TEXT_ONLY_MODELS
+    """A role that is sent no images: a lab model that reads none, or a model declared so after its image check failed."""
+    return isinstance(desc,dict) and (desc.get('vision') is False or (lab_parcc(desc) and desc.get('model') in TEXT_ONLY_MODELS))
 
 
 def routed(desc):
@@ -64,8 +64,10 @@ def provider_roles(value):
     roles=value['roles'];result={}
     if not isinstance(roles,dict) or 'dev' not in roles or set(roles)-{'dev','eval','advisor'}:raise ValueError('invalid_agent_provider_roles')
     for role,desc in roles.items():
-        if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source','thinking'}:
+        if not isinstance(desc,dict) or not {'credential','provider','model'}<=set(desc) or set(desc)-{'credential','provider','model','base_url_host','key_source','thinking','vision'}:
             raise ValueError('invalid_agent_provider_role')
+        # Only Eval and Advisor look at images, and the only statement allowed is "this one cannot".
+        if 'vision' in desc and (desc['vision'] is not False or role=='dev'):raise ValueError('invalid_agent_provider_vision')
         credential_name(desc['credential'])
         if not isinstance(desc['provider'],str) or desc['provider'] not in presets():raise ValueError('unsupported_agent_provider')
         model=desc['model']
@@ -84,6 +86,7 @@ def provider_roles(value):
         thinking=presets()[desc['provider']].thinking
         if desc.get('thinking',thinking)!=thinking:raise ValueError('invalid_agent_provider_thinking')
         if thinking:result[role]['thinking']=thinking
+        if 'vision' in desc:result[role]['vision']=False
     return dict(roles=result)
 
 
@@ -172,7 +175,7 @@ def configuration(selection):
             if role=='advisor':result[field]['max_attempts']=1  # Transport owns bounded retries.
     if text_only(roles.get('advisor')):
         from .dev_advisor_proxy import text_only as text_advisor
-        result['advisor_proxy']=text_advisor(result['advisor_proxy'])
+        result['advisor_proxy']=dict(text_advisor(result['advisor_proxy']),model=roles['advisor']['model'])
     return result
 
 

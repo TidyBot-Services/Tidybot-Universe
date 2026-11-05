@@ -25,7 +25,7 @@ from .dev_agent_provider import presets
 
 PARCC_CHAT_URL = presets()['parcc'].chat_url
 PARCC_DEV_MODELS = frozenset({'parcc/GLM'})
-IMAGE_NOTICE = '[image omitted: parcc/GLM accepts text only and cannot view images]'
+IMAGE_NOTICE = '[image omitted: this model accepts text only and cannot view images]'
 MAX_TOKENS = 32768
 
 

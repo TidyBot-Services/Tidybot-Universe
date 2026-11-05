@@ -1,0 +1,113 @@
+{
+  "schema": "attentionbench.asset-sources.v1",
+  "_comment": "Public sources of the official asset trees. A file only counts after its bytes match the manifest or lock; archive sizes and digests are recorded to catch a truncated or replaced download early.",
+  "robocasa": [
+    {
+      "name": "textures",
+      "url": "https://utexas.box.com/shared/static/4i85ileasdvstmlln5sbvzptz7keuoy1.zip",
+      "bytes": 543180421,
+      "sha256": "ba3a4dcef96e199cbd601c7cdb7eb46077fb6672611b7ac74c25a191bf0be392",
+      "prefix": ""
+    },
+    {
+      "name": "generative_textures",
+      "url": "https://utexas.box.com/shared/static/ebaad09k82tmfmlq6ohdkmrh8izl9vn5.zip",
+      "bytes": 1184675536,
+      "sha256": "bc05095af306222d9a799a9b0b5b16662aa546998622ee8fd3072566ea4c31ec",
+      "prefix": ""
+    },
+    {
+      "name": "fixtures_lightwheel",
+      "url": "https://utexas.box.com/shared/static/idbncsadpnaz1jfl4i6m8qejawk7p9pi.zip",
+      "bytes": 529745465,
+      "sha256": "62c1c87776edda9b7c42dda7b00781a1e5a7f90acc3e49d06c39c9545cbd6c3e",
+      "prefix": ""
+    },
+    {
+      "name": "fixtures",
+      "url": "https://utexas.box.com/shared/static/zt9vbo38yb9f1alw9iuahck55hoa65y6.zip",
+      "bytes": 227181940,
+      "sha256": "e7bb86e9e0ef130de78200a0a7465dfb0161ed3956c65d8b3f36bdff3746c7a8",
+      "prefix": ""
+    },
+    {
+      "name": "objects_lightwheel",
+      "url": "https://utexas.box.com/shared/static/vckqvvkh1z8t69k8qcpcmee6k66stii4.zip",
+      "bytes": 791939656,
+      "sha256": "a1db739b0e80fc4d56d4be27d89dba3aa60000e9648c5607874700e0f14b7955",
+      "prefix": "objects/"
+    },
+    {
+      "name": "objaverse",
+      "url": "https://utexas.box.com/shared/static/03eionyo8fk3a9dsksq9jb8du5lqfw8h.zip",
+      "bytes": 2163884721,
+      "sha256": "66a7eebef3bac855301964d35d905fc2cb44d691f007f97af08d96e83db5cc08",
+      "prefix": "objects/"
+    },
+    {
+      "name": "aigen_objs",
+      "url": "https://utexas.box.com/shared/static/nwi1vrn5pgbo95kushkasa3nx1i012ff.zip",
+      "bytes": 5773223039,
+      "sha256": "1f88792322ccce79f775e88482626c324c6e07d002adf23320a124b72764dd19",
+      "prefix": "objects/"
+    }
+  ],
+  "native": {
+    "archives": [
+      {
+        "name": "robocasa_dataset",
+        "url": "https://huggingface.co/datasets/haosulab/RoboCasa/resolve/8765d4ada3eb7a95a1544044dbdd572a050fefb8/robocasa_dataset.zip",
+        "bytes": 3732420246,
+        "sha256": "96a0f9d7c3ee0b0cfc7b69794915094dad87845518d134baf2d580df6bca3835",
+        "strip": "robocasa_dataset/",
+        "target": "data/scene_datasets/robocasa_dataset/"
+      },
+      {
+        "name": "robotiq_2f",
+        "url": "https://github.com/haosulab/ManiSkill-Robotiq_2F/archive/refs/tags/v0.1.0.zip",
+        "strip": "ManiSkill-Robotiq_2F-0.1.0/",
+        "target": "data/robots/robotiq_2f/"
+      }
+    ],
+    "overlay": {
+      "path": "config/attentionbench/native-assets/plate_17-overlay.tar.gz",
+      "sha256": "1d2926702a327119d35667d60cdacba71e1a6eb3062613c646fe39a06bc5a02d",
+      "backups": [
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_0.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_1.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_10.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_11.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_12.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_13.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_14.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_15.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_16.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_17.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_18.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_19.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_2.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_20.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_21.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_22.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_23.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_24.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_25.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_26.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_27.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_28.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_29.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_3.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_30.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_31.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_4.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_5.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_6.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_7.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_8.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/collision/model_normalized_collision_9.obj",
+        "scene_datasets/robocasa_dataset/assets/objects/objaverse/plate/plate_17/visual/model_normalized_0.obj"
+      ],
+      "reason": "The r12 native tree carries a local fix to plate_17 from 2026-03; every other file equals the public archives."
+    }
+  }
+}

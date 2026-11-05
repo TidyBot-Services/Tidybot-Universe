@@ -55,6 +55,16 @@ PINNED_VERSION = 'codex-cli 0.165.0'
 class IsolationUnavailable(RuntimeError): pass
 
 
+def codex_home():
+    return Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')
+
+
+def service_ports():
+    """The UI and Memory ports this workspace uses, so the sandbox check tries the real ones."""
+    raw=os.environ.get('ATTENTIONBENCH_SERVICE_PORTS','')
+    return [int(port) for port in raw.split(',') if port.isdigit()] or [8769,8878]
+
+
 def real_binary():
     executable = shutil.which('codex')
     if not executable: raise IsolationUnavailable('codex_missing')
@@ -77,7 +87,7 @@ def build_profile(workspace):
     # Shared frame inodes live under these folders; read-only mounts stop chmod/write/unlink.
     readonly = ''.join(', ' + q(name) + ' = "read"' for name in READONLY_DIRS if (workspace / name).is_dir())
     filesystem = '{ ":minimal" = "read", ":project_roots" = { "." = "write"' + readonly + ' }, ' + \
-        q(str(binary.parent)) + ' = "read", ' + q(str(Path.home() / '.codex/tmp/arg0')) + ' = "read" }'
+        q(str(binary.parent)) + ' = "read", ' + q(str(codex_home() / 'tmp/arg0')) + ' = "read" }'
     return ['-c', 'permissions.ws.filesystem=' + filesystem, '-c', 'default_permissions="ws"']
 
 
@@ -129,7 +139,7 @@ def verify_runtime(workspace, private_dir, *, planner_port=None, run=subprocess.
         link.symlink_to(sibling / 'outside.txt')
         paths = [str(sibling / 'outside.txt'), str(sibling / 'reference-policies/answer.py'),
                  str(native), str(repo / 'benchmarks/attention_harness/dev_tasks.py'),
-                 str(Path.home() / '.codex/auth.json'), str(link),
+                 str(codex_home() / 'auth.json'), str(link),
                  str(ws / '..' / sibling.name / 'outside.txt')]
         script = '''import json,os,pathlib,socket
 paths=__PATHS__
@@ -157,8 +167,8 @@ for port in __PORTS__:
  finally:
   if s is not None:s.close()
 print(json.dumps(checks))
-'''.replace('__PATHS__', repr(paths)).replace('__PORTS__', repr([8769, 8878, planner_port])).replace('__READONLY__', repr(readonly)).replace(
-    '__ANCESTORS__', repr([str(p) for target in (ws, real_binary(), Path.home()/'.codex/tmp/arg0') for p in target.parents]))
+'''.replace('__PATHS__', repr(paths)).replace('__PORTS__', repr([*service_ports(), planner_port])).replace('__READONLY__', repr(readonly)).replace(
+    '__ANCESTORS__', repr([str(p) for target in (ws, real_binary(), codex_home()/'tmp/arg0') for p in target.parents]))
         command = ['codex', 'sandbox', '-P', 'ws', *build_profile(ws), '-C', str(ws), '--', '/usr/bin/python3', '-I', '-c', script]
         try:
             completed = run(command, cwd=ws, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)

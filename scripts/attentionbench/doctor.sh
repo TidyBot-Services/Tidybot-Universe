@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-exec python3 "$(dirname "${BASH_SOURCE[0]}")/installer.py" doctor "$@"
+here=$(dirname "${BASH_SOURCE[0]}")
+. "$here/python.sh"
+attentionbench_python "$here/installer.py" doctor "$@"

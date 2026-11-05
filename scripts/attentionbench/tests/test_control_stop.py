@@ -6,6 +6,7 @@ import signal
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -125,3 +126,34 @@ def test_cancel_request_sends_json_body():
         server.shutdown()
     assert reply == '{"state": "cancelled"}'
     assert seen == [('/api/dev-v2/experiments/devexp-x/cancel', 'application/json', 'tok', b'{}')]
+
+
+def smi(monkeypatch, output):
+    monkeypatch.setattr(control.subprocess, 'run', lambda *a, **k: SimpleNamespace(stdout=output, returncode=0))
+
+
+def test_one_gpu_needs_no_choice(monkeypatch):
+    monkeypatch.delenv('CUDA_VISIBLE_DEVICES', raising=False)
+    smi(monkeypatch, '0, 12000\n')
+    assert control.emptiest_gpu() == {}
+
+
+def test_several_gpus_use_the_emptiest(monkeypatch):
+    monkeypatch.delenv('CUDA_VISIBLE_DEVICES', raising=False)
+    smi(monkeypatch, '0, 1000\n1, 22000\n2, 9000\n')
+    assert control.emptiest_gpu() == {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'CUDA_VISIBLE_DEVICES': '1', 'MUJOCO_EGL_DEVICE_ID': '1'}
+
+
+def test_a_chosen_gpu_is_respected(monkeypatch):
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', '2')
+    monkeypatch.setattr(control.subprocess, 'run', lambda *a, **k: pytest.fail('asked nvidia-smi'))
+    assert control.emptiest_gpu() == {}
+
+
+def test_a_slow_service_gets_time_to_come_up(tmp_path, monkeypatch):
+    answers = iter([False, False, True])
+    monkeypatch.setattr(control, 'health', lambda url: next(answers))
+    monkeypatch.setattr(control.subprocess, 'Popen', lambda *a, **k: SimpleNamespace(pid=os.getpid(), poll=lambda: None))
+    monkeypatch.setattr(control.time, 'sleep', lambda seconds: None)
+    control.launch(tmp_path, 'ui', ['x'], tmp_path, {}, 'http://x')
+    assert control.START_TIMEOUT >= 120

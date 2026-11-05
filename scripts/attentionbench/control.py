@@ -15,6 +15,13 @@ import time
 import urllib.error
 import urllib.request
 
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO))
+from scripts.attentionbench import hostenv
+
+# A cold disk and a loaded machine can take far longer than a warm start's few seconds.
+START_TIMEOUT = 180
+
 
 def process_identity(pid: int) -> dict | None:
     """Same record as benchmarks.attention_harness.dev_loop.process_identity, kept here so
@@ -150,7 +157,8 @@ def launch(run: Path, name: str, argv: list[str], cwd: Path, env: dict, url: str
     with (run / (name + '.log')).open('ab') as log:
         process = subprocess.Popen(argv, cwd=cwd, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     file.write_text(str(process.pid) + '\n')
-    for _ in range(100):
+    deadline = time.monotonic() + START_TIMEOUT
+    while time.monotonic() < deadline:
         if health(url):
             return
         if process.poll() is not None:
@@ -160,20 +168,38 @@ def launch(run: Path, name: str, argv: list[str], cwd: Path, env: dict, url: str
     raise RuntimeError(f'{name} failed health check at {url}; inspect {run / (name + ".log")}')
 
 
+def emptiest_gpu() -> dict:
+    """On a machine with several GPUs, run on the one with the most free memory."""
+    if os.environ.get('CUDA_VISIBLE_DEVICES'):
+        return {}
+    try:
+        result = subprocess.run(['nvidia-smi', '--query-gpu=index,memory.free', '--format=csv,noheader,nounits'],
+                                capture_output=True, text=True, timeout=60)
+        rows = [tuple(int(part) for part in line.split(',')) for line in result.stdout.splitlines() if line.strip()]
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return {}
+    if len(rows) < 2:
+        return {}
+    index = str(max(rows, key=lambda row: row[1])[0])
+    # nvidia-smi numbers cards by PCI bus; CUDA must use the same numbering for this index to mean the same card.
+    return dict(CUDA_DEVICE_ORDER='PCI_BUS_ID', CUDA_VISIBLE_DEVICES=index, MUJOCO_EGL_DEVICE_ID=index)
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument('action', choices=('start', 'stop'))
-    p.add_argument('--workspace', default=os.environ.get('ATTENTIONBENCH_WORKSPACE', str(Path.cwd())))
-    p.add_argument('--ui-port', type=int, default=8769)
-    p.add_argument('--memory-port', type=int, default=8878)
+    p.add_argument('--workspace', default=os.environ.get('ATTENTIONBENCH_WORKSPACE') or hostenv.default_workspace(REPO) or str(Path.cwd()))
+    p.add_argument('--ui-port', type=int, help='default: the workspace port, or the next free one')
+    p.add_argument('--memory-port', type=int, help='default: the workspace port, or the next free one')
     p.add_argument('--worker-timeout', type=float, default=60)
     a = p.parse_args()
     ws = Path(a.workspace).expanduser().resolve()
+    hostenv.apply(ws)
     run = ws / 'data/run'
     if a.action == 'stop':
         if a.worker_timeout < 0:
             raise ValueError('--worker-timeout must be non-negative')
-        stopped = stop_workers(ws, a.ui_port, a.worker_timeout)
+        stopped = stop_workers(ws, a.ui_port or hostenv.saved_ports(ws)[0], a.worker_timeout)
         stop_one(run, 'ui'); stop_one(run, 'memory')
         print(f'Stopped workspace processes; {stopped} workers stopped')
         return 0
@@ -181,8 +207,11 @@ def main() -> int:
     keys = ws / 'repos/memory-m3/keys.env'
     if not keys.is_file() or keys.stat().st_mode & 0o777 != 0o600:
         raise RuntimeError('keys.env missing or not mode 0600; rerun bootstrap')
+    up, mp = hostenv.choose_ports(ws, a.ui_port, a.memory_port)
+    hostenv.save_ports(ws, up, mp)
     env = os.environ.copy()
-    env['ATTENTIONBENCH_WORKSPACE'] = str(ws)
+    env.update(emptiest_gpu())
+    env.update(ATTENTIONBENCH_WORKSPACE=str(ws), ATTENTIONBENCH_SERVICE_PORTS=f'{up},{mp}')
     for line in keys.read_text().splitlines():
         key, value = line.split('=', 1)
         if key not in {'ATTENTION_MEMORY_API_KEY', 'ATTENTION_MEMORY_OPERATOR_KEY', 'ATTENTION_MEMORY_IMPORTER_KEY'}:
@@ -191,8 +220,6 @@ def main() -> int:
     memory_root = ws / 'repos/attention_memory_service'
     env['PYTHONPATH'] = str(memory_root)
     memory = ws / 'repos/memory-m3'
-    mp = a.memory_port
-    up = a.ui_port
     launch(run, 'memory', [str(ws / 'sim/runtime/venv/bin/python'), '-m', 'attention_memory_service',
                            '--store-path', str(memory / 'store.sqlite3'), '--port', str(mp),
                            '--dev-v2-registration-roots', str(memory / 'registration-roots.json')],

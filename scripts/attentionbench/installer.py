@@ -13,13 +13,16 @@ import shutil
 import socket
 import subprocess
 import sys
-import urllib.request
+import tarfile
+import tempfile
+import time
 import zipfile
 
 REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
-from curobo_v2.host_fingerprint import host_fingerprint, host_libraries, gate
+from curobo_v2.host_fingerprint import host_fingerprint, host_libraries, gate, ldconfig_cache
+from scripts.attentionbench import fetch, hostenv, routes, tools
 LOCK = REPO / 'attentionbench.lock.json'
 TEMPLATE = REPO / 'config/attentionbench/paths.template.json'
 DOCTOR_PATHS = REPO / 'config/attentionbench/doctor-paths.json'
@@ -27,12 +30,23 @@ TRUST_MESSAGE = 'local planner chain or protected dev trust registry is missing'
 USERNS_REASON = 'Ubuntu 23.10+ AppArmor blocks unprivileged user namespaces for bwrap (kernel.apparmor_restrict_unprivileged_userns=1)'
 USERNS_PROFILE = REPO / 'config/attentionbench/apparmor/attentionbench-bwrap-userns'
 USERNS_TARGET = '/etc/apparmor.d/attentionbench-bwrap-userns'
-USERNS_FIX = ('C (recommended): AppArmor profile for /usr/bin/bwrap only; rerun setup with --fix-userns, or run '
+USERNS_FIX = ('C (recommended): AppArmor profile for /usr/bin/bwrap only; rerun setup in a terminal and answer y, or run '
               f'sudo install -m 0644 {USERNS_PROFILE} {USERNS_TARGET} && sudo apparmor_parser -r {USERNS_TARGET}. '
               'Keeps the machine-wide restriction; any local user can then use bwrap to create user namespaces. '
               'A: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 (machine-wide, until reboot). '
               "B: echo 'kernel.apparmor_restrict_unprivileged_userns=0' | sudo tee /etc/sysctl.d/60-attentionbench-userns.conf && sudo sysctl --system (machine-wide, permanent).")
 DEPLOYMENT_STEPS = ('project', 'official', 'd05', 'd06', 'proof', 'registry', 'snapshot')
+# Shared libraries the simulator, its renderer and OpenCV load, and the Ubuntu package for each.
+SYSTEM_LIBRARIES = {'libEGL.so.1': 'libegl1', 'libGL.so.1': 'libgl1', 'libglib-2.0.so.0': 'libglib2.0-0', 'libgomp.so.1': 'libgomp1'}
+GPU_FREE_WARN_MIB = 6144  # Below this the planner and renderer have not been tried; 16 GB cards had room.
+# A first install peaks near 75 GB and ends near 53 GB, because archives, the staged asset tree and
+# download caches are removed as soon as nothing needs them. See bootstrap and clean_caches.
+INSTALL_FREE_GB = 80
+RUN_FREE_GB = 10
+
+
+HEARTBEAT_SECONDS = 60
+STALE_PLANNER = 'stamp inputs or outputs changed'  # build_planner_chain's message for a stale step.
 
 
 class StepError(RuntimeError):
@@ -53,8 +67,12 @@ def data() -> dict:
 
 
 def apparmor_userns_restricted(probe, policy: Path = Path('/proc/sys/kernel/apparmor_restrict_unprivileged_userns')) -> bool:
-    if probe is None or probe.returncode == 0 or not any(word in (probe.stderr or '') for word in ('uid map', 'Permission denied')):
-        return False
+    # The error depends on the kernel and on how far bwrap got (uid map, RTM_NEWADDR, ...), so only
+    # the failure and the policy decide.
+    return probe is not None and probe.returncode != 0 and apparmor_policy_on(policy)
+
+
+def apparmor_policy_on(policy: Path = Path('/proc/sys/kernel/apparmor_restrict_unprivileged_userns')) -> bool:
     try:
         return policy.read_text().strip() == '1'
     except OSError:
@@ -129,15 +147,35 @@ def reprove(ws: Path) -> Path:
 
 def command(step: str, argv: list[str], *, cwd: Path | None = None, env: dict | None = None) -> None:
     print(f'[{step}] {" ".join(argv)}', flush=True)
-    result = subprocess.run(argv, cwd=cwd, env=env, text=True, capture_output=True)
-    if result.returncode:
-        raise StepError(step, f'command exited {result.returncode}: {(result.stderr or result.stdout)[-1800:].strip()}',
-                        'Check prerequisites, available disk/network, and the command above; then rerun bootstrap.')
+    started = time.monotonic()
+    with tempfile.TemporaryFile('w+', errors='replace') as log:
+        process = subprocess.Popen(argv, cwd=cwd, env=env, text=True, stdout=log, stderr=subprocess.STDOUT)
+        while True:
+            try:
+                code = process.wait(timeout=HEARTBEAT_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                print(f'[{step}] still running after {int(time.monotonic() - started)} s', flush=True)
+        if code:
+            log.seek(0)
+            raise StepError(step, f'command exited {code}: {log.read()[-1800:].strip()}',
+                            'Check prerequisites, available disk/network, and the command above; then rerun setup.')
+
+
+def stamp_key(inputs: object) -> str:
+    return hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+
+
+def stamp_current(ws: Path, step: str, inputs: object) -> bool:
+    try:
+        return json.loads((ws / 'data/installer/stamps' / f'{step}.json').read_text()).get('input_sha256') == stamp_key(inputs)
+    except (OSError, ValueError):
+        return False
 
 
 def stamped(ws: Path, step: str, inputs: object, update: bool, action) -> None:
     stamp = ws / 'data/installer/stamps' / f'{step}.json'
-    key = hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+    key = stamp_key(inputs)
     if stamp.exists():
         old = json.loads(stamp.read_text())
         if old.get('input_sha256') == key:
@@ -186,37 +224,115 @@ def verify_assets(source: Path, manifest: Path, expected_sha: str) -> list[str]:
     return bad
 
 
-def _extract(archive: Path, destination: Path) -> None:
+def asset_sources(lock: dict) -> dict:
+    file = REPO / lock['assets']['sources']
+    if digest(file) != lock['assets']['sources_sha256']:
+        raise StepError('assets', 'asset source list SHA256 differs from lock', 'Restore the committed installer inputs.')
+    return json.loads(file.read_text())
+
+
+def safe_members(bundle: zipfile.ZipFile, archive: Path) -> list:
+    members = []
+    for item in bundle.infolist():
+        p = Path(item.filename)
+        if p.is_absolute() or '..' in p.parts or ((item.external_attr >> 16) & 0o170000) == 0o120000:
+            raise StepError('assets', f'unsafe archive member {item.filename} in {archive.name}', 'Use the official archive named in asset-sources.json.')
+        if not item.is_dir():
+            members.append(item)
+    return members
+
+
+def write_file(target: Path, data: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+
+
+def fetch_pack(pack: dict, downloads: Path) -> Path:
+    """Download one archive. A wrong size or digest is reported; the file check after unpacking decides."""
+    archive = fetch.download(pack['url'], downloads / (pack['name'] + '.zip'), size=pack.get('bytes'), label=pack['name'])
+    if pack.get('sha256') and digest(archive) != pack['sha256']:
+        print(f'WARN {pack["name"]}: archive digest differs from asset-sources.json; its files are checked one by one', flush=True)
+    return archive
+
+
+def unpack_pack(archive: Path, root: Path, wanted: dict, prefix: str) -> int:
+    """Write the members the manifest lists, once their bytes match it. Everything else is ignored."""
+    written = 0
     with zipfile.ZipFile(archive) as bundle:
-        for item in bundle.infolist():
-            p = Path(item.filename)
-            if p.is_absolute() or '..' in p.parts or ((item.external_attr >> 16) & 0o170000) == 0o120000:
-                raise StepError('assets', f'unsafe archive member {item.filename}', 'Use the official archive named in the locked asset registry.')
-        bundle.extractall(destination)
+        for item in safe_members(bundle, archive):
+            rel = prefix + item.filename
+            if rel in wanted:
+                data = bundle.read(item)
+                if hashlib.sha256(data).hexdigest() == wanted[rel]:
+                    write_file(root / rel, data)
+                    written += 1
+    return written
 
 
 def download_assets(ws: Path, lock: dict) -> Path:
-    simrepo = ws / 'repos/robocasa365_sim'
-    asset_lock = simrepo / 'assets-installation-lock.json'
-    if digest(asset_lock) != lock['assets']['installation_lock_sha256']:
-        raise StepError('assets', 'asset installation registry SHA256 differs from lock', 'Restore the pinned simulator checkout.')
-    registry = json.loads(asset_lock.read_text())
+    """The installed tree: the pinned simulator checkout plus every official archive."""
     source = ws / 'data/robocasa365/assets'
     baseline = ws / 'sim/robocasa/robocasa/models/assets'
-    if not source.exists():
+    wanted = json.loads((ws / lock['assets']['installed_manifest']).read_text())
+    stamps = ws / 'data/installer/stamps'
+    copied = stamps / 'asset-baseline.json'
+    if not copied.exists():
+        shutil.rmtree(source, ignore_errors=True)
         shutil.copytree(baseline, source)
+        stamps.mkdir(parents=True, exist_ok=True)
+        copied.write_text('{}\n')
     downloads = ws / 'data/robocasa365/downloads'
-    downloads.mkdir(parents=True, exist_ok=True)
-    for pack in registry['packs']:
-        archive = downloads / (pack['name'] + '.zip')
-        if not archive.is_file() or digest(archive) != pack['archive_sha256']:
-            urllib.request.urlretrieve(pack['source_url'], archive)
-        if digest(archive) != pack['archive_sha256']:
-            raise StepError('assets', f'{pack["name"]} archive SHA256 mismatch', 'Remove the bad download and retry.')
-        folder = source / 'objects' / pack['name']
-        if not folder.exists():
-            _extract(archive, source / 'objects')
+    for pack in asset_sources(lock)['robocasa']:
+        stamp = stamps / f'asset-{pack["name"]}.json'
+        if stamp.exists():
+            continue
+        archive = fetch_pack(pack, downloads)
+        print(f'[assets] unpacking {pack["name"]}', flush=True)
+        try:
+            written = unpack_pack(archive, source, wanted, pack['prefix'])
+        except zipfile.BadZipFile as exc:
+            archive.unlink()
+            raise StepError('assets', f'{pack["name"]}: {exc}; the bad download was removed', 'Rerun setup.') from exc
+        stamp.write_text(json.dumps({'written': written}) + '\n')
+        archive.unlink()  # Unpacked and checked; the archive only costs disk from here on.
     return source
+
+
+def download_native_assets(ws: Path, lock: dict, dest: Path) -> None:
+    """Rebuild the planner's native tree: public archives, then the local plate_17 fix the lock carries."""
+    sources = asset_sources(lock)['native']
+    shutil.rmtree(dest / 'data', ignore_errors=True)  # No stamp yet: whatever is here is an interrupted attempt.
+    downloads = ws / 'data/robocasa365/downloads'
+    for pack in sources['archives']:
+        archive = fetch_pack(pack, downloads)
+        print(f'[assets] unpacking {pack["name"]}', flush=True)
+        try:
+            with zipfile.ZipFile(archive) as bundle:
+                for item in safe_members(bundle, archive):
+                    if not item.filename.startswith(pack['strip']):
+                        raise StepError('assets', f'unexpected archive member {item.filename}', 'Check asset-sources.json.')
+                    write_file(dest / pack['target'] / item.filename[len(pack['strip']):], bundle.read(item))
+        except zipfile.BadZipFile as exc:
+            archive.unlink()
+            raise StepError('assets', f'{pack["name"]}: {exc}; the bad download was removed', 'Rerun setup.') from exc
+        archive.unlink()
+    overlay = sources['overlay']
+    file = REPO / overlay['path']
+    if digest(file) != overlay['sha256']:
+        raise StepError('assets', f'{file.name} SHA256 differs from asset-sources.json', 'Restore the committed installer inputs.')
+    for rel in overlay['backups']:
+        shutil.copy2(dest / 'data' / rel, dest / 'data' / (rel + '.bak'))
+    with tarfile.open(file) as bundle:
+        for member in bundle.getmembers():
+            if not member.isfile() or Path(member.name).is_absolute() or '..' in Path(member.name).parts:
+                raise StepError('assets', f'unsafe overlay member {member.name}', 'Restore the committed installer inputs.')
+            write_file(dest / 'data' / member.name, bundle.extractfile(member).read())
+
+
+def clean_caches(ws: Path) -> None:
+    """Environments keep hard links to what they use, so the caches can go once setup has passed."""
+    shutil.rmtree(ws / 'cache', ignore_errors=True)
+    shutil.rmtree(ws / 'data/robocasa365/downloads', ignore_errors=True)
 
 
 def write_paths(ws: Path) -> None:
@@ -245,13 +361,26 @@ def write_registration_roots(ws: Path) -> None:
     file.write_text(json.dumps(roots, indent=1) + '\n')
 
 
+def run_planner(ws: Path, args, argv: list[str]) -> None:
+    env = os.environ | {'PYTHONPATH': str(REPO)}
+    try:
+        command('planner', argv, cwd=REPO, env=env)
+    except StepError as exc:
+        if not args.update or STALE_PLANNER not in str(exc):
+            raise
+        print('Planner inputs changed; moving the old deployments aside and rebuilding.', flush=True)
+        rebuild_planner(ws, args)
+        command('planner', argv, cwd=REPO, env=env)
+
+
 def bootstrap(args) -> int:
     ws = Path(args.workspace).expanduser().resolve()
     lock = data()
-    plan = ['layout', 'repos: attentionbench, robocasa365_sim, attention_memory_service, robocasa, robosuite, curobo, robocasa_tasks',
-            'ui-venv: Python 3.10 and pinned harness requirements', 'assets: official registry archives and 123577 SHA256 checks',
+    plan = ['layout', 'tools: pinned uv, conda and Codex CLI in WS/tools',
+            'repos: attentionbench, robocasa365_sim, attention_memory_service, robocasa, robosuite, curobo, robocasa_tasks',
+            'ui-venv: Python 3.10 and pinned harness requirements', 'assets: seven official archives and 123577 SHA256 checks',
             'sim-env: Python 3.11 simulator installer', 'curobo-env: conda and pinned pip environment in planner chain',
-            'planner: official cuRobo env/assets/lock, d05/d06, proof, local trust, dev-local', 'paths: all template keys',
+            'planner: native assets, official cuRobo env and lock, d05/d06, proof, local trust, dev-local', 'paths: all template keys',
             'stores: UI, Memory, random 0600 keys.env']
     if args.dry_run:
         if getattr(args, 'rebuild_planner', False):
@@ -263,6 +392,11 @@ def bootstrap(args) -> int:
         rebuild_planner(ws, args)
     for rel in ('repos', 'envs', 'sim', 'deployments', 'data'):
         (ws / rel).mkdir(parents=True, exist_ok=True)
+    hostenv.apply(ws)
+    try:
+        tools.ensure(ws, lock['tools'])
+    except (tools.ToolError, OSError) as exc:
+        raise StepError('tools', str(exc), 'Check the network and disk space, then rerun setup; finished tools are kept.') from exc
     repo_dirs = {'attentionbench': 'repos/attentionbench', 'robocasa365_sim': 'repos/robocasa365_sim',
                  'attention_memory_service': 'repos/attention_memory_service', 'robocasa': 'sim/robocasa',
                  'robosuite': 'sim/robosuite', 'curobo': 'repos/curobo',
@@ -284,29 +418,49 @@ def bootstrap(args) -> int:
                             'TIDYBOT_ATTENTION_PYTHON': lock['python']['ui'],
                             'TIDYBOT_MEMORY_SERVICE_SOURCE': str(ws / 'repos/attention_memory_service')}
         command('ui-venv', ['bash', str(ws / 'repos/attentionbench/benchmarks/attention_harness/setup_env.sh')], env=env)
-    stamped(ws, 'ui-venv', {'python': lock['python']['ui'], 'repo': head, 'memory': lock['repos']['attention_memory_service']}, args.update, ui)
+    harness = REPO / 'benchmarks/attention_harness'
+    stamped(ws, 'ui-venv', {'python': lock['python']['ui'], 'memory': lock['repos']['attention_memory_service'],
+                            'requirements': {name: digest(harness / name) for name in
+                                             ('setup_env.sh', 'requirements-robosuite.txt', 'requirements-orchestrator.txt')}},
+            args.update, ui)
+    sim_inputs = {'repos': [lock['repos'][x] for x in ('robocasa365_sim', 'robocasa', 'robosuite')],
+                  'assets': {key: value for key, value in lock['assets'].items() if not key.startswith('sources')}}
+    runtime_assets = ws / 'sim/runtime/robocasa/robocasa/models/assets'
     try:
-        source = Path(args.assets_from).expanduser().resolve() if args.assets_from else download_assets(ws, lock)
+        if args.assets_from:
+            source = Path(args.assets_from).expanduser().resolve()
+        elif stamp_current(ws, 'sim-env', sim_inputs) and runtime_assets.is_dir():
+            source = runtime_assets
+        else:
+            source = download_assets(ws, lock)
     except StepError:
         raise
     except Exception as exc:
         raise StepError('assets', str(exc), 'Check the official download URL, disk space, and network; then rerun.') from exc
     manifest = ws / lock['assets']['installed_manifest']
+    print(f'[assets] checking {source}', flush=True)
     bad = verify_assets(source, manifest, lock['assets']['installed_manifest_sha256'])
     if bad:
         raise StepError('assets', f'{len(bad)} mismatching files:\n' + '\n'.join(bad), 'Supply the complete official asset tree; no files were repaired.')
     verified = ws / 'data/robocasa365/assets-verified.json'
     verified.parent.mkdir(parents=True, exist_ok=True)
-    verified.write_text(json.dumps({'manifest_sha256': lock['assets']['installed_manifest_sha256'], 'source': str(source)}) + '\n')
+    def record_source(tree: Path) -> None:
+        verified.write_text(json.dumps({'manifest_sha256': lock['assets']['installed_manifest_sha256'], 'source': str(tree)}) + '\n')
+    record_source(source)
     def sim():
         runtime = ws / 'sim/runtime'
-        if runtime.exists():
-            if not args.update:
-                raise StepError('sim-env', 'runtime already exists without matching stamp', 'Rerun with --update after preserving local data.')
+        if runtime.exists():  # Rebuilt from pinned inputs: an interrupted attempt, or inputs --update changed.
+            print(f'[sim-env] removing incomplete or outdated {runtime}', flush=True)
             shutil.rmtree(runtime)
         command('sim-env', [sys.executable, str(ws / 'repos/robocasa365_sim/install.py'), '--runtime-root', str(runtime), '--asset-source', str(source)])
         command('sim-env', ['uv', 'pip', 'install', '--python', str(runtime / 'venv/bin/python'), '--no-deps', '-e', str(ws / 'repos/attention_memory_service')])
-    stamped(ws, 'sim-env', {'repos': [lock['repos'][x] for x in ('robocasa365_sim', 'robocasa', 'robosuite')], 'assets': lock['assets']}, args.update, sim)
+    stamped(ws, 'sim-env', sim_inputs, args.update, sim)
+    if not args.assets_from and source != runtime_assets:
+        # The runtime now holds the checked tree, so the staged copy is 23 GB of duplicates.
+        record_source(runtime_assets)
+        shutil.rmtree(source, ignore_errors=True)
+        for stamp in (ws / 'data/installer/stamps').glob('asset-*.json'):
+            stamp.unlink()
     write_paths(ws)
     store = ws / 'data/ui/attention.sqlite3'
     artifacts = ws / 'data/ui/artifacts'
@@ -344,7 +498,9 @@ def bootstrap(args) -> int:
             argv += ['--project-from', str(args.planner_project_from)]
         if getattr(args, 'planner_native_assets_from', None):
             argv += ['--native-assets-from', str(args.planner_native_assets_from)]
-        command('planner', argv, cwd=REPO, env=os.environ | {'PYTHONPATH': str(REPO)})
+        if args.update:
+            argv.append('--update')
+        run_planner(ws, args, argv)
     fingerprint = host_fingerprint()
     record = ws / 'data/run/host-fingerprint.json'
     record.parent.mkdir(parents=True, exist_ok=True)
@@ -354,6 +510,21 @@ def bootstrap(args) -> int:
     print(f'Host fingerprint: {record}')
     print(f'Bootstrap complete{" without planner" if args.skip_planner else ""}: {ws}')
     return 0
+
+
+def missing_libraries() -> list[str]:
+    cache = ldconfig_cache()
+    return [name for name in SYSTEM_LIBRARIES if f'{name} ' not in cache]
+
+
+def gpu_memory() -> list[tuple[int, int]]:
+    """(index, free MiB) for every GPU; empty when nvidia-smi gives no answer."""
+    try:
+        result = subprocess.run(['nvidia-smi', '--query-gpu=index,memory.free', '--format=csv,noheader,nounits'],
+                                capture_output=True, text=True, timeout=60)
+        return [tuple(int(part) for part in line.split(',')) for line in result.stdout.splitlines() if line.strip()] if result.returncode == 0 else []
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return []
 
 
 def _check(results: list, name: str, ok: bool | None, reason: str, fix: str) -> None:
@@ -444,9 +615,22 @@ def doctor(args) -> int:
     _check(results, 'isolation', isolated, reason, fix)
     codex = shutil.which('codex')
     version = subprocess.run(['codex', '--version'], capture_output=True, text=True).stdout.strip() if codex else ''
-    _check(results, 'codex-version', version == lock['codex']['version'], version or 'codex missing', f'Install {lock["codex"]["version"]}.')
-    login = subprocess.run(['codex', 'login', 'status'], capture_output=True, text=True) if codex else None
-    _check(results, 'codex-login', bool(login and login.returncode == 0), 'logged in' if login and login.returncode == 0 else 'Codex is not logged in', 'Run codex login.')
+    # The agents run inside this program on every model route; only the codex route needs a login.
+    _check(results, 'codex-version', version == lock['codex']['version'], version or 'codex missing',
+           f'Rerun setup.sh; it installs {lock["codex"]["version"]} in the workspace.')
+    found = routes.available()
+    results.append({'check': 'model-routes', 'status': 'PASS' if found else 'WARN',
+                    'reason': 'ready: ' + ', '.join(found) if found else 'no model route is ready; setup and verify do not need one, run.sh does',
+                    'fix': '' if found else '; '.join(f'{name}: {routes.ROUTES[name].hint}' for name in routes.AUTO_ORDER)})
+    media = bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
+    _check(results, 'ffmpeg', media, 'ffmpeg and ffprobe available' if media else 'ffmpeg or ffprobe missing', 'Rerun setup.sh or install the ffmpeg package.')
+    gaps = missing_libraries()
+    _check(results, 'system-libraries', not gaps, 'found' if not gaps else 'missing ' + ', '.join(gaps),
+           'sudo apt-get install ' + ' '.join(SYSTEM_LIBRARIES[name] for name in gaps))
+    memory = gpu_memory()
+    if memory and max(free for _, free in memory) < GPU_FREE_WARN_MIB:
+        results.append({'check': 'gpu-memory', 'status': 'WARN', 'reason': f'{max(free for _, free in memory)} MiB free on the emptiest GPU',
+                         'fix': 'Stop other GPU work or choose a GPU with CUDA_VISIBLE_DEVICES.'})
     registry = ws / 'paths.json'
     try:
         paths = json.loads(registry.read_text())['paths']
@@ -477,21 +661,19 @@ def doctor(args) -> int:
         trusted = {}
     trusted_ok = p5 and trusted.get('schema') == 'attentionbench.curobo-v2.local-dev-trust.v1' and not trust.is_symlink() and not (trust.stat().st_mode & 0o022)
     _check(results, 'planner-trust', trusted_ok, str(trust) if trusted_ok else TRUST_MESSAGE, 'Run bootstrap without --skip-planner to build and register the local chain.')
-    for port in (8769, 8878):
+    for name, port in zip(('ui', 'memory'), hostenv.saved_ports(ws)):
         with socket.socket() as sock:
             free = sock.connect_ex(('127.0.0.1', port)) != 0
-        pidfile = ws / 'data/run' / ('ui.pid' if port == 8769 else 'memory.pid')
-        ours = False
-        if pidfile.is_file() and pidfile.read_text().strip().isdigit():
-            pid = pidfile.read_text().strip()
-            proc = Path('/proc') / pid / 'cmdline'
-            if proc.is_file():
-                cmdline = proc.read_bytes().replace(b'\0', b' ').decode(errors='replace')
-                expected = 'attention_memory_service' if port == 8878 else 'benchmarks.attention_harness.ui_server'
-                ours = expected in cmdline and str(ws) in cmdline
-        _check(results, f'port-{port}', free or ours, 'free' if free else ('our process' if ours else 'busy'), f'Stop the process using {port} or choose another start port.')
-    free_gb = shutil.disk_usage(ws if ws.exists() else ws.parent).free / 1024**3
-    need = 10 if registry.is_file() else 60
+        ours = hostenv.owned(ws, name)
+        if free or ours:
+            _check(results, f'port-{port}', True, 'free' if free else 'our process', '')
+        else:  # start.sh and run.sh move to the next free port and remember it.
+            results.append({'check': f'port-{port}', 'status': 'WARN', 'reason': 'busy; start will use the next free port', 'fix': ''})
+    parent = ws
+    while not parent.exists():
+        parent = parent.parent
+    free_gb = shutil.disk_usage(parent).free / 1024**3
+    need = RUN_FREE_GB if registry.is_file() else INSTALL_FREE_GB
     _check(results, 'disk', free_gb >= need, f'{free_gb:.1f} GB free', f'Free at least {need} GB on the workspace filesystem.')
     if args.json:
         print(json.dumps(results, indent=2))
@@ -509,7 +691,12 @@ def main() -> int:
     d = sub.add_parser('doctor'); d.add_argument('--workspace'); d.add_argument('--json', action='store_true')
     args = p.parse_args()
     try:
-        return bootstrap(args) if args.command == 'bootstrap' else doctor(args)
+        if args.command == 'bootstrap':
+            return bootstrap(args)
+        ws = args.workspace or os.environ.get('ATTENTIONBENCH_WORKSPACE') or hostenv.default_workspace(REPO) or str(Path.cwd())
+        hostenv.apply(Path(ws).expanduser().resolve())
+        args.workspace = ws
+        return doctor(args)
     except StepError as exc:
         print(str(exc), file=sys.stderr)
         return 1

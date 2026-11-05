@@ -7,6 +7,9 @@ from .dev_agent_provider import ProviderError, probe, resolve_provider
 from .dev_agent_secret import scrub
 
 
+TEXT_PROBE = dict(dev='dev', eval='dev', advisor='advisor-text')
+
+
 class RunPreflightError(ProviderError):
     def __init__(self, body):
         self.body = body
@@ -22,8 +25,9 @@ def preflight(take, roles, provider_spec, *, probe_provider=None):
         if roles[role].get('base_url_host') != urlsplit(spec.chat_url).hostname:
             raise RunPreflightError(dict(error=dict(code='provider_mismatch',
                 message='Credential host differs for role '+role, redacted=False, role=role)))
-        # A lab role on a text-only model is sent no images, so it is checked like Dev.
-        result = (probe_provider or probe)(spec, secret, desc['model'], role='dev' if text_only(desc) else role)
+        # A role on a text-only model is sent no images, so it is not asked to read one.
+        blind = text_only(desc) or text_only(roles[role])
+        result = (probe_provider or probe)(spec, secret, desc['model'], role=TEXT_PROBE[role] if blind else role)
         if not result.ok:
             raise RunPreflightError(dict(error=dict(code='provider_preflight_failed',
                 message='\n'.join(e['message'] for e in result.errors),

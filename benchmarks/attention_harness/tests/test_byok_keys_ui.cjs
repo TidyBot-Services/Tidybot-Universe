@@ -87,6 +87,20 @@ test('unsaved shared mode cannot start; pending saves cannot launch with old rou
   assert.throws(() => select(s), /finish saving/);
   s.mode = 'lab';assert.equal(select(s), null);
 });
+test('a role whose image check alone failed is marked text only', () => {
+  const value=state('different');
+  value.choice={dev:'key:mine',eval:'key:mine',advisor:'key:mine'};
+  value.model={dev:'m',eval:'m',advisor:'m'};
+  const seen=(role,checks)=>({signature:JSON.stringify(['mine','m']),role,checks});
+  value.test={eval:seen('eval',{auth:'ok',chat:'ok',vision:'fail'}),advisor:seen('advisor',{auth:'fail',vision:'fail'}),dev:seen('dev',{vision:'fail'})};
+  const roles=select(value).roles;
+  assert.equal(roles.eval.vision,false);
+  assert.equal('vision' in roles.advisor,false,'another failure is not excused');
+  assert.equal('vision' in roles.dev,false,'Dev is never text only by declaration');
+  value.model.eval='changed';
+  assert.equal('vision' in select(value).roles.eval,false,'the result belongs to the model it tested');
+});
+
 test('selection exposes only the public credential, provider and model', () => {
   const s = state('all');s.creds[0].base_url_host = 'example.invalid';s.creds[0].key_set = true;
   assert.deepEqual(Object.keys(select(s).roles.dev).sort(), ['credential', 'model', 'provider']);

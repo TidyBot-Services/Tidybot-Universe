@@ -104,12 +104,27 @@ def test_the_image_flag_follows_the_model(monkeypatch,model,vision):
         assert (resolved.spec.id,resolved.model,resolved.vision,resolved.secret)==('parcc',model,vision,key)
 
 
-def test_a_users_key_is_never_excused_from_the_image_check():
+def test_a_users_key_is_excused_from_the_image_check_only_when_declared():
     mine=dict(credential='mine',provider='parcc',model='parcc/GLM')
     assert not config.text_only(mine) and config.routed(mine)
+    assert config.text_only(dict(mine,vision=False))
 
 
-@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','dev']),(lab('parcc/Qwen','parcc/Qwen'),['dev','eval','advisor'])])
+def test_a_declared_text_only_role_is_frozen_and_shown():
+    role=dict(credential='mine',provider='deepseek',model='blind-model',vision=False)
+    roles=dict(dev=dict(role,vision=None) and dict(credential='mine',provider='deepseek',model='blind-model'),eval=role,advisor=role)
+    frozen=config.normalize(dict(BASE,agent_provider=dict(roles=roles)))['agent_provider']['roles']
+    assert frozen['eval']['vision'] is False and frozen['advisor']['vision'] is False and 'vision' not in frozen['dev']
+
+
+@pytest.mark.parametrize('role,value',[('dev',False),('eval',True),('eval','no')])
+def test_only_eval_or_advisor_can_declare_text_only(role,value):
+    roles=dict(dev=dict(credential='mine',provider='deepseek',model='m'))
+    roles[role]=dict(credential='mine',provider='deepseek',model='m',vision=value)
+    with pytest.raises(ValueError,match='vision'):config.normalize(dict(BASE,agent_provider=dict(roles=roles)))
+
+
+@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','advisor-text']),(lab('parcc/Qwen','parcc/Qwen'),['dev','eval','advisor'])])
 def test_preflight_asks_only_a_reader_of_images_to_read_one(monkeypatch,roles,expected):
     lab_key(monkeypatch);seen=[]
     def probe(spec,secret,model,*,role):

@@ -238,6 +238,8 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         from .dev_agent_config import display_source
         result['agent']['model_source']=display_source(selection)
         result['agent']['agent_provider']=clean(selection['agent_provider'])
+        from .dev_agent_config import text_only
+        result['agent']['text_only_roles']=[role for role in ('eval','advisor') if text_only(selection['agent_provider'].get('roles',{}).get(role))]
     if selection.get('agent_limits'):
         result['agent']['reduced_budget']=dict(selection['agent_limits'],default_versions=10,default_wall_seconds=21600)
     if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':

@@ -2133,6 +2133,9 @@
   const LAB_MODELS={codex:{dev:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],eval:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],advisor:['gpt-6.1-sol','gpt-6-astra']},
     parcc:{dev:['parcc/GLM'],eval:['parcc/GLM','parcc/Qwen'],advisor:['parcc/GLM','parcc/Qwen']}};
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
+  // Eval and Advisor may use a model that cannot read images; the run then says so, and is sent none.
+  const TEXT_ONLY_NOTE='<span class="ab-keys-warn">This model reads text only, so this agent will not see images.</span>';
+  const readsTextOnly=result=>Boolean(result?.role&&result.role!=='dev'&&result.checks?.vision==='fail'&&Object.entries(result.checks).every(([key,value])=>key==='vision'||value!=='fail'));
   // Public routing only: neither helper accepts or retains an API key.
   function keyRoleAssignments(state,allRoles=BYOK_ALL_ROLES) {
     return Object.fromEntries(KEY_ROLES.map(([role])=>[role,
@@ -2152,6 +2155,8 @@
       if(!row||Number(row.expires_at)<=now)throw new Error(`The ${title} key is missing or has expired. Save a key or choose Lab models.`);
       if(!model.trim())throw new Error(`Enter the ${title} model name for your key.`);
       roles[role]={credential:row.credential_id,provider:row.provider,model:model.trim()};
+      const seen=state.test?.[role];
+      if(readsTextOnly(seen)&&seen.signature===JSON.stringify([row.credential_id,model.trim()]))roles[role].vision=false;
     }
     return Object.keys(roles).length?{roles}:null;
   }
@@ -2316,8 +2321,8 @@
         button.hidden=!own;button.disabled=!!result?.busy||!cred(choice.slice(4));
         // One compact control: Test → Testing… → ✓ Passed (click to retest); only a failure opens a detail line.
         const idle=!result||!!result.hint;
-        const failed=!idle&&!result.busy&&!!(result.text||Object.values(result.checks||{}).includes('fail'));
-        const note=own&&!failed?(result?.hint?esc(result.hint):keyNote(choice.slice(4))):'';
+        const failed=!idle&&!result.busy&&!!(result.text||(!readsTextOnly(result)&&Object.values(result.checks||{}).includes('fail')));
+        const note=own&&!failed?(result?.hint?esc(result.hint):readsTextOnly(result)?TEXT_ONLY_NOTE:keyNote(choice.slice(4))):'';
         const keyBad=note.includes('ab-keys-bad');
         button.textContent=idle?(keyBad?'Retry':'Test'):result.busy?'Testing…':failed?'Retry':'✓ Passed';
         button.dataset.result=idle?(keyBad?'fail':''):result.busy?'':failed?'fail':'ok';
@@ -2328,7 +2333,8 @@
       const saved=cred(state.shared.credential);
       box.querySelector('[data-keys-shared-saved]').innerHTML=saved?`<b>${esc(saved.credential_id)}</b> · ${esc(preset(saved.provider)?.label||saved.provider)}${saved.base_url_host?` · ${esc(saved.base_url_host)}`:''}${preset(saved.provider)?.thinking?` · thinking ${esc(preset(saved.provider).thinking)}`:''} · <span class="ab-keys-left">expires in <em data-key-left="${esc(saved.expires_at)}">${keyTimeLeft(saved.expires_at)}</em></span>`:'';
       const listed=saved&&state.models[saved.credential_id],keyError=saved&&state.keyError[saved.credential_id];
-      box.querySelector('[data-keys-shared-test]').innerHTML=sharedResult?checksHtml(sharedResult):!saved||listed===undefined?'':listed===null?'Checking key…':
+      const sharedBlind=['eval','advisor'].some(role=>saved&&readsTextOnly(state.test[role])&&state.test[role].signature===signature(state.shared.credential,state.shared.model));
+      box.querySelector('[data-keys-shared-test]').innerHTML=sharedResult?checksHtml(sharedResult)+(sharedBlind?'<span class="ab-keys-warn">This model reads text only, so Eval and Advisor will not see images.</span>':''):!saved||listed===undefined?'':listed===null?'Checking key…':
         keyError?`<span class="ab-keys-bad">${esc(keyError.slice(0,160))}</span>`:`<span class="ab-keys-chip ok">✓ Key accepted · ${listed.length} model${listed.length===1?'':'s'}</span>`;
       box.querySelector('[data-keys-status]').hidden=!saved;
       box.querySelector('[data-keys-shared-remove]').dataset.keyRemove=saved?saved.credential_id:'';
@@ -2426,7 +2432,7 @@
       return Object.fromEntries(Object.entries(keyRoleAssignments(state)).map(([role,{choice,model}])=>{
         const row=state.creds.find(c=>`key:${c.credential_id}`===choice&&Number(c.expires_at)>now);
         const thinking=row&&preset(row.provider)?.thinking; // Shown wherever the choice is summarised: never silent.
-        return [role,row&&model.trim()?{model:model.trim(),keyName:row.credential_id,...(thinking?{thinking}:{})}:null];
+        return [role,row&&model.trim()?{model:model.trim(),keyName:row.credential_id,...(thinking?{thinking}:{}),...(readsTextOnly(state.test[role])?{textOnly:true}:{})}:null];
       }));
     }
     async function save() {
@@ -2458,7 +2464,7 @@
       // answer); the Model source and the key-mode choice must stay usable meanwhile, and the test shows its own busy state.
       if(!saved)return;
       await refreshList(); // PUT omits the public host; GET supplies it for the saved-key list.
-      if(shared&&model)await test('dev',saved.credential_id,model);
+      if(shared&&model)for(const role of ['dev','eval','advisor'])await test(role,saved.credential_id,model);
     }
     async function test(role,id=keyRoleAssignments(state)[role].choice.slice(4),model=keyRoleAssignments(state)[role].model.trim()) {
       const sig=signature(id,model);
@@ -2472,7 +2478,7 @@
       let result;
       try {
         const value=await call('POST',`/${encodeURIComponent(id)}/test`,{model,role});
-        result={signature:sig,checks:value.checks||{},errors:value.errors||[]};
+        result={signature:sig,role,checks:value.checks||{},errors:value.errors||[]};
       } catch (error) { result={signature:sig,text:error.message}; }
       if(state.test[role]===pending)state.test[role]=result;
       drawRoles();
@@ -2758,7 +2764,7 @@
         const profile=selectedProfile(),preview=form.querySelector('[data-launch-preview]');
         if(!profile){preview.textContent='';return;}
         const mine=keys.summary();
-        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''})`:lab;
+        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''}${mine[role].textOnly?' · no images':''})`:lab;
         const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
           style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value});
         preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of 10 versions · ${Number(form.wall_seconds.value)/3600} of 6 hours · not directly comparable with the official 10-version results`:''}`;
@@ -3923,7 +3929,9 @@
     const sub = system ? `Started ${dateTime(startedAt)} · please tell the research team` : terminal ? `${endReason==='the run ended'?'Ended':`Ended because ${endReason}`}${startedAt==null?'':` · started ${dateTime(startedAt)}`}${took}` : waiting ? `${Math.max(0,maximum-k)} attempt(s) left${pending?.created_at == null ? '' : ` · paused for ${operatorTime(Date.now()/1000-pending.created_at)}`}` : '';
     const lowered=snapshot.agent?.reduced_budget;
     const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours · not directly comparable with the official 10-version results</p>`:'';
-    return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}</div></div>`;
+    const blind=(snapshot.agent?.text_only_roles||[]).map(role=>role==='eval'?'Eval':'Advisor');
+    const blindLine=blind.length?`<p class="op-reduced" data-text-only-roles><b>No images</b> · ${esc(blind.join(' and '))} did not see images in this run, so ${blind.length>1?'they':'it'} worked from text alone.</p>`:'';
+    return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}${blindLine}</div></div>`;
   }
   function operatorFlow(snapshot) {
     const nodes=[];

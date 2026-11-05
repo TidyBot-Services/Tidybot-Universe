@@ -5,7 +5,9 @@
   "installed_manifest": "repos/robocasa365_sim/assets-installed-manifest.json",
   "installed_manifest_sha256": "6ba5a9d08f036b3a729eb3bc769f7b8ab2714ec1de94c5a9b72dbc1915199a01",
   "runtime_manifest": "repos/robocasa365_sim/assets-manifest.json",
-  "runtime_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330"
+  "runtime_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+  "sources": "config/attentionbench/asset-sources.json",
+  "sources_sha256": "edec898a6c334849825607043de3a089b563d474c4c0c6d72a7746f1bd709345"
  },
  "codex": {
   "model": "gpt-6.1-sol",
@@ -69,5 +71,27 @@
    "url": "https://github.com/ARISE-Initiative/robosuite.git"
   }
  },
- "schema": "attentionbench.installer.v1"
+ "schema": "attentionbench.installer.v1",
+ "tools": {
+  "codex": {
+   "bytes": 163200349,
+   "sha256": "e97c4463d7f146692a955d7b0e1c8cf48f97cd4d616cd45c5dcab2e8d9743316",
+   "url": "https://github.com/openai/codex/releases/download/rust-v0.165.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+  },
+  "conda": {
+   "bytes": 152329234,
+   "sha256": "6239d42dacc169e290ac37516b2eb6751763edbd977b237e9688884c7b4ea706",
+   "url": "https://repo.anaconda.com/miniconda/Miniconda3-py311_25.3.1-1-Linux-x86_64.sh",
+   "version": "25.3.1"
+  },
+  "ffmpeg": {
+   "spec": "ffmpeg=7.1=gpl*"
+  },
+  "uv": {
+   "bytes": 19423276,
+   "sha256": "ec7a99cd05e0cd7f80243f135ce1361c76835cb0ee60055d14d20eba8eba1460",
+   "url": "https://github.com/astral-sh/uv/releases/download/0.12.9/uv-x86_64-unknown-linux-gnu.tar.gz",
+   "version": "0.12.9"
+  }
+ }
 }

@@ -1,6 +1,7 @@
 """Fail-closed weekly quota sampling, scoped by reset identity."""
 import json
 import math
+import os
 import threading
 import time
 from datetime import datetime
@@ -16,9 +17,9 @@ ROLLOUT_MAX_AGE = 3 * 86400
 def read_weekly_quota(home=None, *, now=None):
     """Newest weekly window and observation, allowing ten minutes of session lag."""
     now=time.time() if now is None else now
-    root=Path(home).expanduser() if home is not None else Path.home()
+    root=Path(home).expanduser()/'.codex' if home is not None else Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')
     rows=[]
-    for path in root.joinpath('.codex','sessions').rglob('rollout-*.jsonl'):
+    for path in root.joinpath('sessions').rglob('rollout-*.jsonl'):
         try:
             if now-path.stat().st_mtime>ROLLOUT_MAX_AGE:continue
             text=path.read_text(errors='ignore')

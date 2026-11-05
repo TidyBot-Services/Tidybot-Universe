@@ -13,7 +13,7 @@ def probe(code=1, stderr='setting up uid map: Permission denied'):
 
 
 @pytest.mark.parametrize('result,policy,expected', [
-    (probe(), '1', True), (probe(0), '1', False), (probe(stderr='other'), '1', False),
+    (probe(), '1', True), (probe(0), '1', False), (probe(stderr='loopback: Failed RTM_NEWADDR'), '1', True),
     (probe(), '0', False), (None, '1', False),
 ])
 def test_restriction_requires_all_conditions(tmp_path, result, policy, expected):
@@ -32,56 +32,79 @@ def test_restriction_reason_and_options(monkeypatch):
     assert 'any local user' in fix and 'machine-wide' in fix
 
 
-def test_fix_userns_dry_run(tmp_path, monkeypatch):
-    monkeypatch.setattr(setup, 'prerequisites', lambda *a, **k: True)
-    monkeypatch.setattr(setup.installer, 'bootstrap', lambda args: None)
-    monkeypatch.setattr(setup, 'fix_userns', lambda: pytest.fail('dry run applied fix'))
-    assert setup.main(['--workspace', str(tmp_path), '--dry-run', '--fix-userns']) == 0
-
-
-def test_fix_userns_no_restriction(monkeypatch, capsys):
-    monkeypatch.setattr(installer, 'namespace_status', lambda: (True, 'available', ''))
-    setup.fix_userns()
-    assert 'not detected' in capsys.readouterr().out
-
-
-@pytest.mark.parametrize('tty,bwrap,error', [(False, '/usr/bin/bwrap', 'TTY'), (True, '/other/bwrap', '/other/bwrap')])
-def test_fix_userns_refuses(tmp_path, monkeypatch, tty, bwrap, error):
-    monkeypatch.setattr(installer, 'namespace_status', lambda: (False, installer.USERNS_REASON, installer.USERNS_FIX))
+def host(monkeypatch, *, packages=(), restricted=True, tty=True):
+    monkeypatch.setattr(setup, 'system_packages', lambda: list(packages))
+    monkeypatch.setattr(installer, 'apparmor_policy_on', lambda: restricted)
+    monkeypatch.setattr(installer, 'namespace_status', lambda: (not restricted, installer.USERNS_REASON, installer.USERNS_FIX))
     monkeypatch.setattr(setup.sys.stdin, 'isatty', lambda: tty)
-    monkeypatch.setattr(setup.shutil, 'which', lambda name: bwrap)
-    with pytest.raises(installer.StepError, match=error):
-        setup.fix_userns()
 
 
-@pytest.mark.parametrize('answer,count', [('n', 0), ('y', 2)])
-def test_fix_userns_confirmation(tmp_path, monkeypatch, capsys, answer, count):
-    calls = []
-    monkeypatch.setattr(installer, 'namespace_status', lambda: (False, installer.USERNS_REASON, installer.USERNS_FIX))
-    monkeypatch.setattr(setup.sys.stdin, 'isatty', lambda: True)
-    monkeypatch.setattr(setup.shutil, 'which', lambda name: '/usr/bin/bwrap')
-    monkeypatch.setattr('builtins.input', lambda prompt: answer)
+def test_dry_run_changes_nothing_on_the_host(tmp_path, monkeypatch, capsys):
+    host(monkeypatch, packages=['ffmpeg'])
+    monkeypatch.setattr(setup.subprocess, 'run', lambda *a, **k: pytest.fail('dry run ran a command'))
+    monkeypatch.setattr('builtins.input', lambda prompt: pytest.fail('dry run asked'))
+    setup.prepare_host(True)
+    output = capsys.readouterr().out
+    assert 'sudo apt-get install -y ffmpeg' in output and 'apparmor_parser' in output
+
+
+def test_no_changes_needed_asks_nothing(monkeypatch, capsys):
+    host(monkeypatch, restricted=False)
+    monkeypatch.setattr('builtins.input', lambda prompt: pytest.fail('nothing to ask'))
+    setup.prepare_host(False)
+    assert capsys.readouterr().out == ''
+
+
+def test_no_terminal_prints_the_commands_and_changes_nothing(monkeypatch, capsys):
+    host(monkeypatch, tty=False)
+    monkeypatch.setattr(setup.subprocess, 'run', lambda *a, **k: pytest.fail('ran sudo without a terminal'))
+    setup.prepare_host(False)
+    output = capsys.readouterr().out
+    assert 'apparmor_parser' in output and 'nothing was changed' in output
+
+
+@pytest.mark.parametrize('answer,count', [('n', 0), ('y', 3)])
+def test_one_question_covers_packages_and_apparmor(monkeypatch, capsys, answer, count):
+    calls, asked = [], []
+    host(monkeypatch, packages=['bubblewrap', 'ffmpeg'])
+    monkeypatch.setattr('builtins.input', lambda prompt: asked.append(prompt) or answer)
     monkeypatch.setattr(setup.subprocess, 'run', lambda argv, **kw: calls.append(argv) or SimpleNamespace(returncode=0))
-    setup.fix_userns()
-    assert len(calls) == count
+    setup.prepare_host(False)
+    assert len(asked) == 1 and len(calls) == count
     assert all(argv[0] == 'sudo' and 'sysctl' not in argv for argv in calls)
     if answer == 'y':
         assert calls == [
+            ['sudo', 'apt-get', 'install', '-y', 'bubblewrap', 'ffmpeg'],
             ['sudo', 'install', '-m', '0644', str(installer.USERNS_PROFILE), installer.USERNS_TARGET],
             ['sudo', 'apparmor_parser', '-r', installer.USERNS_TARGET],
         ]
     assert 'profile attentionbench-bwrap-userns' in capsys.readouterr().out
 
 
-@pytest.mark.parametrize('found,downloads,offline,ok', [
-    ({'3.10', '3.11'}, 'never', 'true', True),
-    ({'3.10'}, '', '', True), ({'3.10'}, 'never', '', False),
-    ({'3.10'}, 'manual', '', False), ({'3.10'}, '', 'yes', False),
-    ({'3.10'}, '', 'enabled', False),
+def test_a_failed_host_command_stops_setup(monkeypatch):
+    host(monkeypatch)
+    monkeypatch.setattr('builtins.input', lambda prompt: 'y')
+    monkeypatch.setattr(setup.subprocess, 'run', lambda argv, **kw: SimpleNamespace(returncode=1))
+    with pytest.raises(installer.StepError, match='apparmor|install'):
+        setup.prepare_host(False)
+
+
+def test_system_packages_lists_only_what_is_missing(monkeypatch):
+    found = {'git', 'cc', 'g++', 'ffmpeg', 'ffprobe'}
+    monkeypatch.setattr(setup.shutil, 'which', lambda name: '/usr/bin/' + name if name in found else None)
+    monkeypatch.setattr(setup.Path, 'is_file', lambda self: str(self) == '/usr/bin/bwrap')
+    monkeypatch.setattr(installer, 'missing_libraries', lambda: [])
+    assert setup.system_packages() == []
+    found -= {'g++', 'ffprobe'}
+    monkeypatch.setattr(installer, 'missing_libraries', lambda: ['libEGL.so.1'])
+    assert setup.system_packages() == ['build-essential', 'ffmpeg', 'libegl1']
+
+
+@pytest.mark.parametrize('downloads,offline,ok', [
+    ('', '', True), ('automatic', '0', True), ('never', '', False), ('manual', '', False),
+    ('', 'yes', False), ('', 'enabled', False),
 ])
-def test_uv_python_row(monkeypatch, found, downloads, offline, ok):
-    monkeypatch.setattr(setup.shutil, 'which', lambda name: '/usr/bin/uv' if name == 'uv' else None)
-    monkeypatch.setattr(setup, '_run', lambda argv: SimpleNamespace(returncode=0 if argv[-1] in found else 1))
+def test_uv_python_row(monkeypatch, downloads, offline, ok):
     monkeypatch.setenv('UV_PYTHON_DOWNLOADS', downloads)
     monkeypatch.setenv('UV_OFFLINE', offline)
     assert setup.uv_python_status({'python': {'ui': '3.10', 'sim': '3.11', 'curobo': '3.11'}})[0] is ok
@@ -103,8 +126,13 @@ def test_fingerprint_fields_without_nvidia(tmp_path, monkeypatch):
     assert record['created_at'].endswith('+00:00')
 
 
+def test_an_old_driver_warns_and_the_proof_decides():
+    failures, warnings = gate({'driver': '535.183.01', 'glibc': 'glibc 2.35', 'os': {'VERSION_ID': '22.04'}})
+    assert not failures and 'planner proof' in warnings[0]
+
+
 @pytest.mark.parametrize('driver,glibc,fails', [
-    ('570.124.05', '2.35', True), ('570.124.06', '2.35', False),
+    ('535.183.01', '2.35', False), ('570.124.05', '2.35', False), ('570.124.06', '2.35', False),
     ('580.126.09', '2.39', False), ('580.126.09', '2.34', True),
     (None, '2.39', True),
 ])
@@ -112,7 +140,7 @@ def test_host_gate_version_boundaries(driver, glibc, fails):
     value = {'driver': driver, 'glibc': 'glibc ' + glibc,
              'os': {'VERSION_ID': '24.04'}, 'created_at': 'one'}
     failures, warnings = gate(value)
-    assert bool(failures) is fails and not warnings
+    assert bool(failures) is fails
     value['created_at'] = 'two'
     assert fingerprint_sha256(value) == fingerprint_sha256(dict(value, created_at='one'))
     value['os']['VERSION_ID'] = '23.10'

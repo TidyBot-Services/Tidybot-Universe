@@ -115,14 +115,18 @@ class ProbeResult:
     checks: dict
     errors: list
     needs_vision: bool = False
+    needs_tools: bool = True
     @property
     def ok(self):
-        required = ('auth','chat','streaming','tools') + (('vision',) if self.needs_vision else ())
+        required = ('auth','chat') + (('streaming','tools') if self.needs_tools else ()) + (('vision',) if self.needs_vision else ())
         return all(self.checks[k]=='ok' for k in required) and self.checks['vision'] != 'fail'
 
 
 def probe(spec, secret, model, *, role, transport=None):
+    """Dev and Eval work through tool calls. The Advisor is one plain chat call, and advisor-text is an Advisor sent no images."""
     checks = dict.fromkeys(('auth','chat','streaming','tools','vision'), 'unknown'); errors = []
+    advisor = role in ('advisor','advisor-text')
+    outcome = lambda: ProbeResult(checks, errors, needs_vision=role in ('eval','advisor'), needs_tools=not advisor)
     send = transport or open_request
     def request(url, body=None):
         return send(urllib.request.Request(url, data=None if body is None else json.dumps(body).encode(),
@@ -140,13 +144,27 @@ def probe(spec, secret, model, *, role, transport=None):
             checks['auth'] = 'ok'
         except Exception as exc:
             failed(exc, 'auth')
-            return ProbeResult(checks, errors, needs_vision=role in ('eval','advisor'))
+            return outcome()
+    if advisor:
+        plain = dict(model=model, stream=False, messages=[dict(role='user', content='Reply with ok.')])
+        plain[spec.token_param] = 512
+        plain.update(json.loads(json.dumps(spec.extra_body)))
+        try:
+            with request(spec.chat_url, plain) as response: value = json.loads(response.read(65536))
+            if 'error' in value: raise ValueError(json.dumps(value['error']))
+            if not value.get('choices'): raise ValueError('provider_returned_no_choices')
+            checks.update(auth='ok', chat='ok')
+        except Exception as exc:
+            failed(exc, 'chat')
+            if role == 'advisor': checks['vision'] = 'fail'
+        if role == 'advisor-text' or checks['chat'] != 'ok': return outcome()
     body = dict(model=model, messages=[dict(role='user',content='Call the ping tool.')], stream=True,
                 tools=[dict(type='function',function=dict(name='ping',parameters=dict(type='object',properties={})))],
                 tool_choice='auto')  # Forcing a named tool is rejected by thinking models; runs use auto too.
     body[spec.token_param] = 512  # Room for a thinking model to reason before it calls the tool.
     body.update(json.loads(json.dumps(spec.extra_body)))
-    try:
+    if not advisor:
+      try:
         done = False; tool = False; chunks = 0; total = 0
         with request(spec.chat_url, body) as response:
             for raw in response:
@@ -163,7 +181,7 @@ def probe(spec, secret, model, *, role, transport=None):
         if not done or not chunks: raise ValueError('incomplete_provider_stream')
         checks.update(auth='ok',chat='ok',streaming='ok',tools='ok' if tool else 'fail')
         if not tool: errors.append(dict(code='provider_tools_failed',message='This model must support tool calls',upstream_status=None,redacted=False))
-    except Exception as exc:
+      except Exception as exc:
         failed(exc, 'chat'); checks['streaming'] = 'fail'
         if role in ('eval','advisor'): checks['vision'] = 'fail'
     if role in ('eval','advisor') and checks['chat'] == 'ok':
@@ -185,7 +203,7 @@ def probe(spec, secret, model, *, role, transport=None):
                 errors.append(dict(code='provider_vision_failed', message=message, upstream_status=None, redacted=redacted))
         except Exception as exc:
             failed(exc, 'vision')
-    return ProbeResult(checks, errors, needs_vision=role in ('eval','advisor'))
+    return outcome()
 
 
 _NOT_CHAT = re.compile(r'embed|whisper|tts|dall-e|moderation|transcribe|image|audio|realtime|davinci|babbage', re.I)
