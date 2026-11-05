@@ -45,8 +45,10 @@ class ProviderSpec:
 def presets():
     base_url='https://litellm.parcc.upenn.edu/v1'
     return {
+        # Real check (2026-11-05): PARCC applies response_format to every turn, so a role that needs tools answers at once
+        # without reading anything; the schema goes in the instructions instead.
         'parcc': ProviderSpec('parcc', 'PARCC', base_url+'/chat/completions', base_url+'/models',
-                              'lab-file', reasoning_param='reasoning_effort', suggested_models=('parcc/GLM',)),
+                              'lab-file', reasoning_param='reasoning_effort', suggested_models=('parcc/GLM',), response_format='prompt'),
         'openai': ProviderSpec('openai', 'OpenAI', 'https://api.openai.com/v1/chat/completions',
                                'https://api.openai.com/v1/models', token_param='max_completion_tokens', reasoning_param='reasoning_effort'),
         'deepseek': ProviderSpec('deepseek', 'DeepSeek', 'https://api.deepseek.com/v1/chat/completions',

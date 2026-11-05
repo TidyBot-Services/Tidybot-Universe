@@ -86,8 +86,8 @@ def _response_format(body, chat, provider):
     if mode=='json_schema':
         chat['response_format']=dict(type='json_schema',json_schema=dict(
             name=fmt['name'],schema=fmt['schema'],strict=bool(fmt.get('strict',False))))
-    elif mode=='json_object':
-        chat['response_format']=dict(type='json_object')
+    elif mode in ('json_object','prompt'):
+        if mode=='json_object':chat['response_format']=dict(type='json_object')
         instruction='Return JSON matching this schema: '+json.dumps(fmt['schema'],separators=(',',':'))
         system=next((m for m in chat['messages'] if m['role']=='system'),None)
         if system is None:chat['messages'].insert(0,dict(role='system',content=instruction))

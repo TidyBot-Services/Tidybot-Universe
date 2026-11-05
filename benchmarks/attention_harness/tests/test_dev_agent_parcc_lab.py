@@ -160,6 +160,17 @@ def test_glm_advisor_is_sent_no_frames_and_records_its_source(tmp_path,monkeypat
     assert not scan([resolved.secret],roots=[tmp_path],include_processes=True)
 
 
+def test_parcc_keeps_tool_calls_by_asking_for_the_schema_in_words():
+    # Real check 2026-11-05: with response_format on every turn GLM answered at once, without reading a file.
+    schema=dict(type='object',properties=dict(passed=dict(type='boolean')))
+    body=dict(model='parcc/GLM',instructions='Review.',input=[dict(role='user',content='Go')],
+              tools=[dict(type='function',name='exec_command',parameters={})],text=dict(format=dict(type='json_schema',name='verdict',schema=schema,strict=True)))
+    chat=bridge_module.to_chat(body,provider_module.presets()['parcc'])
+    assert 'response_format' not in chat and chat['tools']
+    assert json.dumps(schema,separators=(',',':')) in chat['messages'][0]['content'] and chat['messages'][0]['role']=='system'
+    assert 'response_format' in bridge_module.to_chat(body,provider_module.presets()['deepseek'])
+
+
 def parcc_selection(**choices):
     return dict(selection(byok=False),agent_provider=lab(**choices))
 
