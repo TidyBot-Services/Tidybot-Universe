@@ -1,6 +1,7 @@
 """Narrow, byte-checked portability rules for the official environment."""
 from __future__ import annotations
 
+import ast
 import hashlib
 import base64
 import csv
@@ -11,6 +12,44 @@ from pathlib import Path
 GENERATOR = re.compile(rb'Generator: setuptools \([0-9]+\.[0-9]+\.[0-9]+\)\n')
 EMPTY_REQUESTED = b',sha256=47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU,0'
 RECORD_HASH = re.compile(rb'sha256=[A-Za-z0-9_-]{43}')
+NAMESPACES_LINE = re.compile(rb'^NAMESPACES: dict\[str, list\[str\]\] = (\{.*\})$', re.M)
+# setuptools writes the finder's NAMESPACES in directory order, which differs between filesystems.
+# This is the author's order; the file's hash must still match once the order is restored.
+AUTHOR_NAMESPACES = (
+    'docs', 'benchmark', 'docs.snippets', 'docs.getting-started', 'docs._templates', 'docs.reference',
+    'docs._static', 'docs.images', 'docs.concepts', 'docs.guides', 'docs._html_extra',
+    'docs._templates.sidebar', 'docs._html_extra.videos', 'curobo._src',
+    'curobo.tests._src.optim.particle', 'curobo.tests._src.optim.gradient', 'curobo.content.assets',
+    'curobo.content.configs', 'curobo.content.assets.robot',
+    'curobo.content.assets.robot.ur_description', 'curobo.content.assets.robot.simple',
+    'curobo.content.assets.robot.franka_description', 'curobo.content.assets.robot.g1',
+    'curobo.content.assets.robot.ur_description.meshes',
+    'curobo.content.assets.robot.ur_description.meshes.ur10e',
+    'curobo.content.assets.robot.ur_description.meshes.ur5e',
+    'curobo.content.assets.robot.ur_description.meshes.ur10e.visual',
+    'curobo.content.assets.robot.ur_description.meshes.ur10e.collision',
+    'curobo.content.assets.robot.ur_description.meshes.ur5e.visual',
+    'curobo.content.assets.robot.ur_description.meshes.ur5e.collision',
+    'curobo.content.assets.robot.franka_description.meshes',
+    'curobo.content.assets.robot.franka_description.meshes.visual',
+    'curobo.content.assets.robot.franka_description.meshes.collision',
+    'curobo.content.assets.robot.g1.meshes', 'curobo.content.configs.robot',
+    'curobo.content.configs.task', 'curobo.content.configs.scene',
+    'curobo.content.configs.task.trajopt', 'curobo.content.configs.task.ik',
+    'curobo.content.configs.task.mpc', 'curobo.content.configs.task.graph_planner',
+    'curobo.examples.reference', 'curobo.examples.guides', 'curobo.examples.getting_started',
+    'curobo._src.optim.util', 'curobo._src.curobolib.kernels', 'curobo._src.curobolib.kernels.dynamics',
+    'curobo._src.curobolib.kernels.trajectory', 'curobo._src.curobolib.kernels.third_party',
+    'curobo._src.curobolib.kernels.kinematics', 'curobo._src.curobolib.kernels.parallel_banding',
+    'curobo._src.curobolib.kernels.geometry', 'curobo._src.curobolib.kernels.common',
+    'curobo._src.curobolib.kernels.optimization', 'curobo._src.curobolib.kernels.trajectory.legacy',
+    'curobo._src.curobolib.kernels.trajectory.bspline',
+    'curobo._src.curobolib.kernels.trajectory.bspline.basis',
+    'curobo._src.curobolib.kernels.trajectory.bspline.derivations',
+    'curobo._src.curobolib.kernels.geometry.self_collision',
+    'curobo._src.curobolib.kernels.optimization.line_search',
+    'curobo._src.curobolib.kernels.optimization.lbfgs',
+)
 
 
 def sha(data: bytes) -> str:
@@ -51,6 +90,20 @@ def record_path(line: bytes) -> str | None:
     return row[0] if len(row) == 3 and row[0] else None
 
 
+def in_author_order(data: bytes) -> bytes | None:
+    """Put a finder's NAMESPACES back in the author's order; any other text passes through."""
+    found = NAMESPACES_LINE.findall(data)
+    if not found:
+        return data
+    try:
+        namespaces = ast.literal_eval(found[0].decode()) if len(found) == 1 else None
+    except (ValueError, SyntaxError):
+        return None
+    if not isinstance(namespaces, dict) or set(namespaces) != set(AUTHOR_NAMESPACES):
+        return None
+    return data.replace(found[0], repr({name: namespaces[name] for name in AUTHOR_NAMESPACES}).encode(), 1)
+
+
 def normalized_text_path(data: bytes, local_prefix: str, local_library: str,
                          author_paths: dict) -> bytes | None:
     pairs = ((local_prefix, author_paths.get('prefix')),
@@ -63,7 +116,7 @@ def normalized_text_path(data: bytes, local_prefix: str, local_library: str,
         if old.encode() in data:
             data = data.replace(old.encode(), new.encode())
             changed = True
-    return data if changed else None
+    return in_author_order(data) if changed else None
 
 
 def normalized_record(data: bytes, package: str, local_prefix: str | None = None,
