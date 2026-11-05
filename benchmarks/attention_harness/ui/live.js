@@ -2017,21 +2017,25 @@
   }
   // The Agent envelope: versions 1-10 and 1-6 hours. A run may lower both; the server refuses anything larger.
   const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=3600;
+  // What New run shows and checks. Remote replaces it with the shared host's limits (Lobby.newRunLimits).
+  const AGENT_LIMITS={versions:AGENT_DEFAULT_VERSIONS,wall:AGENT_DEFAULT_WALL,help:5,maxHelp:10,versionsRange:'1–10 · default 10',wallRange:'1–6 hours · default 6',
+    note:'Official Agent budget: 10 versions · 6 hours. Lower either one to test cheaply; the run is then marked as a reduced budget.'};
+  const hoursText=seconds=>{const hours=seconds/3600;return `${hours} hour${hours===1?'':'s'}`;};
   // The line under the 03 heading. It describes whoever pays: the lab quota only exists for Lab models, and the limits it
   // used to quote live in 05, so an own key never shows a quota stop.
   function agentReasonText(mode,{versions,wall,stop,source}) {
     if(mode==='all')return 'Billed to your own key; the lab quota does not apply. Limits are set in 05. Native success ends the run.';
     if(mode==='different')return 'Each agent is billed to the source chosen in Agent models below. Limits are set in 05. Native success ends the run.';
     const v=Math.min(10,Math.max(1,Number(versions)||10)),hours=Math.min(21600,Math.max(3600,Number(wall)||21600))/3600;
-    return `${v} formal versions · 40 executions · 300 read-only probes · ${hours} hours${source==='codex'?` · stops at ${Number(stop)||90}% quota`:''}. Eval picks its own model; native success ends the run.`;
+    return `${v} formal versions · 40 executions · 300 read-only probes · ${hoursText(hours*3600)}${source==='codex'?` · stops at ${Number(stop)||90}% quota`:''}. Eval picks its own model; native success ends the run.`;
   }
-  function agentBudgetCheck(versions,wallSeconds) {
+  function agentBudgetCheck(versions,wallSeconds,limits=AGENT_LIMITS) {
     const v=Number(versions),w=Number(wallSeconds),errors={};
     if(!Number.isInteger(v)||v<1)errors.versions='Enter 1 to 10 versions.';
-    else if(v>AGENT_DEFAULT_VERSIONS)errors.versions='Largest allowed: 10 versions. A bigger budget needs separate approval.';
+    else if(v>limits.versions)errors.versions=`Largest allowed: ${limits.versions} versions. A bigger budget needs separate approval.`;
     if(!Number.isInteger(w)||w<AGENT_MIN_WALL)errors.wall='Shortest allowed: 1 hour (3600 seconds).';
-    else if(w>AGENT_DEFAULT_WALL)errors.wall='Longest allowed: 6 hours (21600 seconds). A longer run needs separate approval.';
-    const valid=!Object.keys(errors).length,reduced=valid&&(v<AGENT_DEFAULT_VERSIONS||w<AGENT_DEFAULT_WALL);
+    else if(w>limits.wall)errors.wall=`Longest allowed: ${hoursText(limits.wall)} (${limits.wall} seconds). A longer run needs separate approval.`;
+    const valid=!Object.keys(errors).length,reduced=valid&&(v<limits.versions||w<limits.wall);
     return {errors,valid,reduced,limits:reduced?{versions:v,wall_seconds:w}:null};
   }
   function agentLaunchSelection(selection,values={}) {
@@ -2129,9 +2133,9 @@
   const BYOK_ALL_ROLES = true; // Dev, Eval and Advisor can each use a saved key; the server preflights every role.
   const KEYS_API='/api/provider/credentials';
   const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
-  // What each lab source offers per role. PARCC runs Dev on GLM; Eval and Advisor can use Qwen, which reads images.
+  // What each lab source offers per role. PARCC runs Dev and Eval on GLM; the Advisor can use Qwen, which reads images.
   const LAB_MODELS={codex:{dev:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],eval:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],advisor:['gpt-6.1-sol','gpt-6-astra']},
-    parcc:{dev:['parcc/GLM'],eval:['parcc/GLM','parcc/Qwen'],advisor:['parcc/GLM','parcc/Qwen']}};
+    parcc:{dev:['parcc/GLM'],eval:['parcc/GLM'],advisor:['parcc/GLM','parcc/Qwen']}};
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
   // Eval and Advisor may use a model that cannot read images; the run then says so, and is sent none.
   const TEXT_ONLY_NOTE='<span class="ab-keys-warn">This model reads text only, so this agent will not see images.</span>';
@@ -2158,7 +2162,10 @@
       const seen=state.test?.[role];
       if(readsTextOnly(seen)&&seen.signature===JSON.stringify([row.credential_id,model.trim()]))roles[role].vision=false;
     }
-    return Object.keys(roles).length?{roles}:null;
+    if(!Object.keys(roles).length)return null;
+    // The server routes every role from Dev, so a Dev left on lab Codex is named as the lab role it is.
+    if(!roles.dev)roles.dev={credential:'lab',provider:'openai',model:state.labModel?.dev||LAB_MODELS.codex.dev[0]};
+    return {roles};
   }
   // A text input with a menu of the provider's models; typing a name always works.
   const modelComboHtml=id=>`<button type="button" class="ab-keys-combo-btn" data-model-menu="${id}" aria-label="Show models offered by the provider" aria-haspopup="listbox" aria-expanded="false" hidden></button><ul class="ab-keys-combo-list" role="listbox" data-model-list="${id}" hidden></ul>`;
@@ -2211,7 +2218,8 @@
     if(typeof error==='string')return error;
     return `${error.message||error.code||'Request failed'}${error.redacted?' (the part that looked like a key is hidden)':''}`;
   }
-  function bindKeys(form) {
+  // lab: the lab source every role starts on. Remote passes 'parcc' and then offers no Codex at all.
+  function bindKeys(form,lab='codex') {
     const box=form.querySelector('[data-keys]');
     const rolesBox=box.querySelector('[data-keys-roles]'),listBox=box.querySelector('[data-keys-list]'),note=box.querySelector('[data-keys-note]');
     const nameInput=box.querySelector('[data-key-name]'),providerSelect=box.querySelector('[data-key-provider]');
@@ -2220,8 +2228,8 @@
     const addBox=box.querySelector('[data-keys-add]'),details=box.querySelector('[data-keys-details]');
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
-    const state={mode:'lab',labSource:'codex',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:''};
+    const state={mode:'lab',labSource:lab,shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
+      choice:{dev:lab,eval:lab,advisor:lab},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:''};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2236,7 +2244,7 @@
       const later=!BYOK_ALL_ROLES&&role!=='dev';
       const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)}${preset(c.provider)?.thinking?` · thinking ${esc(preset(c.provider).thinking)}`:''})${later?' · coming in phase 2':''}</option>`).join('');
       const missing=choice.startsWith('key:')&&!cred(choice.slice(4));
-      return `<option value="codex">Lab models · Codex</option>${choice==='parcc'?'<option value="parcc">Lab models · PARCC</option>':''}${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
+      return `${lab==='parcc'?'':'<option value="codex">Lab models · Codex</option>'}<option value="parcc">Lab models · PARCC</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
     }
     function checksHtml(result) {
       if(!result)return '';
@@ -2592,6 +2600,7 @@
       const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
       const options = launchOptions;
       const devProfiles = options?.dev_v2?.profiles || [];
+      const limits = window.Lobby.newRunLimits() || AGENT_LIMITS;
       if (!devProfiles.length) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
@@ -2600,7 +2609,7 @@
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
-          ${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
+          ${window.Lobby.newRunNotice()}${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
           <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
             <label class="ab-launch-field">Task<select name="task_id" aria-label="Task" required></select></label>
@@ -2611,28 +2620,30 @@
           </div></section>
           <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field">Attention policy<select name="v2_policy">${devPolicyChoices(options?.dev_v2).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Help requests per task<input name="help_count" type="number" min="1" max="10" value="5"></label>
+            <label class="ab-launch-field">Help requests per task<input name="help_count" type="number" min="1" max="${limits.maxHelp}" value="${limits.help}"></label>
           </div></section>
-          ${window.Lobby.newRunHtml()}${keysSectionHtml()}
+          ${keysSectionHtml()}
           <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Automatic reviewer</h4><small>Check the outcome after every formal version.</small></div>
             <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked disabled><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.</small></span></label>
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
-            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>1–10 · default 10</small><input name="max_attempts" type="number" min="1" max="10" value="10" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
-            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>1–6 hours · default 6</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="3600" max="21600" value="21600" required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
+            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.versionsRange}</small><input name="max_attempts" type="number" min="1" max="${limits.versions}" value="${limits.versions}" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
+            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="3600" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
             <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
-          </div><p class="ab-run-hint" data-official-budget hidden>Official Agent budget: 10 versions · 6 hours. Lower either one to test cheaply; the run is then marked as a reduced budget.</p>
+          </div><p class="ab-run-hint" data-official-budget hidden>${limits.note}</p>
           <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
           <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
           </div></details>
+          ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
-      const keys = bindKeys(form);
+      const keys = bindKeys(form,window.Lobby.enabled?'parcc':'codex');
+      if(window.Lobby.enabled)for(const select of [form.model_source,form.querySelector('[data-keys-source]')])select.querySelector('option[value="codex"]').remove();
       form.addEventListener('ab-keys-change',updateSummary);
-      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Benchmark|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
+      window.Lobby.shapeNewRun(form);
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
       // 03's Model source is a view over two existing controls: the hidden model_source select (PARCC / Codex) and the
@@ -2667,7 +2678,7 @@
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
         }else if(select.value==='parcc'){
-          help.textContent='Free lab models. GLM reads text only, so it sees no camera frames. Results are not comparable with Codex results.';
+          help.textContent='Free lab models. GLM reads text only; choose Qwen for the Advisor to include camera frames. Results are not comparable with Codex results.';
           name.textContent='PARCC (free)';note.textContent='No quota. Usage is still recorded.';
         }else if(select.value==='all'){
           help.textContent='One provider, model and key for Dev, Eval and Advisor.';
@@ -2679,7 +2690,7 @@
           note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:'lab'}`).join(' · ');
         }
       }
-      fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
+      if(!window.Lobby.enabled)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
         dialogQuota=value;
         if(launchDialog.open)showQuota();
       }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});
@@ -2738,26 +2749,27 @@
         form.querySelector('[data-readonly-sdk-calls]').textContent=form.sdk_calls.value;
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
-        form.querySelector('[data-wall-description]').textContent=`${Number(form.wall_seconds.value)/3600} hours · stored in seconds`;
+        form.querySelector('[data-wall-description]').textContent=`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
         for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid||!!blocked;
+        window.Lobby.syncJoin(form,profile);
         syncSeedOptions();
       }
       // 05: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
-      let budget=agentBudgetCheck(10,21600);
+      let budget=agentBudgetCheck(limits.versions,limits.wall,limits);
       function drawBudget() {
-        budget=agentBudgetCheck(form.max_attempts.value,form.wall_seconds.value);
+        budget=agentBudgetCheck(form.max_attempts.value,form.wall_seconds.value,limits);
         const versions=Number(form.max_attempts.value),wall=Number(form.wall_seconds.value);
-        form.querySelector('[data-reduced-chip="versions"]').hidden=!(budget.reduced&&versions<AGENT_DEFAULT_VERSIONS);
-        form.querySelector('[data-reduced-chip="wall"]').hidden=!(budget.reduced&&wall<AGENT_DEFAULT_WALL);
+        form.querySelector('[data-reduced-chip="versions"]').hidden=!(budget.reduced&&versions<limits.versions);
+        form.querySelector('[data-reduced-chip="wall"]').hidden=!(budget.reduced&&wall<limits.wall);
         form.querySelectorAll('[data-limit-error]').forEach(node=>{
           const text=budget.errors[node.dataset.limitError]||'';
           node.textContent=text;node.hidden=!text;node.closest('label').classList.toggle('ab-limit-bad',!!text);
         });
         form.querySelector('[data-reduced-note]').hidden=!budget.reduced;
-        if(budget.reduced)form.querySelector('[data-reduced-text]').textContent=`${versions} of 10 versions · ${wall/3600} of 6 hours.`;
+        if(budget.reduced)form.querySelector('[data-reduced-text]').textContent=`${versions} of ${limits.versions} versions · ${wall/3600} of ${hoursText(limits.wall)}.`;
         form.querySelector('[data-official-budget]').hidden=!(budget.valid&&!budget.reduced);
       }
       function updateSummary() {
@@ -2767,7 +2779,7 @@
         const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''}${mine[role].textOnly?' · no images':''})`:lab;
         const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
           style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value});
-        preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of 10 versions · ${Number(form.wall_seconds.value)/3600} of 6 hours · not directly comparable with the official 10-version results`:''}`;
+        preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of ${limits.versions} versions · ${Number(form.wall_seconds.value)/3600} of ${hoursText(limits.wall)} · not directly comparable with the official 10-version results`:''}`;
       }
       function syncProfile() {
         const profile = selectedProfile();
@@ -2776,7 +2788,7 @@
         showQuota();
         form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
         // Every task starts from the official budget; later edits (a lowered budget) are the user's and stay until the task changes.
-        form.max_attempts.value='10';form.wall_seconds.value='21600';form.help_count.value=5;
+        form.max_attempts.value=limits.versions;form.wall_seconds.value=limits.wall;form.help_count.value=limits.help;
         syncSeedOptions();
         if([...form.seed.options].some(o=>o.value==='102'))form.seed.value='102';
         form.attempt_wall_seconds.value = profile?.attempt_wall_seconds ?? '';
@@ -2831,7 +2843,6 @@
       }
       form.benchmark.addEventListener('change',syncBenchmark);
       form.task_id.addEventListener('change',syncTask);
-      window.Lobby.shapeTasks(form);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',syncProfile);
       form.addEventListener('input',updatePreview);
@@ -2877,7 +2888,7 @@
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled){
-            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(keys.selection(),form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
+            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(provider,form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
             keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
           }

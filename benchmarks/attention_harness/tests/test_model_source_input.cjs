@@ -21,13 +21,16 @@ let browser;
 before(async () => { browser = await chromium.launch({executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox']}); });
 after(async () => { await browser?.close(); });
 
-async function dialog(t, {credentials = [], width = 1280, options = runOptions} = {}) {
+const lobbySnapshot = tasks => ({demo: true, demo_info: {recordings: 7, history_limit: 8, tasks}, clock: {speed: 60}, me: {nickname: 'Lynx-1'}, robot: {state: 'idle', running: null},
+  queue: [], recent: [], counts: {}, limits: {help_wait_seconds: 300}, events: []});
+async function dialog(t, {credentials = [], width = 1280, options = runOptions, remote = null} = {}) {
   const page = await browser.newPage({viewport: {width, height: 2400}}); t.after(() => page.close());
   if (process.env.UI_TARGET_TIMEOUT) page.setDefaultTimeout(Number(process.env.UI_TARGET_TIMEOUT));
   await page.route('**/*', route => {
     const {pathname} = new URL(route.request().url());
     const json = (body, status = 200) => route.fulfill({status, contentType: 'application/json', body: typeof body === 'string' ? body : JSON.stringify(body)});
-    if (pathname === '/ui/') return route.fulfill({contentType: 'text/html', body: html});
+    if (pathname === '/ui/') return route.fulfill({contentType: 'text/html', body: remote ? html.replace('data-mode="live"', 'data-mode="live" data-remote="1"') : html});
+    if (pathname === '/api/lobby' && remote) return json(lobbySnapshot(remote));
     const asset = /^\/ui\/([\w.-]+\.(js|css))$/.exec(pathname);
     if (asset && fs.existsSync(path.join(ui, asset[1])))
       return route.fulfill({contentType: asset[2] === 'js' ? 'text/javascript; charset=utf-8' : 'text/css', body: fs.readFileSync(path.join(ui, asset[1]))});
@@ -39,7 +42,8 @@ async function dialog(t, {credentials = [], width = 1280, options = runOptions} 
     return json({error: 'not in this fixture'}, 503);
   });
   await page.goto('http://attention.test/ui/');
-  await page.locator('[data-open-launch]').click();
+  if (remote) await page.waitForFunction(() => window.Lobby?.enabled);
+  await page.locator('[data-open-launch]').first().click();
   const form = page.locator('#ab-launch-form');
   await form.locator('[data-keys-source]').waitFor();
   // The My-key options are enabled by the credentials read; wait for that, not for a timer.
@@ -106,7 +110,7 @@ for (const width of [1280, 390]) test(`MODEL-SOURCE-PARCC-AGENT: PARCC is a norm
   assert.equal(await form.locator('[data-codex-quota]').isVisible(), false);
   assert.deepEqual(await models(form), {
     dev: {value: 'parcc/GLM', options: ['parcc/GLM']},
-    eval: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
+    eval: {value: 'parcc/GLM', options: ['parcc/GLM']},
     advisor: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
   });
   // Other controls repaint the form; the choice has to survive them.
@@ -114,7 +118,7 @@ for (const width of [1280, 390]) test(`MODEL-SOURCE-PARCC-AGENT: PARCC is a norm
   await form.locator('select[name="seed"]').selectOption({index: 1});
   await page.waitForTimeout(150);
   assert.equal(await source.inputValue(), 'parcc');
-  assert.equal(await form.locator('select[name="eval_model"]').inputValue(), 'parcc/GLM');
+  assert.equal(await form.locator('select[name="advisor_model"]').inputValue(), 'parcc/GLM');
 });
 
 test('MODEL-SOURCE-PARCC-AGENT: each source keeps its own model picks', async t => {
@@ -130,19 +134,18 @@ test('MODEL-SOURCE-PARCC-AGENT: each source keeps its own model picks', async t 
   await source.selectOption('parcc');
   const parcc = await models(form);
   assert.equal(parcc.advisor.value, 'parcc/Qwen');
-  assert.equal(parcc.eval.value, 'parcc/GLM');
 });
 
 test('NEW-RUN-SOURCE: changing the task keeps the Model source and its model picks', async t => {
   const {page, form, source} = await dialog(t, {options: withSecondTask()});
   await source.selectOption('parcc');
-  await form.locator('select[name="eval_model"]').selectOption('parcc/Qwen');
+  await form.locator('select[name="advisor_model"]').selectOption('parcc/Qwen');
   const task = form.locator('select[name="task_id"]');
   await task.selectOption(await otherTask(task));
   await page.waitForTimeout(150);
   assert.equal(await source.inputValue(), 'parcc');
   assert.equal(await form.locator('[data-bill-name]').innerText(), 'PARCC (free)');
-  assert.equal(await form.locator('select[name="eval_model"]').inputValue(), 'parcc/Qwen');
+  assert.equal(await form.locator('select[name="advisor_model"]').inputValue(), 'parcc/Qwen');
 });
 
 test('NEW-RUN-BUDGET: a lowered budget survives repaints and a new task starts from the official one', async t => {
@@ -160,6 +163,84 @@ test('NEW-RUN-BUDGET: a lowered budget survives repaints and a new task starts f
   await task.selectOption(await otherTask(task));
   await page.waitForTimeout(150);
   assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['10', '21600']);
+});
+
+const sectionHeads = form => form.locator('h4').evaluateAll(els => els.filter(e => e.getClientRects().length).map(e => e.textContent.trim()));
+const fieldNames = form => form.locator('.ab-launch-section input[name], .ab-launch-section select[name]').evaluateAll(els => els.map(e => e.name).filter(name => name !== 'lb_share').sort());
+
+test('REMOTE-FORM: Remote shows main\'s sections and fields, plus Sharing & queue', async t => {
+  const main = await dialog(t), remote = await dialog(t, {remote: ['pick_place_counter_to_sink']});
+  assert.deepEqual(await sectionHeads(remote.form), [...await sectionHeads(main.form), '07Sharing & queue']);
+  assert.deepEqual(await fieldNames(remote.form), await fieldNames(main.form));
+  const hidden = await remote.form.locator('.ab-launch-section').evaluateAll(els => els.filter(e => !e.getClientRects().length).length);
+  assert.equal(hidden, 0);
+  assert.equal(await remote.form.locator('[data-launch-preview]').isVisible(), true);
+  assert.match(await remote.page.locator('[data-remote-note]').innerText(), /Real runs are not connected yet/);
+});
+
+test('REMOTE-FORM-CODEX: Remote offers no Codex anywhere and asks nothing about its quota', async t => {
+  const asked = [];
+  const {page, form, source} = await dialog(t, {remote: ['pick_place_counter_to_sink']});
+  page.on('request', request => asked.push(new URL(request.url()).pathname));
+  assert.deepEqual(await source.evaluate(el => [...el.options].map(o => o.value)), ['parcc', 'all', 'different']);
+  assert.equal(await source.inputValue(), 'parcc');
+  assert.equal(await form.locator('[data-bill-name]').innerText(), 'PARCC (free)');
+  assert.deepEqual((await models(form)).dev.options, ['parcc/GLM']);
+  await source.selectOption('different');
+  await form.locator('[data-keys-details]').evaluate(el => { el.open = true; });
+  for (const role of ['dev', 'eval', 'advisor']) {
+    const row = form.locator(`[data-role-choice="${role}"]`);
+    assert.deepEqual(await row.evaluate(el => [...el.options].map(o => o.textContent)), ['Lab models · PARCC']);
+  }
+  assert.equal(await form.locator('[data-codex-quota]').isVisible(), false);
+  assert.equal((await form.evaluate(f => f.textContent)).includes('Codex subscription'), false);
+  await source.selectOption('parcc');
+  assert.equal(asked.includes('/api/codex-quota'), false);
+});
+
+test('REMOTE-FORM-LIMITS: the shared host caps 05 and the help count, and says so', async t => {
+  const {page, form} = await dialog(t, {remote: ['pick_place_counter_to_sink']});
+  const versions = form.locator('input[name="max_attempts"]'), wall = form.locator('input[name="wall_seconds"]');
+  assert.deepEqual([await versions.inputValue(), await wall.inputValue(), await form.locator('input[name="help_count"]').inputValue()], ['3', '3600', '3']);
+  assert.equal(await wall.evaluate(el => el.readOnly), true);
+  assert.match(await form.locator('[data-official-budget]').innerText(), /Remote limit: 3 versions · 1 hour/);
+  assert.equal(await form.locator('[data-reduced-note]').isVisible(), false);
+  await versions.fill('4');
+  await page.waitForTimeout(150);
+  assert.match(await form.locator('[data-limit-error="versions"]').innerText(), /Largest allowed: 3 versions/);
+  assert.equal(await form.locator('[data-start-yes]').isDisabled(), true);
+  await versions.fill('2');
+  await page.waitForTimeout(150);
+  assert.equal(await form.locator('[data-start-yes]').isDisabled(), false);
+  assert.match(await form.locator('[data-reduced-text]').innerText(), /^2 of 3 versions · 1 of 1 hour\.$/);
+});
+
+test('REMOTE-FORM-JOIN: Start run is off, the demo join works, and a task without a recording says so', async t => {
+  const {page, form} = await dialog(t, {remote: ['pick_place_counter_to_sink'], options: withSecondTask()});
+  assert.equal(await form.locator('[data-remote-start]').isDisabled(), true);
+  assert.equal(await form.locator('[data-start-no]').isVisible(), false);
+  assert.equal(await form.locator('input[name="goal_id"]').evaluate(el => el.readOnly), true);
+  const join = form.locator('[data-start-yes]');
+  assert.equal(await join.innerText(), 'Join demo');
+  await form.locator('select[name="task_id"]').selectOption('pick_place_counter_to_cabinet');
+  await page.waitForTimeout(150);
+  assert.equal(await join.innerText(), 'No demo yet');assert.equal(await join.isDisabled(), true);
+  await form.locator('select[name="task_id"]').selectOption('pick_place_counter_to_sink');
+  await page.waitForTimeout(150);
+  const request = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/lobby/runs');
+  await join.click();
+  assert.deepEqual((await request).postDataJSON(), {task_key: 'pick_place_counter_to_sink', strategy: 'reactive_help', dev_source: 'lab_glm', share_replies: false});
+});
+
+test('MODEL-SOURCE-ROLES: Different per agent offers PARCC per role, and Dev on the lab still submits', async t => {
+  const now = Math.floor(Date.now() / 1000), credentials = [{credential_id: 'mine', provider: 'deepseek', expires_at: now + 3600, base_url_host: 'api.deepseek.com'}];
+  const {page, form, source} = await dialog(t, {credentials});
+  await source.selectOption('different');
+  await form.locator('[data-keys-details]').evaluate(el => { el.open = true; });
+  await form.locator('[data-role-choice="eval"]').selectOption('parcc');
+  assert.deepEqual((await models(form)).eval.options, ['parcc/GLM']);
+  const sent = await submitted(page, form);
+  assert.deepEqual(sent.agent_provider, {roles: {eval: lab('parcc/GLM'), dev: {credential: 'lab', provider: 'openai', model: 'gpt-6.1-sol'}}});
 });
 
 test('NEW-RUN-AGENT-ONLY: nothing in New run offers One call or a fixed policy', async t => {
@@ -194,9 +275,9 @@ const lab = model => ({credential: 'lab', provider: 'parcc', model});
 test('MODEL-SOURCE-PARCC-SUBMIT: the run asks for the lab key on all three roles and sends no key', async t => {
   const {page, form, source} = await dialog(t);
   await source.selectOption('parcc');
-  await form.locator('select[name="eval_model"]').selectOption('parcc/Qwen');
+  await form.locator('select[name="advisor_model"]').selectOption('parcc/Qwen');
   const sent = await submitted(page, form);
-  assert.deepEqual(sent.agent_provider, {roles: {dev: lab('parcc/GLM'), eval: lab('parcc/Qwen'), advisor: lab('parcc/GLM')}});
+  assert.deepEqual(sent.agent_provider, {roles: {dev: lab('parcc/GLM'), eval: lab('parcc/GLM'), advisor: lab('parcc/Qwen')}});
   assert.equal(sent.dev_mode, 'agent');
   assert.equal(sent.model_source, 'codex');                    // The frozen Agent schema; public views label the run PARCC.
   assert.equal(sent.goal_key, await form.locator('input[name="goal_id"]').inputValue());

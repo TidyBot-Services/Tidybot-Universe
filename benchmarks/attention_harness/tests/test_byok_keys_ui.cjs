@@ -56,8 +56,16 @@ test('with the flag off, stale Eval / Advisor choices are ignored', () => {
 test('Eval-only and Advisor-only overrides with Dev on lab', () => {
   for (const role of ['eval', 'advisor']) {
     const s = state('different');s.choice[role] = 'key:second';
-    assert.deepEqual(select(s), {roles:{[role]:route('second', 'openai-compatible', `${role}-model`)}});
+    // The server routes every role from Dev, so a Dev left on lab Codex is named.
+    assert.deepEqual(select(s), {roles:{[role]:route('second', 'openai-compatible', `${role}-model`), dev:route('lab', 'openai', 'gpt-6.1-sol')}});
   }
+});
+test('a role can sit on lab PARCC next to a saved key', () => {
+  const s = state('different');s.choice.dev = 'parcc';s.choice.eval = 'key:mine';s.choice.advisor = 'parcc';
+  s.labModel = {dev:'parcc/GLM', eval:'', advisor:'parcc/Qwen'};
+  assert.deepEqual(select(s), {roles:{dev:route('lab', 'parcc', 'parcc/GLM'), eval:route('mine', 'deepseek', 'eval-model'), advisor:route('lab', 'parcc', 'parcc/Qwen')}});
+  s.labSource = 'parcc';s.mode = 'lab';
+  assert.deepEqual(select(s).roles.eval, route('lab', 'parcc', 'parcc/GLM'));   // Lab mode ignores the saved key.
 });
 test('mode switches restore independent custom choices without mutating state', () => {
   const s = state('different');s.choice.dev = 'key:second';

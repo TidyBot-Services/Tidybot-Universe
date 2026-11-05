@@ -237,46 +237,39 @@
     });
   }
 
-  // The extra field of the New run dialog: sharing, and where the new run would stand in the queue.
+  // Remote's New run is main's form. Four things differ: no Codex (live.js), the shared host's limits, a goal ID the host
+  // sets, and, until real runs are connected, a join that replays a recording instead of Start run.
+  const NEW_RUN_LIMITS = {versions: 3, wall: 3600, help: 3, maxHelp: 3, versionsRange: '1–3 · Remote limit', wallRange: '1 hour · Remote limit',
+    note: 'Remote limit: 3 versions · 1 hour · 3 help requests, because everyone shares one robot. Results are not comparable with the official 10-version runs.'};
+  const newRunLimits = () => state.enabled ? NEW_RUN_LIMITS : null;
+  function newRunNotice() {
+    return state.enabled ? '<p class="ab-launch-note ab-launch-source" data-remote-note><span>REMOTE</span><strong>Real runs are not connected yet.</strong><small>Set everything as in the main UI. Join demo replays a recording of this task and does not use these settings.</small></p>' : '';
+  }
+  // The extra section of the New run dialog: sharing, and where the new run would stand in the queue.
   function newRunHtml() {
     if (!state.enabled) return '';
     const snap = state.snap, waiting = (snap.queue || []).length, running = snap.robot?.running ? 1 : 0;
     const place = waiting + running + 1;
     const mineBusy = [snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
-    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">02</span>Sharing &amp; queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
+    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Sharing &amp; queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
       <label class="ab-reviewer-toggle"><input name="lb_share" type="checkbox"><span class="ab-switch" aria-hidden="true"></span><span><strong>Let others see my help requests and replies in the replay</strong><small>Off by default. Others always see status, progress and result, never your key.</small></span></label>
       <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;
   }
-  // The Task list of the New run dialog in Remote. The three tasks are the same options main offers (same names, groups and
-  // seed rule); only the ones the demo has a recording for can be joined, the rest are greyed out.
-  const DEMO_TASKS = ['pick_place_counter_to_sink', 'turn_on_microwave', 'pick_place_counter_to_cabinet'];
-  const DEMO_SEED = {pick_place_counter_to_sink: 102};
-  const taskOf = option => String(option.value).split('@')[0];
-  function shapeTasks(form) {
-    const select = form?.task_id;
-    if (!state.enabled || !select) return;
-    const recorded = new Set(state.snap?.demo_info?.tasks || []);
-    for (const option of [...select.options]) {
-      if (!DEMO_TASKS.includes(taskOf(option))) { option.remove(); continue; }
-      if (!recorded.has(taskOf(option))) { option.disabled = true; option.textContent += ' · no demo recording yet'; }
-    }
-    for (const group of select.querySelectorAll('optgroup')) if (!group.children.length) group.remove();
-    const settle = () => {
-      const seed = form.seed, fixed = DEMO_SEED[taskOf(select)];
-      // Presets keep main's own locked seed; the one recorded task without a preset gets the same lock.
-      if (seed && !seed.disabled && fixed) {
-        seed.innerHTML = `<option value="${fixed}">Seed ${fixed}</option>`; seed.value = String(fixed); seed.disabled = true;
-        const note = form.querySelector('[data-seed-note]'); if (note) note.textContent = 'Demo recording · seed fixed';
-      }
-    };
-    if (select.selectedOptions[0]?.disabled) {
-      const first = [...select.options].find(option => !option.disabled);
-      if (first) { select.value = first.value; select.dispatchEvent(new Event('change', {bubbles: true})); }
-    }
-    select.addEventListener('change', () => queueMicrotask(settle));
-    settle();
+  function shapeNewRun(form) {
+    if (!state.enabled) return;
+    const join = form.querySelector('[data-start-yes]');
+    join.insertAdjacentHTML('beforebegin', '<button type="button" class="ab-button-quiet" data-remote-start disabled title="Real runs are not connected yet">Start run</button>');
+    form.goal_id.readOnly = true;
+    form.goal_id.closest('label').insertAdjacentHTML('beforeend', '<small>Set by the shared host.</small>');
   }
-  const devSource = (provider, modelSource) => provider ? 'own_key' : modelSource === 'codex' ? 'lab_codex' : 'lab_glm';
+  // Any task can be configured; only the demo join needs a recording of it.
+  function syncJoin(form, profile) {
+    if (!state.enabled) return;
+    const join = form.querySelector('[data-start-yes]'), recorded = (state.snap?.demo_info?.tasks || []).includes(profile?.task_id);
+    join.textContent = recorded ? 'Join demo' : 'No demo yet';
+    if (!recorded) join.disabled = true;
+  }
+  const devSource = (provider, modelSource) => Object.values(provider?.roles || {}).some(role => role.credential !== 'lab') ? 'own_key' : modelSource === 'codex' ? 'lab_codex' : 'lab_glm';
 
   // The 01 cards of someone else's run name the source only, never the model or a key.
   function setupForOthers(snapshot, html) {
@@ -291,7 +284,7 @@
 
   global.Lobby = {
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
-    newRunHtml, shapeTasks, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
+    newRunHtml, newRunNotice, newRunLimits, shapeNewRun, syncJoin, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
   };

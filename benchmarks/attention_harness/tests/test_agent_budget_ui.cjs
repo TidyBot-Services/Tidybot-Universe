@@ -26,6 +26,16 @@ test('the Agent envelope: lower is allowed, higher is refused, the official budg
   assert.match(api.agentBudgetCheck(10,28800).errors.wall,/6 hours/);
 });
 
+test('a host with lower limits uses the same check: its ceiling is the budget, and nothing above it passes',()=>{
+  const host={versions:3,wall:3600};
+  const full=api.agentBudgetCheck(3,3600,host);
+  assert.equal(full.valid,true);assert.equal(full.reduced,false);assert.equal(full.limits,null);
+  assert.deepEqual({...api.agentBudgetCheck(2,3600,host).limits},{versions:2,wall_seconds:3600});
+  assert.match(api.agentBudgetCheck(4,3600,host).errors.versions,/Largest allowed: 3 versions/);
+  assert.match(api.agentBudgetCheck(3,7200,host).errors.wall,/Longest allowed: 1 hour \(3600 seconds\)/);
+  assert.match(api.agentReasonText('lab',{versions:'3',wall:'3600',stop:'90',source:'parcc'}),/^3 formal versions .* 1 hour\. Eval/);
+});
+
 test('an official Agent run sends exactly what it sent before; only a reduced one adds agent_limits',()=>{
   const official=api.agentLaunchSelection(base,{...gate,limits:null});
   assert.ok(!('agent_limits' in official));
@@ -42,9 +52,10 @@ test('Run again restores a reduced budget',()=>{
 });
 
 test('05 starts at the official budget, only lowers, and a repaint leaves the edit alone',()=>{
-  assert.match(source,/name="max_attempts" type="number" min="1" max="10" value="10" required/);
-  assert.match(source,/name="wall_seconds" type="number" min="3600" max="21600" value="21600" required/);
-  assert.match(source,/form\.max_attempts\.value='10';form\.wall_seconds\.value='21600';/);
+  assert.match(source,/name="max_attempts" type="number" min="1" max="\$\{limits\.versions\}" value="\$\{limits\.versions\}" required/);
+  assert.match(source,/name="wall_seconds" type="number" min="3600" max="\$\{limits\.wall\}" value="\$\{limits\.wall\}"/);
+  assert.match(source,/form\.max_attempts\.value=limits\.versions;form\.wall_seconds\.value=limits\.wall;/);
+  assert.match(source,/AGENT_LIMITS=\{versions:AGENT_DEFAULT_VERSIONS,wall:AGENT_DEFAULT_WALL,/);
   const fragment=source.slice(source.indexOf('      function syncAgentOptions()'),source.indexOf('      function updatePreview()'));
   const form={max_attempts:{value:'2'},wall_seconds:{value:'7200'},quota_stop_percent:{value:'90'},model_source:{value:'codex'}};
   const nodes={};form.querySelector=key=>nodes[key]??={textContent:'',hidden:false};

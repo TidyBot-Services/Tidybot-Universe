@@ -52,12 +52,12 @@ test('Run again applies saved fields to the existing dialog before Start',()=>{
 
 test('Run again keeps a reduced budget and the PARCC source, and an own-key model never blanks a select',()=>{
   const lab=model=>({credential:'lab',provider:'parcc',model}),seen=[];
-  const form=repeatForm(),repeat=runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'parcc/GLM',eval_model:'parcc/Qwen',advisor_model:'parcc/GLM',seeds:[102],policies:['autonomous'],
-    agent_limits:{versions:3,wall_seconds:7200},agent_provider:{roles:{dev:lab('parcc/GLM'),eval:lab('parcc/Qwen'),advisor:lab('parcc/GLM')}}});
+  const form=repeatForm(),repeat=runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'parcc/GLM',eval_model:'parcc/GLM',advisor_model:'parcc/Qwen',seeds:[102],policies:['autonomous'],
+    agent_limits:{versions:3,wall_seconds:7200},agent_provider:{roles:{dev:lab('parcc/GLM'),eval:lab('parcc/GLM'),advisor:lab('parcc/Qwen')}}});
   assert.equal(repeat.modelSource,'parcc');
   replay(repeat,form,{labSource:(...args)=>seen.push(args)});
   assert.equal(form.model_source.value,'parcc');assert.equal(form.max_attempts.value,'3');assert.equal(form.wall_seconds.value,'7200');
-  assert.equal(JSON.stringify(seen),JSON.stringify([['parcc',{dev:'parcc/GLM',eval:'parcc/Qwen',advisor:'parcc/GLM'}]]));
+  assert.equal(JSON.stringify(seen),JSON.stringify([['parcc',{dev:'parcc/GLM',eval:'parcc/GLM',advisor:'parcc/Qwen'}]]));
   const mixed=runConfigDefaultsFromSelection({dev_mode:'agent',agent_provider:{roles:{dev:lab('parcc/GLM')}}});
   assert.equal(mixed.modelSource,'codex');
   const own=repeatForm();

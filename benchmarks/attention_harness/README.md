@@ -421,11 +421,16 @@ the one-call ledger interpretation of these runs.
 Model source `Lab models · PARCC` runs all three agent roles on the lab key, with no
 Codex quota. The selection keeps `model_source=codex` (the frozen agent schema) and
 names each role in `agent_provider` with `credential=lab, provider=parcc`; public views
-label such a run `parcc`. Dev is `parcc/GLM`; Eval and Advisor default to `parcc/GLM` and
-may use `parcc/Qwen`. GLM reads text only: its Eval bridge replaces images with a notice,
-its Advisor uses the text prompt, and the start preflight skips the image check for these
-lab roles only. Results are not comparable with Codex runs. The Codex CLI still drives
-each role through the loopback bridge, so it must be installed on the host.
+label such a run `parcc`. Dev and Eval are `parcc/GLM`; the Advisor defaults to `parcc/GLM`
+and may use `parcc/Qwen`, which reads images. GLM reads text only: its Eval bridge replaces
+images with a notice, its Advisor uses the text prompt, and the start preflight skips the
+image check for these lab roles only. Results are not comparable with Codex runs. The Codex
+CLI still drives each role through the loopback bridge, so it must be installed on the host.
+
+PARCC applies `response_format` to every turn, which would leave a tool-using role no tool
+calls, so the bridge asks for the schema in the instructions instead. GLM follows that; Qwen
+as Eval rarely does, so Eval stays on GLM. Qwen also rejects `reasoning_effort=high`, which
+`reasoning_effort()` drops for the Advisor's calls.
 
 ### New run offers Agent runs only
 
@@ -433,6 +438,13 @@ The New run dialog creates Agent runs. One call, fixed-policy runs and "continue
 attempt" have no entry there any more; their records still open, and Run again appears only
 on Agent runs. The HTTP routes behind them are unchanged: this removed the entries, not the
 backend, so a client that posts directly can still reach them.
+
+Remote shows this same form plus section 07, Sharing & queue. Four things differ: no Codex
+source, the shared host's limits (`Lobby.newRunLimits`), a goal ID set by the host, and a
+join that replays a recording, because real runs are not connected yet. Start run stays off
+and the settings are not used. A key saved here goes to the same server memory as the main
+UI, with no separation between people, so do not open this page to others before the gateway
+in the public design exists.
 
 For browser review only, manually run `scripts/preview_agentpolicy.sh`. It creates
 three synthetic fixtures under `/tmp/agentpolicy-preview/` and starts this
