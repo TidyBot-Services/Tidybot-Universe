@@ -438,7 +438,8 @@ def test_a_failed_warm_up_does_not_fail_an_installed_workspace(tmp_path, monkeyp
         raise setup.installer.StepError('codex warm-up', 'quota', 'later')
     monkeypatch.setattr(setup, 'warmup', fail)
     assert setup.main(['--workspace', str(tmp_path)]) == 0
-    assert 'WARN' in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert 'WARN' in output and 'Model routes ready: codex' not in output
 
 
 def route_args(**changes):
@@ -527,6 +528,22 @@ def test_auto_route_prefers_a_logged_in_codex_then_keys(monkeypatch):
     monkeypatch.setattr(run.routes, 'available', lambda: [])
     with pytest.raises(LookupError, match='codex login'):
         run.routes.choose('auto')
+
+
+def test_an_automatic_choice_leaves_a_codex_login_that_does_not_answer(monkeypatch, capsys):
+    def fail(no_warmup):
+        raise run.installer.StepError('codex warm-up', '401', 'log in')
+    monkeypatch.setattr(run.setup, 'warmup', fail)
+    monkeypatch.setattr(run.routes, 'available', lambda: ['codex', 'parcc'])
+    codex = run.routes.ROUTES['codex']
+    assert run.confirmed(codex, 'auto').name == 'parcc'
+    assert 'uses route parcc' in capsys.readouterr().out
+    with pytest.raises(run.installer.StepError):
+        run.confirmed(codex, 'codex')
+    monkeypatch.setattr(run.routes, 'available', lambda: ['codex'])
+    with pytest.raises(run.installer.StepError):
+        run.confirmed(codex, 'auto')
+    assert run.confirmed(run.routes.ROUTES['parcc'], 'auto').name == 'parcc'
 
 
 def test_key_comes_from_a_named_variable_or_the_key_file(monkeypatch, tmp_path):

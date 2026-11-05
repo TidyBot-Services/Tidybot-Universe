@@ -94,7 +94,7 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 
 ### Model routes
 
-`run.sh --model NAME` chooses who answers for the Dev, Eval and Advisor agents. Without `--model` it takes the first ready route in the table's order, and it stops with instructions if none is ready. A key is read from the environment or key file, sent once to the local UI's memory, and never printed or written to a file.
+`run.sh --model NAME` chooses who answers for the Dev, Eval and Advisor agents. Without `--model` it takes the first ready route in the table's order, skips a Codex login that no longer answers, and stops with instructions if none is ready. A key is read from the environment or key file, sent once to the local UI's memory, and never printed or written to a file.
 
 | Route | You provide | Default models |
 |---|---|---|

@@ -217,12 +217,13 @@ def warmup(no_codex_warmup: bool) -> None:
     print("Codex warm-up uses the collaborator's own Codex quota.", flush=True)
     result = _run(['codex', 'exec', '--skip-git-repo-check', 'Reply with ok.'], timeout=120)
     if result.returncode:
-        raise installer.StepError('codex warm-up', (result.stderr or result.stdout).strip(),
-                                  'Run codex login and one short codex exec call, then rerun this command.')
+        detail = '\n'.join((result.stderr or result.stdout).strip().splitlines()[-4:])
+        raise installer.StepError('codex warm-up', detail,
+                                  f'Run {shutil.which("codex") or "codex"} login, then rerun this command.')
 
 
-def report_routes(ws: Path) -> None:
-    found = routes.available()
+def report_routes(ws: Path, failed: tuple = ()) -> None:
+    found = [name for name in routes.available() if name not in failed]
     run = ws / 'repos/attentionbench/scripts/attentionbench/run.sh'
     if found:
         print(f'Model routes ready: {", ".join(found)}. Next: {run} --workspace {ws}')
@@ -281,12 +282,14 @@ def main(argv: list[str] | None = None) -> int:
         if not args.skip_planner and verify.run(ws):
             raise installer.StepError('verify', 'a self-test failed', 'Repair each FAIL item printed above and rerun setup.')
         installer.clean_caches(ws)
+        failed = ()
         if routes.codex_logged_in():
             try:
                 warmup(args.no_codex_warmup)
             except installer.StepError as exc:
                 print(f'WARN {exc}', flush=True)
-        report_routes(ws)
+                failed = ('codex',)  # `codex login status` still passes on an expired login.
+        report_routes(ws, failed)
         return 0
     except installer.StepError as exc:
         print(str(exc), file=sys.stderr)
