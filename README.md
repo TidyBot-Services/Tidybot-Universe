@@ -36,24 +36,25 @@ mkdir -p /absolute/WS/repos && git clone -b attentionbench/baseline-20261015 htt
 /absolute/WS/repos/attentionbench/scripts/attentionbench/run.sh --workspace /absolute/WS
 ```
 
+`setup.sh` needs no model account and ends by proving the workspace works; `verify.sh` repeats that proof at any time.
 `run.sh` runs one agent attempt for up to 45 minutes (`--minutes N` to change), then cancels it and stops everything.
+Choose who answers for the agents with `--model codex`, `parcc`, `deepseek`, `openai` or `custom`
+(see [model routes](docs/attentionbench_collaborator_setup.md#model-routes)).
 Use `scripts/attentionbench/stop.sh --workspace /absolute/WS` to cancel running agent
 workers and stop the UI and Memory services.
 
 | Component | Version or source | Installed by | Size and time |
 |---|---|---|---|
-| OS | Ubuntu 22.04 (verified) or 24.04 (not verified yet; needs a [user namespace fix](docs/attentionbench_collaborator_setup.md#ubuntu-2404-user-namespaces)), Linux x86_64 | You | Existing host |
-| NVIDIA GPU and driver | 580.x on RTX 5070 Ti verified; other combinations untested | You | Hardware and driver installation vary |
+| OS | Ubuntu 22.04 (verified) or 24.04 (not verified yet), Linux x86_64 | You | Existing host |
+| NVIDIA GPU and driver | 580.x on RTX 5070 Ti verified; other combinations untested. A driver older than 570.124.06 warns, and the planner proof decides | You | Hardware and driver installation vary |
 | Git | Ubuntu package | You | Small; minutes |
-| Python with development headers | 3.10+; `python3-dev` | You | Hundreds of MB; minutes |
-| C compiler | `build-essential` | You | Hundreds of MB; minutes |
-| uv | Current compatible installer | You | Small; minutes |
-| Conda | Miniconda, with locked cuRobo environment | You; setup builds environment | About 15 GB for cuRobo; tens of minutes |
-| bwrap and user namespaces | `bubblewrap`; working user, PID and network namespace probe | You | Small; minutes |
-| Codex CLI and account | `codex-cli 0.165.0`; access to `gpt-6.1-sol`. setup.sh and run.sh make one short Codex call when no recent quota reading exists (uses your quota). | You | Small; login and warm-up minutes |
-| Disk | About 70 GB free for the first install (about 51 GB workspace plus about 15 GB of uv/pip/conda download caches; reclaim the caches afterwards with `uv cache clean; pip cache purge; conda clean -a`). `setup.sh` checks this first. | You | Asset transfer, hashing and installation took 15 minutes in a clean GPU container with local asset copies |
-| Official RoboCasa assets and simulator | Asset lists pinned by SHA256 in `attentionbench.lock.json` (`assets.*`) | setup | About 25 GB with the simulator environment; transfer and hashing can take tens of minutes or longer |
-| cuRobo native assets | 70,254 files checked against the planner lock | setup | About 8.2 GB |
+| Ubuntu packages | `build-essential`, `bubblewrap`, `ffmpeg`, `libegl1`, `libgl1`, `libglib2.0-0`, `libgomp1`, and on 24.04 an [AppArmor profile](docs/attentionbench_collaborator_setup.md#ubuntu-2404-user-namespaces) | setup, after one question | Hundreds of MB; minutes |
+| uv, Conda, Codex CLI | Pinned in `attentionbench.lock.json`; copies in `WS/tools` | setup | About 1 GB; minutes |
+| A model for real runs | A Codex login or an API key; see [model routes](docs/attentionbench_collaborator_setup.md#model-routes). Install and `verify.sh` need none | You | Minutes |
+| Disk | About 80 GB free for the first install; it peaks near 75 GB and ends near 53 GB. A long run can add 20 GB or more | You | |
+| Official RoboCasa assets and simulator | Seven public archives, every file SHA256 checked against `assets.*` in the lock | setup | About 25 GB with the simulator environment; transfer and hashing can take tens of minutes |
+| cuRobo native assets | Public ManiSkill archives plus one tracked overlay, 70,254 files checked against the planner lock | setup | About 8.2 GB |
+| cuRobo environment | Locked Conda and pip lists | setup | About 15 GB; tens of minutes |
 | Official cuRobo source | Commit `78fd485fa82d9b9a063fb4985e371814587e666a` | setup | Checkout and build time vary |
 | `robocasa_tasks` source | Commit `b18bbf1585c42e370ae45ababdddad700cc2c71d` | setup | Checkout time varies |
 
@@ -61,7 +62,7 @@ workers and stop the UI and Memory services.
 |---|---|
 | Author absolute paths | Remain only in frozen evidence, logs, legacy tools and formal-tier pinned planner paths. [Exemptions](config/attentionbench/machine-path-exemptions.json) list reasons; `test_no_machine_paths` guards them. Collaborator runs do not read those paths. |
 | Credentials and addresses | No keys, tailnet addresses or e-mail addresses are tracked (scanned over the branch history). The author lab's LLM proxy host appears in provider code and docs; collaborators use their own Codex account instead. |
-| Ports | UI and Memory bind loopback at 8769 and 8878 by default; `--ui-port` and `--memory-port` change them. |
+| Ports | UI and Memory bind loopback at 8769 and 8878 by default and move to the next free port when busy; `--ui-port` and `--memory-port` choose them. |
 | Memory keys | Generated separately for each workspace by setup. |
 
 See the [collaborator setup guide](docs/attentionbench_collaborator_setup.md) for details
@@ -83,6 +84,8 @@ Software became powerful when we stopped building monoliths and started composin
 An agent with access to the internet, trial-and-error, and a library of shared skills can do far more than any hand-coded robot program. Skills built by one robot benefit every robot in the community. That's the Tidybot Universe.
 
 ## Install (Sim + Claude Code)
+
+This is the separate TidyBot agent sandbox. For AttentionBench, use the commands at the top of this page.
 
 Requires [conda](https://docs.conda.io/en/latest/miniconda.html) and [Claude Code](https://claude.ai/code). No hardware needed — runs entirely in simulation.
 

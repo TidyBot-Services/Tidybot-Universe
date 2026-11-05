@@ -458,5 +458,5 @@ test('the Model source row follows whether keys are available, not the radios\' 
   // Saving ends with the PUT; the model listing and the key test run after it.
   const save=source.slice(source.indexOf('    async function save() {'),source.indexOf('    async function test('));
   assert.ok(save.indexOf('state.saving=false')<save.indexOf('await refreshList()'));
-  assert.ok(save.indexOf('state.saving=false')<save.indexOf("await test('dev'"));
+  assert.ok(save.indexOf('state.saving=false')<save.indexOf('await test(role'));
 });

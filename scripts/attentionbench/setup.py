@@ -138,7 +138,7 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int | None = None, memory
     host_failures, host_warnings = installer.gate(installer.host_fingerprint())
     check('host versions', not host_failures,
           '; '.join(host_failures) if host_failures else 'driver and glibc readable',
-          'Install the NVIDIA driver or move to Ubuntu 22.04 or 24.04.')
+          'Install the NVIDIA driver or move to Ubuntu 22.04 or 24.04.', warning=dry_run)
     for warning in host_warnings:
         check('host', False, warning, 'See the message.', warning=True)
     nvidia = shutil.which('nvidia-smi')
