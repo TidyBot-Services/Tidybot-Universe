@@ -1,0 +1,183 @@
+"""Lab PARCC as an Agent source: the same bridges as a user's key, with the lab key, and no Codex quota."""
+import json
+import secrets
+import time
+import urllib.error
+from types import SimpleNamespace
+
+import pytest
+
+from benchmarks.attention_harness import dev_advisor_proxy, dev_agent_config as config, dev_agent_eval as eval_module
+from benchmarks.attention_harness import dev_agent_key_vault as vault, dev_agent_parcc_bridge as bridge_module
+from benchmarks.attention_harness import dev_agent_provider as provider_module, dev_agent_run_launch as launch
+from benchmarks.attention_harness import dev_agent_view
+from benchmarks.attention_harness.canary_scan import scan
+from benchmarks.attention_harness.dev_agent_byok_client import ByokChatClient
+from benchmarks.attention_harness.dev_agent_loop import provider_for_run
+from benchmarks.attention_harness.dev_agent_secret import Secret
+from benchmarks.attention_harness.dev_agent_workspace import Workspace
+from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment, offline_dev_identity
+from benchmarks.attention_harness.tests.fakes.byok_http import MemoryServer
+from benchmarks.attention_harness.tests.test_daily_byok_keys import (call, control, create_memory, fake_probe_transport, fake_process,
+    materialize, memory_service, selection)
+from benchmarks.attention_harness.tests.test_dev_agent_byok_config import BASE
+from benchmarks.attention_harness.tests.test_dev_agent_byok_p2 import FakeTransport
+from benchmarks.attention_harness.tests.test_dev_agent_d2 import CONFIG
+from benchmarks.attention_harness.tests.test_dev_agent_d4 import eval_factory, fake_view, seed_record
+
+
+def lab(eval_model='parcc/GLM', advisor_model='parcc/GLM'):
+    role=lambda model:dict(credential='lab',provider='parcc',model=model)
+    return dict(roles=dict(dev=role('parcc/GLM'),eval=role(eval_model),advisor=role(advisor_model)))
+
+
+def lab_key(monkeypatch):
+    key='sk-canary-'+secrets.token_hex(24)
+    monkeypatch.setattr(bridge_module,'parcc_key',lambda:key)
+    return key
+
+
+def test_all_three_roles_can_run_on_the_lab_key():
+    chosen=config.normalize(dict(BASE,agent_provider=lab()))
+    assert [chosen[role+'_model'] for role in ('dev','eval','advisor')]==['parcc/GLM']*3
+    assert all(row['key_source']=='lab' for row in chosen['agent_provider']['roles'].values())
+    assert config.display_source(chosen)=='parcc'
+
+
+@pytest.mark.parametrize('role,change,error',[
+    ('dev',dict(model='parcc/Qwen'),'unsupported_agent_model'),
+    ('dev',dict(model='gpt-6.1-sol'),'unsupported_agent_model'),
+    ('eval',dict(model='anything-else'),'unsupported_agent_model'),
+    ('eval',dict(provider='openai'),'unsupported_agent_model'),
+    ('advisor',dict(provider='deepseek'),'lab_provider_not_supported')])
+def test_the_lab_key_serves_only_the_lab_models(role,change,error):
+    value=lab();value['roles'][role].update(change)
+    with pytest.raises(ValueError,match=error):config.normalize(dict(BASE,agent_provider=value))
+
+
+def test_only_three_lab_parcc_roles_are_labelled_parcc():
+    mixed=lab();mixed['roles']['eval']=dict(credential='lab',provider='openai',model='gpt-6.1-sol')
+    assert config.display_source(dict(BASE,model_source='codex',agent_provider=mixed))=='codex'
+    assert dev_agent_view.clean(dict(BASE,model_source='codex',agent_provider=mixed))['model_source']=='codex'
+    assert dev_agent_view.clean(dict(BASE,model_source='codex',agent_provider=lab()))['model_source']=='parcc'
+    assert dev_agent_view.clean(dict(model_source='codex'))['model_source']=='codex'
+
+
+def test_glm_advisor_uses_the_text_prompt_and_qwen_keeps_the_frames():
+    text=config.configuration(dict(BASE,agent_provider=lab(),advisor_proxy={'enabled':True}))
+    assert text['eval_agent']['model']=='parcc/GLM' and text['eval_agent']['model_source']=='parcc'
+    advisor=text['advisor_proxy']
+    assert (advisor['model'],advisor['model_source'],advisor['mode'],advisor['max_attempts'])==('parcc/GLM','parcc','text_only',1)
+    assert advisor['prompt_version']==dev_advisor_proxy.OLD_PROMPT_VERSION and 'cache_namespace' not in advisor
+    seeing=config.configuration(dict(BASE,agent_provider=lab('parcc/Qwen','parcc/Qwen'),advisor_proxy={'enabled':True}))
+    assert (seeing['advisor_proxy']['model'],seeing['advisor_proxy']['mode'])==('parcc/Qwen','vision')
+    assert seeing['eval_agent']['model']=='parcc/Qwen'
+
+
+def test_vault_gives_every_role_the_lab_key_without_a_saved_credential(monkeypatch):
+    key=lab_key(monkeypatch);roles=config.normalize(dict(BASE,agent_provider=lab()))['agent_provider']['roles']
+    taken=vault.ProviderKeyVault().take_for_run('owner',roles)
+    assert set(taken._keys)=={'lab'} and taken._keys['lab'].reveal()==key
+    assert set(taken.roles)=={'dev','eval','advisor'} and all(row['key_source']=='lab' for row in taken.roles.values())
+
+
+def test_a_host_without_the_lab_key_refuses_the_run(monkeypatch):
+    def missing():raise bridge_module.BridgeError('parcc_key_missing')
+    monkeypatch.setattr(bridge_module,'parcc_key',missing)
+    roles=config.normalize(dict(BASE,agent_provider=lab()))['agent_provider']['roles']
+    with pytest.raises(provider_module.ProviderError,match='Missing'):vault.ProviderKeyVault().take_for_run('owner',roles)
+
+
+def test_lab_codex_roles_still_take_no_key():
+    value=lab();value['roles']={role:dict(credential='lab',provider='openai',model='gpt-6.1-sol') for role in ('dev','eval','advisor')}
+    roles=config.normalize(dict(BASE,agent_provider=value))['agent_provider']['roles']
+    assert vault.ProviderKeyVault().take_for_run('owner',roles).roles=={}
+
+
+@pytest.mark.parametrize('model,vision',[('parcc/GLM',False),('parcc/Qwen',True)])
+def test_the_image_flag_follows_the_model(monkeypatch,model,vision):
+    key=Secret(lab_key(monkeypatch));roles=config.normalize(dict(BASE,agent_provider=lab(model,model)))['agent_provider']['roles']
+    monkeypatch.setattr(vault,'_RUN_KEYS',{'lab':key});monkeypatch.setattr(vault,'_RUN_ROLES',{r:dict(row,base_url=None) for r,row in roles.items()})
+    manifest=dict(agent_provider=dict(roles=roles))
+    for role in ('eval','advisor'):
+        resolved=provider_for_run(manifest,role=role)
+        assert (resolved.spec.id,resolved.model,resolved.vision,resolved.secret)==('parcc',model,vision,key)
+
+
+def test_a_users_key_is_never_excused_from_the_image_check():
+    mine=dict(credential='mine',provider='parcc',model='parcc/GLM')
+    assert not config.text_only(mine) and config.routed(mine)
+
+
+@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','dev']),(lab('parcc/Qwen','parcc/Qwen'),['dev','eval','advisor'])])
+def test_preflight_asks_only_a_reader_of_images_to_read_one(monkeypatch,roles,expected):
+    lab_key(monkeypatch);seen=[]
+    def probe(spec,secret,model,*,role):
+        seen.append(role);return provider_module.ProbeResult(dict.fromkeys(('auth','chat','streaming','tools','vision'),'ok'),[])
+    roles=config.normalize(dict(BASE,agent_provider=roles))['agent_provider']['roles']
+    launch.preflight(lambda chosen:vault.ProviderKeyVault().take_for_run('owner',chosen),roles,
+        lambda provider,base:provider_module.presets()[provider],probe_provider=probe)
+    assert seen==expected
+
+
+@pytest.mark.parametrize('vision',[False,True])
+def test_eval_bridge_gets_the_image_flag(tmp_path,monkeypatch,vision):
+    monkeypatch.setattr(bridge_module.http.server,'ThreadingHTTPServer',MemoryServer)
+    seen=[];real=bridge_module.ChatBridge
+    def bridge(*args,**kwargs):seen.append(kwargs['vision']);return real(*args,**kwargs)
+    monkeypatch.setattr(bridge_module,'ChatBridge',bridge)
+    ws=Workspace(tmp_path/'agent').prepare(dict(task_id='fake',task_prompt='Move.'),CONFIG)
+    resolved=SimpleNamespace(spec=provider_module.presets()['parcc'],secret=Secret('sk-canary-'+secrets.token_hex(24)),model='parcc/GLM',
+        vision=vision,token=secrets.token_urlsafe(32),token_env='ATTENTION_BYOK_BRIDGE_TOKEN')
+    evaluator=eval_module.Evaluator(ws,provider=resolved,model='ignored',command_factory=eval_factory(ws))
+    assert evaluator.evaluate(seed_record(ws),deadline=time.monotonic()+10)['status']=='completed'
+    assert seen==[vision]
+
+
+def test_glm_advisor_is_sent_no_frames_and_records_its_source(tmp_path,monkeypatch):
+    resolved=SimpleNamespace(spec=provider_module.presets()['parcc'],secret=Secret('sk-canary-'+secrets.token_hex(24)),model='parcc/GLM')
+    transport=FakeTransport(resolved.secret,None);monkeypatch.setattr(provider_module,'open_request',transport)
+    settings=config.configuration(dict(BASE,agent_provider=lab(),advisor_proxy={'enabled':True}))['advisor_proxy']
+    record=dev_advisor_proxy.ask(fake_view(),settings,ByokChatClient(resolved),cache_dir=tmp_path)
+    sent=transport.fake.requests[-1][1]
+    assert sent['model']=='parcc/GLM' and all(isinstance(message['content'],str) for message in sent['messages'])
+    assert record['mode']=='text_only' and record['model_source']=='parcc' and record['frames']==[] and record['feedback']
+    assert not scan([resolved.secret],roots=[tmp_path],include_processes=True)
+
+
+def parcc_selection(**choices):
+    return dict(selection(byok=False),agent_provider=lab(**choices))
+
+
+def test_daily_start_hands_the_lab_key_through_the_pipe(tmp_path,monkeypatch,materialize):
+    key=Secret(lab_key(monkeypatch));service=memory_service(tmp_path,monkeypatch,vault.ProviderKeyVault());token=control(service)
+    monkeypatch.setattr(provider_module,'open_request',fake_probe_transport());launched=fake_process(monkeypatch)
+    status,made=create_memory(service,token,parcc_selection())
+    assert status==200,made
+    assert made['selection']['model_source']=='parcc'
+    eid=made['experiment_id'];cell=made['cells'][0]
+    status,view=call(service,token,'GET',f'/api/dev-v2/experiments/{eid}/cells/{cell["key"]}/view')
+    assert status==200 and view['agent']['model_source']=='parcc',view
+    assert [view['agent'][name] for name in ('dev_model','eval_model','advisor_model')]==['parcc/GLM']*3
+    status,value=call(service,token,'POST',f'/api/dev-v2/experiments/{eid}/run',{})
+    assert status==200 and value['worker_started'] and len(launched)==1,value
+    argv,kwargs=launched[0]
+    assert '--key-fd' in argv and kwargs['pass_fds']
+    directory=tmp_path/'daily'/eid
+    assert not scan([key],roots=[directory],sqlite_paths=[directory/'ledger.sqlite3'],
+        extra_blobs=[json.dumps(argv),json.dumps(kwargs['env'])],include_processes=False)
+
+
+def test_an_unreachable_parcc_refuses_the_start_and_the_run_stays_startable(tmp_path,monkeypatch,materialize):
+    lab_key(monkeypatch);service=memory_service(tmp_path,monkeypatch,vault.ProviderKeyVault());token=control(service)
+    def down(request,**kwargs):raise urllib.error.URLError('timed out')
+    monkeypatch.setattr(provider_module,'open_request',down);launched=fake_process(monkeypatch)
+    status,made=create_memory(service,token,parcc_selection())
+    assert status==200,made
+    eid=made['experiment_id']
+    status,value=call(service,token,'POST',f'/api/dev-v2/experiments/{eid}/run',{})
+    assert status==409 and value['detail']['code']=='provider_preflight_failed' and 'timed out' in value['error'],value
+    assert not launched
+    monkeypatch.setattr(provider_module,'open_request',fake_probe_transport())
+    status,value=call(service,token,'POST',f'/api/dev-v2/experiments/{eid}/run',{})
+    assert status==200 and value['worker_started'] and len(launched)==1,value

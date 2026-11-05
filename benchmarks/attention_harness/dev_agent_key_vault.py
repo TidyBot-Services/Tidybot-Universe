@@ -106,9 +106,9 @@ class ProviderKeyVault:
             for role, desc in roles.items():
                 if role not in ('dev','eval','advisor'): raise ProviderError('role_invalid', 'Invalid role')
                 name = credential_name(desc['credential'])
-                if name == 'lab' and (role != 'dev' or desc['provider']=='openai'): continue
+                if name == 'lab' and desc['provider']=='openai': continue
                 value = self._entries.get((owner,name))
-                if value is None and role=='dev' and name=='lab' and desc['provider']=='parcc':
+                if value is None and name=='lab' and desc['provider']=='parcc':
                     from .dev_agent_parcc_bridge import parcc_key,BridgeError
                     try:value=dict(secret=Secret(parcc_key()),provider='parcc',base_url=None)
                     except BridgeError:pass

@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from .dev_agent_config import text_only
 from .dev_agent_provider import ProviderError, probe, resolve_provider
 from .dev_agent_secret import scrub
 
@@ -21,7 +22,8 @@ def preflight(take, roles, provider_spec, *, probe_provider=None):
         if roles[role].get('base_url_host') != urlsplit(spec.chat_url).hostname:
             raise RunPreflightError(dict(error=dict(code='provider_mismatch',
                 message='Credential host differs for role '+role, redacted=False, role=role)))
-        result = (probe_provider or probe)(spec, secret, desc['model'], role=role)
+        # A lab role on a text-only model is sent no images, so it is checked like Dev.
+        result = (probe_provider or probe)(spec, secret, desc['model'], role='dev' if text_only(desc) else role)
         if not result.ok:
             raise RunPreflightError(dict(error=dict(code='provider_preflight_failed',
                 message='\n'.join(e['message'] for e in result.errors),

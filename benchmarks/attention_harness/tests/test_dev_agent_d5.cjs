@@ -8,7 +8,7 @@ const fixture=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/d5-agent-
 const functions=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
 const render=source.slice(source.indexOf('  function enterAgentWorkspace('),source.indexOf('  async function agentWorkspaceSnapshot('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,devPolicyChoices,runConfigDefaultsFromSelection,agentActivityCaption,agentTrialChips})',{esc});
+const api=vm.runInNewContext(functions+render+'\n({launcherDevMode,agentLaunchSelection,agentOptionGate,agentReasonText,devPolicyChoices,runConfigDefaultsFromSelection,agentActivityCaption,agentTrialChips})',{esc});
 const fillPolicyOptions=(select,values)=>{const before=select.value;select.options=values.map(value=>({value}));select.value=values.includes(before)?before:values[0]||'';};
 const old={eval_agent:{enabled:true,model:'parcc/Qwen'},request_key:'unchanged-123',tasks:['open_cabinet'],seeds:[102],policies:['reactive_help'],mode:'experiment',help_budget:5,human_wait_seconds:300,configuration:{goal_id:'old-goal-123',experiment_budget:{executions:5},cell_budget:{executions:5},max_iterations:5,wall_seconds:21600}};
 
@@ -50,7 +50,7 @@ test('agent facts fit the original workspace without raw sections',()=>{
   assert.doesNotMatch(html,/data-agent-errors|data-agent-secondary|stdout/);
 });
 test('new controls are connected to actual launcher serialization and separate agent rendering',()=>{
-  for(const name of ['dev_mode','dev_model','eval_model','quota_stop_percent'])assert.ok(source.includes(`name="${name}"`));
+  for(const name of ['dev_mode','${role}_model','quota_stop_percent'])assert.ok(source.includes(`name="${name}"`));
   assert.match(source,/selection=agentLaunchSelection\(selection,/);
   assert.match(source,/function updatePreview\(\) \{\s+fixtureRunMode\([^\n]+\);\s+syncAgentOptions\(\)/);
   assert.match(source,/if\(cell.dev_mode==='agent'\)/);
@@ -65,9 +65,9 @@ test('actual dialog gates disable unsupported mode and retain independent model 
   const agentOption={disabled:false};fields.dev_mode.querySelector=()=>agentOption;
   fields.dev_mode.value='agent';fields.dev_model.value='gpt-6-sol';fields.eval_model.value='gpt-6-astra';
   fields.v2_policy.options=[];fields.v2_policy.value='reactive_help';fields.v2_mode.value='interactive';
-  const context={form:fields,options:{dev_v2:{budget_tier:'dev',policies:['a','b']}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
+  const context={form:fields,options:{dev_v2:{budget_tier:'dev',policies:['a','b']}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,agentReasonText:api.agentReasonText,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
   vm.runInNewContext(fragment+'\nsyncAgentOptions();',context);
-  assert.equal(fields.dev_mode.disabled,false);assert.equal(fields.model_source.value,'codex');assert.equal(fields.model_source.disabled,true);
+  assert.equal(fields.dev_mode.disabled,false);assert.equal(fields.model_source.value,'codex');assert.equal(fields.model_source.disabled,false);
   assert.equal(fields.dev_model.value,'gpt-6-sol');assert.equal(fields.eval_model.value,'gpt-6-astra');
   assert.equal(fields.max_attempts.value,'10');assert.equal(fields.wall_seconds.value,'21600');
   assert.ok(nodes['[data-agent-reason]'].textContent.includes('300'));
@@ -87,7 +87,7 @@ test('fresh dev single cell defaults to Agent; Advanced one-call preserves form 
   Object.assign(form.model_source,{value:'parcc'});form.eval_agent_enabled.checked=false;form.max_attempts.value='5';form.wall_seconds.value='7200';
   form.v2_policy.options=[];form.v2_policy.value='reactive_help';form.v2_mode.value='interactive';
   const before=JSON.stringify([form.model_source.value,form.eval_agent_enabled.checked,form.max_attempts.value,form.wall_seconds.value]);
-  const context={form,options:{dev_v2:{budget_tier:'dev'}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
+  const context={form,options:{dev_v2:{budget_tier:'dev'}},selectedProfile:()=>({channel:'dev_v2'}),forkStart:null,requestedDevMode:'agent',oneCallFields:null,launcherDevMode:api.launcherDevMode,agentOptionGate:api.agentOptionGate,agentReasonText:api.agentReasonText,devPolicyChoices:api.devPolicyChoices,fillOptions:fillPolicyOptions,showQuota:()=>{}};
   vm.runInNewContext(fragment+'syncAgentOptions();',context);
   assert.equal(form.dev_mode.value,'agent');
   context.requestedDevMode='one_call';vm.runInNewContext('syncAgentOptions();',context);
@@ -119,7 +119,7 @@ test('Advanced one-call serializes the actual submit form to the original reques
     seed:field(102),v2_policy:field('reactive_help'),v2_mode:field('experiment'),dev_mode:field('one_call'),dev_model:field('gpt-6-astra'),eval_model:field('gpt-6-astra')};
   form.querySelectorAll=selector=>Object.entries(selector==='[data-v2-cell]'?cell:experiment).map(([key,value])=>({value,dataset:selector==='[data-v2-cell]'?{v2Cell:key}:{v2Experiment:key}}));
   const context={form,profile:{channel:'dev_v2',task_id:'open_cabinet'},options:{dev_v2:{budget_tier:'dev'}},fork:null,
-    requestKey:'unchanged-123',syncBudget:()=>{},selection:null,agentLaunchSelection:api.agentLaunchSelection,budget:{valid:true,reduced:false,limits:null,errors:{}}};
+    requestKey:'unchanged-123',syncBudget:()=>{},selection:null,keys:{selection:()=>null},agentLaunchSelection:api.agentLaunchSelection,budget:{valid:true,reduced:false,limits:null,errors:{}}};
   vm.runInNewContext(serialize,context);
   assert.equal(JSON.stringify({selection:context.selection,start:true}),JSON.stringify({selection:old,start:true}));
   for(const devMode of ['one_call','agent']){

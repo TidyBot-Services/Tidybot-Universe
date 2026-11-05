@@ -21,8 +21,8 @@ def clean(value):
     if isinstance(value,list):return [clean(v) for v in value]
     if isinstance(value,dict):
         result={k:clean(v) for k,v in value.items() if k not in DROP}
-        from .dev_agent_config import all_user_roles
-        if all_user_roles(value) and 'model_source' in result:result['model_source']='byok'
+        from .dev_agent_config import display_source
+        if 'agent_provider' in value and 'model_source' in result:result['model_source']=display_source(value)
         return result
     return value
 

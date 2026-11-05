@@ -50,15 +50,16 @@ for (const width of [1280, 390]) test(`MODEL-SOURCE-KEYS: a real key press on th
   const {page, form, source, radio} = await dialog(t, {width});
   await watch(source);
   await source.focus();
-  await page.keyboard.press('ArrowDown');                      // codex -> the next enabled option (My key for all agents)
-  assert.deepEqual(await page.evaluate(() => window.__events), ['input:all', 'change:all']);
+  await page.keyboard.press('ArrowDown');                      // codex -> PARCC -> My key for all agents
+  await page.keyboard.press('ArrowDown');
+  assert.deepEqual(await page.evaluate(() => window.__events), ['input:parcc', 'change:parcc', 'input:all', 'change:all']);
   assert.equal(await source.inputValue(), 'all');
   assert.equal(await radio(), 'all');
   assert.equal(await form.locator('[data-key-value]').isVisible(), true);   // the add-key form appeared
   await page.keyboard.press('ArrowDown');
   assert.equal(await source.inputValue(), 'different');
   assert.equal(await radio(), 'different');
-  await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp');
+  for (let step = 0; step < 3; step++) await page.keyboard.press('ArrowUp');
   assert.equal(await source.inputValue(), 'codex');
   assert.equal(await radio(), 'lab');
   assert.equal(await form.locator('[data-key-value]').isVisible(), false);
@@ -76,12 +77,10 @@ test('MODEL-SOURCE-SELECT: choosing with selectOption (input then change) sticks
   }
 });
 
-test('MODEL-SOURCE-PARCC: PARCC is greyed in Agent mode and chosen normally in One call', async t => {
+test('MODEL-SOURCE-PARCC: One call keeps its own PARCC choice', async t => {
   const {page, form, source, radio} = await dialog(t);
-  const parcc = source.locator('option[value="parcc"]');
-  assert.deepEqual(await parcc.evaluate(o => [o.disabled, o.textContent]), [true, 'Lab models · PARCC (GLM + Qwen) · One call only']);
   await form.locator('select[name="dev_mode"]').selectOption('one_call');
-  await page.waitForFunction(() => !document.querySelector('#ab-launch-form [data-keys-source] option[value="parcc"]').disabled);
+  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'One call');
   await source.selectOption('parcc');
   assert.equal(await source.inputValue(), 'parcc');
   assert.equal(await form.locator('select[name="model_source"]').inputValue(), 'parcc');
@@ -89,6 +88,93 @@ test('MODEL-SOURCE-PARCC: PARCC is greyed in Agent mode and chosen normally in O
   await source.selectOption('codex');
   assert.equal(await source.inputValue(), 'codex');
   assert.equal(await form.locator('select[name="model_source"]').inputValue(), 'codex');
+});
+
+const models = form => form.evaluate(f => Object.fromEntries(['dev', 'eval', 'advisor'].map(role => {
+  const select = f.elements[`${role}_model`];
+  return [role, {value: select.value, options: [...select.options].map(o => o.value)}];
+})));
+
+for (const width of [1280, 390]) test(`MODEL-SOURCE-PARCC-AGENT: PARCC is a normal choice in Agent mode at ${width}px`, async t => {
+  const {page, form, source, radio} = await dialog(t, {width});
+  const parcc = source.locator('option[value="parcc"]');
+  assert.deepEqual(await parcc.evaluate(o => [o.disabled, o.textContent]), [false, 'Lab models · PARCC (GLM + Qwen)']);
+  await watch(source);
+  await source.focus();
+  await page.keyboard.press('ArrowDown');                      // codex -> parcc, through the browser's input then change
+  assert.deepEqual(await page.evaluate(() => window.__events), ['input:parcc', 'change:parcc']);
+  await page.waitForTimeout(150);                              // anything scheduled by the repaint
+  assert.equal(await source.inputValue(), 'parcc');
+  assert.equal(await radio(), 'lab');
+  assert.equal(await form.locator('[data-bill-name]').innerText(), 'PARCC (free)');
+  assert.match(await form.locator('[data-source-help]').innerText(), /GLM reads text only/);
+  assert.doesNotMatch(await form.locator('[data-agent-reason]').innerText(), /quota/);
+  assert.equal(await form.locator('[data-codex-quota]').isVisible(), false);
+  assert.deepEqual(await models(form), {
+    dev: {value: 'parcc/GLM', options: ['parcc/GLM']},
+    eval: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
+    advisor: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
+  });
+  // Other controls repaint the form; the choice has to survive them.
+  await form.locator('input[name="max_attempts"]').fill('3');
+  await form.locator('select[name="seed"]').selectOption({index: 1});
+  await page.waitForTimeout(150);
+  assert.equal(await source.inputValue(), 'parcc');
+  assert.equal(await form.locator('select[name="eval_model"]').inputValue(), 'parcc/GLM');
+});
+
+test('MODEL-SOURCE-PARCC-AGENT: each source keeps its own model picks', async t => {
+  const {form, source} = await dialog(t);
+  await form.locator('select[name="eval_model"]').selectOption('gpt-6-astra');
+  await source.selectOption('parcc');
+  await form.locator('select[name="advisor_model"]').selectOption('parcc/Qwen');
+  await source.selectOption('codex');
+  const codex = await models(form);
+  assert.equal(codex.eval.value, 'gpt-6-astra');
+  assert.deepEqual(codex.dev.options, ['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol']);
+  assert.deepEqual(codex.advisor.options, ['gpt-6.1-sol', 'gpt-6-astra']);
+  await source.selectOption('parcc');
+  const parcc = await models(form);
+  assert.equal(parcc.advisor.value, 'parcc/Qwen');
+  assert.equal(parcc.eval.value, 'parcc/GLM');
+});
+
+test('MODEL-SOURCE-PARCC-AGENT: leaving Agent and coming back starts from Codex again', async t => {
+  const {page, form, source} = await dialog(t);
+  await source.selectOption('parcc');
+  await form.locator('select[name="dev_mode"]').selectOption('one_call');
+  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'One call');
+  await form.locator('select[name="dev_mode"]').selectOption('agent');
+  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'Agent');
+  assert.equal(await source.inputValue(), 'codex');
+  assert.equal((await models(form)).dev.value, 'gpt-6.1-sol');
+});
+
+async function submitted(page, form) {
+  const request = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/dev-v2/experiments');
+  await form.locator('[data-start-no]').click();
+  return (await request).postDataJSON().selection;
+}
+const lab = model => ({credential: 'lab', provider: 'parcc', model});
+
+test('MODEL-SOURCE-PARCC-SUBMIT: the run asks for the lab key on all three roles and sends no key', async t => {
+  const {page, form, source} = await dialog(t);
+  await source.selectOption('parcc');
+  await form.locator('select[name="eval_model"]').selectOption('parcc/Qwen');
+  const sent = await submitted(page, form);
+  assert.deepEqual(sent.agent_provider, {roles: {dev: lab('parcc/GLM'), eval: lab('parcc/Qwen'), advisor: lab('parcc/GLM')}});
+  assert.equal(sent.dev_mode, 'agent');
+  assert.equal(sent.model_source, 'codex');                    // The frozen Agent schema; public views label the run PARCC.
+  assert.doesNotMatch(JSON.stringify(sent), /api_key|"key"|secret/i);
+});
+
+test('MODEL-SOURCE-CODEX-SUBMIT: a Codex run sends no provider routing', async t => {
+  const {page, form, source} = await dialog(t);
+  await source.selectOption('parcc');
+  await source.selectOption('codex');
+  const sent = await submitted(page, form);
+  assert.equal('agent_provider' in sent, false);
+  assert.equal(sent.dev_model, 'gpt-6.1-sol');
 });
 
 // The same trap anywhere else in the dialog: a control the form repaints on input must still hold what the user chose.

@@ -12,19 +12,39 @@ DEFAULT_MODEL='gpt-6.1-sol'
 ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
 # Lab Dev also supports PARCC GLM through the text-only loopback Responses bridge.
 DEV_MODELS=MODELS|{'parcc/GLM'}
+# PARCC is the free lab source for all three roles. GLM reads text only; Qwen reads images, so it can serve Eval and Advisor.
+PARCC_MODELS={'dev':{'parcc/GLM'},'eval':{'parcc/GLM','parcc/Qwen'},'advisor':{'parcc/GLM','parcc/Qwen'}}
+TEXT_ONLY_MODELS={'parcc/GLM'}
 
 
-def all_user_roles(value):
+def lab_parcc(desc):
+    return isinstance(desc,dict) and desc.get('credential')=='lab' and desc.get('provider')=='parcc'
+
+
+def text_only(desc):
+    """A lab role on a model that reads no images; a user's key always answers the image check itself."""
+    return lab_parcc(desc) and desc.get('model') in TEXT_ONLY_MODELS
+
+
+def routed(desc):
+    """A role that runs through a provider bridge instead of Codex: a user's key, or the lab's PARCC key."""
+    return isinstance(desc,dict) and (desc.get('credential','lab')!='lab' or lab_parcc(desc))
+
+
+def every_role(value,test):
     provider=value.get('agent_provider')
     if not isinstance(provider,dict):return False
     roles=provider.get('roles')
-    return isinstance(roles,dict) and all(isinstance(roles.get(role),dict) and
-        roles[role].get('credential','lab')!='lab' for role in ('dev','eval','advisor'))
+    return isinstance(roles,dict) and all(isinstance(roles.get(role),dict) and test(roles[role]) for role in ('dev','eval','advisor'))
+
+
+def all_user_roles(value):
+    return every_role(value,lambda desc:desc.get('credential','lab')!='lab')
 
 
 def display_source(value):
-    """Keep the frozen execution schema; label user providers in public views."""
-    return 'byok' if all_user_roles(value) else value.get('model_source','codex')
+    """Keep the frozen execution schema; label providers in public views."""
+    return 'byok' if all_user_roles(value) else 'parcc' if every_role(value,lab_parcc) else value.get('model_source','codex')
 
 
 def reject_secret_fields(value):
@@ -52,9 +72,8 @@ def provider_roles(value):
         if not isinstance(model,str) or not model.strip() or len(model)>128:raise ValueError('invalid_agent_provider_model')
         if role=='dev' and model=='parcc/GLM' and desc['provider']!='parcc':raise ValueError('agent_provider_model_mismatch')
         if desc['credential']=='lab':
-            expected='parcc' if role=='dev' and model=='parcc/GLM' else 'openai'
-            if desc['provider']!=expected:raise ValueError('lab_provider_not_supported')
-            allowed=DEV_MODELS if role=='dev' else ADVISOR_MODELS if role=='advisor' else MODELS
+            if desc['provider'] not in ('openai','parcc'):raise ValueError('lab_provider_not_supported')
+            allowed=PARCC_MODELS[role] if desc['provider']=='parcc' else DEV_MODELS if role=='dev' else ADVISOR_MODELS if role=='advisor' else MODELS
             if model not in allowed:raise ValueError('unsupported_agent_model')
         host=desc.get('base_url_host') if desc['provider']=='openai-compatible' else urlsplit(presets()[desc['provider']].chat_url).hostname
         if host is not None and (not isinstance(host,str) or not host or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:' for c in host)):
@@ -110,11 +129,11 @@ def normalize(selection, *, validation_origin=None):
             if role in roles:result[role+'_model']=roles[role]['model']
     roles=result.get('agent_provider',{}).get('roles',{})
     if 'agent_provider' not in selection and result['dev_model'] not in DEV_MODELS:raise ValueError('unsupported_agent_model')
-    if roles.get('eval',{}).get('credential','lab')=='lab' and result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
+    if not routed(roles.get('eval')) and result['eval_model'] not in MODELS:raise ValueError('unsupported_agent_model')
     if result['dev_reasoning_effort'] not in ('low','medium','high'):raise ValueError('unsupported_agent_effort')
     if 'advisor_model' in selection or 'advisor' in roles:
         model=roles['advisor']['model'] if 'advisor' in roles else selection['advisor_model']
-        if roles.get('advisor',{}).get('credential','lab')=='lab' and model not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
+        if not routed(roles.get('advisor')) and model not in ADVISOR_MODELS:raise ValueError('unsupported_agent_model')
         result['advisor_model']=model
     if origin is not None:result['agent_validation']=origin
     if 'agent_limits' in selection:
@@ -137,7 +156,7 @@ def configuration(selection):
     if not options.get('agent_validation'):clean['wall_limit']=21600
     roles=options.get('agent_provider',{}).get('roles',{})
     for role,field in (('eval','eval_agent'),('advisor','advisor_proxy')):
-        if roles.get(role,{}).get('credential','lab')!='lab' and field in clean:
+        if routed(roles.get(role)) and field in clean:
             from .codex_client import MODEL
             clean[field]=dict(clean[field],model=MODEL,model_source='codex')
     result=dict(normalize_configuration(clean),**options)
@@ -145,12 +164,15 @@ def configuration(selection):
         result['advisor_proxy']=dict(result['advisor_proxy'],model=options['advisor_model'])
         # Same creation option set: the (disabled) one-call Eval block records the agent Eval model.
         result['eval_agent']=dict(result['eval_agent'],model=options['eval_model'])
-    elif options.get('agent_provider',{}).get('roles',{}).get('eval',{}).get('credential','lab')!='lab':
+    elif routed(roles.get('eval')):
         result['eval_agent']=dict(result['eval_agent'],model=options['eval_model'])
     for role,field in (('eval','eval_agent'),('advisor','advisor_proxy')):
-        if roles.get(role,{}).get('credential','lab')!='lab':
-            result[field]=dict(result[field],model=roles[role]['model'],model_source='byok')
+        if routed(roles.get(role)):
+            result[field]=dict(result[field],model=roles[role]['model'],model_source='parcc' if lab_parcc(roles[role]) else 'byok')
             if role=='advisor':result[field]['max_attempts']=1  # Transport owns bounded retries.
+    if text_only(roles.get('advisor')):
+        from .dev_advisor_proxy import text_only as text_advisor
+        result['advisor_proxy']=text_advisor(result['advisor_proxy'])
     return result
 
 

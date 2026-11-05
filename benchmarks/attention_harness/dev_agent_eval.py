@@ -102,7 +102,7 @@ class Evaluator:
                 with self._bridge_lock:
                     if self.cancelled.is_set():raise TimeoutError('timeout')
                     self.bridge=ChatBridge(self.workspace.private/'byok-bridge-eval',self.provider.spec,
-                        self.provider.secret,token=self.provider.token,vision=True,role='eval')
+                        self.provider.secret,token=self.provider.token,vision=getattr(self.provider,'vision',True),role='eval')
                     i=command.index('-m')
                     command[i:i]=provider_args(self.bridge.base_url,token_env=self.provider.token_env)
                 options['env']=keyless_env({**os.environ,self.provider.token_env:self.provider.token})

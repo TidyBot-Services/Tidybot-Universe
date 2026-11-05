@@ -2138,7 +2138,7 @@
       devMode:selection?.dev_mode==='agent'?'agent':'one_call',
       ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||selection.advisor_proxy?.model||'gpt-6-astra'}:{}),
       ...(selection?.agent_limits?{agentLimits:selection.agent_limits}:{}),
-      mode:selection?.mode,modelSource:selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
+      mode:selection?.mode,modelSource:['dev','eval','advisor'].every(role=>selection?.agent_provider?.roles?.[role]?.credential==='lab'&&selection.agent_provider.roles[role].provider==='parcc')?'parcc':selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
       help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
       wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
       reviewer:selection?.eval_agent?.enabled,cellBudget:config.cell_budget||selection?.cell_budget,
@@ -2238,11 +2238,15 @@
   const BYOK_ALL_ROLES = true; // Dev, Eval and Advisor can each use a saved key; the server preflights every role.
   const KEYS_API='/api/provider/credentials';
   const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
+  // What each lab source offers per role. PARCC runs Dev on GLM; Eval and Advisor can use Qwen, which reads images.
+  const LAB_MODELS={codex:{dev:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],eval:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],advisor:['gpt-6.1-sol','gpt-6-astra']},
+    parcc:{dev:['parcc/GLM'],eval:['parcc/GLM','parcc/Qwen'],advisor:['parcc/GLM','parcc/Qwen']}};
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
   // Public routing only: neither helper accepts or retains an API key.
   function keyRoleAssignments(state,allRoles=BYOK_ALL_ROLES) {
     return Object.fromEntries(KEY_ROLES.map(([role])=>[role,
-      state.mode==='lab'||(!allRoles&&role!=='dev')?{choice:'codex',model:''}:
+      state.mode==='lab'?{choice:state.labSource||'codex',model:''}:
+      !allRoles&&role!=='dev'?{choice:'codex',model:''}:
       state.mode==='all'?{choice:`key:${state.shared.credential}`,model:state.shared.model}:
       {choice:state.choice[role],model:state.model[role]}]));
   }
@@ -2251,6 +2255,7 @@
     const roles={};
     for(const [role,{choice,model}] of Object.entries(keyRoleAssignments(state,allRoles))) {
       if(choice==='codex')continue;
+      if(choice==='parcc'){roles[role]={credential:'lab',provider:'parcc',model:state.labModel?.[role]||LAB_MODELS.parcc[role][0]};continue;}
       const row=state.creds.find(c=>`key:${c.credential_id}`===choice);
       const title=KEY_ROLES.find(([id])=>id===role)[1];
       if(!row||Number(row.expires_at)<=now)throw new Error(`The ${title} key is missing or has expired. Save a key or choose Lab models.`);
@@ -2274,7 +2279,7 @@
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="different" data-keys-mode disabled><span><b>Different per agent</b><small>Choose each role separately</small></span></label>
       </fieldset>
       <div class="ab-launch-grid ab-keys-models" data-keys-models>${KEY_ROLES.map(([role,title])=>`<div class="ab-keys-role-model" data-role-model-wrap="${role}">
-        <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model"><option selected>gpt-6.1-sol</option><option>gpt-6-astra</option>${role==='advisor'?'':'<option>gpt-6-sol</option>'}</select></label>
+        <label class="ab-launch-field" data-key-lab-model="${role}">${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<select name="${role}_model" aria-label="${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model">${LAB_MODELS.codex[role].map((model,index)=>`<option${index?'':' selected'}>${model}</option>`).join('')}</select></label>
         <label class="ab-launch-field" data-key-own-model="${role}" hidden>${role==='dev'?'Dev':role==='eval'?'Eval':'Advisor'} model<span class="ab-keys-combo"><input data-role-model="${role}" aria-label="${title} key model" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Model name">${modelComboHtml(role)}</span></label>
       </div>`).join('')}</div>
       <div class="ab-keys-shared" data-keys-shared hidden><div data-keys-shared-form></div>
@@ -2319,7 +2324,7 @@
     const addBox=box.querySelector('[data-keys-add]'),details=box.querySelector('[data-keys-details]');
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
-    const state={mode:'lab',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
+    const state={mode:'lab',labSource:'codex',shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
       choice:{dev:'codex',eval:'codex',advisor:'codex'},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:''};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
@@ -2335,7 +2340,7 @@
       const later=!BYOK_ALL_ROLES&&role!=='dev';
       const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)}${preset(c.provider)?.thinking?` · thinking ${esc(preset(c.provider).thinking)}`:''})${later?' · coming in phase 2':''}</option>`).join('');
       const missing=choice.startsWith('key:')&&!cred(choice.slice(4));
-      return `<option value="codex">Lab models · Codex</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
+      return `<option value="codex">Lab models · Codex</option>${choice==='parcc'?'<option value="parcc">Lab models · PARCC</option>':''}${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
     }
     function checksHtml(result) {
       if(!result)return '';
@@ -2389,10 +2394,21 @@
     const keyRejected=id=>/\bHTTP 40[13]\b/.test(state.keyError[id]||'');
     const modelReady=id=>Array.isArray(state.models[id])&&!keyRejected(id);
     const keyNote=id=>state.models[id]===null?'Checking key…':state.keyError[id]?`<span class="ab-keys-bad">${keyRejected(id)?'The provider rejected this key':'Could not list models'} · ${esc(state.keyError[id].slice(0,200))}</span>`:'';
+    // The named model selects list the lab source in use; each source remembers its own pick.
+    const labPicks={codex:{},parcc:{}};
+    function drawLabModel(role,source) {
+      const select=form[`${role}_model`];
+      if(!select?.dataset||(select.dataset.labSource||'codex')===source)return;
+      labPicks[select.dataset.labSource||'codex'][role]=select.value;
+      select.innerHTML=LAB_MODELS[source][role].map(model=>`<option>${esc(model)}</option>`).join('');
+      select.value=labPicks[source][role]||LAB_MODELS[source][role][0];
+      select.dataset.labSource=source;
+    }
     function drawRoles() {
       const assignments=keyRoleAssignments(state);
       KEY_ROLES.forEach(([role])=>{
         const {choice,model}=assignments[role],own=choice.startsWith('key:');
+        if(!own)drawLabModel(role,choice);
         const pick=rolesBox.querySelector(`[data-role-choice="${role}"]`);
         pick.innerHTML=roleOptions(role,choice);pick.value=choice;pick.disabled=state.mode!=='different';
         // Keep the original named selects mounted: launch defaults and repeat-run restoration use them.
@@ -2661,7 +2677,12 @@
     drawMode();load();
     return {
       // The public part of the choice, or null when everything runs on the lab's defaults.
-      selection() { return keysSelection(state); },
+      selection() { return keysSelection({...state,labModel:Object.fromEntries(KEY_ROLES.map(([role])=>[role,form[`${role}_model`]?.value]))}); },
+      // Which lab source the Model source row chose; a repeated run names the models it used.
+      labSource(source,picks) {
+        if(picks)Object.assign(labPicks[source],picks);
+        if(state.labSource!==source){state.labSource=source;drawRoles();}
+      },
       clearSecrets() { valueInput.value=''; },
       summary,
       // Whether the server offers own keys at all (the key-mode radios are also disabled for a moment while a key is being saved).
@@ -2772,7 +2793,7 @@
         const agent=form.dev_mode.value==='agent',mode=keyMode(),parcc=!form.model_source.disabled;
         for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!agent||!keys.available;
         select.querySelector('option[value="parcc"]').disabled=!parcc;
-        select.querySelector('option[value="parcc"]').textContent=parcc||agent?`Lab models · PARCC (GLM + Qwen)${parcc?'':' · One call only'}`:'Lab models · PARCC (GLM + Qwen)';
+        keys.labSource(agent&&form.model_source.value==='parcc'?'parcc':'codex');
         select.value=mode==='lab'?(form.model_source.value==='parcc'&&parcc?'parcc':'codex'):mode;
         const mine=agent?keys.summary():{},stop=Number(form.quota_stop_percent.value)||90;
         // The 03 summary follows the source, so it never quotes the lab quota next to "billed to your own key".
@@ -2787,7 +2808,7 @@
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
         }else if(select.value==='parcc'){
-          help.textContent='Free lab models. Results are not comparable with Codex results.';
+          help.textContent=agent?'Free lab models. GLM reads text only, so it sees no camera frames. Results are not comparable with Codex results.':'Free lab models. Results are not comparable with Codex results.';
           name.textContent='PARCC (free)';note.textContent='No quota. Usage is still recorded.';
         }else if(select.value==='all'){
           help.textContent='One provider, model and key for Dev, Eval and Advisor.';
@@ -2876,13 +2897,13 @@
         form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'One call';
         if(agent){
           // Entering Agent mode starts from the official budget; later edits (a lowered budget) are the user's and stay.
-          if(!oneCallFields){oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};form.max_attempts.value='10';form.wall_seconds.value='21600';}
-          form.model_source.value='codex';form.eval_agent_enabled.checked=true;
+          if(!oneCallFields){oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};form.max_attempts.value='10';form.wall_seconds.value='21600';form.model_source.value='codex';}
+          form.eval_agent_enabled.checked=true;
         }else if(oneCallFields){
           form.model_source.value=oneCallFields.modelSource;form.eval_agent_enabled.checked=oneCallFields.reviewer;
           form.max_attempts.value=oneCallFields.versions;form.wall_seconds.value=oneCallFields.wall;oneCallFields=null;
         }
-        form.model_source.disabled=agent||profile?.channel!=='dev_v2';
+        form.model_source.disabled=profile?.channel!=='dev_v2';
         form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         if(profile?.channel==='dev_v2'){
           // Agent: both are editable but only downwards from the official budget (10 versions, 6 hours; at least 1 hour).
@@ -3049,6 +3070,7 @@
         if([...form.seed.options].some(option=>Number(option.value)===repeat.seed))set('seed',repeat.seed);
         if([...form.v2_policy.options].some(option=>option.value===repeat.policy))set('v2_policy',repeat.policy);
         if(repeat.modelSource==='parcc'||repeat.modelSource==='codex'&&!form.model_source.querySelector('option[value="codex"]').disabled)set('model_source',repeat.modelSource);
+        if(repeat.devMode==='agent'&&repeat.modelSource==='parcc')keys.labSource('parcc',{dev:repeat.devModel,eval:repeat.evalModel,advisor:repeat.advisorModel});
         set('max_attempts',repeat.versions);set('help_count',repeat.help);set('human_wait_seconds',repeat.waitSeconds);
         set('wall_seconds',repeat.wallSeconds);set('model_seconds_minutes',repeat.modelMinutes);
         if(repeat.agentLimits&&form.dev_mode.value==='agent'){set('max_attempts',repeat.agentLimits.versions);set('wall_seconds',repeat.agentLimits.wall_seconds);}
@@ -3057,6 +3079,8 @@
         for(const input of form.querySelectorAll('[data-v2-cell]'))if(repeat.cellBudget?.[input.dataset.v2Cell]!=null)input.value=repeat.cellBudget[input.dataset.v2Cell];
         for(const input of form.querySelectorAll('[data-v2-experiment]'))if(repeat.experimentBudget?.[input.dataset.v2Experiment]!=null)input.value=repeat.experimentBudget[input.dataset.v2Experiment];
         manualBudget=!!(repeat.cellBudget||repeat.experimentBudget);
+        // A repeated Agent run is already in Agent mode: its budget and source must not be reset as a fresh entry.
+        if(form.dev_mode?.value==='agent')oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};
         updatePreview();showQuota();
       }
       const fork=forkStart&&sourceProfile?.channel==='dev_v2'?forkPanel(form,forkStart):null;

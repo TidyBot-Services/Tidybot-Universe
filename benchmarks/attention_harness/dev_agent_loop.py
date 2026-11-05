@@ -369,6 +369,7 @@ def continuation():
 def provider_for_run(manifest, *, role='dev', allow_private_hosts=(), public_gateway_mode=False):
     import secrets
     from types import SimpleNamespace
+    from .dev_agent_config import text_only
     from .dev_agent_key_vault import run_key,run_role
     from .dev_agent_provider import resolve_provider,ProviderError
     desc=manifest.get('agent_provider',{}).get('roles',{}).get(role)
@@ -376,10 +377,10 @@ def provider_for_run(manifest, *, role='dev', allow_private_hosts=(), public_gat
     if desc is None:return None
     if bound and any(bound.get(k)!=desc.get(k) for k in ('credential','provider','model','base_url_host')):
         raise ProviderError('provider_mismatch','Run provider differs from manifest for role '+role)
-    if desc['credential']=='lab' and (role!='dev' or desc['provider']=='openai'):return None
+    if desc['credential']=='lab' and desc['provider']=='openai':return None
     spec=resolve_provider(desc['provider'],bound.get('base_url'),allow_custom=True,
                           allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
-    return SimpleNamespace(spec=spec,secret=run_key(desc['credential']),model=desc['model'],
+    return SimpleNamespace(spec=spec,secret=run_key(desc['credential']),model=desc['model'],vision=not text_only(desc),
                            token=secrets.token_urlsafe(32),token_env='ATTENTION_BYOK_BRIDGE_TOKEN')
 
 

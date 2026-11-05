@@ -36,6 +36,14 @@ def default_config(enabled=True, model_source='parcc'):
     return result
 
 
+def text_only(config):
+    """The text prompt, for a model that cannot read the request view's frames."""
+    result={**config,'model':OLD_MODEL,'mode':'text_only','prompt_version':OLD_PROMPT_VERSION,'prompt_sha256':hashlib.sha256(OLD_SYSTEM.encode()).hexdigest(),
+            'cache_version':OLD_CACHE_VERSION,'max_selected_frames':4}
+    for key in ('cache_namespace','session_namespace'):result.pop(key,None)
+    return result
+
+
 def normalize(value, model_source='parcc', *, agent=False, provider_role=None):
     if not isinstance(value,dict):raise ValueError('Advisor configuration must be an object')
     old=value.get('prompt_version')==OLD_PROMPT_VERSION
@@ -47,9 +55,7 @@ def normalize(value, model_source='parcc', *, agent=False, provider_role=None):
     if agent and provider_role and provider_role.get('credential')!='lab':
         base.update(model=provider_role['model'],model_source='byok')
     if model_source=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
-    if old:
-        base.update(model=OLD_MODEL,mode='text_only',prompt_version=OLD_PROMPT_VERSION,prompt_sha256=hashlib.sha256(OLD_SYSTEM.encode()).hexdigest(),cache_version=OLD_CACHE_VERSION,max_selected_frames=4)
-        base.pop('cache_namespace');base.pop('session_namespace')
+    if old:base=text_only(base)
     if set(value)-set(base):raise ValueError('unknown Advisor configuration')
     out={**base,**value}
     for key in ('model','mode','prompt_version','prompt_sha256','cache_version','cache_namespace','session_namespace','model_source','reasoning_effort'):
@@ -111,7 +117,7 @@ def ask(evidence, config, client, *, cache_dir=None):
                 **human_seconds(evidence,answer),
                 'latency_seconds':time.monotonic()-begun}
             if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
-            if config.get('model_source')=='byok':record.update(model_source='byok',model=response.model)
+            if config.get('model_source') in ('byok','parcc'):record.update(model_source=config['model_source'],model=response.model)
             if config.get('model_source')=='codex':record.update(model_source='codex',quota_before=getattr(client,'quota_before',None),quota_after=getattr(client,'quota_after',None))
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
@@ -138,6 +144,7 @@ def _ask_v2(evidence,config,client,*,cache_dir=None):
             public_screen(answer)
             record={'schema_version':'attentionbench.advisor-proxy.v2','kind':'hint','status':'completed','feedback':answer,'model':config['model'],'mode':'text_only','prompt_version':config['prompt_version'],'frames':[],'views':[],'cache_key':key,'cache_hit':False,'attempts':attempt,'usage':response.usage,'latency_seconds':time.monotonic()-begun}
             if getattr(response,'failed_attempts',()):record.update(provider_attempts=response.attempts,provider_failed_attempts=list(response.failed_attempts))
+            if config.get('model_source')=='parcc':record.update(model_source='parcc',model=response.model)
             if path:
                 path.parent.mkdir(parents=True,exist_ok=True);temp=path.with_suffix('.tmp');temp.write_text(json.dumps(record,ensure_ascii=False));temp.replace(path)
             return record

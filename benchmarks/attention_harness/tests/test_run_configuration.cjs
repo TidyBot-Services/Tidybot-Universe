@@ -83,6 +83,25 @@ test('Run again applies saved fields to the existing dialog before Start',()=>{
   assert.equal(cell.value,4);assert.equal(experiment.value,4);assert.equal(context.manualBudget,true);
 });
 
+test('Run again of an Agent run keeps its reduced budget and its PARCC source',()=>{
+  const fragment=source.match(/      if\(repeat && sourceProfile\?\.channel==='dev_v2'\) \{[\s\S]*?\n      \}(?=\n      const fork=)/)[0];
+  const field=value=>({value}),lab=model=>({credential:'lab',provider:'parcc',model});
+  const form={seed:{value:'102',options:[]},v2_policy:{value:'autonomous',options:[]},dev_mode:field('agent'),dev_model:field(''),eval_model:field(''),advisor_model:field(''),
+    model_source:{value:'codex',querySelector:()=>({disabled:false})},max_attempts:field('10'),help_count:field(''),human_wait_seconds:field(''),
+    wall_seconds:field('21600'),model_seconds_minutes:field(''),goal_id:field(''),name_suffix:field(''),v2_mode:field(''),eval_agent_enabled:{checked:true},querySelectorAll:()=>[]};
+  const repeat=runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'parcc/GLM',eval_model:'parcc/Qwen',advisor_model:'parcc/GLM',model_source:'codex',seeds:[102],policies:['autonomous'],
+    agent_limits:{versions:3,wall_seconds:7200},agent_provider:{roles:{dev:lab('parcc/GLM'),eval:lab('parcc/Qwen'),advisor:lab('parcc/GLM')}}});
+  assert.equal(repeat.modelSource,'parcc');
+  const seen=[],context={repeat,sourceProfile:{channel:'dev_v2'},form,oneCallFields:null,manualBudget:false,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{},
+    keys:{labSource:(...args)=>seen.push(args)}};
+  vm.runInNewContext(fragment,context);
+  assert.equal(form.model_source.value,'parcc');assert.equal(form.max_attempts.value,'3');assert.equal(form.wall_seconds.value,'7200');
+  assert.equal(JSON.stringify(seen),JSON.stringify([['parcc',{dev:'parcc/GLM',eval:'parcc/Qwen',advisor:'parcc/GLM'}]]));
+  assert.ok(context.oneCallFields,'syncAgentOptions must not treat the restored run as a fresh entry into Agent');
+  const mixed=runConfigDefaultsFromSelection({dev_mode:'agent',model_source:'codex',agent_provider:{roles:{dev:lab('parcc/GLM')}}});
+  assert.equal(mixed.modelSource,'codex');
+});
+
 test('unregistered experiment seed is labelled; interactive seed is selectable',()=>{
   const seeds=[101,102,103,114],registered=[101,102,103];
   const frozen=runConfigSeedOptions(seeds,registered,'experiment');

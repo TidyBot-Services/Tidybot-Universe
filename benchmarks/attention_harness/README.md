@@ -416,6 +416,17 @@ provider failure can consume help and human attention. Pending obligations,
 Agent v2 reports use the existing agent JSON report endpoint; `dev_report` rejects
 the one-call ledger interpretation of these runs.
 
+### Dev agent on lab PARCC
+
+Model source `Lab models · PARCC` runs all three agent roles on the lab key, with no
+Codex quota. The selection keeps `model_source=codex` (the frozen agent schema) and
+names each role in `agent_provider` with `credential=lab, provider=parcc`; public views
+label such a run `parcc`. Dev is `parcc/GLM`; Eval and Advisor default to `parcc/GLM` and
+may use `parcc/Qwen`. GLM reads text only: its Eval bridge replaces images with a notice,
+its Advisor uses the text prompt, and the start preflight skips the image check for these
+lab roles only. Results are not comparable with Codex runs. The Codex CLI still drives
+each role through the loopback bridge, so it must be installed on the host.
+
 For browser review only, manually run `scripts/preview_agentpolicy.sh`. It creates
 three synthetic fixtures under `/tmp/agentpolicy-preview/` and starts this
 worktree's `ui_server` at `127.0.0.1:8779`, with every POST refused. Printed links
