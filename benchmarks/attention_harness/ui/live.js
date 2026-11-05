@@ -1486,80 +1486,12 @@
   function launchButton(snapshot=null,hero=false) {
     const cls=hero?'ab-button-primary op-new-run':'ab-button-primary',label=hero?'<span class="op-new-run-tri" aria-hidden="true"></span>New run':'New run';
     if(snapshot?.dev_v2?.lifecycle?.can_create_new===false)return `<button class="${cls}" type="button" data-open-launch disabled title="Original goal resources or worker availability prevent a new run">${label}</button>`;
-    return `<button class="${cls}" type="button" data-open-launch ${(launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) || launchOptions?.dev_loop?.profiles?.length || launchOptions?.profiles?.some(p => p.certified_bimanual_v2)) ? '' : 'disabled'}>${label}</button>`;
+    return `<button class="${cls}" type="button" data-open-launch ${launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) ? '' : 'disabled'}>${label}</button>`;
   }
+  // New run only makes Agent runs, so an older One call run has no same settings to repeat.
   function runAgainButton(snapshot) {
-    return snapshot?.dev_v2 && isTerminal(snapshot)
-      ? '<button type="button" data-open-run-again>Run again with the same settings</button>'+continueButton(snapshot) : '';
-  }
-  // Continue from an attempt (plan A): only daily Dev v2 runs that ended with at least one version.
-  function canContinue(snapshot) {
-    return Boolean(snapshot?.dev_v2 && isTerminal(snapshot) && launchOptions?.dev_v2?.continue_from_attempt && snapshot.dev_v2.versions?.length);
-  }
-  function continueButton(snapshot,version=null) {
-    if(!canContinue(snapshot))return '';
-    const label=version==null?'Continue from an attempt…':`Continue from Attempt ${version}`;
-    return `<button type="button" class="op-continue" data-open-fork ${version==null?'':`data-fork-version="${esc(version)}"`}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9a6 6 0 0 1-6 6H6"/></svg>${esc(label)}</button>`;
-  }
-  const FORK_CARRY=[
-    {id:'code',title:'Code only',body:n=>`Attempt ${n}'s code is the starting version. No history.`},
-    {id:'feedback',title:'Code and last feedback',body:()=>"Adds the execution feedback and the reviewer's reason, so the first rewrite knows what went wrong."}];
-  // Turns the opened launch dialog into "continue from an attempt": source strip, carry choice, checks; other settings fold away.
-  function forkPanel(form,start) {
-    const cell=currentSnapshot.dev_v2,eid=cell.experiment_id,key=cell.key,versions=(cell.versions||[]).map(v=>v.version);
-    const state={version:versions.includes(start.version)?start.version:versions.at(-1),carry:'feedback',preview:null,error:'',loading:false,seq:0};
-    const header=launchDialog.querySelector('.ab-launch-header');
-    header.querySelector('.kicker').textContent='NEW RUN / CONTINUE FROM AN ATTEMPT';
-    header.querySelector('p').textContent="A new, separate run starts from this attempt's code. The original run stays as it is.";
-    // Interactive only, same task and seed; a new goal so the source run's budget is never reused.
-    form.v2_mode.value='interactive';form.v2_mode.dispatchEvent(new Event('change'));
-    if([...form.seed.options].some(option=>Number(option.value)===cell.seed))form.seed.value=String(cell.seed);
-    for(const name of ['run_type','benchmark','task_id','v2_mode','seed','robot_model','execution_arm'])if(form[name])form[name].disabled=true;
-    if(!form.goal_id.readOnly)form.goal_id.value=`daily-v2-fork-${Date.now()}`;
-    const body=form.querySelector('.ab-launch-body'),panel=document.createElement('section'),settings=document.createElement('details');
-    panel.className='ab-launch-section ab-fork';panel.dataset.forkPanel='';
-    settings.className='ab-fork-settings';settings.innerHTML='<summary><b>Settings</b><span>Same as the source run. Open to change policy, model or limits.</span></summary>';
-    for(const section of [...body.querySelectorAll(':scope > .ab-launch-section, :scope > .ab-run-advanced')])settings.append(section);
-    body.querySelector('.ab-launch-note')?.after(panel);if(!panel.isConnected)body.prepend(panel);
-    panel.after(settings);
-    const startButtons=[...form.querySelectorAll('[data-start-no],[data-start-yes]')];
-    function attemptsRow() {
-      const rows=state.preview?.attempts||versions.map(version=>({version,outcome:'',reason:''}));
-      return rows.map(a=>`<button type="button" class="ab-fork-chip" data-fork-pick="${a.version}" aria-pressed="${a.version===state.version}" data-outcome="${esc(a.outcome)}" title="Attempt ${a.version}${a.outcome?' · '+esc(a.outcome.replace('_',' ')):''}">A${a.version}</button>`).join('');
-    }
-    function render() {
-      const p=state.preview,selected=p?.attempts?.find(a=>a.version===state.version);
-      header.querySelector('h3').textContent=`Continue from Attempt ${state.version}`;
-      const available=Object.fromEntries((p?.carry_options||[]).map(o=>[o.id,o.available]));
-      panel.innerHTML=`<div class="ab-run-section-head"><h4><span class="op-number">01</span>Starting point</h4><small>Pick the attempt the new run starts from.</small></div>
-        <div class="ab-fork-strip"><span class="ab-fork-node"><b>${esc(eid.slice(0,15))}</b><small>${esc(policyTitle(cell.policy_id))} · seed ${esc(cell.seed)}</small></span><span aria-hidden="true">→</span><span class="ab-fork-chips" role="group" aria-label="Start from attempt">${attemptsRow()}</span><span aria-hidden="true">→</span><span class="ab-fork-node new"><b>New run</b><small>starts at A${state.version}'s code</small></span></div>
-        ${selected?`<p class="ab-fork-result" data-outcome="${esc(selected.outcome)}"><b>${esc({unsuccessful:'Unsuccessful',succeeded:'Succeeded',invalid:'Code invalid',not_executed:'Not executed'}[selected.outcome]||selected.outcome)}</b>${esc(selected.reason||'No reviewer reason recorded.')}</p>`:''}
-        <div class="ab-run-section-head"><h4><span class="op-number">02</span>What the robot's AI starts with</h4><small>Nothing else from the source run is carried over.</small></div>
-        <div class="ab-fork-carry">${FORK_CARRY.map(o=>`<button type="button" data-fork-carry="${o.id}" aria-pressed="${state.carry===o.id}" ${p&&available[o.id]===false?'disabled':''}><strong>${esc(o.title)}</strong><small>${esc(o.body(state.version))}</small></button>`).join('')}</div>
-        ${p?`<div class="ab-fork-prompt"><span>First prompt of the new run will include</span>${p.prompt_includes.map(line=>`<span>+ ${esc(line)}</span>`).join('')}</div>`:''}
-        <div class="ab-run-section-head"><h4><span class="op-number">03</span>Checks</h4><small>Repeated on the new run's own settings when it is created.</small></div>
-        <ul class="ab-fork-checks" aria-live="polite">${state.loading&&!p?'<li data-level="wait"><span>…</span><span>Checking the source attempt…</span></li>':''}${state.error?`<li data-level="block"><span>✕</span><span><b>Could not check this attempt.</b> ${esc(state.error)}</span></li>`:''}${(p?.checks||[]).map(r=>`<li data-level="${esc(r.level)}"><span aria-hidden="true">${r.level==='ok'?'✓':r.level==='block'?'✕':'!'}</span><span><b>${esc(r.title)}</b> ${esc(r.body||'')}</span></li>`).join('')}</ul>`;
-      panel.querySelectorAll('[data-fork-pick]').forEach(b=>b.addEventListener('click',()=>{state.version=Number(b.dataset.forkPick);load();}));
-      panel.querySelectorAll('[data-fork-carry]').forEach(b=>b.addEventListener('click',()=>{state.carry=b.dataset.forkCarry;load();}));
-      const blocked=!p||state.loading||Boolean(state.error)||p.blocked;
-      for(const button of startButtons){button.disabled=blocked;button.title=blocked?(state.error||(p?.blocked?'A check failed: see Checks.':'Checking the source attempt…')):'';}
-    }
-    async function load() {
-      const seq=++state.seq;state.loading=true;state.error='';render();
-      try{
-        const response=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(eid)}/fork-preview?cell=${encodeURIComponent(key)}&version=${state.version}&carry=${state.carry}`,{cache:'no-store'});
-        const value=await response.json().catch(()=>({error:`HTTP ${response.status}`}));
-        if(seq!==state.seq)return;
-        if(!response.ok)throw new Error(value.error||`HTTP ${response.status}`);
-        state.preview=value;
-        if(value.carry_options.find(o=>o.id===state.carry)?.available===false&&state.carry==='feedback'){state.carry='code';return load();}
-      }catch(error){if(seq===state.seq){state.error=error.message;state.preview=null;}}
-      finally{if(seq===state.seq){state.loading=false;render();}}
-    }
-    load();
-    return {request:()=>({experiment_id:eid,cell:key,version:state.version,carry:state.carry}),
-      ready:()=>Boolean(state.preview&&!state.preview.blocked&&!state.loading&&!state.error),
-      reason:()=>state.error||'A check failed for this attempt; see Checks.'};
+    return snapshot?.dev_v2 && isTerminal(snapshot) && snapshot.dev_v2_selection?.dev_mode==='agent'
+      ? '<button type="button" data-open-run-again>Run again with the same settings</button>' : '';
   }
   function attemptLabel(status) {
     return {running:'Attempt running', succeeded:'Attempt succeeded', failed:'Attempt unsuccessful', timed_out:'Attempt timed out', cancelled:'Attempt cancelled'}[status] || 'Not executed yet';
@@ -2066,17 +1998,6 @@
     return `<div class="ab-arm-status" data-arm-status>${handStatusContent(control,historical)}</div>`;
   }
 
-  // Fixed launch selection shares the server's profile identity and budgets.
-  function fixedLaunchSelection(profile, values) {
-    if (!profile?.id || !String(profile.execution_target).endsWith('_sim')) throw new Error('A registered simulator profile is required');
-    return {profile_id:profile.id,seed:profile.seed,attention_policy:values.policy,
-      execution_target:profile.execution_target,assistance_mode:values.assistance_mode,
-      max_attempts:Number(values.attempts),assistance_credits:Number(values.credits),
-      token_limit:Number(values.tokens),human_deadline_seconds:Number(values.human_deadline),
-      overall_deadline_seconds:Number(values.wall_seconds),request_mode:values.request_mode,
-      gpu_seconds:Number(values.gpu_seconds)};
-  }
-
   // Values shared by the visible limits and the independent Dev v2 ledger.
   function codexQuotaText(quota) {
     const used=quota?.used_percent;
@@ -2087,24 +2008,18 @@
     const low=used>=70;
     return {text:`Codex quota: ${Math.round(used)}% of ${quota.window_minutes===10080?'this week':'this window'} used${reset}${low?' · Running low this week':''}`,low};
   }
-  function agentOptionGate({channel,tier,policyCount=1,taskCount=1,seedCount=1,fork=false}) {
-    if(channel!=='dev_v2'||tier!=='dev')return 'Agent 仅支持现代 dev 档；formal / legacy 不支持。';
-    if(policyCount!==1||taskCount!==1||seedCount!==1)return 'Agent 仅支持单 cell；多任务、seed 或策略矩阵不支持。';
-    if(fork)return 'Agent 不支持从旧版本继续；请创建独立 run。';
-    return '';
+  // New run makes Agent runs only, which need the modern dev tier; on any other server it says why instead of starting.
+  function agentOptionGate({channel,tier}) {
+    return channel!=='dev_v2'||tier!=='dev'?'Agent runs need the modern dev tier. This server cannot start one.':'';
   }
-  function launcherDevMode(gate,requested='agent') {
-    return agentOptionGate(gate)?'one_call':requested;
-  }
-  function devPolicyChoices(options,mode) {
-    return mode==='agent'?(options?.agent_policies?.policies||[]).map(p=>p.policy_id):[ 'all',...(options?.policies||[])];
+  function devPolicyChoices(options) {
+    return (options?.agent_policies?.policies||[]).map(p=>p.policy_id);
   }
   // The Agent envelope: versions 1-10 and 1-6 hours. A run may lower both; the server refuses anything larger.
   const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=3600;
   // The line under the 03 heading. It describes whoever pays: the lab quota only exists for Lab models, and the limits it
   // used to quote live in 05, so an own key never shows a quota stop.
-  function agentReasonText(agent,mode,{versions,wall,stop,source}) {
-    if(!agent)return 'One call keeps the current settings. Switch to Agent to choose the Dev and Eval models separately.';
+  function agentReasonText(mode,{versions,wall,stop,source}) {
     if(mode==='all')return 'Billed to your own key; the lab quota does not apply. Limits are set in 05. Native success ends the run.';
     if(mode==='different')return 'Each agent is billed to the source chosen in Agent models below. Limits are set in 05. Native success ends the run.';
     const v=Math.min(10,Math.max(1,Number(versions)||10)),hours=Math.min(21600,Math.max(3600,Number(wall)||21600))/3600;
@@ -2120,50 +2035,27 @@
     return {errors,valid,reduced,limits:reduced?{versions:v,wall_seconds:w}:null};
   }
   function agentLaunchSelection(selection,values={}) {
-    if(!values.devMode||values.devMode==='one_call')return selection;
-    if(values.devMode!=='agent')throw new Error('Unknown Dev mode');
-    const reason=agentOptionGate({channel:values.channel,tier:values.tier,policyCount:selection.policies?.length,taskCount:selection.tasks?.length,seedCount:selection.seeds?.length,fork:!!selection.fork});
+    const reason=agentOptionGate({channel:values.channel,tier:values.tier});
     if(reason)throw new Error(reason);
-    const {configuration,human_wait_seconds,eval_agent,...rest}=selection;
-    return {...rest,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
+    return {...selection,dev_mode:'agent',model_source:'codex',budget_tier:'dev',
       dev_model:values.devModel||'gpt-6.1-sol',eval_model:values.evalModel||'gpt-6.1-sol',advisor_model:values.advisorModel||'gpt-6.1-sol',quota_stop_percent:90,
-      goal_key:configuration?.goal_id||selection.goal_key,wall_limit:21600,...(values.limits?{agent_limits:values.limits}:{})};
-  }
-  function runConfigDefaultModelMinutes(options) {
-    return Math.ceil(Number(options?.default_cell_budget?.model_seconds ?? 1800)/60);
+      wall_limit:21600,...(values.limits?{agent_limits:values.limits}:{})};
   }
   function runConfigDefaultsFromSelection(selection) {
-    const config=selection?.configuration||{},cell=config.cell_budget||selection?.cell_budget||{};
-    return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:selection?.policies?.length?'all':null,
-      devMode:selection?.dev_mode==='agent'?'agent':'one_call',
-      ...(selection?.dev_mode==='agent'?{devModel:selection.dev_model,evalModel:selection.eval_model,advisorModel:selection.advisor_model||selection.advisor_proxy?.model||'gpt-6-astra'}:{}),
+    const parcc=['dev','eval','advisor'].every(role=>{const desc=selection?.agent_provider?.roles?.[role];return desc?.credential==='lab'&&desc.provider==='parcc';});
+    return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:null,
+      devModel:selection?.dev_model,evalModel:selection?.eval_model,advisorModel:selection?.advisor_model||selection?.advisor_proxy?.model||'gpt-6-astra',
       ...(selection?.agent_limits?{agentLimits:selection.agent_limits}:{}),
-      mode:selection?.mode,modelSource:['dev','eval','advisor'].every(role=>selection?.agent_provider?.roles?.[role]?.credential==='lab'&&selection.agent_provider.roles[role].provider==='parcc')?'parcc':selection?.model_source||'parcc',versions:config.max_iterations??selection?.max_versions,
-      help:selection?.help_budget,waitSeconds:selection?.human_wait_seconds??selection?.planner_features?.human_wait_seconds,
-      wallSeconds:config.wall_seconds??selection?.wall_limit,modelMinutes:cell.model_seconds==null?null:Math.ceil(cell.model_seconds/60),
-      reviewer:selection?.eval_agent?.enabled,cellBudget:config.cell_budget||selection?.cell_budget,
-      experimentBudget:config.experiment_budget||selection?.goal_limits,goalId:config.goal_id||selection?.goal_key,nameSuffix:selection?.name_suffix};
-  }
-  function runConfigBudget({versions,help,waitSeconds,modelMinutes,profile,defaults,reviewer,policyCount=1}) {
-    const n=Number(versions),h=Number(help),modelSeconds=Number(modelMinutes)*60;
-    const sdk=Number(profile.sdk_call_limit),steps=Number(profile.control_step_limit);
-    const execution=Number(profile.attempt_wall_seconds);
-    const cell={...defaults,dev_calls:n,advisor_calls:h,eval_calls:reviewer?n:0,
-      executions:n,sdk_calls:n*sdk,control_steps:n*steps,
-      help_credits:h,help_count:h,help_wait_seconds:h*120+n*Number(waitSeconds),
-      model_seconds:modelSeconds,execution_seconds:n*(execution+Number(profile.startup_cleanup_seconds||0)),
-      provider_tokens:200000*n, input_tokens:170000*n,output_tokens:30000*n};
-    return {cell,experiment:Object.fromEntries(Object.entries(cell).map(([key,value])=>[key,value*policyCount]))};
+      mode:selection?.mode,modelSource:parcc?'parcc':'codex',help:selection?.help_budget,
+      goalId:selection?.goal_key,nameSuffix:selection?.name_suffix};
   }
   function fixtureTaskKey(profile) {
     return profile.rules_profile?`${profile.task_id}@${profile.rules_profile}`:profile.task_id;
   }
-  function fixtureRunMode(profile,mode,policy,locked=false) {
+  function fixtureRunMode(profile,mode) {
     const fixture=profile?.rules_profile==='r5-fixture-20261031';
-    mode.disabled=fixture||locked;
+    mode.disabled=fixture;
     if(fixture)mode.value='interactive';
-    for(const option of policy.options)if(option.value==='all')option.disabled=fixture;
-    if(fixture&&policy.value==='all')policy.value=[...policy.options].find(o=>o.value!=='all'&&!o.disabled)?.value||'autonomous';
   }
   // New run offers three Dev v2 tasks: Counter → Sink (its own seed list) and two fixture presets whose scene
   // seed is fixed (shown as "Seed N", not chosen). A preset whose seed is excluded for its task falls back to
@@ -2207,18 +2099,17 @@
     if(mode==='experiment')return 'No scene contract for this seed. Choose Interactive or a registered seed.';
     return mode==='interactive'&&memory?'Memory: reference only — this seed has no scene contract.':'';
   }
-  function runConfigSummary({robot,arm,seed,layout,style,versions,help,reviewer,modelSource='parcc'}) {
-    return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests · reviewer ${reviewer?'on':'off'}${modelSource==='codex'?' · Codex subscription (gpt-6-astra, high effort)':''}`;
+  function runConfigSummary({robot,arm,seed,layout,style,versions,help}) {
+    return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests`;
   }
-  function launchSourceProfile(source, profiles, options, preferDev) {
+  function launchSourceProfile(source, profiles, options) {
     if(!source)return {profile:null,reason:''};
-    const isFixed=p=>['certified_v2','formal'].includes(p.channel);
     const matching=profiles.filter(p=>p.enabled && (!source.execution_profile||source.execution_profile==='legacy'? !p.rules_profile : source.execution_profile==='r5-fixture-20261031'?p.rules_profile===source.execution_profile:!p.rules_profile) && p.suite===source.suite && p.task_id===source.task_id
       && p.robot===source.robot?.model && p.execution_arm===source.robot?.execution_arm);
     const seeded=matching.filter(p=>p.channel==='dev_v2'
       ? (p.seeds||options?.dev_v2?.tasks?.find(t=>t.task_id===p.task_id)?.seeds||[p.seed]).includes(source.seed)
       : p.seed===source.seed);
-    return {profile:seeded.find(p=>isFixed(p)!==preferDev)||seeded[0]||null,
+    return {profile:seeded[0]||null,
       reason:!matching.length?'The task, robot and arm combination is no longer supported.'
         : !seeded.length?`Scene seed ${source.seed} is unavailable for this task.`:''};
   }
@@ -2267,12 +2158,12 @@
   // A text input with a menu of the provider's models; typing a name always works.
   const modelComboHtml=id=>`<button type="button" class="ab-keys-combo-btn" data-model-menu="${id}" aria-label="Show models offered by the provider" aria-haspopup="listbox" aria-expanded="false" hidden></button><ul class="ab-keys-combo-list" role="listbox" data-model-list="${id}" hidden></ul>`;
   function keysSectionHtml() {
-    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Dev mode: <output data-dev-mode-label>Agent</output><input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
+    return `<section class="ab-launch-section ab-keys" data-keys data-run-config-section="models"><div class="ab-run-section-head"><h4><span class="op-number">03</span>Models &amp; keys</h4><small>Choose who runs the agents and who pays.<input name="quota_stop_percent" value="90" readonly aria-label="Quota stop %" hidden></small></div><div data-agent-controls><p class="ab-run-hint" data-agent-reason role="status"></p></div>
       <div class="ab-source-row" data-model-source-field>
         <label class="ab-launch-field ab-model-source">Model source<select data-keys-source aria-label="Model source and billing"><option value="codex">Lab models · Codex subscription</option><option value="parcc">Lab models · PARCC (GLM + Qwen)</option><option value="all">My key for all agents</option><option value="different">Different per agent</option></select><small data-source-help></small></label>
         <div class="ab-bill-field"><span class="ab-bill-k">Billed to</span><div class="ab-bill" data-bill role="status"><strong data-bill-name></strong><div class="ab-meter" data-bill-meter hidden aria-hidden="true"><i></i><b></b></div><small data-codex-quota hidden role="status"></small><small data-bill-note></small></div></div>
       </div>
-      <select name="model_source" aria-label="Model source" hidden tabindex="-1"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex">Codex subscription (gpt-6-astra, high effort)</option></select>
+      <select name="model_source" aria-label="Model source" hidden tabindex="-1"><option value="parcc">PARCC (GLM + Qwen)</option><option value="codex" selected>Codex subscription (gpt-6-astra, high effort)</option></select>
       <fieldset class="ab-keys-modes" hidden><legend class="op-sr-only">Model setup</legend>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="lab" data-keys-mode checked><span><b>Lab models</b><small>Ready to run · nothing to fill in</small></span></label>
         <label class="ab-keys-mode"><input type="radio" name="keys_mode" value="all" data-keys-mode disabled><span><b>My key for all agents</b><small>One provider, model and key</small></span></label>
@@ -2691,95 +2582,58 @@
   }
 
   function bindLaunch() {
-    view.querySelectorAll('[data-open-launch],[data-open-run-again],[data-open-fork]').forEach(button=>button.addEventListener('click', () => {
-      const forkStart=button.hasAttribute('data-open-fork')&&canContinue(currentSnapshot)?{version:Number(button.dataset.forkVersion)||null}:null;
-      const repeat=button.hasAttribute('data-open-run-again')||forkStart?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
+    view.querySelectorAll('[data-open-launch],[data-open-run-again]').forEach(button=>button.addEventListener('click', () => {
+      const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
       const options = launchOptions;
-      const certifiedProfiles = (options?.profiles || []).filter(p => p.certified_bimanual_v2).map(p => ({...p,task_id:p.task,robot:p.robot.model,execution_arm:p.robot.execution_arm,enabled:true,channel:'certified_v2',wall_seconds:600,attempt_wall_seconds:600,sdk_call_limit:200,base_mode:'stationary'}));
-      const fixedProfiles=(options?.profiles || []).filter(p=>!p.certified_bimanual_v2).map(p=>({...p,
-        task_id:p.task,robot:p.robot?.model || 'Approved configuration',execution_arm:p.robot?.execution_arm || 'single',
-        enabled:true,channel:'formal',wall_seconds:300,attempt_wall_seconds:p.attempt_wall_seconds || 120,sdk_call_limit:200}));
-      const devProfiles = [...certifiedProfiles,...fixedProfiles,...(options?.dev_loop?.profiles || options?.dev_v2?.profiles || [])];
-      const executionLocations=(options?.execution_targets || []).map(target=>({...target,
-        available:target.available || target.id==='simulation' && devProfiles.some(profile=>profile.enabled && String(profile.execution_target).endsWith('_sim'))}));
+      const devProfiles = options?.dev_v2?.profiles || [];
       if (!devProfiles.length) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
       const source = linkedConfiguration?.run || currentSnapshot?.run;
-      const isFixed=p=>['certified_v2','formal'].includes(p.channel);
-      const preferDev=Boolean(currentSnapshot?.dev_session);
-      const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options,preferDev);
+      const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
           ${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
           <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
-            <div class="ab-launch-field ab-launch-type"><span>Run type</span><select name="run_type" aria-label="Run type" class="ab-launch-native-type" tabindex="-1">${devProfiles.some(p=>!isFixed(p))?'<option value="dev">Dev automatic iteration</option>':''}${devProfiles.some(isFixed)?'<option value="fixed">Fixed policy execution</option>':''}</select><div class="ab-launch-segments" role="group" aria-label="Run type">${devProfiles.some(p=>!isFixed(p))?'<button type="button" data-run-type="dev" aria-pressed="false">Dev automatic iteration</button>':''}${devProfiles.some(isFixed)?'<button type="button" data-run-type="fixed" aria-pressed="false">Fixed policy execution</button>':''}</div><small data-run-type-description></small></div>
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
             <label class="ab-launch-field">Task<select name="task_id" aria-label="Task" required></select></label>
             <label class="ab-launch-field">Scene seed<select name="seed" aria-label="Scene seed"></select><small data-seed-note role="status"></small></label>
-            <label class="ab-launch-field" data-v2-mode-field>Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
+            <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Robot <small class="ab-field-meta">· Set by task</small><output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
             <label class="ab-launch-field">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
-            <input name="execution_target" value="RoboCasa365 simulator" readonly hidden>
-            <input name="model" value="${esc(options?.dev_loop?.model || 'Approved execution policy')}" readonly hidden>
           </div></section>
-          <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid" data-v2-help>
-            <label class="ab-launch-field">Attention policy<select name="v2_policy"><option value="all">All seven · frozen comparison</option>${(options?.dev_v2?.policies||[]).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
+          <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid">
+            <label class="ab-launch-field">Attention policy<select name="v2_policy">${devPolicyChoices(options?.dev_v2).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
             <label class="ab-launch-field">Help requests per task<input name="help_count" type="number" min="1" max="10" value="5"></label>
-            <label class="ab-launch-field">Wait for a person<span class="ab-launch-unit"><input name="human_wait_seconds" type="number" min="1" max="600" value="300"><span>seconds</span></span></label>
-          </div><p class="ab-run-hint" data-fixed-help hidden>Assistance mode and credits for fixed policy runs are in Advanced.</p></section>
+          </div></section>
           ${window.Lobby.newRunHtml()}${keysSectionHtml()}
-          <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Automatic reviewer</h4><small>Check the outcome after every attempt.</small></div>
-            <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot's AI for the next attempt. It never asks a human and costs no attention.</small><em data-reviewer-required hidden>Required for comparison runs</em></span></label>
+          <section class="ab-launch-section" data-run-config-section="reviewer"><div class="ab-run-section-head"><h4><span class="op-number">04</span>Automatic reviewer</h4><small>Check the outcome after every formal version.</small></div>
+            <label class="ab-reviewer-toggle"><input name="eval_agent_enabled" type="checkbox" checked disabled><span class="ab-switch" aria-hidden="true"></span><span><strong>Review every attempt automatically</strong><small>Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.</small></span></label>
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
-            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–10 · Agent default 10</small><input name="max_attempts" type="number" min="1" max="10" value="5" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
-            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range hidden>1–6 hours · Agent default 6</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="30" value="21600" required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
-            <label class="ab-launch-field">AI thinking per task<small class="ab-range" data-model-minutes-note hidden>Set by Agent mode</small><span class="ab-launch-unit" ${[240,360].includes(options?.dev_v2?.model_reserve_seconds)?`title="Five Dev versions, five reviews and five hints can reserve ${options.dev_v2.model_reserve_seconds===360?50:40} minutes."`:''}><input name="model_seconds_minutes" type="number" min="5" value="${runConfigDefaultModelMinutes(options?.dev_v2)}" required><span>minutes</span></span></label>
-            <label class="ab-launch-field">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
+            <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>1–10 · default 10</small><input name="max_attempts" type="number" min="1" max="10" value="10" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
+            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>1–6 hours · default 6</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="3600" max="21600" value="21600" required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
+            <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
-            <label class="ab-launch-field" data-v2-tokens>AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
-            <label class="ab-launch-field" data-fixed-tokens hidden>Token budget<input name="token_limit" type="number" min="0" max="100000" value="60000"></label>
+            <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
           </div><p class="ab-run-hint" data-official-budget hidden>Official Agent budget: 10 versions · 6 hours. Lower either one to test cheaply; the run is then marked as a reduced budget.</p>
           <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
-          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>Fixed policy settings, goal and resource details.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
-            <label class="ab-launch-field">Dev mode<select name="dev_mode" aria-label="Dev mode"><option value="agent">Agent</option><option value="one_call">One call</option></select></label>
-            <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''}></label>
-          </div><div data-fixed-config hidden><h4>Fixed policy settings</h4><div class="ab-launch-grid">
-            <label class="ab-launch-field">Execution location<select name="execution_target_choice">${executionLocations.map(target=>`<option value="${esc(target.id)}" ${target.available?'':'disabled'}>${esc(label(target.id))}${target.available?'':` · Unavailable: ${esc(target.reason || 'No runner available')}`}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Request mode<select name="request_mode">${(options?.request_modes || []).map(mode=>`<option value="${esc(mode.id)}" ${mode.default?'selected':''}>${esc(label(mode.id))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">GPU time budget (seconds)<input name="gpu_seconds" type="number" min="0" max="${esc(options?.limits?.gpu_seconds ?? 0)}" value="0"></label>
-            <label class="ab-launch-field">Attention policy<select name="fixed_policy">${(options?.attention_policies || []).map(policy=>`<option value="${esc(policy)}">${esc(policyTitle(policy))}</option>`).join('')}</select></label>
-            <label class="ab-launch-field">Assistance mode<select name="fixed_assistance">${(options?.assistance_modes || []).map(mode=>`<option value="${esc(mode)}">${esc(label(mode))}</option>`).join('')}</select><small>Choose how requests receive human or benchmark assistance.</small></label>
-            <label class="ab-launch-field">Assistance credits<input name="fixed_credits" type="number" min="0" max="${esc(options?.limits?.assistance_credits ?? 0)}" value="1"></label>
-            <label class="ab-launch-field">Human reply deadline (seconds)<input name="fixed_human_deadline" type="number" min="1" max="${esc(options?.limits?.human_deadline_seconds ?? 0)}" value="60"></label>
-          </div></div><div data-v2-config><details><summary>Independent resource limits</summary><p>These limits start from the selections above. Units: counts, tokens, credits, seconds.</p><table><thead><tr><th>Resource</th><th>Cell limit</th><th>Experiment limit</th></tr></thead><tbody>${Object.entries(options?.dev_v2?.default_cell_budget||{}).map(([k,v])=>`<tr><td>${esc(label(k))}</td><td><input aria-label="Cell ${esc(k)}" data-v2-cell="${k}" type="number" min="0" value="${v}" ${k==='sdk_calls'?'readonly':''}></td><td><input aria-label="Experiment ${esc(k)}" data-v2-experiment="${k}" type="number" min="0" value="${options?.dev_v2?.goal_limits?.[k]??v}" ${k==='sdk_calls'?'readonly':''}></td></tr>`).join('')}</tbody></table></details>
-          <details><summary>Entry support matrix</summary>${(options?.dev_v2?.matrix||[]).map(r=>`<p>${esc(r.robot)} / ${esc(r.arm)} · ${esc(r.task)}: ${r.dev_v2_supported?'Supported':esc(r.reason)}</p>`).join('')}</details></div></details>
+          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
+            <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
+          </div></details>
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
       const keys = bindKeys(form);
-      function syncRunTypeButtons() {
-        form.querySelectorAll('[data-run-type]').forEach(button=>{
-          button.setAttribute('aria-pressed',String(button.dataset.runType===form.run_type.value));
-          button.disabled=form.run_type.disabled;
-        });
-      }
-      form.querySelectorAll('[data-run-type]').forEach(button=>button.addEventListener('click',()=>{
-        form.run_type.value=button.dataset.runType;
-        form.run_type.dispatchEvent(new Event('change',{bubbles:true}));
-      }));
-      form.run_type.addEventListener('change',syncRunTypeButtons);
       form.addEventListener('ab-keys-change',updateSummary);
-      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Run type|Benchmark|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
-      let requestedDevMode=repeat?.devMode||'agent',oneCallFields=null;
+      if(window.Lobby.enabled){const go=form.querySelector('[data-start-yes]');if(go)go.textContent='Join queue';{const policy=form.v2_policy;if(policy&&[...policy.options].some(o=>o.value==='reactive_help')){policy.value='reactive_help';policy.dispatchEvent(new Event('change',{bubbles:true}));}}form.querySelectorAll('.ab-launch-section').forEach(section=>{if(/Help and attention|Models & keys|Automatic reviewer|Limits|Advanced/i.test(section.querySelector('h4,legend')?.textContent||''))section.classList.add('ab-lobby-hide');});launchDialog.querySelectorAll('[data-launch-source],[data-launch-preview]').forEach(note=>note.classList.add('ab-lobby-hide'));form.querySelectorAll('.ab-launch-section .ab-launch-field').forEach(field=>{if(/^(Benchmark|Session type|Robot|Name suffix)/i.test(field.textContent.trim()))field.classList.add('ab-lobby-hide');});}
       const quotaLine=form.querySelector('[data-codex-quota]');
       let dialogQuota=null;
       // 03's Model source is a view over two existing controls: the hidden model_source select (PARCC / Codex) and the
       // hidden key-mode radios that bindKeys owns. Choosing here sets them; their own events paint this row back.
-      const keyMode=()=>form.dev_mode.value==='agent'?form.querySelector('[data-keys-mode]:checked')?.value||'lab':'lab';
+      const keyMode=()=>form.querySelector('[data-keys-mode]:checked')?.value||'lab';
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||(form.model_source.disabled&&form.dev_mode.value!=='agent')||keyMode()!=='lab';
+        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab';
         if(!quotaLine.hidden){
           const message=codexQuotaText(dialogQuota);
           quotaLine.textContent=message.text;
@@ -2790,15 +2644,14 @@
       function drawSource() {
         const select=form.querySelector('[data-keys-source]');
         if(!select)return;
-        const agent=form.dev_mode.value==='agent',mode=keyMode(),parcc=!form.model_source.disabled;
-        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!agent||!keys.available;
-        select.querySelector('option[value="parcc"]').disabled=!parcc;
-        keys.labSource(agent&&form.model_source.value==='parcc'?'parcc':'codex');
-        select.value=mode==='lab'?(form.model_source.value==='parcc'&&parcc?'parcc':'codex'):mode;
-        const mine=agent?keys.summary():{},stop=Number(form.quota_stop_percent.value)||90;
+        const mode=keyMode();
+        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!keys.available;
+        keys.labSource(form.model_source.value);
+        select.value=mode==='lab'?form.model_source.value:mode;
+        const mine=keys.summary(),stop=Number(form.quota_stop_percent.value)||90;
         // The 03 summary follows the source, so it never quotes the lab quota next to "billed to your own key".
-        const gate=agentOptionGate({channel:selectedProfile()?.channel,tier:options?.dev_v2?.budget_tier,policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart});
-        if(!gate)form.querySelector('[data-agent-reason]').textContent=agentReasonText(agent,mode,{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop,source:form.model_source.value});
+        const gate=agentOptionGate({channel:selectedProfile()?.channel,tier:options?.dev_v2?.budget_tier});
+        if(!gate)form.querySelector('[data-agent-reason]').textContent=agentReasonText(mode,{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop,source:form.model_source.value});
         const name=form.querySelector('[data-bill-name]'),note=form.querySelector('[data-bill-note]'),help=form.querySelector('[data-source-help]');
         const meter=form.querySelector('[data-bill-meter]'),used=dialogQuota?.used_percent;
         const usable=typeof used==='number'&&Number.isFinite(used)&&used>=0&&used<=100;
@@ -2808,7 +2661,7 @@
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
         }else if(select.value==='parcc'){
-          help.textContent=agent?'Free lab models. GLM reads text only, so it sees no camera frames. Results are not comparable with Codex results.':'Free lab models. Results are not comparable with Codex results.';
+          help.textContent='Free lab models. GLM reads text only, so it sees no camera frames. Results are not comparable with Codex results.';
           name.textContent='PARCC (free)';note.textContent='No quota. Usage is still recorded.';
         }else if(select.value==='all'){
           help.textContent='One provider, model and key for Dev, Eval and Advisor.';
@@ -2824,10 +2677,8 @@
         dialogQuota=value;
         if(launchDialog.open)showQuota();
       }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});
-      form.eval_agent_enabled.checked = options?.dev_v2?.eval_agent_supported !== false;
       const requestKey = globalThis.crypto?.randomUUID?.() || `dev-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       let submitting = false;
-      let manualBudget = false;
       function fillOptions(select, values, title, unavailable = () => false) {
         const previous = select.value;
         select.innerHTML = values.map(value => `<option value="${esc(value)}" ${unavailable(value)?'disabled':''}>${esc(title(value))}</option>`).join('');
@@ -2835,7 +2686,7 @@
         else select.value = values.find(value => !unavailable(value)) || values[0] || '';
       }
       function taskProfiles() {
-        return devProfiles.filter(p => isFixed(p)===(form.run_type.value==='fixed') && p.suite === form.benchmark.value && fixtureTaskKey(p) === form.task_id.value);
+        return devProfiles.filter(p => p.suite === form.benchmark.value && fixtureTaskKey(p) === form.task_id.value);
       }
       function selectedProfile() {
         return taskProfiles().find(p => p.robot === form.robot_model.value && p.execution_arm === form.execution_arm.value);
@@ -2864,164 +2715,65 @@
         form.seed.value=seeds.includes(previous)?String(previous):String(v2&&seeds.includes(102)?102:seeds[0]);
         form.querySelector('[data-seed-note]').textContent=v2?runConfigSeedNote(Number(form.seed.value),registered,form.v2_mode.value,!!options?.dev_v2?.memory):'';
       }
-      function syncBudget() {
-        const profile=selectedProfile();
-        if(profile?.channel!=='dev_v2')return;
-        if(manualBudget)return;
-        const n=Number(form.max_attempts.value),h=Number(form.help_count.value);
-        if(!Number.isInteger(n)||n<1||n>10||!Number.isInteger(h)||h<1||h>10)return;
-        const policyCount=form.v2_policy.value==='all'?(options.dev_v2.policies||[]).length:1;
-        const calculated=runConfigBudget({versions:n,help:h,waitSeconds:form.human_wait_seconds.value,
-          modelMinutes:form.model_seconds_minutes.value,profile,defaults:options.dev_v2.default_cell_budget,
-          reviewer:form.eval_agent_enabled.checked,policyCount});
-        for(const input of form.querySelectorAll('[data-v2-cell]')){
-          if(input.dataset.v2Cell in calculated.cell)input.value=calculated.cell[input.dataset.v2Cell];
-        }
-        for(const input of form.querySelectorAll('[data-v2-experiment]')){
-          const key=input.dataset.v2Experiment;
-          if(options.dev_v2.bridge_schema!=='main-dev-v3'&&key in calculated.experiment)input.value=calculated.experiment[key];
-        }
-      }
       function syncAgentOptions() {
-        const profile=selectedProfile();
-        const reason=agentOptionGate({channel:profile?.channel,tier:options?.dev_v2?.budget_tier,
-          policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart});
-        form.dev_mode.disabled=!!reason;
-        form.dev_mode.querySelector('option[value="agent"]').disabled=!!reason;
-        form.dev_mode.value=launcherDevMode({channel:profile?.channel,tier:options?.dev_v2?.budget_tier,policyCount:form.v2_policy.value==='all'?(options?.dev_v2?.policies||[]).length:1,fork:!!forkStart},requestedDevMode);
-        const agent=form.dev_mode.value==='agent';
-        const policyChoices=devPolicyChoices(options?.dev_v2,agent?'agent':'one_call');
-        if(policyChoices.length && [...form.v2_policy.options].map(o=>o.value).join('|')!==policyChoices.join('|'))
-          fillOptions(form.v2_policy,policyChoices,p=>p==='all'?'All seven · frozen comparison':policyTitle(p));
-        form.dev_model.disabled=!agent;form.eval_model.disabled=!agent;
-        form.querySelector('[data-dev-mode-label]').textContent=agent?'Agent':'One call';
-        if(agent){
-          // Entering Agent mode starts from the official budget; later edits (a lowered budget) are the user's and stay.
-          if(!oneCallFields){oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};form.max_attempts.value='10';form.wall_seconds.value='21600';form.model_source.value='codex';}
-          form.eval_agent_enabled.checked=true;
-        }else if(oneCallFields){
-          form.model_source.value=oneCallFields.modelSource;form.eval_agent_enabled.checked=oneCallFields.reviewer;
-          form.max_attempts.value=oneCallFields.versions;form.wall_seconds.value=oneCallFields.wall;oneCallFields=null;
-        }
-        form.model_source.disabled=profile?.channel!=='dev_v2';
-        form.eval_agent_enabled.disabled=agent||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
-        if(profile?.channel==='dev_v2'){
-          // Agent: both are editable but only downwards from the official budget (10 versions, 6 hours; at least 1 hour).
-          form.max_attempts.readOnly=false;form.wall_seconds.readOnly=false;
-          form.max_attempts.min='1';form.max_attempts.max='10';
-          form.wall_seconds.min=agent?'3600':'30';form.wall_seconds.max=agent?'21600':'86400';
-        }
-        form.model_seconds_minutes.disabled=agent;form.querySelector('[data-model-minutes-note]').hidden=!agent;
-        form.querySelector('[data-v2-config]').hidden=agent||profile?.channel!=='dev_v2';
-        form.querySelector('[data-agent-reason]').textContent=reason||agentReasonText(agent,form.querySelector('[data-keys-mode]:checked')?.value||'lab',{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop:form.quota_stop_percent?.value,source:form.model_source.value});
+        const reason=agentOptionGate({channel:selectedProfile()?.channel,tier:options?.dev_v2?.budget_tier});
+        form.querySelector('[data-agent-reason]').textContent=reason||agentReasonText(keyMode(),{versions:form.max_attempts.value,wall:form.wall_seconds.value,stop:form.quota_stop_percent?.value,source:form.model_source.value});
         showQuota();
-        form.querySelector('[data-run-config-section="reviewer"] .ab-reviewer-toggle small').textContent=agent?'Eval reviews formal submissions only and returns a verdict, evidence and suggestions. Native success ends the run. Each review can take up to 15 minutes. It uses the Eval model chosen in 03.':'After each attempt, an AI watches the recording and camera views and says whether the task worked. If it says yes, the run ends. If not, its feedback goes to the robot\'s AI for the next attempt. It never asks a human and costs no attention. Its model follows the Model source in 03.';
+        return reason;
       }
       function updatePreview() {
-        fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
-        syncAgentOptions();
-        fixtureRunMode(selectedProfile(),form.v2_mode,form.v2_policy,!!forkStart);
+        fixtureRunMode(selectedProfile(),form.v2_mode);
+        const blocked=syncAgentOptions();
         const profile = selectedProfile();
         form.querySelector('[data-launch-name-preview]').textContent = `${taskName(selectedProfile()?.task_id||form.task_id.value)}${form.name_suffix.value.trim()?` -- ${form.name_suffix.value.trim()}`:''}`;
         const iterations = Number(form.max_attempts.value);
-        syncBudget();
         drawBudget();
         form.sdk_calls.value=profile?Number(profile.sdk_call_limit||0)*iterations:0;
         form.querySelector('[data-readonly-sdk-calls]').textContent=form.sdk_calls.value;
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
         form.querySelector('[data-wall-description]').textContent=`${Number(form.wall_seconds.value)/3600} hours · stored in seconds`;
-        syncRunTypeButtons();
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
-        form.querySelector('[data-run-type-description]').textContent=isFixed(profile||{})?'Runs an approved policy with fixed resource limits.':'Generates and revises policy code within the selected budgets.';
-        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid;
-        if(profile?.channel==='dev_v2')syncSeedOptions();
+        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid||!!blocked;
+        syncSeedOptions();
       }
-      // 05 in Agent mode: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
+      // 05: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
       let budget=agentBudgetCheck(10,21600);
       function drawBudget() {
-        const agent=form.dev_mode.value==='agent'&&selectedProfile()?.channel==='dev_v2';
-        budget=agent?agentBudgetCheck(form.max_attempts.value,form.wall_seconds.value):agentBudgetCheck(10,21600);
-        form.querySelectorAll('[data-agent-range]').forEach(node=>{node.hidden=!agent;});
+        budget=agentBudgetCheck(form.max_attempts.value,form.wall_seconds.value);
         const versions=Number(form.max_attempts.value),wall=Number(form.wall_seconds.value);
         form.querySelector('[data-reduced-chip="versions"]').hidden=!(budget.reduced&&versions<AGENT_DEFAULT_VERSIONS);
         form.querySelector('[data-reduced-chip="wall"]').hidden=!(budget.reduced&&wall<AGENT_DEFAULT_WALL);
         form.querySelectorAll('[data-limit-error]').forEach(node=>{
-          const text=agent?budget.errors[node.dataset.limitError]||'':'';
+          const text=budget.errors[node.dataset.limitError]||'';
           node.textContent=text;node.hidden=!text;node.closest('label').classList.toggle('ab-limit-bad',!!text);
         });
         form.querySelector('[data-reduced-note]').hidden=!budget.reduced;
         if(budget.reduced)form.querySelector('[data-reduced-text]').textContent=`${versions} of 10 versions · ${wall/3600} of 6 hours.`;
-        form.querySelector('[data-official-budget]').hidden=!(agent&&budget.valid&&!budget.reduced);
+        form.querySelector('[data-official-budget]').hidden=!(budget.valid&&!budget.reduced);
       }
       function updateSummary() {
-        const profile=selectedProfile();
-        const description=profile?`${profile.robot} · ${armNames[profile.execution_arm]||profile.execution_arm} · Seed ${form.seed.value}${profile.layout_id!=null?` · Layout ${profile.layout_id} / Style ${profile.style_id}`:''}`:'';
-        const unavailable=profile&&!profile.enabled?profile.unavailable_reason||'This configuration is unavailable.':'';
-        const mine=form.dev_mode.value==='agent'?keys.summary():{};
-        const own=mine.dev||null;
+        const profile=selectedProfile(),preview=form.querySelector('[data-launch-preview]');
+        if(!profile){preview.textContent='';return;}
+        const mine=keys.summary();
         const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''})`:lab;
-        const dev=`Dev ${label('dev',form.dev_model.value)}`;
-        let detail=profile?.channel==='certified_v2'?'Official V2 · approved arm and gripper execution · original SAPIEN scene. Execution completion and native task success are reported separately. Development only · excluded from formal evaluation.':profile?.channel==='formal'?'Runs the approved policy with locked execution and assistance conditions.':`Up to ${form.max_attempts.value} iterations and model calls share one budget. Robot and scene stay fixed throughout the session.`;
-        if(profile?.channel==='dev_v2'){
-          const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
-            style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value,reviewer:form.eval_agent_enabled.checked,modelSource:form.dev_mode.value==='agent'?'parcc':form.model_source.value});
-          form.querySelector('[data-launch-preview]').textContent=base.replace(' · up to ','\nUp to ')+(form.dev_mode.value==='agent'?` · Agent · ${dev} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of 10 versions · ${Number(form.wall_seconds.value)/3600} of 6 hours · not directly comparable with the official 10-version results`:''}`:'');
-          return;
-        }else if(own)detail+=` · ${dev}`;
-        form.querySelector('[data-launch-preview]').textContent=unavailable||`${description}\n${detail}`;
+        const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
+          style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value});
+        preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of 10 versions · ${Number(form.wall_seconds.value)/3600} of 6 hours · not directly comparable with the official 10-version results`:''}`;
       }
-      function syncProfile(resetWall) {
-        if(oneCallFields){form.model_source.value=oneCallFields.modelSource;oneCallFields=null;}
-        manualBudget=false;
+      function syncProfile() {
         const profile = selectedProfile();
-        const certified = profile?.channel === 'certified_v2';
-        const v2=profile?.channel==='dev_v2';
-        fixtureRunMode(profile,form.v2_mode,form.v2_policy,!!forkStart);
-        const formal=profile?.channel==='formal';
-        form.classList.toggle('ab-v2-profile',v2);
-        form.querySelector('[data-run-config-section="advanced"]').open=isFixed(profile||{});
-        form.querySelector('[data-fixed-config]').hidden=!isFixed(profile||{});
-        form.fixed_credits.disabled=!formal;
-        form.fixed_human_deadline.disabled=!formal;
-        form.querySelector('[data-v2-config]').hidden=!v2;
-        form.querySelector('[data-v2-help]').hidden=!v2;
-        form.querySelector('[data-fixed-help]').hidden=v2;
-        form.querySelector('[data-v2-mode-field]').hidden=!v2;
-        form.querySelector('[data-run-config-section="reviewer"]').hidden=!v2;
-        form.querySelector('[data-model-source-field]').hidden=!v2;
-        form.model_source.disabled=!v2;
-        if(!v2 || options?.dev_v2?.budget_tier!=='dev')form.model_source.value='parcc';
-        form.model_source.querySelector('option[value="codex"]').disabled=options?.dev_v2?.budget_tier!=='dev';
+        fixtureRunMode(profile,form.v2_mode);
+        form.classList.toggle('ab-v2-profile',profile?.channel==='dev_v2');
         showQuota();
-        form.querySelector('[data-v2-tokens]').hidden=!v2;
-        form.querySelector('[data-fixed-tokens]').hidden=v2;
-        form.querySelector('[data-start-no]').hidden=!v2;
-        if(v2)form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
-        form.querySelector('[data-iterations-label]').textContent=v2?'Versions per task':'Maximum iterations / executions';
-        form.goal_id.required=v2;
-        form.max_attempts.max=10;
-        form.token_limit.max=v2?Number.MAX_SAFE_INTEGER:100000;
-        form.max_attempts.readOnly = certified;
-        form.token_limit.readOnly = certified;
-        form.wall_seconds.readOnly = certified;
-        form.wall_seconds.max = isFixed(profile||{}) ? 600 : profile?.channel==='dev_v2' ? 86400 : 1800;
-        form.model.value = isFixed(profile||{}) ? 'Approved execution policy' : (options?.dev_loop?.model || '');
-        form.max_attempts.value = certified ? 1 : v2?5:3;
-        if(v2)form.help_count.value=5;
-        form.token_limit.value = certified ? 0 : formal?30000:v2?(options.dev_v2.default_cell_budget?.provider_tokens??220000):60000;
+        form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
+        // Every task starts from the official budget; later edits (a lowered budget) are the user's and stay until the task changes.
+        form.max_attempts.value='10';form.wall_seconds.value='21600';form.help_count.value=5;
         syncSeedOptions();
-        if(v2&&[...form.seed.options].some(o=>o.value==='102'))form.seed.value='102';
-        form.execution_target.value = profile ? label(profile.execution_target) : '';
-        form.request_mode.disabled = !isFixed(profile||{});
-        form.gpu_seconds.disabled = !isFixed(profile||{});
+        if([...form.seed.options].some(o=>o.value==='102'))form.seed.value='102';
         form.attempt_wall_seconds.value = profile?.attempt_wall_seconds ?? '';
-        if (resetWall) form.wall_seconds.value = profile?.wall_seconds ?? 600;
-        form.querySelector('[data-reviewer-required]').hidden=form.v2_mode.value!=='experiment';
-        form.eval_agent_enabled.checked=v2;
-        form.eval_agent_enabled.disabled=!v2||form.v2_mode.value==='experiment'||options?.dev_v2?.eval_agent_supported===false;
         form.querySelector('#ab-launch-message').textContent = '';
         updatePreview();
       }
@@ -3029,7 +2781,7 @@
         const profiles = taskProfiles().filter(p => p.robot === form.robot_model.value);
         fillOptions(form.execution_arm,[...new Set(profiles.map(p => p.execution_arm))],arm => armNames[arm] || arm,
           arm => !profiles.some(p => p.execution_arm === arm && p.enabled));
-        syncProfile(true);
+        syncProfile();
       }
       function syncTask() {
         const profiles = taskProfiles();
@@ -3039,17 +2791,12 @@
       }
       function syncBenchmark() {
         const previous=form.task_id.value;
-        form.task_id.innerHTML=fixtureTaskOptions(newRunProfiles(devProfiles.filter(p=>isFixed(p)===(form.run_type.value==='fixed')&&p.suite===form.benchmark.value),sourceProfile));
+        form.task_id.innerHTML=fixtureTaskOptions(newRunProfiles(devProfiles.filter(p=>p.suite===form.benchmark.value),sourceProfile));
         if([...form.task_id.options].some(o=>o.value===previous))form.task_id.value=previous;
         syncTask();
       }
-      function syncRunType(){
-        fillOptions(form.benchmark,[...new Set(devProfiles.filter(p=>isFixed(p)===(form.run_type.value==='fixed')).map(p=>p.suite))],suite=>benchmarkNames[suite]||suite);
-        syncBenchmark();
-      }
-      form.run_type.value=sourceProfile?(isFixed(sourceProfile)?'fixed':'dev'):devProfiles.some(p=>!isFixed(p)&&p.enabled)?'dev':'fixed';
-      syncRunType();
-      form.run_type.addEventListener('change',syncRunType);
+      fillOptions(form.benchmark,[...new Set(devProfiles.map(p=>p.suite))],suite=>benchmarkNames[suite]||suite);
+      syncBenchmark();
       if (sourceProfile) {
         form.benchmark.value = sourceProfile.suite;
         syncBenchmark();
@@ -3058,45 +2805,31 @@
         form.robot_model.value = sourceProfile.robot;
         syncArm();
         form.execution_arm.value = sourceProfile.execution_arm;
-        syncProfile(true);
+        syncProfile();
         if([...form.seed.options].some(option=>Number(option.value)===source.seed))form.seed.value=String(source.seed);
       }
-      if(repeat && sourceProfile?.channel==='dev_v2') {
-        oneCallFields=null;
+      if(repeat && sourceProfile) {
         const set=(name,value)=>{if(value!=null)form[name].value=String(value);};
-        if(repeat.devMode&&form.dev_mode){set('dev_mode',repeat.devMode);set('dev_model',repeat.devModel);set('eval_model',repeat.evalModel);if(form.advisor_model)set('advisor_model',repeat.advisorModel);}
+        const pick=(name,value)=>{if([...form[name].options].some(option=>option.value===value))form[name].value=value;};
         set('v2_mode',repeat.mode);
         syncSeedOptions();
         if([...form.seed.options].some(option=>Number(option.value)===repeat.seed))set('seed',repeat.seed);
-        if([...form.v2_policy.options].some(option=>option.value===repeat.policy))set('v2_policy',repeat.policy);
-        if(repeat.modelSource==='parcc'||repeat.modelSource==='codex'&&!form.model_source.querySelector('option[value="codex"]').disabled)set('model_source',repeat.modelSource);
-        if(repeat.devMode==='agent'&&repeat.modelSource==='parcc')keys.labSource('parcc',{dev:repeat.devModel,eval:repeat.evalModel,advisor:repeat.advisorModel});
-        set('max_attempts',repeat.versions);set('help_count',repeat.help);set('human_wait_seconds',repeat.waitSeconds);
-        set('wall_seconds',repeat.wallSeconds);set('model_seconds_minutes',repeat.modelMinutes);
-        if(repeat.agentLimits&&form.dev_mode.value==='agent'){set('max_attempts',repeat.agentLimits.versions);set('wall_seconds',repeat.agentLimits.wall_seconds);}
+        pick('v2_policy',repeat.policy);
+        set('model_source',repeat.modelSource);
+        if(repeat.modelSource==='parcc')keys.labSource('parcc',{dev:repeat.devModel,eval:repeat.evalModel,advisor:repeat.advisorModel});
+        else {pick('dev_model',repeat.devModel);pick('eval_model',repeat.evalModel);pick('advisor_model',repeat.advisorModel);}
+        set('help_count',repeat.help);
+        if(repeat.agentLimits){set('max_attempts',repeat.agentLimits.versions);set('wall_seconds',repeat.agentLimits.wall_seconds);}
         set('goal_id',repeat.goalId);set('name_suffix',repeat.nameSuffix);
-        if(repeat.reviewer!=null)form.eval_agent_enabled.checked=repeat.reviewer;
-        for(const input of form.querySelectorAll('[data-v2-cell]'))if(repeat.cellBudget?.[input.dataset.v2Cell]!=null)input.value=repeat.cellBudget[input.dataset.v2Cell];
-        for(const input of form.querySelectorAll('[data-v2-experiment]'))if(repeat.experimentBudget?.[input.dataset.v2Experiment]!=null)input.value=repeat.experimentBudget[input.dataset.v2Experiment];
-        manualBudget=!!(repeat.cellBudget||repeat.experimentBudget);
-        // A repeated Agent run is already in Agent mode: its budget and source must not be reset as a fresh entry.
-        if(form.dev_mode?.value==='agent')oneCallFields={modelSource:form.model_source.value,reviewer:form.eval_agent_enabled.checked,versions:form.max_attempts.value,wall:form.wall_seconds.value};
         updatePreview();showQuota();
       }
-      const fork=forkStart&&sourceProfile?.channel==='dev_v2'?forkPanel(form,forkStart):null;
       form.benchmark.addEventListener('change',syncBenchmark);
       form.task_id.addEventListener('change',syncTask);
       window.Lobby.shapeTasks(form);
       form.robot_model.addEventListener('change',syncArm);
-      form.execution_arm.addEventListener('change',() => syncProfile(true));
-      function budgetInput(event) {
-        if(event.target.name==='dev_mode')requestedDevMode=form.dev_mode.value;
-        if(event.target.matches('[data-v2-cell],[data-v2-experiment]'))manualBudget=true;
-        else if(['max_attempts','help_count','human_wait_seconds','model_seconds_minutes','v2_policy','eval_agent_enabled'].includes(event.target.name))manualBudget=false;
-        updatePreview();
-      }
-      form.addEventListener('input',budgetInput);
-      form.addEventListener('change',budgetInput);
+      form.execution_arm.addEventListener('change',syncProfile);
+      form.addEventListener('input',updatePreview);
+      form.addEventListener('change',updatePreview);
       form.model_source.addEventListener('change',showQuota);
       form.addEventListener('ab-keys-change',showQuota);
       // The browser fires input, then change, for one choice. The form's own input listener repaints this row from the
@@ -3117,11 +2850,6 @@
       form.querySelector('[data-keys-source]').addEventListener('input',chooseSource);
       form.querySelector('[data-keys-source]').addEventListener('change',chooseSource);
       form.v2_mode.addEventListener('change',()=>{
-        manualBudget=false;
-        const experiment=form.v2_mode.value==='experiment';
-        if(experiment)form.eval_agent_enabled.checked=true;
-        form.eval_agent_enabled.disabled=experiment||options?.dev_v2?.eval_agent_supported===false;
-        form.querySelector('[data-reviewer-required]').hidden=!experiment;
         syncSeedOptions();
         updatePreview();
       });
@@ -3135,48 +2863,32 @@
         submitting = true;
         updatePreview();
         try {
-          const certified = profile.channel === 'certified_v2';
-          let selection = certified ? {profile_id:profile.id,seed:profile.seed,attention_policy:'autonomous',execution_target:profile.execution_target,assistance_mode:'benchmark_proxy',max_attempts:1,assistance_credits:0,token_limit:0,human_deadline_seconds:60,overall_deadline_seconds:600,robot_model:profile.robot,execution_arm:profile.execution_arm} : {channel:'dev_loop',profile_id:profile.id,request_key:requestKey,max_attempts:Number(form.max_attempts.value),token_limit:Number(form.token_limit.value),wall_seconds:Number(form.wall_seconds.value),seed:profile.seed};
-          if(profile.channel==='formal')selection=fixedLaunchSelection(profile,{policy:form.fixed_policy.value,assistance_mode:form.fixed_assistance.value,attempts:form.max_attempts.value,credits:form.fixed_credits.value,tokens:form.token_limit.value,human_deadline:form.fixed_human_deadline.value,wall_seconds:form.wall_seconds.value,request_mode:form.request_mode.value || 'async',gpu_seconds:form.gpu_seconds.value});
-          if(certified){selection.request_mode=form.request_mode.value || 'async';selection.gpu_seconds=Number(form.gpu_seconds.value);}
-          if(profile.channel==='dev_v2'){
-            syncBudget();
-            const n=Number(form.max_attempts.value),help=Number(form.help_count.value);
-            const cell=Object.fromEntries([...form.querySelectorAll('[data-v2-cell]')].map(e=>[e.dataset.v2Cell,Number(e.value)]));
-            const experiment=Object.fromEntries([...form.querySelectorAll('[data-v2-experiment]')].map(e=>[e.dataset.v2Experiment,Number(e.value)]));
-            if(form.model_source.value==='codex'&&options?.dev_v2?.budget_tier!=='dev')throw new Error('Codex model source requires dev tier');
-            selection={eval_agent:{enabled:form.eval_agent_enabled.checked,model:form.model_source.value==='codex'?'gpt-6-astra':'parcc/Qwen'},request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:form.v2_policy.value==='all'?(options.dev_v2.policies):[form.v2_policy.value],mode:form.v2_mode.value,help_budget:help,human_wait_seconds:Number(form.human_wait_seconds.value),configuration:{goal_id:form.goal_id.value,experiment_budget:experiment,cell_budget:cell,max_iterations:n,wall_seconds:Number(form.wall_seconds.value)}};
-            if(form.model_source.value==='codex'){selection.model_source='codex';selection.budget_tier='dev';}
-            if(fork){
-              if(!fork.ready())throw new Error(fork.reason());
-              selection.fork=fork.request();
-            }
-          }
+          if(!budget.valid)throw new Error(Object.values(budget.errors)[0]);
+          let selection={request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:[form.v2_policy.value],mode:form.v2_mode.value,
+            help_budget:Number(form.help_count.value),goal_key:form.goal_id.value};
           if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
-          if(form.dev_mode.value==='agent'&&!budget.valid)throw new Error(Object.values(budget.errors)[0]);
-          selection=agentLaunchSelection(selection,{limits:form.dev_mode.value==='agent'?budget.limits:null,devMode:form.dev_mode.value,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
-          if(selection.dev_mode==='agent'){const provider=keys.selection();if(provider)selection.agent_provider=provider;}
+          selection=agentLaunchSelection(selection,{limits:budget.limits,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
+          const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
-          if(window.Lobby.enabled&&profile.channel==='dev_v2'){
+          if(window.Lobby.enabled){
             const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(keys.selection(),form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
             keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
           }
-          const response = await controlFetch(profile.channel==='dev_v2'?'/api/dev-v2/experiments':isFixed(profile) ? '/api/runs/start' : '/api/dev/start',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify(profile.channel==='dev_v2'?{selection,start:form.v2_start.value==='yes'}:selection)});
+          const response = await controlFetch('/api/dev-v2/experiments',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify({selection,start:form.v2_start.value==='yes'})});
           const result = await response.json();
           if (!response.ok) throw new Error(providerErrorText(result)||`HTTP ${response.status}`);
           keys.clearSecrets();
-          selectedDev = profile.channel==='dev_v2'?'v2-'+result.cells[0].key:isFixed(profile) ? null : result.session_id;
+          selectedDev = 'v2-'+result.cells[0].key;
           linkedSource = null;
           linkedConfiguration = null;
-          pendingLaunch = isFixed(profile) ? result.launch_id : null;
+          pendingLaunch = null;
           stored('attention.pending-launch',pendingLaunch);
           selectedRun = null;
           const url = new URL(location.href);
           url.searchParams.delete('run');
-          if (selectedDev) url.searchParams.set('dev',selectedDev);
-          else url.searchParams.delete('dev');
-          url.hash=profile.channel==='dev_v2'?`exp=${result.experiment_id}`:'';
+          url.searchParams.set('dev',selectedDev);
+          url.hash=`exp=${result.experiment_id}`;
           history.replaceState(null,'',url);
           launchDialog.close();
           lastRendered = '';
@@ -4301,11 +4013,10 @@
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
     const noVideo=neverStarted(snapshot)?'<div class="op-idle"><b>Nothing to replay</b><p>The robot never started, so there is no video and no steps.</p></div>':'<div class="op-idle"><b>No video was recorded for this attempt</b><p>The steps on the right still show what the robot did.</p></div>';
     const plan=version && snapshot.dev_session && !neverStarted(snapshot)?operatorPlanRow(version,!!snapshot.agent):'';
-    const revision=version&&continueButton(snapshot,version.version)?`<p class="op-continue-row">${continueButton(snapshot,version.version)}</p>`:'';
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div>${snapshot.dev_session && !neverStarted(snapshot)?revision:''}</aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   function operatorPlanRow(version,agent=false) {

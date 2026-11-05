@@ -33,19 +33,17 @@ test('creation errors are rendered as text in the visible form message',()=>{
   assert.match(source,/submitting = false;\s*form.querySelector\('#ab-launch-message'\)/);
 });
 
-test('R5 forces interactive and one policy through profile changes and repeat',()=>{
+test('R5 forces interactive through profile changes and repeat',()=>{
   const mode={value:'experiment',disabled:false};
-  const policy={value:'all',options:[{value:'all'},{value:'autonomous'},{value:'reactive_help'}]};
-  fixtureRunMode(profile,mode,policy);
+  fixtureRunMode(profile,mode);
   assert.equal(mode.value,'interactive');assert.equal(mode.disabled,true);
-  assert.equal(policy.value,'autonomous');assert.equal(policy.options[0].disabled,true);
-  mode.value='experiment';fixtureRunMode(profile,mode,policy);
+  mode.value='experiment';fixtureRunMode(profile,mode);
   assert.equal(mode.value,'interactive');
-  fixtureRunMode({task_id:'open_cabinet'},mode,policy);
-  assert.equal(mode.disabled,false);assert.equal(policy.options[0].disabled,false);
-  mode.value='experiment';fixtureRunMode({task_id:'open_cabinet'},mode,policy);
+  fixtureRunMode({task_id:'open_cabinet'},mode);
+  assert.equal(mode.disabled,false);
+  mode.value='experiment';fixtureRunMode({task_id:'open_cabinet'},mode);
   assert.equal(mode.value,'experiment');
-  assert.match(source,/fixtureRunMode\(selectedProfile\(\),form.v2_mode,form.v2_policy,!!forkStart\)/);
+  assert.match(source,/fixtureRunMode\(selectedProfile\(\),form\.v2_mode\)/);
 });
 test('R5 interactive exclusion label and exact backend refusal are visible',()=>{
   // Options stay short; the group label names the rules and the full limitation is shown once under Scene seed.

@@ -77,9 +77,8 @@ test('Sharing & queue is a numbered section with the same switch as 04, and live
   assert.match(html,/<h4><span class="op-number">02<\/span>Sharing &amp; queue<\/h4>/);
   assert.match(html,/<label class="ab-reviewer-toggle"><input name="lb_share" type="checkbox"><span class="ab-switch"/);
   assert.doesNotMatch(html,/ab-check/);
-  // 04's text update must not land on the Sharing switch, which comes first in the form.
-  assert.match(live,/form\.querySelector\('\[data-run-config-section="reviewer"\] \.ab-reviewer-toggle small'\)/);
+  // Nothing may write into the first switch of the form by class: in Remote that is the Sharing switch.
   assert.doesNotMatch(live,/form\.querySelector\('\.ab-reviewer-toggle small'\)/);
   assert.match(live,/window\.Lobby\.shapeTasks\(form\);/);
-  assert.match(live,/\/\^\(Run type\|Benchmark\|Session type\|Robot\|Name suffix\)\/i/); // Scene seed stays visible in Remote
+  assert.match(live,/\/\^\(Benchmark\|Session type\|Robot\|Name suffix\)\/i/); // Scene seed stays visible in Remote
 });

@@ -9,12 +9,19 @@ const {chromium} = require('playwright');
 const ui = path.join(__dirname, '../ui');
 const html = fs.readFileSync(path.join(ui, 'index.html'), 'utf8').replace('data-mode="demo"', 'data-mode="live"').replace('data-mode="live"', 'data-mode="live" data-control-token="t"');
 const runOptions = fs.readFileSync(path.join(__dirname, 'fixtures/run_options_agent.json'), 'utf8');
+// The fixture offers one New run task; these tests need a second one to switch to.
+function withSecondTask() {
+  const value = JSON.parse(runOptions), first = value.dev_v2.profiles.find(p => p.task_id === 'pick_place_counter_to_sink');
+  value.dev_v2.profiles.push({...first, id: 'second-task', task_id: 'pick_place_counter_to_cabinet'});
+  return JSON.stringify(value);
+}
+const otherTask = task => task.evaluate(el => [...el.options].find(o => !o.disabled && o.value !== el.value).value);
 const presets = ['deepseek', 'openai', 'parcc', 'openai-compatible'].map(id => ({id, label: id, needs_key: true, suggested_models: ['m1'], thinking: null}));
 let browser;
 before(async () => { browser = await chromium.launch({executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox']}); });
 after(async () => { await browser?.close(); });
 
-async function dialog(t, {credentials = [], width = 1280} = {}) {
+async function dialog(t, {credentials = [], width = 1280, options = runOptions} = {}) {
   const page = await browser.newPage({viewport: {width, height: 2400}}); t.after(() => page.close());
   if (process.env.UI_TARGET_TIMEOUT) page.setDefaultTimeout(Number(process.env.UI_TARGET_TIMEOUT));
   await page.route('**/*', route => {
@@ -24,7 +31,7 @@ async function dialog(t, {credentials = [], width = 1280} = {}) {
     const asset = /^\/ui\/([\w.-]+\.(js|css))$/.exec(pathname);
     if (asset && fs.existsSync(path.join(ui, asset[1])))
       return route.fulfill({contentType: asset[2] === 'js' ? 'text/javascript; charset=utf-8' : 'text/css', body: fs.readFileSync(path.join(ui, asset[1]))});
-    if (pathname === '/api/run-options') return json(runOptions);
+    if (pathname === '/api/run-options') return json(options);
     if (pathname === '/api/runs') return json({runs: [], launches: []});
     if (pathname === '/api/provider/presets') return json(presets);
     if (pathname === '/api/provider/credentials') return json(credentials);
@@ -77,19 +84,6 @@ test('MODEL-SOURCE-SELECT: choosing with selectOption (input then change) sticks
   }
 });
 
-test('MODEL-SOURCE-PARCC: One call keeps its own PARCC choice', async t => {
-  const {page, form, source, radio} = await dialog(t);
-  await form.locator('select[name="dev_mode"]').selectOption('one_call');
-  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'One call');
-  await source.selectOption('parcc');
-  assert.equal(await source.inputValue(), 'parcc');
-  assert.equal(await form.locator('select[name="model_source"]').inputValue(), 'parcc');
-  assert.equal(await radio(), 'lab');
-  await source.selectOption('codex');
-  assert.equal(await source.inputValue(), 'codex');
-  assert.equal(await form.locator('select[name="model_source"]').inputValue(), 'codex');
-});
-
 const models = form => form.evaluate(f => Object.fromEntries(['dev', 'eval', 'advisor'].map(role => {
   const select = f.elements[`${role}_model`];
   return [role, {value: select.value, options: [...select.options].map(o => o.value)}];
@@ -139,15 +133,55 @@ test('MODEL-SOURCE-PARCC-AGENT: each source keeps its own model picks', async t 
   assert.equal(parcc.eval.value, 'parcc/GLM');
 });
 
-test('MODEL-SOURCE-PARCC-AGENT: leaving Agent and coming back starts from Codex again', async t => {
-  const {page, form, source} = await dialog(t);
+test('NEW-RUN-SOURCE: changing the task keeps the Model source and its model picks', async t => {
+  const {page, form, source} = await dialog(t, {options: withSecondTask()});
   await source.selectOption('parcc');
-  await form.locator('select[name="dev_mode"]').selectOption('one_call');
-  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'One call');
-  await form.locator('select[name="dev_mode"]').selectOption('agent');
-  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-dev-mode-label]').textContent === 'Agent');
-  assert.equal(await source.inputValue(), 'codex');
-  assert.equal((await models(form)).dev.value, 'gpt-6.1-sol');
+  await form.locator('select[name="eval_model"]').selectOption('parcc/Qwen');
+  const task = form.locator('select[name="task_id"]');
+  await task.selectOption(await otherTask(task));
+  await page.waitForTimeout(150);
+  assert.equal(await source.inputValue(), 'parcc');
+  assert.equal(await form.locator('[data-bill-name]').innerText(), 'PARCC (free)');
+  assert.equal(await form.locator('select[name="eval_model"]').inputValue(), 'parcc/Qwen');
+});
+
+test('NEW-RUN-BUDGET: a lowered budget survives repaints and a new task starts from the official one', async t => {
+  const {page, form} = await dialog(t, {options: withSecondTask()});
+  const versions = form.locator('input[name="max_attempts"]'), wall = form.locator('input[name="wall_seconds"]');
+  assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['10', '21600']);
+  await versions.fill('3');
+  await wall.fill('7200');
+  await form.locator('select[name="v2_policy"]').selectOption({index: 1});
+  await page.waitForTimeout(150);
+  assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['3', '7200']);
+  assert.match(await form.locator('[data-agent-reason]').innerText(), /^3 formal versions .* 2 hours/);
+  assert.equal(await form.locator('[data-reduced-note]').isVisible(), true);
+  const task = form.locator('select[name="task_id"]');
+  await task.selectOption(await otherTask(task));
+  await page.waitForTimeout(150);
+  assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['10', '21600']);
+});
+
+test('NEW-RUN-AGENT-ONLY: nothing in New run offers One call or a fixed policy', async t => {
+  const {form} = await dialog(t);
+  const text = await form.evaluate(f => f.textContent);
+  for (const gone of ['Run type', 'Fixed policy', 'Dev mode', 'One call', 'All seven', 'AI thinking', 'Wait for a person', 'Token budget', 'Execution location', 'Entry support matrix', 'Independent resource limits'])
+    assert.equal(new RegExp(`${gone}\\b`).test(text), false, gone);   // "Dev model" is not "Dev mode".
+  for (const name of ['run_type', 'dev_mode', 'fixed_policy', 'fixed_assistance', 'fixed_credits', 'fixed_human_deadline', 'token_limit', 'gpu_seconds', 'request_mode', 'model_seconds_minutes', 'human_wait_seconds'])
+    assert.equal(await form.locator(`[name="${name}"]`).count(), 0, name);
+  const policies = await form.locator('select[name="v2_policy"]').evaluate(el => [...el.options].map(o => o.value));
+  assert.deepEqual(policies, JSON.parse(runOptions).dev_v2.agent_policies.policies.map(p => p.policy_id));
+  assert.equal(await form.locator('input[name="eval_agent_enabled"]').isChecked(), true);
+  assert.equal(await form.locator('input[name="eval_agent_enabled"]').isDisabled(), true);
+  assert.equal(await form.locator('[data-start-no]').isVisible(), true);
+});
+
+test('NEW-RUN-TIER: a server off the dev tier says why and cannot start', async t => {
+  const value = JSON.parse(runOptions);value.dev_v2.budget_tier = 'legacy';
+  const {form} = await dialog(t, {options: JSON.stringify(value)});
+  assert.match(await form.locator('[data-agent-reason]').innerText(), /modern dev tier/);
+  assert.equal(await form.locator('[data-start-yes]').isDisabled(), true);
+  assert.equal(await form.locator('[data-start-no]').isDisabled(), true);
 });
 
 async function submitted(page, form) {
@@ -165,6 +199,8 @@ test('MODEL-SOURCE-PARCC-SUBMIT: the run asks for the lab key on all three roles
   assert.deepEqual(sent.agent_provider, {roles: {dev: lab('parcc/GLM'), eval: lab('parcc/Qwen'), advisor: lab('parcc/GLM')}});
   assert.equal(sent.dev_mode, 'agent');
   assert.equal(sent.model_source, 'codex');                    // The frozen Agent schema; public views label the run PARCC.
+  assert.equal(sent.goal_key, await form.locator('input[name="goal_id"]').inputValue());
+  assert.equal('configuration' in sent, false);
   assert.doesNotMatch(JSON.stringify(sent), /api_key|"key"|secret/i);
 });
 
@@ -178,7 +214,7 @@ test('MODEL-SOURCE-CODEX-SUBMIT: a Codex run sends no provider routing', async t
 });
 
 // The same trap anywhere else in the dialog: a control the form repaints on input must still hold what the user chose.
-for (const name of ['dev_model', 'eval_model', 'advisor_model', 'v2_policy', 'v2_mode', 'seed', 'task_id', 'run_type']) {
+for (const name of ['dev_model', 'eval_model', 'advisor_model', 'v2_policy', 'v2_mode', 'seed', 'task_id']) {
   test(`DIALOG-SELECT-${name}: a real key press on ${name} keeps the value it set`, async t => {
     const {page, form} = await dialog(t);
     const select = form.locator(`select[name="${name}"]`);
@@ -235,7 +271,7 @@ test('MODEL-SOURCE-LAYOUT: Billed to sits on the third column and is as tall as 
     const field = await box(form.locator('.ab-model-source'));
     const bill = await box(form.locator('.ab-bill'));
     const label = await box(form.locator('.ab-bill-k'));
-    const thirdColumn = await box(form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').nth(2));
+    const thirdColumn = await box(form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').nth(4));
     near(bill.x, thirdColumn.x, `${choice}: card left edge = third column`); near(bill.r, thirdColumn.r, `${choice}: card right edge = third column`);
     near(label.y, (await box(form.locator('.ab-model-source'))).y, `${choice}: the two labels share a line`);
     const select = await box(source);
@@ -249,7 +285,7 @@ test('MODEL-SOURCE-LAYOUT: Billed to sits on the third column and is as tall as 
 test('MODEL-SOURCE-LAYOUT: the key form and the Agent models rows use the same three columns', async t => {
   const {form, source} = await dialog(t, {width: 1280});
   await source.selectOption('all');
-  const columns = await form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').evaluateAll(els => els.slice(0, 3).map(e => { const r = e.getBoundingClientRect(); return [r.x, r.right]; }));
+  const columns = await form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').evaluateAll(els => els.slice(2, 5).map(e => { const r = e.getBoundingClientRect(); return [r.x, r.right]; }));
   const provider = await box(form.locator('[data-key-provider-field]'));
   const secret = await box(form.locator('[data-key-secret-field]'));
   near(provider.x, columns[0][0], 'Provider = first column'); near(secret.r, columns[2][1], 'API key ends on the third column');
@@ -259,6 +295,16 @@ test('MODEL-SOURCE-LAYOUT: the key form and the Agent models rows use the same t
   near((await box(role.locator('.ab-keys-role-pick'))).x, columns[1][0], 'Source = second column');
   near((await box(role.locator('[data-role-model-wrap], .ab-keys-role-model').first())).x, columns[2][0], 'Model = third column');
   near((await box(role.locator('.ab-keys-role-pick'))).r, columns[1][1], 'Source ends on the second column');
+});
+
+test('NEW-RUN-LIMITS: 05 keeps what you can change on the first row and what the task sets on the second', async t => {
+  const {form} = await dialog(t, {width: 1280});
+  const fields = await form.locator('[data-run-config-section="limits"] .ab-launch-grid > .ab-launch-field').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return {x: r.x, y: r.y}; }));
+  assert.equal(fields.length, 5);
+  near(fields[0].y, fields[1].y, 'versions and run time share a row');
+  near(fields[2].y, fields[3].y, 'robot time and steps share a row');near(fields[3].y, fields[4].y, 'steps and tokens share a row');
+  near(fields[0].x, fields[2].x, 'the second row starts on the first column');
+  assert.ok(fields[2].y > fields[0].y);
 });
 
 test('MODEL-SOURCE-LAYOUT-NARROW: at 390px the card stacks under the select, full width, and headings are left aligned', async t => {
@@ -271,14 +317,4 @@ test('MODEL-SOURCE-LAYOUT-NARROW: at 390px the card stacks under the select, ful
   assert.deepEqual(overflow, []);                                     // nothing in 03 pokes out sideways
   const field = await box(form.locator('[data-keys-source]'));
   for (const section of ['models', 'limits']) near((await box(form.locator(`[data-run-config-section="${section}"] .ab-run-section-head h4`))).x, field.x, `${section} heading = field left`);
-});
-
-test('LIMITS-NOTE: the AI thinking note reads as a range line in Agent mode and is gone in One call', async t => {
-  const {page, form} = await dialog(t);
-  const note = form.locator('[data-model-minutes-note]');
-  assert.equal(await note.isVisible(), true);
-  assert.equal((await note.innerText()).trim(), 'Set by Agent mode');
-  await form.locator('select[name="dev_mode"]').selectOption('one_call');
-  await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-model-minutes-note]').hidden);
-  assert.equal(await note.isVisible(), false);
 });

@@ -39,8 +39,6 @@ test('EVAL UI 05 counts enabled reviews and marks disabled reviews untracked',()
 });
 test('EVAL UI New run defaults on, locked selection and snapshot carry review',()=>{
  assert.match(source,/name="eval_agent_enabled" type="checkbox" checked/);
- assert.match(source,/eval_agent:\{enabled:form.eval_agent_enabled.checked,model:form.model_source.value==='codex'\?'gpt-6-astra':'parcc\/Qwen'\}/);
- assert.match(source,/reviewer:form.eval_agent_enabled.checked/);
  assert.match(source,/snapshot.dev_eval_enabled=s.locked\?\.config\?\.eval_agent\?\.enabled===true/);
  assert.match(source,/snapshot.dev_session.versions=cell.versions/);
  assert.match(source,/operatorAIReview\(version\?\.evaluator_review/);

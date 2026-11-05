@@ -73,11 +73,10 @@ def test_run_dialog_css_lives_outside_the_generated_dark_block():
     html = (UI / 'index.html').read_text(encoding='utf-8')
     css = _run_dialog_css(html)
     assert html.index('<style id="ab-run-dialog">') > html.index('<style id="ab-dark-theme">')
-    assert '.ab-launch-native-type{position:absolute' in css  # hides the native run_type select behind the segmented control
-    assert '.ab-launch-segments' in css and '.ab-launch-source' in css and '#run-config-summary' in css
+    assert '.ab-launch-source' in css and '#run-config-summary' in css
     assert '@media(max-width:760px)' in css
     dark = re.search(r'<style id="ab-dark-theme">\n(.*?)</style>', html, re.S).group(1)
-    assert 'ab-launch-native-type' not in dark
+    assert 'ab-launch-source' not in dark
 
 
 def test_regenerating_the_dark_theme_keeps_the_run_dialog_css(tmp_path):

@@ -45,14 +45,12 @@ test('v2 help panel shows all required states and errors, including non-delivere
  assert.match(html,/data-agent-policy-errors/);
  const story=api.agentFullStory(s);assert.equal((story.match(/data-agent-help-id=/g)||[]).length,3);
 });
-test('policy dropdown keeps legacy seven and matrix; agent has eight and no matrix',()=>{
+test('the policy dropdown lists the eight Agent policies and no matrix',()=>{
  const api=apiFor(),old=['autonomous','demo_first','reactive_help','retry_k_then_ask','budget_matched_random_escalation','trace_aware_hint_only','full_trace_aware_attention_planner'];
  const options={policies:old,agent_policies:{agent_policy_version:'agent-policy-v2',policies:[...old,'agent_initiated_help'].map(policy_id=>({policy_id,parameters:{}}))}};
- assert.deepEqual(Array.from(api.devPolicyChoices(options,'one_call')),['all',...old]);
- assert.deepEqual(Array.from(api.devPolicyChoices(options,'agent')),[...old,'agent_initiated_help']);
+ assert.deepEqual(Array.from(api.devPolicyChoices(options)),[...old,'agent_initiated_help']);
  const selection={tasks:['t'],seeds:[1],policies:['autonomous']};
- assert.equal(api.agentLaunchSelection(selection,{devMode:'one_call'}),selection);
- const created=api.agentLaunchSelection(selection,{devMode:'agent',channel:'dev_v2',tier:'dev'});
+ const created=api.agentLaunchSelection(selection,{channel:'dev_v2',tier:'dev'});
  assert.equal(created.dev_mode,'agent');assert.ok(!('agent_policy_version' in created)); // server supplies current default; no v1 UI entry.
 });
 

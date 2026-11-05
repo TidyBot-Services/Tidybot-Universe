@@ -427,6 +427,13 @@ its Advisor uses the text prompt, and the start preflight skips the image check 
 lab roles only. Results are not comparable with Codex runs. The Codex CLI still drives
 each role through the loopback bridge, so it must be installed on the host.
 
+### New run offers Agent runs only
+
+The New run dialog creates Agent runs. One call, fixed-policy runs and "continue from an
+attempt" have no entry there any more; their records still open, and Run again appears only
+on Agent runs. The HTTP routes behind them are unchanged: this removed the entries, not the
+backend, so a client that posts directly can still reach them.
+
 For browser review only, manually run `scripts/preview_agentpolicy.sh`. It creates
 three synthetic fixtures under `/tmp/agentpolicy-preview/` and starts this
 worktree's `ui_server` at `127.0.0.1:8779`, with every POST refused. Printed links

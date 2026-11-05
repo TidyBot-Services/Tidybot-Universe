@@ -6,100 +6,63 @@ const vm=require('node:vm');
 
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const pure=source.slice(source.indexOf('  // Values shared by the visible limits'),source.indexOf('  function bindLaunch()'));
-const {runConfigBudget,runConfigDefaultModelMinutes,runConfigDefaultsFromSelection,runConfigSeedOptions,runConfigSummary}=vm.runInNewContext(pure+'\n({runConfigBudget,runConfigDefaultModelMinutes,runConfigDefaultsFromSelection,runConfigSeedOptions,runConfigSummary})');
-const profile={sdk_call_limit:320,control_step_limit:9600,attempt_wall_seconds:1920,startup_cleanup_seconds:240};
-const defaults={hint_human_seconds:0,provider_tokens:0,input_tokens:0,output_tokens:0};
-const budget=(versions,help=5,reviewer=true)=>runConfigBudget({versions,help,waitSeconds:300,modelMinutes:30,profile,defaults,reviewer,policyCount:2});
+const {runConfigDefaultsFromSelection,runConfigSeedOptions,runConfigSummary}=vm.runInNewContext(pure+'\n({runConfigDefaultsFromSelection,runConfigSeedOptions,runConfigSummary})');
 
-test('version count scales every robot and reviewer quota',()=>{
-  for(const n of [1,5,10]){
-    const {cell,experiment}=budget(n);
-    assert.equal(cell.dev_calls,n);
-    assert.equal(cell.executions,n);
-    assert.equal(cell.eval_calls,n);
-    assert.equal(cell.sdk_calls,n*profile.sdk_call_limit);
-    assert.equal(cell.control_steps,n*profile.control_step_limit);
-    assert.equal(cell.execution_seconds,n*(1920+240));
-    assert.equal(cell.model_seconds,1800);
-    assert.equal(cell.provider_tokens,200000*n);
-    assert.equal(cell.input_tokens,170000*n);
-    assert.equal(cell.output_tokens,30000*n);
-    assert.equal(experiment.sdk_calls,2*cell.sdk_calls);
-    assert.equal(experiment.help_count,2*cell.help_count);
-  }
-  assert.equal(budget(5,5,false).cell.eval_calls,0);
-});
+const repeatBlock=()=>source.match(/      if\(repeat && sourceProfile\) \{[\s\S]*?\n      \}(?=\n      form\.benchmark\.addEventListener)/)[0];
+const options=(...values)=>values.map(value=>({value}));
+function repeatForm(values={}) {
+  const field=value=>({value}),select=(value,...rest)=>({value,options:options(value,...rest)});
+  return {seed:{value:'102',options:options('114')},v2_policy:select('autonomous','reactive_help'),model_source:field('codex'),dev_model:select('gpt-6.1-sol','gpt-6-astra'),
+    eval_model:select('gpt-6.1-sol','gpt-6-astra'),advisor_model:select('gpt-6.1-sol','gpt-6-astra'),max_attempts:field('10'),help_count:field('5'),
+    wall_seconds:field('21600'),goal_id:field(''),name_suffix:field(''),v2_mode:field('experiment'),...values};
+}
+const replay=(repeat,form,keys={labSource(){}})=>{vm.runInNewContext(repeatBlock(),{repeat,sourceProfile:{channel:'dev_v2'},form,keys,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{}});};
 
-test('help count boundaries scale credits, advisor and waiting budget',()=>{
-  for(const help of [1,10]){
-    const {cell}=budget(5,help);
-    assert.equal(cell.help_count,help);
-    assert.equal(cell.help_credits,help);
-    assert.equal(cell.advisor_calls,help);
-    assert.equal(cell.help_wait_seconds,help*120+5*300);
-  }
-});
-
-test('thinking time default follows the frozen cell budget and rounds up',()=>{
-  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:3000}}),50);
-  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:2761}}),47);
-  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:2400}}),40);
-  assert.equal(runConfigDefaultModelMinutes({default_cell_budget:{model_seconds:1800}}),30);
-  assert.equal(runConfigBudget({versions:5,help:5,waitSeconds:300,modelMinutes:50,profile,defaults,reviewer:true}).cell.model_seconds,3000);
-});
-test('Run again reads saved Dev v2 selection and falls back for absent values',()=>{
-  const selection={seeds:[114],policies:['reactive_help'],mode:'interactive',model_source:'codex',help_budget:3,
-    human_wait_seconds:240,eval_agent:{enabled:false},configuration:{goal_id:'goal-1',max_iterations:4,
-      wall_seconds:7200,cell_budget:{model_seconds:2761,dev_calls:4},experiment_budget:{dev_calls:4}}};
-  const values=runConfigDefaultsFromSelection(selection);
+test('Run again reads a saved Agent selection and falls back for absent values',()=>{
+  const values=runConfigDefaultsFromSelection({dev_mode:'agent',seeds:[114],policies:['reactive_help'],mode:'interactive',model_source:'codex',help_budget:3,
+    dev_model:'gpt-6-astra',eval_model:'gpt-6.1-sol',advisor_model:'gpt-6-astra',goal_key:'goal-1',name_suffix:'again',agent_limits:{versions:3,wall_seconds:7200}});
   assert.equal(values.seed,114);assert.equal(values.policy,'reactive_help');assert.equal(values.mode,'interactive');
-  assert.equal(values.modelSource,'codex');assert.equal(values.versions,4);assert.equal(values.help,3);
-  assert.equal(values.waitSeconds,240);assert.equal(values.wallSeconds,7200);assert.equal(values.modelMinutes,47);
-  assert.equal(values.reviewer,false);assert.equal(values.cellBudget.dev_calls,4);
-  assert.equal(values.experimentBudget.dev_calls,4);assert.equal(values.goalId,'goal-1');
+  assert.equal(values.modelSource,'codex');assert.equal(values.help,3);assert.equal(values.goalId,'goal-1');
+  assert.equal(values.devModel,'gpt-6-astra');assert.equal(values.advisorModel,'gpt-6-astra');assert.equal(values.agentLimits.versions,3);
   const missing=runConfigDefaultsFromSelection({});
-  assert.equal(missing.seed,undefined);assert.equal(missing.versions,undefined);assert.equal(missing.modelMinutes,null);
+  assert.equal(missing.seed,undefined);assert.equal(missing.modelSource,'codex');assert.equal('agentLimits' in missing,false);
   assert.match(source,/data-open-run-again>Run again with the same settings/);
   assert.match(source,/button\.hasAttribute\('data-open-run-again'\)/);
-  assert.match(source,/set\('max_attempts',repeat\.versions\)/);
-  assert.match(source,/manualBudget=!!\(repeat\.cellBudget\|\|repeat\.experimentBudget\)/);
-});
-test('Run again applies saved fields to the existing dialog before Start',()=>{
-  const fragment=source.match(/      if\(repeat && sourceProfile\?\.channel==='dev_v2'\) \{[\s\S]*?\n      \}(?=\n      const fork=)/)[0];
-  const field=()=>({value:'default'}),form={seed:{value:'102',options:[{value:'114'}]},v2_policy:{value:'autonomous',options:[{value:'reactive_help'}]},
-    model_source:{value:'parcc',querySelector:()=>({disabled:false})},max_attempts:field(),help_count:field(),human_wait_seconds:field(),
-    wall_seconds:field(),model_seconds_minutes:field(),goal_id:field(),name_suffix:field(),v2_mode:field(),eval_agent_enabled:{checked:true}};
-  const cell={dataset:{v2Cell:'dev_calls'},value:'default'},experiment={dataset:{v2Experiment:'dev_calls'},value:'default'};
-  form.querySelectorAll=selector=>selector==='[data-v2-cell]'?[cell]:[experiment];
-  const repeat=runConfigDefaultsFromSelection({seeds:[114],policies:['reactive_help'],mode:'interactive',model_source:'codex',
-    help_budget:3,human_wait_seconds:240,eval_agent:{enabled:false},name_suffix:'again',configuration:{goal_id:'goal-1',
-      max_iterations:4,wall_seconds:7200,cell_budget:{model_seconds:2761,dev_calls:4},experiment_budget:{dev_calls:4}}});
-  const context={repeat,sourceProfile:{channel:'dev_v2'},form,oneCallFields:null,manualBudget:false,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{}};
-  vm.runInNewContext(fragment,context);
-  assert.equal(form.seed.value,'114');assert.equal(form.v2_policy.value,'reactive_help');assert.equal(form.model_source.value,'codex');
-  assert.equal(form.max_attempts.value,'4');assert.equal(form.help_count.value,'3');assert.equal(form.human_wait_seconds.value,'240');
-  assert.equal(form.wall_seconds.value,'7200');assert.equal(form.model_seconds_minutes.value,'47');assert.equal(form.goal_id.value,'goal-1');
-  assert.equal(form.name_suffix.value,'again');assert.equal(form.eval_agent_enabled.checked,false);
-  assert.equal(cell.value,4);assert.equal(experiment.value,4);assert.equal(context.manualBudget,true);
 });
 
-test('Run again of an Agent run keeps its reduced budget and its PARCC source',()=>{
-  const fragment=source.match(/      if\(repeat && sourceProfile\?\.channel==='dev_v2'\) \{[\s\S]*?\n      \}(?=\n      const fork=)/)[0];
-  const field=value=>({value}),lab=model=>({credential:'lab',provider:'parcc',model});
-  const form={seed:{value:'102',options:[]},v2_policy:{value:'autonomous',options:[]},dev_mode:field('agent'),dev_model:field(''),eval_model:field(''),advisor_model:field(''),
-    model_source:{value:'codex',querySelector:()=>({disabled:false})},max_attempts:field('10'),help_count:field(''),human_wait_seconds:field(''),
-    wall_seconds:field('21600'),model_seconds_minutes:field(''),goal_id:field(''),name_suffix:field(''),v2_mode:field(''),eval_agent_enabled:{checked:true},querySelectorAll:()=>[]};
-  const repeat=runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'parcc/GLM',eval_model:'parcc/Qwen',advisor_model:'parcc/GLM',model_source:'codex',seeds:[102],policies:['autonomous'],
+test('only an ended Agent run offers Run again; nothing offers to continue from an attempt',()=>{
+  const fragment=source.slice(source.indexOf('  function runAgainButton('),source.indexOf('\n  function ',source.indexOf('  function runAgainButton(')+10));
+  const {runAgainButton}=vm.runInNewContext(fragment+'\n({runAgainButton})',{isTerminal:snapshot=>snapshot.ended});
+  const run=mode=>({ended:true,dev_v2:{versions:[{version:1}]},dev_v2_selection:mode?{dev_mode:mode}:{}});
+  assert.match(runAgainButton(run('agent')),/data-open-run-again/);
+  assert.equal(runAgainButton(run(null)),'');                  // an older One call run
+  assert.equal(runAgainButton({...run('agent'),ended:false}),'');
+  assert.equal(runAgainButton({ended:true}),'');              // a Fixed run has no Dev v2 cell
+  assert.doesNotMatch(source,/data-open-fork|continueButton|forkPanel/);
+});
+
+test('Run again applies saved fields to the existing dialog before Start',()=>{
+  const form=repeatForm(),repeat=runConfigDefaultsFromSelection({dev_mode:'agent',seeds:[114],policies:['reactive_help'],mode:'interactive',help_budget:3,
+    dev_model:'gpt-6-astra',eval_model:'gpt-6-astra',advisor_model:'gpt-6-astra',goal_key:'goal-1',name_suffix:'again'});
+  replay(repeat,form);
+  assert.equal(form.seed.value,'114');assert.equal(form.v2_policy.value,'reactive_help');assert.equal(form.model_source.value,'codex');
+  assert.equal(form.dev_model.value,'gpt-6-astra');assert.equal(form.help_count.value,'3');assert.equal(form.goal_id.value,'goal-1');
+  assert.equal(form.name_suffix.value,'again');assert.equal(form.max_attempts.value,'10');assert.equal(form.wall_seconds.value,'21600');
+});
+
+test('Run again keeps a reduced budget and the PARCC source, and an own-key model never blanks a select',()=>{
+  const lab=model=>({credential:'lab',provider:'parcc',model}),seen=[];
+  const form=repeatForm(),repeat=runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'parcc/GLM',eval_model:'parcc/Qwen',advisor_model:'parcc/GLM',seeds:[102],policies:['autonomous'],
     agent_limits:{versions:3,wall_seconds:7200},agent_provider:{roles:{dev:lab('parcc/GLM'),eval:lab('parcc/Qwen'),advisor:lab('parcc/GLM')}}});
   assert.equal(repeat.modelSource,'parcc');
-  const seen=[],context={repeat,sourceProfile:{channel:'dev_v2'},form,oneCallFields:null,manualBudget:false,syncSeedOptions:()=>{},updatePreview:()=>{},showQuota:()=>{},
-    keys:{labSource:(...args)=>seen.push(args)}};
-  vm.runInNewContext(fragment,context);
+  replay(repeat,form,{labSource:(...args)=>seen.push(args)});
   assert.equal(form.model_source.value,'parcc');assert.equal(form.max_attempts.value,'3');assert.equal(form.wall_seconds.value,'7200');
   assert.equal(JSON.stringify(seen),JSON.stringify([['parcc',{dev:'parcc/GLM',eval:'parcc/Qwen',advisor:'parcc/GLM'}]]));
-  assert.ok(context.oneCallFields,'syncAgentOptions must not treat the restored run as a fresh entry into Agent');
-  const mixed=runConfigDefaultsFromSelection({dev_mode:'agent',model_source:'codex',agent_provider:{roles:{dev:lab('parcc/GLM')}}});
+  const mixed=runConfigDefaultsFromSelection({dev_mode:'agent',agent_provider:{roles:{dev:lab('parcc/GLM')}}});
   assert.equal(mixed.modelSource,'codex');
+  const own=repeatForm();
+  replay(runConfigDefaultsFromSelection({dev_mode:'agent',dev_model:'custom-model',eval_model:'custom-model',advisor_model:'custom-model'}),own);
+  assert.equal(own.dev_model.value,'gpt-6.1-sol');assert.equal(own.eval_model.value,'gpt-6.1-sol');
 });
 
 test('unregistered experiment seed is labelled; interactive seed is selectable',()=>{
@@ -111,17 +74,11 @@ test('unregistered experiment seed is labelled; interactive seed is selectable',
 });
 
 test('footer summary reflects every visible choice',()=>{
-  assert.equal(runConfigSummary({robot:'OpenArm365',arm:'both arms',seed:102,layout:11,style:34,versions:5,help:5,reviewer:true}),
-    'OpenArm365 · both arms · seed 102 · layout 11 / style 34 · up to 5 versions · 5 help requests · reviewer on');
+  assert.equal(runConfigSummary({robot:'OpenArm365',arm:'both arms',seed:102,layout:11,style:34,versions:5,help:5}),
+    'OpenArm365 · both arms · seed 102 · layout 11 / style 34 · up to 5 versions · 5 help requests');
 });
 
-test('Codex source is labelled, sent per run, and refused outside the Dev tier',()=>{
+test('the Codex source says what it costs',()=>{
   assert.match(source,/name="model_source" aria-label="Model source"/);
-  assert.match(source,/Codex subscription \(gpt-6-astra, high effort\)/);
   assert.match(source,/Codex results are not comparable with PARCC results and use the Codex subscription quota/);
-  assert.match(source,/options\?\.dev_v2\?\.budget_tier!=='dev'/);
-  assert.match(source,/selection\.model_source='codex'/);
-  assert.match(source,/selection\.model_source='codex'/);
-  assert.match(runConfigSummary({robot:'OpenArm365',arm:'both arms',seed:102,layout:11,style:34,versions:5,help:5,reviewer:true,modelSource:'codex'}),
-    /Codex subscription \(gpt-6-astra, high effort\)$/);
 });

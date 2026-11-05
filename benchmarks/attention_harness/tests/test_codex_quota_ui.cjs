@@ -1,7 +1,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
-const dialog=source.slice(source.indexOf('  function codexQuotaText('),source.indexOf('  function runConfigDefaultModelMinutes('));
+const dialog=source.slice(source.indexOf('  function codexQuotaText('),source.indexOf('  // New run makes Agent runs only'));
 const codexQuotaText=vm.runInNewContext(dialog+'\ncodexQuotaText');
 
 test('Codex quota dialog formats local reset date and warns at 70%',()=>{

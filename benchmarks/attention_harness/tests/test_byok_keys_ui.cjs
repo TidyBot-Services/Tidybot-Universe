@@ -241,9 +241,9 @@ test('failed saves clear the password and do not publish a key in the summary',a
 test('the real footer writer shows the BYOK Dev model/name, lab fallback and two summary lines',async()=>{
   const f=keyFixture();await f.flush();await f.mode('all');await saveKey(f,'deepseek','my-ds');
   Object.assign(f.form,{seed:{value:'102'},dev_model:{value:'gpt-6.1-sol'},eval_model:{value:'gpt-6-astra'},
-    dev_mode:{value:'agent'},max_attempts:{value:'10'},help_count:{value:'5'},eval_agent_enabled:{checked:true},model_source:{value:'codex'}});
+    max_attempts:{value:'10'},help_count:{value:'5'},model_source:{value:'codex'}});
   Object.assign(f.context,{form:f.form,keys:f.binding,budget:{reduced:false},armNames:{both:'Both arms'},selectedProfile:()=>({channel:'dev_v2',enabled:true,robot:'OpenArm365',execution_arm:'both',layout_id:11,style_id:34})});
-  const writer=source.slice(source.indexOf('      function updateSummary()'),source.indexOf('      function syncProfile(resetWall)'));
+  const writer=source.slice(source.indexOf('      function updateSummary()'),source.indexOf('      function syncProfile()'));
   const baseWriter=source.slice(source.indexOf('  function runConfigSummary('),source.indexOf('  function launchSourceProfile('));
   vm.runInContext(baseWriter+writer+'\nthis.refreshSummary=updateSummary;',f.context);
   const read=()=>{f.context.refreshSummary();return f.node('[data-launch-preview]').textContent;};
@@ -251,20 +251,6 @@ test('the real footer writer shows the BYOK Dev model/name, lab fallback and two
   assert.ok(!read().includes('test-only-secret'));
   assert.match(read(),/Eval deepseek-chat \(your key my-ds · thinking off\) · Advisor deepseek-chat \(your key my-ds · thinking off\)/);
   await f.mode('lab');assert.match(read(),/Dev gpt-6\.1-sol/);assert.match(read(),/Eval gpt-6-astra/);assert.ok(!read().includes('your key')&&!read().includes('Advisor'));
-  await f.mode('all');f.form.dev_mode.value='one_call';assert.ok(!read().includes('your key')); // Only Agent submissions carry BYOK routing.
-});
-
-test('run type buttons dispatch the original bubbling change and follow programmatic changes',()=>{
-  const listeners={},buttons=['dev','fixed'].map(runType=>({dataset:{runType},attrs:{},
-    setAttribute(name,value){this.attrs[name]=value;},addEventListener(type,fn){this[type]=fn;}}));
-  const select={value:'dev',disabled:false,addEventListener(type,fn){listeners[type]=fn;},dispatchEvent(event){assert.equal(event.bubbles,true);listeners[event.type]();}};
-  const form={run_type:select,querySelectorAll:()=>buttons};
-  const code=source.slice(source.indexOf('      function syncRunTypeButtons()'),source.indexOf("      form.addEventListener('ab-keys-change'"));
-  const context=vm.createContext({form,Event});vm.runInContext(code+'\nsyncRunTypeButtons();',context);
-  assert.equal(buttons[0].attrs['aria-pressed'],'true');buttons[1].click();
-  assert.equal(select.value,'fixed');assert.equal(buttons[1].attrs['aria-pressed'],'true');
-  select.value='dev';select.dispatchEvent(new Event('change',{bubbles:true}));
-  assert.equal(buttons[0].attrs['aria-pressed'],'true');assert.equal(buttons[1].attrs['aria-pressed'],'false');
 });
 
 const optionsOf=list=>[...list.innerHTML.matchAll(/data-model-option="([^"]+)"/g)].map(m=>m[1]);
@@ -452,7 +438,7 @@ test('a failed Save also frees the radios, and no follow-up reads run for a key 
   assert.ok(!f.requests.some(r=>r.method==='GET'&&r.url.endsWith('/models')));
 });
 test('the Model source row follows whether keys are available, not the radios\' passing disabled state',()=>{
-  assert.match(source,/option\[value="\$\{name\}"\]`\)\.disabled=!agent\|\|!keys\.available;/);
+  assert.match(source,/option\[value="\$\{name\}"\]`\)\.disabled=!keys\.available;/);
   assert.doesNotMatch(source,/radio\(name\)\?\.disabled/);
   assert.match(source,/get available\(\) \{ return state\.available; \}/);
   // Saving ends with the PUT; the model listing and the key test run after it.

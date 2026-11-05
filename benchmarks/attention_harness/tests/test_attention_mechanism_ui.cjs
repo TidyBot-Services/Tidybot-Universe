@@ -38,13 +38,3 @@ test('run lock and autonomous block explain server facts',()=>{
  const html=api().attentionRunContext({lock:{policy_switchable:false,ranking_eligible:false,conditions:{seed:101}},autonomous_work:{state:'blocked',blocked_by:'resource',reason:'tokens exhausted'}});
  assert.match(html,/Policy switchable: false/);assert.match(html,/Ranking eligible: false/);assert.match(html,/tokens exhausted/);assert.match(html,/resource/);
 });
-
-test('ordinary fixed profile sends independent execution, assistance and request modes',()=>{
- const start=source.indexOf('  function fixedLaunchSelection('),end=source.indexOf('  function bindLaunch()',start);
- const build=vm.runInNewContext(source.slice(start,end)+'\nfixedLaunchSelection');
- const result=build({id:'cube',seed:101,execution_target:'robosuite_sim'},
-  {policy:'full_trace_aware_attention_planner',assistance_mode:'live_human_first',attempts:'4',credits:'1',tokens:'4096',human_deadline:'30',wall_seconds:'300',request_mode:'blocking',gpu_seconds:'12'});
- assert.equal(result.execution_target,'robosuite_sim');assert.equal(result.assistance_mode,'live_human_first');assert.equal(result.request_mode,'blocking');
- assert.equal(result.assistance_credits,1);assert.equal(result.gpu_seconds,12);assert.equal(result.profile_id,'cube');
- assert.throws(()=>build({id:'real',seed:101,execution_target:'real_robot'},{}),/registered simulator/);
-});
