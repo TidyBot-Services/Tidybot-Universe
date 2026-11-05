@@ -93,6 +93,7 @@ def _roles(value, credentials):
             result[role] = dict(credential='lab', provider='parcc', model=desc['model'])
         elif name in known and desc.get('provider') == known[name]['provider'] and known[name]['provider'] != 'openai-compatible':
             result[role] = dict(credential=name, provider=known[name]['provider'], model=desc['model'].strip())
+            if desc.get('vision') is False:result[role]['vision'] = False  # Its own test found it reads text only. The harness refuses this on Dev.
         else:raise Refused('key_not_found', 'That key is not saved, or has expired.', 400)
     return result
 

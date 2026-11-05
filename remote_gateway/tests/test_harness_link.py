@@ -124,6 +124,16 @@ def test_keys_belong_to_the_person_who_saved_them(link):
     assert status == 400 and value['code'] == 'key_not_found'
 
 
+def test_a_key_that_reads_text_only_reaches_the_run_as_declared(link):
+    browser = link.person()
+    assert browser.send('PUT', '/api/provider/credentials/mine', dict(provider='deepseek', key='sk-' + secrets.token_urlsafe(32)))[0] == 200
+    selection = link.choice(browser);selection['agent_provider']['roles']['eval'] = dict(credential='mine', provider='deepseek', model='m', vision=False)
+    status, made = browser.json('POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
+    assert status == 200, made
+    view = browser.json('GET', f'/api/dev-v2/experiments/{made["experiment_id"]}/cells/{made["cells"][0]["key"]}/view')[1]
+    assert 'eval' in view['agent']['text_only_roles'] and 'advisor' not in view['agent']['text_only_roles']
+
+
 def test_a_run_is_created_read_and_listed_by_its_owner_only(link):
     alice, bob = link.person(), link.person()
     selection = link.choice(alice)

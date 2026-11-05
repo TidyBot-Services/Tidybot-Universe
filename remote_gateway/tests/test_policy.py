@@ -84,6 +84,12 @@ def test_a_saved_key_is_routed_with_its_own_provider():
     assert rebuilt(body(agent_provider=dict(roles=roles)))['agent_provider']['roles']['dev'] == dict(credential='mine', provider='deepseek', model='m')
 
 
+def test_a_saved_key_that_reads_text_only_stays_declared():
+    mine = lambda **more: dict(credential='mine', provider='deepseek', model='m', **more)
+    roles = rebuilt(body(agent_provider=dict(roles=dict(dev=PARCC(), eval=mine(vision=False), advisor=mine(vision=True)))))['agent_provider']['roles']
+    assert roles['eval'] == mine(vision=False) and roles['advisor'] == mine()
+
+
 @pytest.mark.parametrize('change,code', [(dict(tasks=['hidden']), 'task_not_offered'), (dict(tasks=['nope']), 'task_not_offered'), (dict(tasks=['a', 'b']), 'single_run_required'),
                                          (dict(policies=['all']), 'policy_not_offered'), (dict(mode='diagnostic'), 'invalid_mode'), (dict(tasks=['turn_on_microwave']), 'task_not_offered')])
 def test_only_what_is_offered_can_be_chosen(change, code):
