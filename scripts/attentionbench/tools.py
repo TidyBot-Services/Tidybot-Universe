@@ -69,7 +69,7 @@ def _unpack(archive: Path, target: Path, strip: int = 0) -> None:
             if len(parts) > strip:
                 member.name = '/'.join(parts[strip:])
                 members.append(member)
-        bundle.extractall(staging, members=members)
+        bundle.extractall(staging, members=members, **({'filter': 'data'} if hasattr(tarfile, 'data_filter') else {}))
     shutil.rmtree(target, ignore_errors=True)
     staging.rename(target)
 

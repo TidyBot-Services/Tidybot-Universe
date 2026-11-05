@@ -256,7 +256,7 @@ class DailyDevV2:
                 if sha(old_lock['path'])!=old_lock['sha256']:raise DevConflict('identity lock digest drift')
                 runtime=Path(json.loads(Path(old_lock['path']).read_bytes())['source_root'])
             with (directory/'creation.log').open('ab') as log:
-                result=subprocess.run([sys.executable,'-B','-m','benchmarks.attention_harness.dev_experiment','create','--store',str(path),'--artifacts',str(directory/'artifacts'),'--selection',str(request_file),'--output',str(directory/'created.json')],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,timeout=60)
+                result=subprocess.run([sys.executable,'-B','-m','benchmarks.attention_harness.dev_experiment','create','--store',str(path),'--artifacts',str(directory/'artifacts'),'--selection',str(request_file),'--output',str(directory/'created.json')],cwd=runtime,env={**os.environ,'PYTHONPATH':str(runtime),'PYTHONDONTWRITEBYTECODE':'1'},stdout=log,stderr=log,timeout=150)
             if result.returncode:
                 from .dev_agent_view import clean
                 from .dev_agent_workspace import read_beneath

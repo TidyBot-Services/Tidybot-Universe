@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
     if not (ws / 'paths.json').is_file():
         print(f'{ws} has not been set up (no paths.json)', file=sys.stderr)
         return 1
-    hostenv.apply(ws)
+    hostenv.apply(ws, keep=(args.api_key_env,))
     return 1 if run(ws, args) else 0
 
 

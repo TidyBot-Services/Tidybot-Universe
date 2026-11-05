@@ -63,7 +63,7 @@ def request_body(task: str, seed: int, minutes: float, overrides: dict | None = 
     if provider:
         # Runs on another model say so in the manifest, and the shorter limits are frozen with them.
         selection.update(agent_provider=provider, agent_limits={
-            'versions': selection['max_versions'], 'wall_seconds': max(3600, int(minutes * 60) + 240)})
+            'versions': selection['max_versions'], 'wall_seconds': min(21600, max(3600, int(minutes * 60) + 240))})
     return body
 
 
@@ -166,7 +166,7 @@ def execute(args: argparse.Namespace) -> int:
     if not (ws / 'paths.json').is_file():
         raise installer.StepError('workspace', f'{ws} has not been set up (no paths.json)',
                                   f'Run setup.sh --workspace {ws} first.')
-    hostenv.apply(ws)
+    hostenv.apply(ws, keep=(args.api_key_env,))
     try:
         route = routes.choose(args.model)
     except LookupError as exc:

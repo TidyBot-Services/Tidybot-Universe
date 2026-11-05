@@ -109,7 +109,9 @@ def validate_rebuild(ws: Path, args) -> None:
     if not (ws / 'deployments').is_dir():
         raise StepError('rebuild-planner', 'deployments missing', 'Restore the deployment tree or run a first setup.')
     from scripts.attentionbench import control
-    if not _port_free(getattr(args, 'ui_port', 8769)) or not _port_free(getattr(args, 'memory_port', 8878)) or control.live_workers(ws):
+    saved_ui, saved_memory = hostenv.saved_ports(ws)
+    if (not _port_free(getattr(args, 'ui_port', None) or saved_ui) or not _port_free(getattr(args, 'memory_port', None) or saved_memory)
+            or control.live_workers(ws)):
         raise StepError('rebuild-planner', 'UI, Memory, or a worker is running', 'Run stop.sh, then rerun setup.')
 
 

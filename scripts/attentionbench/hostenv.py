@@ -30,10 +30,10 @@ DEFAULT_UI_PORT = 8769
 DEFAULT_MEMORY_PORT = 8878
 
 
-def clean_env(ws: Path | None = None, environ=None) -> dict:
+def clean_env(ws: Path | None = None, environ=None, keep: tuple = ()) -> dict:
     """The environment for this workspace's child processes; tools in the workspace come first."""
     source = os.environ if environ is None else environ
-    env = {k: v for k, v in source.items() if k in KEEP or k.startswith(KEEP_PREFIXES)}
+    env = {k: v for k, v in source.items() if k in KEEP or k in keep or k.startswith(KEEP_PREFIXES)}
     env.setdefault('HOME', str(Path.home()))
     env.setdefault('LANG', 'C.UTF-8')
     env.update(PYTHONNOUSERSITE='1', PIP_CONFIG_FILE=os.devnull, PIP_DISABLE_PIP_VERSION_CHECK='1',
@@ -51,9 +51,9 @@ def clean_env(ws: Path | None = None, environ=None) -> dict:
     return env
 
 
-def apply(ws: Path | None = None) -> None:
+def apply(ws: Path | None = None, keep: tuple = ()) -> None:
     """Replace this process's environment, so every child inherits the clean one."""
-    env = clean_env(ws)
+    env = clean_env(ws, keep=keep)
     os.environ.clear()
     os.environ.update(env)
 

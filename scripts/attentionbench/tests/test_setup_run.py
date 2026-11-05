@@ -383,7 +383,7 @@ def test_a_checkout_elsewhere_moves_into_the_workspace_and_restarts(tmp_path, mo
     assert commands[0][:2] == ['git', 'clone'] and commands[0][-1] == str(ws / 'repos/attentionbench')
     assert ['git', '-C', str(ws / 'repos/attentionbench'), 'checkout', '--detach', 'abc1234'] in commands
     assert commands[-1][-1] == 'https://example.test/repo.git'
-    assert restarts[0][1].endswith('repos/attentionbench/scripts/attentionbench/setup.py')
+    assert restarts[0][1:3] == ['-I', str(ws / 'repos/attentionbench/scripts/attentionbench/setup.py')]
 
 
 def test_a_checkout_already_in_place_stays(tmp_path, monkeypatch):
@@ -526,6 +526,17 @@ def test_openai_and_custom_need_a_model_name():
     with pytest.raises(ValueError, match='--dev-model'):
         run.routes.role_models(run.routes.ROUTES['openai'], None, None, None)
     assert run.routes.role_models(run.routes.ROUTES['custom'], 'm', None, 'a') == {'dev': 'm', 'eval': 'm', 'advisor': 'a'}
+
+
+def test_a_named_key_variable_survives_the_clean_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv('MY_KEY', 'k')
+    assert run.hostenv.clean_env(tmp_path, keep=('MY_KEY',))['MY_KEY'] == 'k'
+    assert 'MY_KEY' not in run.hostenv.clean_env(tmp_path)
+
+
+def test_long_own_key_runs_stay_inside_the_agent_budget():
+    roles = {'dev': {}}
+    assert run.request_body('pick_place_counter_to_sink', 101, 600, provider={'roles': roles})['selection']['agent_limits']['wall_seconds'] == 21600
 
 
 def test_custom_route_needs_its_three_options(tmp_path):
