@@ -1,7 +1,7 @@
 :root{--orange:#d94d27;--ink:#242822;--paper:#f8f6f0;--bg:#ece9e2;--line:#d3d4c6;--muted:#686e64;--ok:#3fa36b;--warn:#e0a53b;--bad:#e2604f;--dim:#8e8c85}
 *{box-sizing:border-box}html,body{margin:0;height:100%}body{font-family:"DM Sans",system-ui,sans-serif;background:var(--sh-bg);color:var(--sh-ink);transition:background-color var(--sh-t2) var(--sh-ease)}
 a{color:inherit}
-.wrap{height:calc(100% - 68px);min-height:0}
+.wrap{height:calc(100% - var(--sh-bar,68px));min-height:0}
 .main{flex:1;min-width:0;position:relative;overflow:hidden;background:#0d0f12;color:#f3f1ea}
 .bgimg{position:absolute;inset:-2%;background:#15181c center/cover;filter:saturate(.75) brightness(.55);opacity:0;transition:opacity 2.2s ease-in-out;transform-origin:62% 48%;animation:kenburns 38s ease-in-out infinite alternate}
 .shade{position:absolute;inset:0;background:linear-gradient(90deg,#0d0f12 0%,#0d0f12e0 36%,#0d0f1270 64%,#0d0f1220 100%),linear-gradient(0deg,#0d0f12 0%,#0d0f1200 42%)}

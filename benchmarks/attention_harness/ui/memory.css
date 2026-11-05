@@ -12,14 +12,14 @@ body{padding:16px 24px}.wrap{max-width:none;width:100%;min-height:calc(100dvh - 
 
 /* Shared shell (2026-10-22): the same top bar and title style as the main UI and the cover. */
 body{padding:0}
-.wrap{padding:22px 24px 16px;min-height:calc(100dvh - 68px)}
+.wrap{padding:22px 24px 16px;min-height:calc(100dvh - var(--sh-bar,68px))}
 .page-title{flex:none;margin:0 0 16px}
 .page-title .eyebrow{font:600 12px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.18em;color:var(--sh-amb)}
 .page-title h1{font:800 clamp(44px,4.6vw,68px)/.88 "Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.01em;margin:10px 0 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--ink)}
 .page-title h1 em{font-style:normal;color:var(--sh-acc)}
 .page-title .sample{font:600 12px "DM Sans",sans-serif;text-transform:none;letter-spacing:0;border:1px solid var(--sh-acc);border-radius:999px;color:var(--sh-acc);padding:3px 11px}
 .page-title .title-links{margin:6px 0 0;font-size:13px}.page-title .title-links:has(#real-data[hidden]){display:none}.page-title a{color:var(--ink)}
-#monitor{height:calc(100dvh - 68px - 160px)}
+#monitor{height:calc(100dvh - var(--sh-bar,68px) - 160px)}
 @media(max-width:780px){.wrap{padding:16px}#monitor{height:auto}}
 
 /* Local run notes have their own colour in both monitor themes. */

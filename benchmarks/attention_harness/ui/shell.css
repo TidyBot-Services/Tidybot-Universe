@@ -18,10 +18,11 @@ html[data-theme="dark"]{color-scheme:dark;--sh-bg:#15171a;--sh-top:#15171ae6;--s
 @keyframes sh-fade{to{opacity:0}}
 @keyframes sh-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
-/* Top bar. The main UI's older rules are more specific, so the bar's own parts are pinned here. */
-.ab-shell-top{position:sticky;top:0;z-index:30;box-sizing:border-box;height:68px;display:flex;align-items:center;gap:14px;padding:0 24px;background:var(--sh-top);border-bottom:1px solid var(--sh-line);color:var(--sh-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
+/* Top bar. The main UI's older rules are more specific, so the bar's own parts are pinned here.
+   When its parts do not fit it grows a row, and shell.js keeps --sh-bar at its height for what sits below it. */
+.ab-shell-top{position:sticky;top:0;z-index:30;box-sizing:border-box;min-height:68px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 24px;background:var(--sh-top);border-bottom:1px solid var(--sh-line);color:var(--sh-ink);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);transition:background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
 .ab-shell-sp{flex:1}
-.ab-shell-actions{display:flex;align-items:center;gap:10px}
+.ab-shell-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
 .ab-shell-ctx{display:inline-flex!important;align-items:center;gap:8px;height:40px;margin:0!important;padding:0 14px 0 12px!important;border:0!important;border-radius:10px!important;background:var(--sh-fill)!important;color:#fff!important;font:600 14px "DM Sans",system-ui,sans-serif!important;letter-spacing:0!important;text-decoration:none;white-space:nowrap;cursor:pointer;box-shadow:var(--sh-shadow)!important;position:static!important;transition:transform var(--sh-t1) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease)}
 .ab-shell-ctx:hover{background:var(--sh-fill-hover)!important;transform:none}
 .ab-shell-ctx:active{transform:scale(.97)}
@@ -59,11 +60,11 @@ html[data-theme="dark"]{color-scheme:dark;--sh-bg:#15171a;--sh-top:#15171ae6;--s
 .ab-shell-top .ab-shell-flag[hidden]{display:none}
 
 /* The main UI builds the same bar in live.js; its older #attentionbench-clear rules are more specific than the ones above. */
-html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top{height:68px;padding:0 24px;gap:14px;flex-wrap:nowrap;align-items:center;background:var(--sh-top);border-bottom:1px solid var(--sh-line)}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top{height:auto;min-height:68px;padding:10px 24px;gap:8px 14px;flex-wrap:wrap;align-items:center;background:var(--sh-top);border-bottom:1px solid var(--sh-line)}
 html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand{flex:none}
 html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo{font:700 34px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;color:var(--sh-ink)}
 html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo::after{width:.42em;height:.42em;margin-left:.35em;background:var(--sh-acc)}
-html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .op-top-actions{width:auto;flex-wrap:nowrap;gap:10px}
+html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .op-top-actions{width:auto;flex-wrap:wrap;justify-content:flex-end;gap:10px}
 
 /* Run page title in the main UI: the same amber eyebrow and condensed headline as the Memory monitor. */
 html #attentionbench-clear[data-operator-view="true"] .op-page-title{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:12px 0 16px}
@@ -110,8 +111,8 @@ html #attentionbench-clear[data-operator-view="true"] .op-stage .ab-station-came
 @keyframes sh-grid{to{background-position:56px 56px,56px 56px}}
 
 /* Task rail shared by the cover and the Memory monitor. */
-.ab-shell-body{display:flex;min-height:calc(100dvh - 68px)}
-.ab-rail{flex:none;width:300px;height:calc(100dvh - 68px);position:sticky;top:68px;align-self:flex-start;overflow:hidden;background:var(--sh-panel);border-right:1px solid var(--sh-line2);color:var(--sh-ink);transition:width var(--sh-t2) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
+.ab-shell-body{display:flex;min-height:calc(100dvh - var(--sh-bar,68px))}
+.ab-rail{flex:none;width:300px;height:calc(100dvh - var(--sh-bar,68px));position:sticky;top:var(--sh-bar,68px);align-self:flex-start;overflow:hidden;background:var(--sh-panel);border-right:1px solid var(--sh-line2);color:var(--sh-ink);transition:width var(--sh-t2) var(--sh-ease),background-color var(--sh-t2) var(--sh-ease),border-color var(--sh-t2) var(--sh-ease)}
 .closed>.ab-rail{width:0;border-right-width:0}
 .ab-rail-in{width:300px;height:100%;box-sizing:border-box;padding:20px 18px;overflow:auto}
 .ab-rail-h{margin:0;font:700 26px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em}
@@ -135,4 +136,12 @@ html #attentionbench-clear[data-operator-view="true"] .op-stage .ab-station-came
   #attentionbench-clear .op-new-run{box-shadow:0 18px 50px -8px #d94d27ee!important}
   .ab-pages .ind.sh-anim,.ab-themes .ind.sh-anim,.ab-shell-logo::after,.ab-rail,.ab-rec,.ab-shell-ctx{transition:none!important}
 }
-@media (max-width:860px){.ab-shell-top{height:auto;min-height:60px;flex-wrap:wrap;padding:10px 16px;row-gap:8px}.ab-shell-logo{font-size:26px}.ab-pages{order:5;margin-left:0}.ab-shell-body{display:block}.ab-rail{display:none}}
+@media (max-width:860px){.ab-shell-top{position:relative;min-height:60px;padding:10px 16px}.ab-shell-actions{margin-left:0}.ab-shell-logo{font-size:26px}.ab-pages{order:5;max-width:100%;margin-left:0}.ab-pages a{width:88px;min-width:0;padding:0 6px!important}.ab-shell-body{display:block}.ab-rail{display:none}
+  /* Notices sits on the left here, so its panel opens across the bar instead of from the button. */
+  .ab-shell-top .ab-notices-host{position:static}.ab-shell-top .ab-notices-panel{top:100%;right:16px;left:16px;width:auto}
+  html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top{position:relative;min-height:60px;padding:10px 16px}
+  html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .brand b.ab-shell-logo{font-size:26px}
+  html #attentionbench-clear[data-operator-view="true"] header.top.ab-shell-top .op-top-actions{justify-content:flex-start}
+}
+/* The main UI's side padding narrows here, and the bar reaches the page edges by cancelling it. */
+@media (min-width:761px) and (max-width:1050px){html #attentionbench-clear.ab-industrial[data-operator-view="true"] header.top.ab-shell-top{margin:-18px -18px 18px}}

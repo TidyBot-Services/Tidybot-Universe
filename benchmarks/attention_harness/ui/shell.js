@@ -65,6 +65,14 @@
     return group;
   }
 
+  // The bar grows a row when its parts do not fit; what sits below it reads its height from --sh-bar.
+  function trackBar(nav) {
+    global.requestAnimationFrame?.(() => {
+      const bar = nav.closest('.ab-shell-top');
+      if (bar) settle(bar, () => doc.documentElement.style.setProperty('--sh-bar', `${bar.offsetHeight}px`));
+    });
+  }
+
   function pageSwitcher(page, nav) {
     if (!nav) nav = doc.createElement('nav');
     // Home, Run and Memory; Remote joins them when the server has a lobby.
@@ -93,6 +101,7 @@
       } else slide(nav, here, !first);
       first = false;
     });
+    trackBar(nav);
     return nav;
   }
 
