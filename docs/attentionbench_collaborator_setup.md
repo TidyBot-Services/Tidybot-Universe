@@ -99,7 +99,7 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 | Route | You provide | Default models |
 |---|---|---|
 | `codex` | `~/.codex` login: `WS/tools/codex/bin/codex login` | `gpt-6.1-sol` |
-| `parcc` | `PARCC_API_KEY`, or the key in `~/.litellm-key` (University of Pennsylvania) | Dev `parcc/GLM`, Eval and Advisor `parcc/Qwen` |
+| `parcc` | `PARCC_API_KEY`, or the key in `~/.litellm-key` (University of Pennsylvania) | Dev and Eval `parcc/GLM`, which reads text only; Advisor `parcc/Qwen` |
 | `deepseek` | `DEEPSEEK_API_KEY` | `deepseek-flash` |
 | `openai` | `OPENAI_API_KEY` and `--dev-model NAME` | The named model |
 | `custom` | `--base-url URL --api-key-env NAME --dev-model NAME` for any OpenAI-compatible HTTPS endpoint | The named model |

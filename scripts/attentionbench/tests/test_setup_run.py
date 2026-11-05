@@ -481,13 +481,19 @@ def test_dev_has_to_pass_every_check(monkeypatch):
         run.prepare_route('http://ui', 't', run.routes.ROUTES['deepseek'], route_args())
 
 
-def test_a_default_eval_model_that_is_down_falls_back_to_dev_with_a_warning(monkeypatch, tmp_path):
+def test_a_default_advisor_model_that_is_down_falls_back_to_dev_with_a_warning(monkeypatch, tmp_path):
     monkeypatch.setenv('PARCC_API_KEY', 'k')
-    provider_server(monkeypatch, {('eval', 'parcc/Qwen'): DOWN, ('advisor', 'parcc/Qwen'): DOWN,
+    provider_server(monkeypatch, {('advisor', 'parcc/Qwen'): DOWN,
                                   ('eval', 'parcc/GLM'): BLIND, ('advisor', 'parcc/GLM'): BLIND})
     provider, warnings = run.prepare_route('http://ui', 't', run.routes.ROUTES['parcc'], route_args())
     assert provider['roles']['eval']['model'] == 'parcc/GLM' and provider['roles']['eval']['vision'] is False
+    assert provider['roles']['advisor']['model'] == 'parcc/GLM' and provider['roles']['advisor']['vision'] is False
     assert any('unreachable' in line for line in warnings)
+
+
+def test_the_parcc_route_gives_each_role_a_model_lab_runs_allow():
+    from benchmarks.attention_harness.dev_agent_config import PARCC_MODELS
+    assert all(model in PARCC_MODELS[role] for role, model in run.routes.ROUTES['parcc'].models.items())
 
 
 def test_a_named_model_that_fails_is_an_error(monkeypatch):

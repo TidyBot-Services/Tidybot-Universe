@@ -27,7 +27,8 @@ class Route:
 ROUTES = {
     'codex': Route('codex', None, hint='run codex login'),
     'parcc': Route('parcc', 'parcc', ('PARCC_API_KEY', 'LITELLM_KEY'), '.litellm-key',
-                   {'dev': 'parcc/GLM', 'eval': 'parcc/Qwen', 'advisor': 'parcc/Qwen'},
+                   # GLM reads text only, but Qwen rarely ends an Eval on the required JSON (real check 2026-11-05).
+                   {'dev': 'parcc/GLM', 'eval': 'parcc/GLM', 'advisor': 'parcc/Qwen'},
                    'set PARCC_API_KEY or write the key to ~/.litellm-key'),
     'deepseek': Route('deepseek', 'deepseek', ('DEEPSEEK_API_KEY',),
                       models=dict.fromkeys(ROLES, 'deepseek-flash'), hint='set DEEPSEEK_API_KEY'),
