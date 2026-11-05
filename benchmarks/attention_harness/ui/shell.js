@@ -80,7 +80,8 @@
     const remote = flags.remote === '1';
     const remoteTab = flags.remoteTab === '1' || bodyFlags.remoteTab === '1';
     const extras = remoteTab ? [['remote', 'Remote', '/ui/remote']] : [];
-    const pages = [...PAGES, ...extras];
+    // The gateway serves the Run page and nothing else.
+    const pages = flags.gateway === '1' ? PAGES.filter(([id]) => id === 'run') : [...PAGES, ...extras];
     if (remote) page = 'remote';
     if (!nav.querySelector('a[data-page]')) nav.innerHTML = pages.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
     for (const [id, label, href] of extras) if (!nav.querySelector(`a[data-page="${id}"]`)) nav.insertAdjacentHTML('beforeend', `<a href="${href}" data-page="${id}">${label}</a>`);  // pages with a fixed tab list

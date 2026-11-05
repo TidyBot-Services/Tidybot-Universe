@@ -53,7 +53,15 @@
   let selectedRequest = null;
   let lastRendered = '';
   let orchestrator = null;
-  let orchestratorExpectedUnavailable = root.dataset.remote === '1';  // the shared lobby has no orchestrator
+  const gatewayPage = root.dataset.gateway === '1';  // Served by the public gateway: signed in, this person's runs only.
+  let orchestratorExpectedUnavailable = root.dataset.remote === '1' || gatewayPage;  // neither the lobby nor the gateway has an orchestrator
+  if(gatewayPage){
+    const send=window.fetch.bind(window);
+    window.fetch=async(...args)=>{const response=await send(...args);if(response.status===401)location.assign('/login');return response;};
+    const out=document.createElement('button');out.type='button';out.className='ab-button-quiet';out.dataset.signOut='';out.textContent='Sign out';
+    out.addEventListener('click',async()=>{await fetch('/api/session',{method:'DELETE',headers:{'X-Attention-Token':root.dataset.controlToken||''}});location.assign('/login');});
+    root.querySelector('.op-top-actions')?.append(out);
+  }
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
   let sessions = [];
@@ -2600,7 +2608,8 @@
       const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
       const options = launchOptions;
       const devProfiles = options?.dev_v2?.profiles || [];
-      const limits = window.Lobby.newRunLimits() || AGENT_LIMITS;
+      const hosted = window.Lobby.enabled || !!options?.hosted;  // A shared host: its own limits, and never the lab's Codex.
+      const limits = options?.hosted?.limits || window.Lobby.newRunLimits() || AGENT_LIMITS;
       if (!devProfiles.length) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
@@ -2640,8 +2649,8 @@
           ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
-      const keys = bindKeys(form,window.Lobby.enabled?'parcc':'codex');
-      if(window.Lobby.enabled)for(const select of [form.model_source,form.querySelector('[data-keys-source]')])select.querySelector('option[value="codex"]').remove();
+      const keys = bindKeys(form,hosted?'parcc':'codex');
+      if(hosted)for(const select of [form.model_source,form.querySelector('[data-keys-source]')])select.querySelector('option[value="codex"]').remove();
       form.addEventListener('ab-keys-change',updateSummary);
       window.Lobby.shapeNewRun(form);
       const quotaLine=form.querySelector('[data-codex-quota]');
@@ -2690,7 +2699,7 @@
           note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:'lab'}`).join(' · ');
         }
       }
-      if(!window.Lobby.enabled)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
+      if(!hosted)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
         dialogQuota=value;
         if(launchDialog.open)showQuota();
       }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});

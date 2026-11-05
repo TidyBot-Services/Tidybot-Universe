@@ -31,6 +31,7 @@ from .core.runtime import AttentionRuntime
 from .core.store import AttentionStore, StateConflictError
 from .core.models import RequestType
 from .attention_modes import AssistanceMode, RequestState
+from .gateway_auth import OwnerError, control_token_for, owner_of, read_gateway_secret
 from .ui_summary import comparison_summary
 from .ui_media import (authorized_evidence_path, encoded_observation_frame,
                        render_evidence, robocasa_camera_frame, robocasa_human_rgb, rgb_jpeg, rgb_png)
@@ -532,6 +533,7 @@ def create_server(
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
     vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (), lobby=None,
+    gateway_secret=None, gateway_clock=time.time,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
@@ -554,7 +556,10 @@ def create_server(
             db.execute("CREATE INDEX IF NOT EXISTS ui_request_run ON requests(json_extract(payload,'$.run_id'))")
     history = UIHistory(store) if store is not None else None
     fixed_ui = FixedUI(artifact_root) if artifact_root is not None else None
-    control_token = secrets.token_urlsafe(32)
+    # Behind the public gateway every request must carry its signature, and the owner in it decides whose keys are used.
+    public_gateway = gateway_secret is not None
+    control_token = control_token_for(gateway_secret) if public_gateway else secrets.token_urlsafe(32)
+    if public_gateway:os.environ.pop('PARCC_URL', None)  # A preset URL cannot be redirected from this process's environment.
     # Session provider keys (BYOK): memory only, owner-scoped, served by provider_http.
     from . import provider_http
     from .dev_agent_key_vault import ProviderKeyVault
@@ -563,6 +568,7 @@ def create_server(
     vault = vault if vault is not None else ProviderKeyVault()
     if allow_custom is None:
         allow_custom = os.environ.get('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL', '').lower() in ('1', 'true', 'yes')
+    allow_custom = allow_custom and not public_gateway
     quota_cache = {'until': 0.0, 'value': {'available': False}}
     quota_lock = threading.Lock()
 
@@ -784,8 +790,14 @@ def create_server(
 
         def reply(self, value: Any, status: int = 200) -> None:
             self._json(value, HTTPStatus(status))
+        def read_body(self, limit: int) -> bytes:
+            size = int(self.headers.get('Content-Length', '0') or 0)
+            if not 0 <= size <= limit:raise OwnerError('gateway_body_too_large', 'Request body too large', 413)
+            raw = self.rfile.read(size)
+            self.rfile = io.BytesIO(raw)  # The route that follows reads the same bytes.
+            return raw
         def _provider(self) -> None:
-            provider_http.handle(self, vault=vault, token=control_token, allow_custom=allow_custom, allow_private_hosts=allow_private_hosts)
+            provider_http.handle(self, vault=vault, token=control_token, allow_custom=allow_custom, allow_private_hosts=allow_private_hosts, owner_of=owner_of)
         def _lobby(self) -> bool:
             return lobby is not None and lobby_http.handle(self, lobby,
                 authorized=secrets.compare_digest(self.headers.get('X-Attention-Token',''),control_token),
@@ -1120,13 +1132,13 @@ def create_server(
                         if isinstance(selection,dict) and isinstance(selection.get('agent_provider'),dict):
                             roles=selection['agent_provider'].get('roles',{})
                             if isinstance(roles,dict) and any(isinstance(d,dict) and d.get('provider')=='openai-compatible' for d in roles.values()):
-                                known={r['credential_id']:r for r in vault.list(provider_http.owner_of(self))}
+                                known={r['credential_id']:r for r in vault.list(owner_of(self))}
                                 for desc in roles.values():
                                     if isinstance(desc,dict) and desc.get('provider')=='openai-compatible' and desc.get('credential') in known:
                                         desc.setdefault('base_url_host',known[desc['credential']]['base_url_host'])
                     human=bool(human_token and secrets.compare_digest(self.headers.get('X-Attention-Human-Token',''),human_token))
                     self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human,
-                        keys=RunCredentials(vault,provider_http.owner_of(self),allow_custom,allow_private_hosts)))
+                        keys=RunCredentials(vault,owner_of(self),allow_custom,allow_private_hosts)))
                 except PermissionError as error:self._json({'error':str(error)},403)
                 except FileNotFoundError as error:self._json({'error':str(error)},404)
                 except ProviderError as error:self._json(daily_error(error),409)
@@ -1456,7 +1468,18 @@ def create_server(
             except StateConflictError as error:
                 self._json({"error": str(error)}, HTTPStatus.CONFLICT)
 
-    return ThreadingHTTPServer((host, port), Handler)
+    def signed(method):
+        def run(self):
+            try:self._request_owner = owner_of(self)
+            except OwnerError as error:
+                self._json({'error': {'code': error.code, 'message': str(error)}}, HTTPStatus(error.status))
+                return
+            method(self)
+        return run
+    for name in ('do_GET', 'do_POST', 'do_PUT', 'do_DELETE'):setattr(Handler, name, signed(getattr(Handler, name)))
+    server = ThreadingHTTPServer((host, port), Handler)
+    server.public_gateway_mode, server.gateway_secret, server.gateway_clock = public_gateway, gateway_secret, gateway_clock
+    return server
 
 
 def main() -> None:
@@ -1473,6 +1496,9 @@ def main() -> None:
                         help="operator-approved formal simulator profiles for UI launch")
     parser.add_argument("--dev-v2-root", type=Path,
                         help="dedicated daily experiment ledgers and artifacts")
+    parser.add_argument("--public-gateway-mode", action="store_true",
+                        help="serve only requests signed by the public gateway; needs --gateway-secret-fd")
+    parser.add_argument("--gateway-secret-fd", type=int, help="file descriptor holding the gateway secret")
     parser.add_argument("--dev-v2-authorization", type=Path,
                         help="explicit time-bounded daily run authorization")
     parser.add_argument("--dev-v2-per-run-budget", action="store_true",
@@ -1495,6 +1521,10 @@ def main() -> None:
     parser.add_argument("--memory-local-operator", action="store_true",
                         help="allow disable/enable/rollback/expiry on the local Memory (development)")
     args = parser.parse_args()
+    if args.public_gateway_mode != (args.gateway_secret_fd is not None):
+        parser.error("--public-gateway-mode requires --gateway-secret-fd and vice versa")
+    if args.public_gateway_mode and (args.lobby_config or args.memory_service_url or args.memory_local):
+        parser.error("a public gateway instance has no lobby and no Memory")
     if args.dev_v2_root is None and (args.dev_v2_authorization is not None or args.dev_v2_per_run_budget):
         parser.error("Dev v2 authorization/budget options require --dev-v2-root")
     if args.host not in {"127.0.0.1", "localhost", "::1"}:
@@ -1554,6 +1584,7 @@ def main() -> None:
                            run_catalog=args.run_catalog, dev_v2_root=args.dev_v2_root,
                            dev_v2_authorization=args.dev_v2_authorization,
                            dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory,
+                           gateway_secret=read_gateway_secret(args.gateway_secret_fd) if args.public_gateway_mode else None,
                            lobby=json.loads(args.lobby_config.read_text()) if args.lobby_config else None)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:

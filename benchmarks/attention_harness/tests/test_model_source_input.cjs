@@ -23,13 +23,13 @@ after(async () => { await browser?.close(); });
 
 const lobbySnapshot = tasks => ({demo: true, demo_info: {recordings: 7, history_limit: 8, tasks}, clock: {speed: 60}, me: {nickname: 'Lynx-1'}, robot: {state: 'idle', running: null},
   queue: [], recent: [], counts: {}, limits: {help_wait_seconds: 300}, events: []});
-async function dialog(t, {credentials = [], width = 1280, options = runOptions, remote = null} = {}) {
+async function dialog(t, {credentials = [], width = 1280, options = runOptions, remote = null, gateway = false} = {}) {
   const page = await browser.newPage({viewport: {width, height: 2400}}); t.after(() => page.close());
   if (process.env.UI_TARGET_TIMEOUT) page.setDefaultTimeout(Number(process.env.UI_TARGET_TIMEOUT));
   await page.route('**/*', route => {
     const {pathname} = new URL(route.request().url());
     const json = (body, status = 200) => route.fulfill({status, contentType: 'application/json', body: typeof body === 'string' ? body : JSON.stringify(body)});
-    if (pathname === '/ui/') return route.fulfill({contentType: 'text/html', body: remote ? html.replace('data-mode="live"', 'data-mode="live" data-remote="1"') : html});
+    if (pathname === '/ui/') return route.fulfill({contentType: 'text/html', body: remote ? html.replace('data-mode="live"', 'data-mode="live" data-remote="1"') : gateway ? html.replace('data-mode="live"', 'data-mode="live" data-gateway="1"') : html});
     if (pathname === '/api/lobby' && remote) return json(lobbySnapshot(remote));
     const asset = /^\/ui\/([\w.-]+\.(js|css))$/.exec(pathname);
     if (asset && fs.existsSync(path.join(ui, asset[1])))
@@ -230,6 +230,47 @@ test('REMOTE-FORM-JOIN: Start run is off, the demo join works, and a task withou
   const request = page.waitForRequest(r => r.method() === 'POST' && new URL(r.url()).pathname === '/api/lobby/runs');
   await join.click();
   assert.deepEqual((await request).postDataJSON(), {task_key: 'pick_place_counter_to_sink', strategy: 'reactive_help', dev_source: 'lab_glm', share_replies: false});
+});
+
+// What the gateway serves: its own limits in the options, and a goal it sets itself.
+function hostedOptions() {
+  const value = JSON.parse(runOptions);
+  value.dev_v2.goal_key = 'set-by-host';
+  value.hosted = {limits: {versions: 3, wall: 3600, help: 3, maxHelp: 3, versionsRange: '1–3 · Remote limit', wallRange: '1 hour · Remote limit', note: 'Remote limit: 3 versions.'}};
+  return JSON.stringify(value);
+}
+
+test('GATEWAY-PAGE: the page behind the gateway is the same form with real Start, no Codex and the host\'s limits', async t => {
+  const asked = [];
+  const {page, form, source} = await dialog(t, {gateway: true, options: hostedOptions()});
+  page.on('request', request => asked.push(new URL(request.url()).pathname));
+  assert.deepEqual(await sectionHeads(form), ['01What to run', '02Help and attention', '03Models & keys', '04Automatic reviewer', '05Limits', '06Advanced']);
+  assert.deepEqual(await source.evaluate(el => [...el.options].map(o => o.value)), ['parcc', 'all', 'different']);
+  assert.deepEqual([await form.locator('input[name="max_attempts"]').inputValue(), await form.locator('input[name="wall_seconds"]').inputValue()], ['3', '3600']);
+  assert.equal(await form.locator('input[name="goal_id"]').evaluate(el => [el.value, el.readOnly].join()), 'set-by-host,true');
+  assert.equal(await form.locator('[data-start-yes]').innerText(), 'Start run');
+  assert.equal(await form.locator('[data-start-yes]').isDisabled(), false);
+  assert.equal(await form.locator('[data-start-no]').isVisible(), true);
+  assert.equal(await page.locator('[data-remote-note]').count(), 0);
+  assert.deepEqual(await page.locator('.ab-pages a').evaluateAll(els => els.map(a => a.textContent.trim())), ['Run']);
+  const sent = await submitted(page, form);
+  assert.deepEqual(sent.agent_provider.roles.eval, lab('parcc/GLM'));
+  assert.equal(asked.includes('/api/codex-quota'), false);
+});
+
+test('GATEWAY-PAGE: signing out ends the session, and a lost session goes back to login', async t => {
+  const {page} = await dialog(t, {gateway: true, options: hostedOptions()});
+  await page.locator('[data-close-launch]').first().click();
+  let ended = null;
+  await page.route('**/api/session', route => { ended = route.request(); return route.fulfill({status: 200, contentType: 'application/json', body: '{"ok":true}'}); });
+  await page.route('**/login', route => route.fulfill({contentType: 'text/html', body: '<h1>login</h1>'}));
+  await page.locator('[data-sign-out]').click();
+  await page.waitForURL('**/login');
+  assert.equal(ended.method(), 'DELETE');
+  assert.equal(ended.headers()['x-attention-token'], 't');
+  await page.goto('http://attention.test/ui/');
+  await page.route('**/api/runs', route => route.fulfill({status: 401, contentType: 'application/json', body: '{"code":"login_required"}'}));
+  await page.waitForURL('**/login', {timeout: 8000});
 });
 
 test('MODEL-SOURCE-ROLES: Different per agent offers PARCC per role, and Dev on the lab still submits', async t => {
