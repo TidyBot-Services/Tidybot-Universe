@@ -679,7 +679,7 @@ def doctor(args) -> int:
         print(json.dumps(results, indent=2))
     else:
         for row in results:
-            fix = f'; fix: {row["fix"]}' if row['fix'] else ''
+            fix = f'; fix: {row["fix"]}' if row['fix'] and row['status'] != 'PASS' else ''
             print(f'{row["status"]} {row["check"]}: {row["reason"]}{fix}')
     return int(any(row['status'] == 'FAIL' for row in results))
 
