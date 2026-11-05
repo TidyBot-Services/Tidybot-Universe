@@ -24,7 +24,7 @@ from scripts.attentionbench import control, hostenv, installer, routes, setup
 TEMPLATE = ROOT / 'config/attentionbench/run-request.template.json'
 TERMINAL = {'completed', 'failed', 'cancelled', 'needs_review', 'condition_invalid', 'not_started'}
 EID = re.compile(r'devexp-[a-f0-9]{24}\Z')
-# The UI creates a run in a subprocess it allows 60 s (daily_dev_v2), then starts the worker.
+# The UI creates a run in a subprocess it allows 150 s (daily_dev_v2), then starts the worker.
 CREATE_TIMEOUT = 180
 # A busy machine can miss a few polls; a run must not die for that. 15 misses is about five minutes.
 POLL_FAILURES = 15
