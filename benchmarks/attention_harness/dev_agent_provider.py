@@ -62,6 +62,11 @@ def presets():
     }
 
 
+def reasoning_effort(spec, model, effort):
+    """The effort to send. PARCC's Qwen takes xhigh (its default), medium and low, and rejects the high agent roles ask for."""
+    return None if spec.id=='parcc' and model=='parcc/Qwen' and effort=='high' else effort
+
+
 def resolve_provider(provider_id, base_url=None, *, allow_custom=False, allow_private_hosts=(), public_gateway_mode=False):
     spec = presets().get(provider_id) if isinstance(provider_id,str) else None
     if spec is None: raise ProviderError('provider_unknown', 'Unknown provider')

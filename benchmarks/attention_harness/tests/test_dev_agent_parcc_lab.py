@@ -26,9 +26,9 @@ from benchmarks.attention_harness.tests.test_dev_agent_d2 import CONFIG
 from benchmarks.attention_harness.tests.test_dev_agent_d4 import eval_factory, fake_view, seed_record
 
 
-def lab(eval_model='parcc/GLM', advisor_model='parcc/GLM'):
+def lab(advisor_model='parcc/GLM'):
     role=lambda model:dict(credential='lab',provider='parcc',model=model)
-    return dict(roles=dict(dev=role('parcc/GLM'),eval=role(eval_model),advisor=role(advisor_model)))
+    return dict(roles=dict(dev=role('parcc/GLM'),eval=role('parcc/GLM'),advisor=role(advisor_model)))
 
 
 def lab_key(monkeypatch):
@@ -47,6 +47,7 @@ def test_all_three_roles_can_run_on_the_lab_key():
 @pytest.mark.parametrize('role,change,error',[
     ('dev',dict(model='parcc/Qwen'),'unsupported_agent_model'),
     ('dev',dict(model='gpt-6.1-sol'),'unsupported_agent_model'),
+    ('eval',dict(model='parcc/Qwen'),'unsupported_agent_model'),
     ('eval',dict(model='anything-else'),'unsupported_agent_model'),
     ('eval',dict(provider='openai'),'unsupported_agent_model'),
     ('advisor',dict(provider='deepseek'),'lab_provider_not_supported')])
@@ -69,9 +70,9 @@ def test_glm_advisor_uses_the_text_prompt_and_qwen_keeps_the_frames():
     advisor=text['advisor_proxy']
     assert (advisor['model'],advisor['model_source'],advisor['mode'],advisor['max_attempts'])==('parcc/GLM','parcc','text_only',1)
     assert advisor['prompt_version']==dev_advisor_proxy.OLD_PROMPT_VERSION and 'cache_namespace' not in advisor
-    seeing=config.configuration(dict(BASE,agent_provider=lab('parcc/Qwen','parcc/Qwen'),advisor_proxy={'enabled':True}))
+    seeing=config.configuration(dict(BASE,agent_provider=lab('parcc/Qwen'),advisor_proxy={'enabled':True}))
     assert (seeing['advisor_proxy']['model'],seeing['advisor_proxy']['mode'])==('parcc/Qwen','vision')
-    assert seeing['eval_agent']['model']=='parcc/Qwen'
+    assert seeing['eval_agent']['model']=='parcc/GLM'
 
 
 def test_vault_gives_every_role_the_lab_key_without_a_saved_credential(monkeypatch):
@@ -96,12 +97,12 @@ def test_lab_codex_roles_still_take_no_key():
 
 @pytest.mark.parametrize('model,vision',[('parcc/GLM',False),('parcc/Qwen',True)])
 def test_the_image_flag_follows_the_model(monkeypatch,model,vision):
-    key=Secret(lab_key(monkeypatch));roles=config.normalize(dict(BASE,agent_provider=lab(model,model)))['agent_provider']['roles']
+    key=Secret(lab_key(monkeypatch));roles=config.normalize(dict(BASE,agent_provider=lab(model)))['agent_provider']['roles']
     monkeypatch.setattr(vault,'_RUN_KEYS',{'lab':key});monkeypatch.setattr(vault,'_RUN_ROLES',{r:dict(row,base_url=None) for r,row in roles.items()})
     manifest=dict(agent_provider=dict(roles=roles))
-    for role in ('eval','advisor'):
-        resolved=provider_for_run(manifest,role=role)
-        assert (resolved.spec.id,resolved.model,resolved.vision,resolved.secret)==('parcc',model,vision,key)
+    resolved=provider_for_run(manifest,role='advisor')
+    assert (resolved.spec.id,resolved.model,resolved.vision,resolved.secret)==('parcc',model,vision,key)
+    assert provider_for_run(manifest,role='eval').vision is False
 
 
 def test_a_users_key_is_excused_from_the_image_check_only_when_declared():
@@ -124,7 +125,7 @@ def test_only_eval_or_advisor_can_declare_text_only(role,value):
     with pytest.raises(ValueError,match='vision'):config.normalize(dict(BASE,agent_provider=dict(roles=roles)))
 
 
-@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','advisor-text']),(lab('parcc/Qwen','parcc/Qwen'),['dev','eval','advisor'])])
+@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','advisor-text']),(lab('parcc/Qwen'),['dev','dev','advisor'])])
 def test_preflight_asks_only_a_reader_of_images_to_read_one(monkeypatch,roles,expected):
     lab_key(monkeypatch);seen=[]
     def probe(spec,secret,model,*,role):
@@ -169,6 +170,14 @@ def test_parcc_keeps_tool_calls_by_asking_for_the_schema_in_words():
     assert 'response_format' not in chat and chat['tools']
     assert json.dumps(schema,separators=(',',':')) in chat['messages'][0]['content'] and chat['messages'][0]['role']=='system'
     assert 'response_format' in bridge_module.to_chat(body,provider_module.presets()['deepseek'])
+
+
+@pytest.mark.parametrize('model,effort,sent',[('parcc/Qwen','high',None),('parcc/Qwen','low','low'),('parcc/GLM','high','high')])
+def test_the_advisor_never_sends_qwen_the_effort_it_rejects(monkeypatch,model,effort,sent):
+    resolved=SimpleNamespace(spec=provider_module.presets()['parcc'],secret=Secret('sk-canary-'+secrets.token_hex(24)),model=model)
+    transport=FakeTransport(resolved.secret,None);monkeypatch.setattr(provider_module,'open_request',transport)
+    ByokChatClient(resolved).chat(model=model,messages=[dict(role='user',content='Go')],max_tokens=8,reasoning_effort=effort)
+    assert transport.fake.requests[-1][1].get('reasoning_effort')==sent
 
 
 def parcc_selection(**choices):

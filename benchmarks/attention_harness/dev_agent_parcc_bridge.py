@@ -88,7 +88,8 @@ def _response_format(body, chat, provider):
             name=fmt['name'],schema=fmt['schema'],strict=bool(fmt.get('strict',False))))
     elif mode in ('json_object','prompt'):
         if mode=='json_object':chat['response_format']=dict(type='json_object')
-        instruction='Return JSON matching this schema: '+json.dumps(fmt['schema'],separators=(',',':'))
+        instruction=('Return JSON matching this schema: ' if mode=='json_object' else
+            'When you are done, your final message must be only one JSON object matching this schema, with no Markdown and no other text: ')+json.dumps(fmt['schema'],separators=(',',':'))
         system=next((m for m in chat['messages'] if m['role']=='system'),None)
         if system is None:chat['messages'].insert(0,dict(role='system',content=instruction))
         elif isinstance(system['content'],str):system['content']+='\n'+instruction

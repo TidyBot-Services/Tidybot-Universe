@@ -18,7 +18,8 @@ class ByokChatClient:
         spec,key=self.provider.spec,self.provider.secret
         body=dict(model=model,messages=messages,temperature=temperature,stream=False)
         body[spec.token_param]=max_tokens
-        if spec.reasoning_param and reasoning_effort:body[spec.reasoning_param]=reasoning_effort
+        effort=dev_agent_provider.reasoning_effort(spec,model,reasoning_effort)
+        if spec.reasoning_param and effort:body[spec.reasoning_param]=effort
         body.update(json.loads(json.dumps(spec.extra_body)))
         started=time.monotonic();deadline=started+self.timeout_seconds;failures=[]
         for attempt in range(1,4):  # Initial request plus at most two retries, regardless of model name.
