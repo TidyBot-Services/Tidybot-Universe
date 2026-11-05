@@ -56,7 +56,7 @@ def adopt_checkout(ws: Path, argv: list[str]) -> None:
         installer.command('repos', ['git', '-C', str(target), 'checkout', '--detach', head])
         if origin:
             installer.command('repos', ['git', '-C', str(target), 'remote', 'set-url', 'origin', origin])
-    os.execv(sys.executable, [sys.executable, '-I', str(target / 'scripts/attentionbench/setup.py'), *argv])
+    os.execv(sys.executable, [sys.executable, '-I', '-u', str(target / 'scripts/attentionbench/setup.py'), *argv])
 
 
 def uv_python_status(lock: dict) -> tuple[bool, str]:

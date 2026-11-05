@@ -393,7 +393,7 @@ def test_a_checkout_elsewhere_moves_into_the_workspace_and_restarts(tmp_path, mo
     assert commands[0][:2] == ['git', 'clone'] and commands[0][-1] == str(ws / 'repos/attentionbench')
     assert ['git', '-C', str(ws / 'repos/attentionbench'), 'checkout', '--detach', 'abc1234'] in commands
     assert commands[-1][-1] == 'https://example.test/repo.git'
-    assert restarts[0][1:3] == ['-I', str(ws / 'repos/attentionbench/scripts/attentionbench/setup.py')]
+    assert restarts[0][1:4] == ['-I', '-u', str(ws / 'repos/attentionbench/scripts/attentionbench/setup.py')]
 
 
 def test_a_checkout_already_in_place_stays(tmp_path, monkeypatch):
