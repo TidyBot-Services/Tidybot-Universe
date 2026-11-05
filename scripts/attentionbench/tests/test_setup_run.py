@@ -112,6 +112,16 @@ def test_prerequisite_missing_executable_has_install_instruction(fake_prereqs, c
     assert failures and all('; install: ' in line for line in failures)
 
 
+def test_a_declined_apparmor_change_does_not_stop_the_install(fake_prereqs, monkeypatch, capsys):
+    _, ws = fake_prereqs
+    monkeypatch.setattr(setup, '_isolation', lambda: (False, setup.installer.USERNS_REASON))
+    assert setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'WARN bwrap user namespaces' in capsys.readouterr().out
+    monkeypatch.setattr(setup, '_isolation', lambda: (False, 'bwrap namespace probe failed: denied'))
+    assert not setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'FAIL bwrap user namespaces' in capsys.readouterr().out
+
+
 def test_prerequisites_disk_and_port_and_dry_warning(fake_prereqs, monkeypatch, capsys):
     _, ws = fake_prereqs
     monkeypatch.setattr(setup.os, 'statvfs', lambda path: SimpleNamespace(f_bavail=10, f_frsize=1024**3))

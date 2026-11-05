@@ -7,7 +7,7 @@ You need Ubuntu 22.04 or 24.04 on x86_64, an NVIDIA GPU with its driver, Git, ne
 `setup.sh` does the rest:
 
 - It installs pinned copies of `uv`, Conda and the Codex CLI in `WS/tools`. Your own copies are neither used nor changed.
-- It lists the Ubuntu packages this host still lacks (`build-essential`, `bubblewrap`, `ffmpeg`, `libegl1`, `libgl1`, `libglib2.0-0`, `libgomp1`) and any AppArmor change, and asks **once** before running them with `sudo`. If you decline, or stdin is not a terminal, it prints the commands and changes nothing.
+- It lists the Ubuntu packages this host still lacks (`build-essential`, `bubblewrap`, `ffmpeg`, `libegl1`, `libgl1`, `libglib2.0-0`, `libgomp1`) and any AppArmor change, and asks **once** before running them with `sudo`. If you decline, or stdin is not a terminal, it prints the commands and changes nothing. The install still goes on; a missing AppArmor change then stops `doctor` at the end, and rerunning `setup.sh` after the change is quick.
 - It ignores your shell's `PYTHONPATH`, `LD_LIBRARY_PATH`, active Conda or virtual environment, `PIP_*`, `UV_*`, `CC` and `CUDA_HOME`. Proxy, certificate and package-index settings pass through, and so does `CUDA_VISIBLE_DEVICES`.
 
 No model account is needed to install or to verify the workspace. Only a real run needs one, see [Model routes](#model-routes).

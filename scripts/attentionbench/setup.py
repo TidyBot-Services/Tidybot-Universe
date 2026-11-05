@@ -163,12 +163,14 @@ def prerequisites(ws: Path, *, dry_run: bool, ui_port: int | None = None, memory
     bwrap = shutil.which('bwrap')
     isolated, reason = _isolation() if bwrap else (False, 'no bwrap yet; the Codex package brings one')
     in_container = Path('/.dockerenv').exists() or Path('/run/.containerenv').exists()
+    # prepare_host has just offered the AppArmor change. It blocks only agent runs, so the long install goes on
+    # and doctor stops at the end until the change is made.
     check('bwrap user namespaces', isolated, reason,
           installer.USERNS_FIX if reason == installer.USERNS_REASON else
           'sudo apt-get install bubblewrap; enable unprivileged user namespaces (inspect kernel/container policy).'
           + (' Inside Docker, start the container as in the Docker appendix of'
              ' docs/attentionbench_collaborator_setup.md.' if in_container else ''),
-          warning=dry_run or not bwrap)
+          warning=dry_run or not bwrap or reason == installer.USERNS_REASON)
     parent = ws
     while not parent.exists():
         parent = parent.parent
