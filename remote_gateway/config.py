@@ -12,6 +12,7 @@ class Limits:
     versions: int = 3
     wall_seconds: int = 3600
     help_requests: int = 3
+    human_reply_seconds: int = 120  # How long an interactive run waits for its owner before the Advisor answers.
     runs_per_day: int = 3
     active_runs: int = 1
     # Opening one run page makes dozens of calls (views, evidence, video ranges); 5 a second with a burst of 20 broke the page.
@@ -23,6 +24,7 @@ class Limits:
         # Agent runs accept 1-10 versions and 1-6 hours; a limit outside that could never be honoured.
         if not 1 <= self.versions <= 10 or not 3600 <= self.wall_seconds <= 21600 or self.wall_seconds % 3600:
             raise ValueError('versions must be 1-10 and wall_seconds whole hours from 3600 to 21600')
+        if not 30 <= self.human_reply_seconds <= 600:raise ValueError('human_reply_seconds must be 30-600')
         if not 1 <= self.help_requests <= 10 or self.runs_per_day < 1 or self.active_runs < 1:
             raise ValueError('help_requests, runs_per_day and active_runs must be positive')
 

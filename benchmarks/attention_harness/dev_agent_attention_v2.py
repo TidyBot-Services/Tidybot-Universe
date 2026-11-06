@@ -13,6 +13,7 @@ from dataclasses import asdict
 
 from . import dev_agent_policies as policies
 from .dev_agent_attention import Helper, flat_usage, request_view
+from . import dev_agent_human_reply as human_reply
 from .dev_agent_eval import feedback
 from .dev_agent_workspace import atomic_write, encode, read_beneath, shared_name
 from .dev_help import public_screen
@@ -379,19 +380,25 @@ class HelperV2(Helper):
         row.update(status='dispatching', help_count=1, hint_human_seconds=reserve)
         self.state['active_help']['phase']='claimed'
         self._commit('provider_claimed')
-        try:
-            record = self.ask_provider(view, self.config['advisor_proxy'], self.client,
-                cache_dir=self.workspace.private/'advisor-cache')
-            public_screen(record['feedback'])
-            row.update(status='delivered', delivered=True, provider='advisor', content=record['feedback'],
-                cache_hit=record.get('cache_hit', False), **human_seconds(view, record['feedback']))
-            atomic_write(self.workspace.private, 'help/'+eid+'/advisor.json', encode(record))
-            try:usage=flat_usage(record.get('usage'))
-            except (ValueError, TypeError, AttributeError):usage=None;row['usage_record']='unknown'
-        except Exception as exc:
-            record=None;usage=None
-            atomic_write(self.workspace.private, 'help/'+eid+'/error.json', encode(dict(error=str(exc),error_class=type(exc).__name__)))
-            row.update(status='unavailable', error=type(exc).__name__)
+        reply = None if fallback else self._human_reply(eid, view, deadline)
+        record=None;usage=None
+        if reply is not None:
+            row.update(status='delivered', delivered=True, provider='human', content=reply, **human_seconds(view, reply))
+            atomic_write(self.workspace.private, 'help/'+eid+'/human.json', encode(dict(content=reply)))
+        else:
+            try:
+                record = self.ask_provider(view, self.config['advisor_proxy'], self.client,
+                    cache_dir=self.workspace.private/'advisor-cache')
+                public_screen(record['feedback'])
+                row.update(status='delivered', delivered=True, provider='advisor', content=record['feedback'],
+                    cache_hit=record.get('cache_hit', False), **human_seconds(view, record['feedback']))
+                atomic_write(self.workspace.private, 'help/'+eid+'/advisor.json', encode(record))
+                try:usage=flat_usage(record.get('usage'))
+                except (ValueError, TypeError, AttributeError):usage=None;row['usage_record']='unknown'
+            except Exception as exc:
+                record=None;usage=None
+                atomic_write(self.workspace.private, 'help/'+eid+'/error.json', encode(dict(error=str(exc),error_class=type(exc).__name__)))
+                row.update(status='unavailable', error=type(exc).__name__)
         # A return or ordinary provider exception proves invocation. A crash in
         # the claim/call gap or during the call keeps the obligation plus an
         # unknown active job; recovery cannot pretend it was asked or reissue it.
@@ -411,6 +418,13 @@ class HelperV2(Helper):
         if self.quota and record:
             for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
         return feedback(row)
+
+    def _human_reply(self, eid, view, deadline):
+        """A person's words if this run asks one first and they answer in time; otherwise None and the Advisor answers."""
+        seconds = min(self.config.get('human_reply_seconds') or 0, deadline-time.monotonic(), self.ledger.snapshot()['wall_remaining'])
+        if seconds <= 0:return None
+        try:return human_reply.answer(self.workspace.private, eid, question=view['question'], seconds=seconds)
+        except OSError:return None
 
     def force_pending(self, *, trigger, deadline):
         with self.lock:

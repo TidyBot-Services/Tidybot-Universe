@@ -690,7 +690,7 @@ def execution_help_intervals(cell, agent, ledger_jobs):
         origin=value.get('origin_version_id')
         after = int(origin[1:]) if isinstance(origin,str) and re.fullmatch(r'v\d+',origin) else after_execution.get(eid, 0)
         delivered = value.get('delivered') is True
-        help_value = dict(value, provider='advisor', delivered=delivered, rejected=not delivered,
+        help_value = dict(value, provider=value.get('provider','advisor'), delivered=delivered, rejected=not delivered,
                           after_version=after, reason=value.get('reason') or (value.get('decision') or {}).get('reason') or value.get('error') or value.get('status'))
         # Never infer free from not-delivered. The ledger is the accounting fact.
         help_value['charged'] = job.get('state') in ('claimed','unknown','settled') and job.get('resources',{}).get('help',0)>0

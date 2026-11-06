@@ -3545,6 +3545,21 @@
   }
   // End Attention mechanism presentation.
 
+  function bindAgentReply(snapshot){
+    const form=view.querySelector('[data-agent-reply]');if(!form)return;
+    const execution=form.dataset.executionId,key='attention.agent-reply:'+execution,message=form.querySelector('[data-agent-reply-message]');
+    const send=async payload=>{
+      form.querySelectorAll('button').forEach(b=>b.disabled=true);
+      try{
+        const response=await controlFetch(`/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/help-reply`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cell:form.dataset.cell,execution_id:execution,...payload})});
+        const result=await response.json();if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
+        stored(key,null);lastRendered='';await refresh();
+      }catch(error){message.textContent=`Reply not submitted: ${DEBUG_VIEW?error.message:plainError(error.message)}`;form.querySelectorAll('button').forEach(b=>b.disabled=false);}
+    };
+    form.elements.content.addEventListener('input',()=>stored(key,form.elements.content.value));
+    form.addEventListener('submit',event=>{event.preventDefault();if(form.reportValidity())send({content:form.elements.content.value});});
+    form.querySelector('[data-hr-skip]').addEventListener('click',()=>send({skip:true}));
+  }
   function bindDevGuidance(snapshot){
     const form=view.querySelector('[data-dev-guidance]');if(!form)return;
     const sid=snapshot.dev_session.session_id,key=`${sid}:${form.dataset.requestId}`;
@@ -4618,7 +4633,7 @@
     Lobby.beforeRender(view);
     if(snapshot.dev_v2)snapshot.lobby=Lobby.card(snapshot.dev_v2.experiment_id)||undefined;
     Lobby.markView(snapshot);
-    const devDraft=view.querySelector('[data-dev-guidance] textarea');
+    const devDraft=view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');
     const devDraftFocus=devDraft&&document.activeElement===devDraft?[devDraft.selectionStart,devDraft.selectionEnd,devDraft.selectionDirection]:null;
     const previousRun = currentSnapshot?.run?.run_id;
     const overviewFocus=document.activeElement?.hasAttribute("data-overview-toggle")?"[data-overview-toggle]":document.activeElement?.hasAttribute("data-overview-drag")?"[data-overview-drag]":null;
@@ -4722,7 +4737,7 @@
       bindGuidancePreview(snapshot,chosen,input);
     }
     view.querySelectorAll('[data-hint-preset]').forEach(button => button.addEventListener('click', () => {
-      const draft = input || view.querySelector('[data-dev-guidance] textarea');
+      const draft = input || view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');
       if (!draft) return;
       draft.value = button.dataset.presetText;
       draft.dispatchEvent(new Event('input', {bubbles:true}));
@@ -4758,7 +4773,8 @@
     });
     view.querySelector('[data-overview-open-sidebar]')?.addEventListener('click',()=>{sidebarOpen=true;sidebarLayout();});
     bindDevGuidance(snapshot);
-    if(devDraftFocus){const input=view.querySelector('[data-dev-guidance] textarea');if(input){input.focus({preventScroll:true});input.setSelectionRange(...devDraftFocus);}}
+    bindAgentReply(snapshot);
+    if(devDraftFocus){const input=view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');if(input){input.focus({preventScroll:true});input.setSelectionRange(...devDraftFocus);}}
     refreshAttemptDag(snapshot);
     refreshFlowDetail(snapshot);
     refreshMoreDialog();
@@ -4945,6 +4961,8 @@
     if (!currentSnapshot) return;
     if (requestAlertKey && !actionableRequests(currentSnapshot).some(request =>
       `attention.request-alert:${JSON.stringify([currentSnapshot.run.run_id,request.request_id])}` === requestAlertKey)) dismissRequestAlert();
+    const agentClock = view.querySelector('[data-agent-reply-countdown]');
+    if (agentClock) agentClock.textContent = countdown({deadline_at:Number(agentClock.dataset.deadline)});
     const deadline = view.querySelector('[data-reply-countdown]');
     if (!deadline || deadline.dataset.expired === 'true') return;
     const request = currentSnapshot.requests.find(r => r.request_id ===
@@ -5289,7 +5307,7 @@
     if(help.agent_policy_version==='agent-policy-v2'){
       const kind={forced:'Forced question',agent_initiated:'Agent initiated question',system_injected:'System injected hint'}[help.ask_kind]||'Help request';
       const fee=help.actual_cost_known?`${seconds.toFixed(1)} s · ${help.actual_help_count||0} help charged`:help.charged?'Cost pending settlement':'0 s · not charged';
-      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(help.execution_id)}</small><span>${esc(kind)}</span><span>${delivered?'Delivered':'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
+      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(help.execution_id)}</small><span>${esc(kind)}</span><span>${delivered?(help.provider==='human'?'Person replied':'Delivered'):'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
   }
@@ -5299,7 +5317,9 @@
     const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(pending.execution_id)}</small>`:'',
       ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
       fallback?`${agentFallbackNotice(fallback)} <small>${esc(fallback.execution_id||'')}</small>`:''].filter(Boolean);
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
+    const wait=agent.human_wait,draft=wait?stored('attention.agent-reply:'+wait.execution_id)||'':'';
+    const reply=wait?`<div class="op-action need"><h4>The robot needs your help</h4>${HumanReply.blocks({a:'<p>The latest attempt is in 03 · Replay &amp; attempts. Watch it before you reply.</p>',b:`<p>${esc(wait.question)}</p><p class="ab-countdown" data-agent-reply-countdown data-deadline="${wait.deadline_at}"></p>`,c:`<form data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}">${operatorQuickReplies()}<label class="op-guidance-label">Your reply<textarea name="content" maxlength="2000" required placeholder="Write a short tip in plain words.">${esc(draft)}</textarea></label><div class="op-controls"><button class="ab-button-primary" type="submit" value="answer">Send reply</button>${HumanReply.skipButton()}</div><p data-agent-reply-message role="status"></p></form>`,d:'<p>Your reply goes to the Dev agent for its next step. If the time runs out, the AI advisor answers instead and the record says so.</p>'})}</div>`:'';
+    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}${reply}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;

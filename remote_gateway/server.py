@@ -276,6 +276,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == 'GET':
             if not policy.readable(suffix) or not policy.QUERY.fullmatch(parts.query):raise UNOWNED
             return self.relay(self.path, headers={'Range': self.headers['Range']} if 'Range' in self.headers else None)
+        if self.command == 'POST' and suffix == 'help-reply' and not parts.query:
+            return self.relay(self.path, json.dumps(policy.help_reply(self.read_json())).encode())
         if self.command != 'POST' or suffix not in policy.COMMANDS or parts.query:raise UNOWNED
         if self.read_json() != {}:raise policy.Refused('invalid_body', 'This command takes no settings.', 400)
         if suffix == 'run':self.guard_active()

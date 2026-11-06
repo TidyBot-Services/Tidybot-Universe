@@ -49,7 +49,8 @@ def test_a_selection_is_rebuilt_not_copied():
     extra = dict(goal_id='mine', goal_key='someone-elses', execution_target='real_robot', quota_stop_percent=1, wall_seconds=999999, wall_limit=999999, fork=dict(experiment_id='x'),
                  configuration=dict(cell_budget={}), planner_features=dict(memory=True), memory_authority='z', trace_visible=False, dev_reasoning_effort='high', agent_policy_version='agent-policy-v1')
     result = rebuilt(body(**extra))
-    assert not set(extra) - {'goal_key', 'quota_stop_percent', 'wall_limit'} & set(result)
+    assert not set(extra) - {'goal_key', 'quota_stop_percent', 'wall_limit', 'agent_policy_version'} & set(result)
+    assert result['agent_policy_version'] == 'agent-policy-v2'
     assert result['goal_key'].startswith('gw-u-1-') and result['quota_stop_percent'] == 90 and result['wall_limit'] == 21600
     assert result['model_source'] == 'codex' and result['dev_mode'] == 'agent' and result['budget_tier'] == 'dev'
     assert (result['dev_model'], result['eval_model'], result['advisor_model']) == ('parcc/GLM', 'parcc/GLM', 'parcc/Qwen')
@@ -136,3 +137,18 @@ def test_settings_refuse_what_could_never_be_honoured(tmp_path):
     for bad in (dict(versions=11), dict(wall_seconds=1800), dict(wall_seconds=5400), dict(help_requests=0)):
         with pytest.raises(ValueError):Limits(**bad)
     with pytest.raises(ValueError, match='loopback'):Config(state_dir=tmp_path, upstream='http://127.0.0.1:1', ui_dir=tmp_path, listen_host='0.0.0.0')
+
+
+def test_a_help_reply_is_rebuilt_from_named_fields():
+    cell = 'a' * 64
+    assert policy.help_reply(dict(cell=cell, execution_id='e000010', content='Lower it.', extra=1)) == dict(cell=cell, execution_id='e000010', content='Lower it.')
+    assert policy.help_reply(dict(cell=cell, execution_id='e000010', skip=True, content='x')) == dict(cell=cell, execution_id='e000010', skip=True)
+    for bad in (dict(cell='x', execution_id='e000010', content='a'), dict(cell=cell, execution_id='../x', content='a'), dict(cell=cell, execution_id='e000010', content=' '),
+                dict(cell=cell, execution_id='e000010', content='a' * 2001), dict(cell=cell, execution_id='e000010'), []):
+        with pytest.raises(policy.Refused):policy.help_reply(bad)
+
+
+def test_only_an_interactive_run_waits_for_its_owner():
+    made = lambda mode: policy.rebuild(body(mode=mode), user='u-1', options=OPTIONS, limits=LIMITS, credentials=MINE)
+    assert made('interactive')['human_reply_seconds'] == LIMITS.human_reply_seconds
+    assert 'human_reply_seconds' not in made('experiment')

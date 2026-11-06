@@ -11,7 +11,7 @@ const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.inde
     '({agentWorkspaceSnapshot,workspaceHTML,agentHelpCard,agentPolicyHelp,attentionLedger,attentionStripModel,agentFullStory,devPolicyChoices,agentLaunchSelection,policyShort})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null){
-  return rendererAPI(snapshot,false,{crypto:webcrypto,TextDecoder,Uint8Array,
+  return rendererAPI(snapshot,false,{crypto:webcrypto,TextDecoder,Uint8Array,HumanReply:{blocks:parts=>Object.values(parts).join(''),skipButton:()=>'<button data-hr-skip></button>'},
     CAMERA_VIEW_VIDEO:/^advisor_replay(_[a-z_]+)?\.mp4$/,devEvidenceCache:new Map(),v2MonitorIdentities:new Map(),
     fetch:async url=>{const entry=fixture.files['agent-view/'+decodeURIComponent(url.split('/agent/files/')[1])];
       const bytes=entry&&Buffer.from(entry.base64,'base64');return {ok:!!entry,status:entry?200:404,arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};}});
@@ -76,6 +76,16 @@ test('v2 help reasons use readable text with original codes on hover',()=>{
  }
  const html=api.agentHelpCard({agent_policy_version:'agent-policy-v2',reason:'future_reason"<&'},1);
  assert.ok(html.includes('title="future_reason&quot;&lt;&amp;">future_reason&quot;&lt;&amp;</span>'));
+});
+test('a waiting help request offers a reply form and a reply from a person is labelled',async()=>{
+ const s=await snapshot(),api=apiFor(s);
+ assert.ok(!api.agentPolicyHelp(s).includes('data-agent-reply'));
+ s.agent.human_wait={execution_id:'e000005',cell:'c'.repeat(64),question:'What should <it> do?',deadline_at:Date.now()/1000+60};
+ const html=api.agentPolicyHelp(s);
+ assert.ok(html.includes('data-state="waiting"')&&html.includes('data-agent-reply')&&html.includes('data-execution-id="e000005"'));
+ assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
+ assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human'},1).includes('Person replied'));
+ assert.ok(!api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'advisor'},1).includes('Person replied'));
 });
 test('v2 automatic ask notices cover success, blocked limits and unknown codes',async()=>{
  const s=await snapshot(),api=apiFor(s);

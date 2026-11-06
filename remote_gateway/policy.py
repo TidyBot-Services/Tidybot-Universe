@@ -6,6 +6,8 @@ from urllib.parse import unquote
 EXPERIMENT = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})(?:/(.+))?')
 READABLE = re.compile(r'report|export\.json|cells/[a-f0-9]{64}/(?:view|agent/view|live|live/frame|agent/files/.+)')
 COMMANDS = {'run', 'cancel', 'pause'}
+CELL = re.compile(r'[a-f0-9]{64}')
+EXECUTION = re.compile(r'e\d{6}')
 CREDENTIAL = re.compile(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test|/models)?)?')
 SEGMENT = re.compile(r'[A-Za-z0-9_][A-Za-z0-9._-]*')
 QUERY = re.compile(r'[A-Za-z0-9_.=&-]{0,200}')
@@ -122,10 +124,22 @@ def rebuild(body, *, user, options, limits, credentials):
                   agent_provider=dict(roles=roles),
                   agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'),
                                     wall_seconds=_integer(wanted.get('wall_seconds', limits.wall_seconds), 3600, limits.wall_seconds, 'wall_seconds')))
+    if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', human_reply_seconds=limits.human_reply_seconds)
     if rules:result['rules_profile'] = rules
     suffix = selection.get('name_suffix')
     if isinstance(suffix, str) and suffix.strip():result['name_suffix'] = suffix.strip()[:80]
     return result
+
+
+def help_reply(body):
+    """A reply to one help request, or a skip: built from named fields, like a new run."""
+    if not isinstance(body, dict) or not isinstance(body.get('cell'), str) or not CELL.fullmatch(body['cell']):raise Refused('invalid_body', 'Invalid request.', 400)
+    if not isinstance(body.get('execution_id'), str) or not EXECUTION.fullmatch(body['execution_id']):raise Refused('invalid_body', 'Invalid request.', 400)
+    result = dict(cell=body['cell'], execution_id=body['execution_id'])
+    if body.get('skip') is True:return dict(result, skip=True)
+    content = body.get('content')
+    if not isinstance(content, str) or not 0 < len(content.strip()) <= 2000:raise Refused('invalid_reply', 'A reply is 1 to 2000 characters.', 400)
+    return dict(result, content=content)
 
 
 def audit_route(path):

@@ -497,7 +497,7 @@ class DailyDevV2:
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
         if path=='/api/dev-v2/experiments':return self.create(body,keys=keys)
-        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause|run-note-off)',path)
+        m=re.fullmatch(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/(run|cancel|switch|pause|run-note-off|help-reply)',path)
         if not m:raise FileNotFoundError('Unknown Dev v2 command')
         eid,command=m.groups();s=self.store(eid)
         if command=='run-note-off':
@@ -505,6 +505,12 @@ class DailyDevV2:
             if s.cell(body['cell'])['experiment_id']!=eid:raise ValueError('cell outside experiment')
             from .memory_run_notes import turn_off
             return turn_off(s,body['cell'],body['note_id'])
+        if command=='help-reply':
+            if not {'cell','execution_id'}<=set(body)<={'cell','execution_id','content','skip'}:raise ValueError('cell and execution_id required')
+            cell=s.cell(body['cell'])
+            if cell['experiment_id']!=eid or not cell.get('artifact_dir'):raise ValueError('cell outside experiment')
+            from .dev_agent_human_reply import submit
+            return submit(Path(cell['artifact_dir'])/'agent/private',body['execution_id'],content=body.get('content'),skip=body.get('skip',False))
         if command=='pause':
             if body:raise ValueError('Command body must be empty')
             return experiments.request_pause(s,eid)

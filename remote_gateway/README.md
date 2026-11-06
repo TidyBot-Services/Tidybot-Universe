@@ -60,6 +60,7 @@ each run records the host it was created on. Nothing here reads the harness's di
 - **New run**: built from named fields, never copied. All three roles must be the lab's PARCC or a key this person saved, so nothing can reach the lab's Codex. Limits are clamped here, whatever the page sends.
 - **Keys**: pass through to the harness's memory, scoped to the person by the signed owner. The gateway keeps no key, and logs no body.
 - **Answers**: lists are rebuilt from owned runs; JSON loses host paths and the harness's private fields. Video and frames stream unchanged, with Range.
+- **Replies**: an interactive run waits `human_reply_seconds` (120 by default) for its owner at each help request, then the Advisor answers and the record says who did. A frozen comparison run never waits.
 - **Everything else** answers 404. There is one list of what is allowed, in `policy.py`, and it is default-deny.
 - **Log**: `audit.jsonl` records who did what to which kind of route, with identifiers taken out. No bodies, cookies, codes or addresses.
 

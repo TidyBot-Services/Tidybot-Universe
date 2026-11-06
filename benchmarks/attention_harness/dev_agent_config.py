@@ -1,7 +1,7 @@
 """Creation-only options for the single-cell native-agent condition."""
 import math
 
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds'}
 # The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
 DEFAULT_VERSIONS=10
 DEFAULT_WALL_SECONDS=21600
@@ -144,6 +144,13 @@ def normalize(selection, *, validation_origin=None):
         if origin is not None:raise ValueError('agent_limits_not_supported_for_validation')
         limits=agent_limits(selection['agent_limits'])
         if limits:result['agent_limits']=limits
+    if 'human_reply_seconds' in selection:
+        from .dev_agent_human_reply import MIN_SECONDS,MAX_SECONDS
+        seconds=selection['human_reply_seconds']
+        if type(seconds) is not int or not MIN_SECONDS<=seconds<=MAX_SECONDS:raise ValueError('invalid_human_reply_seconds')
+        # A person's words change the run, so a frozen comparison stays Advisor only.
+        if selection.get('mode','experiment')!='interactive' or version!='agent-policy-v2':raise ValueError('human_reply_needs_interactive_policy_v2')
+        result['human_reply_seconds']=seconds
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
     return result

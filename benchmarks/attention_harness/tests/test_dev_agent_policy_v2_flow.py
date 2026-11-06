@@ -750,3 +750,83 @@ def test_revoked_policy_query_keeps_recheck_armed(tmp_path):
         assert r.submit()['error']=='memory_revoked'
         assert r.executor.calls==1 and not r.broker.quarantined
     finally:r.close()
+
+
+# A person answers first when the run asks for one; the Advisor answers otherwise.
+def human_rig(tmp_path,seconds=30):
+    r=Rig(tmp_path);r.helper.config=dict(r.helper.config,human_reply_seconds=seconds)
+    return r
+
+
+def reply_when_open(r,**answer):
+    from benchmarks.attention_harness import dev_agent_human_reply as human
+    def run():
+        until=time.monotonic()+10
+        while time.monotonic()<until:
+            wait=human.pending(r.ws.private)
+            if wait:
+                human.submit(r.ws.private,wait['execution_id'],**answer);return
+            time.sleep(.01)
+    thread=threading.Thread(target=run);thread.start();return thread
+
+
+def test_a_person_answers_instead_of_the_advisor(tmp_path):
+    r=human_rig(tmp_path)
+    try:
+        r.submit();thread=reply_when_open(r,content='Lower the gripper first.')
+        value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20);thread.join()
+        assert value['provider']=='human' and value['content']=='Lower the gripper first.' and not r.advisor.calls
+        assert r.ledger.snapshot()['used']['help']==1
+    finally:r.close()
+
+
+def test_a_skip_goes_to_the_advisor_at_once(tmp_path):
+    r=human_rig(tmp_path)
+    try:
+        r.submit();thread=reply_when_open(r,skip=True)
+        value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20);thread.join()
+        assert value['provider']=='advisor' and len(r.advisor.calls)==1
+    finally:r.close()
+
+
+def test_silence_goes_to_the_advisor_and_a_late_reply_is_refused(tmp_path):
+    from benchmarks.attention_harness import dev_agent_human_reply as human
+    from benchmarks.attention_harness.core.dev_store import DevConflict
+    r=human_rig(tmp_path,seconds=.2)
+    try:
+        r.submit();value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20)
+        assert value['provider']=='advisor' and human.pending(r.ws.private) is None
+        with pytest.raises(DevConflict):human.submit(r.ws.private,value['execution_id'],content='Too late.')
+    finally:r.close()
+
+
+def test_a_run_ending_does_not_wait_for_a_person(tmp_path):
+    r=human_rig(tmp_path)
+    try:
+        r.submit();started=time.monotonic()
+        r.helper.force_pending(trigger='run_end',deadline=time.monotonic()+20)
+        assert time.monotonic()-started<5 and len(r.advisor.calls)==1
+    finally:r.close()
+
+
+def test_without_the_setting_nothing_waits(rig):
+    from benchmarks.attention_harness import dev_agent_human_reply as human
+    rig.submit();value=rig.helper.ask({'question':'Help?'},deadline=time.monotonic()+20)
+    assert value['provider']=='advisor' and human.pending(rig.ws.private) is None and not list(rig.ws.private.glob('help/*/human-wait.json'))
+
+
+def test_the_first_outcome_stands(tmp_path):
+    from benchmarks.attention_harness import dev_agent_human_reply as human
+    folder=tmp_path/'help'/'e000001';folder.mkdir(parents=True)
+    first=dict(kind='reply',content='a')
+    assert human._settle(folder,first)==first and human._settle(folder,dict(kind='timed_out'))==first
+    assert sorted(p.name for p in folder.iterdir())==['human-outcome.json']
+
+
+@pytest.mark.parametrize('seconds,mode,version,ok',[(120,'interactive',V2,True),(120,'experiment',V2,False),(120,'interactive','agent-policy-v1',False),(10,'interactive',V2,False),(True,'interactive',V2,False)])
+def test_only_an_interactive_run_may_ask_a_person(seconds,mode,version,ok):
+    from benchmarks.attention_harness.dev_agent_config import normalize
+    selection=dict(dev_mode='agent',tasks=['t'],seeds=[1],policies=['reactive_help'],mode=mode,agent_policy_version=version,human_reply_seconds=seconds)
+    if ok:assert normalize(selection)['human_reply_seconds']==seconds
+    else:
+        with pytest.raises(ValueError):normalize(selection)
