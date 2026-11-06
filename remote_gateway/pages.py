@@ -10,7 +10,7 @@ input{min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radiu
 button{min-height:42px;border:0;border-radius:999px;background:var(--text);color:var(--paper);font:600 14px system-ui,sans-serif;cursor:pointer}
 strong{color:var(--accent);font-weight:600}strong:empty{display:none}
 </style></head><body>
-<form method="post" action="/login"><h1>AttentionBench</h1><p>Enter your invite code to open your runs.</p>
+<form method="post" action="/login"><h1>AttentionBench</h1><p>Enter your invite code to start a run. Anyone can <a href="/ui/">watch without one</a>.</p>
 <label>Invite code<input name="code" autocomplete="off" spellcheck="false" required autofocus></label>
 <strong role="alert">__MESSAGE__</strong><button type="submit">Continue</button></form>
 </body></html>

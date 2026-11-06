@@ -57,10 +57,12 @@
   let orchestratorExpectedUnavailable = root.dataset.remote === '1' || gatewayPage;  // neither the lobby nor the gateway has an orchestrator
   if(gatewayPage){
     const send=window.fetch.bind(window);
-    window.fetch=async(...args)=>{const response=await send(...args);if(response.status===401)location.assign('/login');return response;};
-    const out=document.createElement('button');out.type='button';out.className='ab-button-quiet';out.dataset.signOut='';out.textContent='Sign out';
-    out.addEventListener('click',async()=>{await fetch('/api/session',{method:'DELETE',headers:{'X-Attention-Token':root.dataset.controlToken||''}});location.assign('/login');});
+    const guest=root.dataset.guest==='1';  // Anyone may watch; an invite code is what lets a person start a run.
+    window.fetch=async(...args)=>{const response=await send(...args);if(response.status===401&&!guest)location.assign('/login');return response;};
+    const out=document.createElement('button');out.type='button';out.className='ab-button-quiet';out.dataset.signOut='';out.textContent=guest?'Enter invite code':'Sign out';
+    out.addEventListener('click',async()=>{if(!guest)await fetch('/api/session',{method:'DELETE',headers:{'X-Attention-Token':root.dataset.controlToken||''}});location.assign('/login');});
     root.querySelector('.op-top-actions')?.append(out);
+    if(guest)document.addEventListener('click',event=>{if(event.target.closest?.('[data-open-launch]')){event.preventDefault();event.stopPropagation();location.assign('/login');}},true);
   }
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
@@ -2896,7 +2898,7 @@
           selection=agentLaunchSelection(selection,{limits:budget.limits,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
-          if(window.Lobby.enabled){
+          if(window.Lobby.enabled&&window.Lobby.snap?.demo){
             const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(provider,form.model_source.value),share_replies:true});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
             keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;

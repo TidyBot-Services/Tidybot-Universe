@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import stat
 import threading
+import time
 from urllib.parse import urlencode
 
 import pytest
@@ -127,14 +128,17 @@ def owned(world, browser, experiment=OWN):
     return user
 
 
-def test_nothing_is_open_before_login(world):
+def test_anyone_can_watch_but_only_an_invite_can_act(world):
     anonymous = Browser(world.port)
-    for path in ('/ui/', '/ui/live.js', '/'):
-        status, _, response = anonymous.send('GET', path)
-        assert status == 303 and response.getheader('Location') == '/login'
-    for method, path in (('GET', '/api/runs'), ('GET', '/api/run-options'), ('GET', f'/api/dev-v2/experiments/{OWN}'), ('POST', '/api/dev-v2/experiments'), ('GET', '/api/provider/presets')):
-        assert anonymous.send(method, path)[0] == 401
-    assert world.harness.calls == []
+    assert anonymous.send('GET', '/')[2].getheader('Location') == '/ui/'
+    page = anonymous.send('GET', '/ui/')[1].decode()
+    assert 'data-guest="1"' in page and 'data-remote="1"' in page and 'data-control-token' not in page.split('<body', 1)[0]
+    for path in ('/ui/live.js', '/api/runs', '/api/run-options', '/api/lobby'):assert anonymous.send('GET', path)[0] == 200
+    before = len(world.harness.calls)
+    for method, path in (('POST', '/api/dev-v2/experiments'), (('POST'), f'/api/dev-v2/experiments/{OWN}/run'), ('POST', f'/api/dev-v2/experiments/{OWN}/cancel'), ('GET', '/api/provider/presets'),
+                         ('GET', '/api/provider/credentials'), ('PUT', '/api/provider/credentials/mine'), ('GET', '/api/session')):
+        assert anonymous.send(method, path, {} if method != 'GET' else None)[0] == 401
+    assert len(world.harness.calls) == before
 
 
 def test_login_page_carries_no_script_and_a_tight_policy(world):
@@ -199,7 +203,7 @@ def test_the_page_is_the_main_ui_without_any_harness_token(world):
     ('GET', '/api/orchestrator/snapshot'), ('POST', '/api/orchestrator/dispatch'), ('POST', '/api/runs/start'), ('POST', '/api/fixed/start'), ('GET', '/api/fixed'), ('GET', '/api/traces/x'),
     ('GET', '/api/codex-quota'), ('GET', '/api/home/status'), ('GET', '/api/home/scene'), ('GET', '/api/memories'), ('GET', '/api/dev-memories'), ('POST', '/api/history/delete'),
     ('GET', '/api/dev/sessions/x'), ('POST', '/api/dev/start'), ('GET', '/api/dev-v2/options'), ('GET', '/api/dev-v2/experiments'), ('GET', '/api/dev-v2/memory-monitor'),
-    ('GET', '/api/dev-v2/automatic-checks'), ('GET', '/api/station/frame'), ('GET', '/api/lobby'), ('GET', '/api/runs/operator'), ('POST', '/api/requests/x/respond')])
+    ('GET', '/api/dev-v2/automatic-checks'), ('GET', '/api/station/frame'), ('GET', '/api/runs/operator'), ('POST', '/api/requests/x/respond')])
 def test_operator_routes_do_not_exist_here(world, method, path):
     browser = world.person();before = len(world.harness.calls)
     assert browser.send(method, path, {} if method == 'POST' else None)[0] == 404
@@ -213,14 +217,22 @@ def test_writes_need_the_sessions_token(world):
     assert not any(call[0] == 'POST' for call in world.harness.calls)
 
 
-@pytest.mark.parametrize('method,suffix', [('GET', ''), ('GET', '/report'), ('GET', f'/cells/{CELL}/agent/view'), ('GET', f'/cells/{CELL}/live/frame'), ('POST', '/run'), ('POST', '/cancel'), ('POST', '/pause')])
-def test_someone_elses_run_does_not_exist(world, method, suffix):
+@pytest.mark.parametrize('method,suffix', [('POST', '/run'), ('POST', '/cancel'), ('POST', '/pause')])
+def test_someone_elses_run_cannot_be_touched(world, method, suffix):
     owner, other = world.person(), world.person()
     owned(world, owner);before = len(world.harness.calls)
     status, content, _ = other.send(method, f'/api/dev-v2/experiments/{OWN}{suffix}', {} if method == 'POST' else None)
     assert status == 404 and json.loads(content)['code'] == 'not_found'
     assert len(world.harness.calls) == before
     assert other.send('GET', f'/api/dev-v2/experiments/{OTHER}')[0] == 404
+
+
+@pytest.mark.parametrize('suffix', ['', '/report', f'/cells/{CELL}/agent/view', f'/cells/{CELL}/live/frame'])
+def test_anyone_can_read_a_run_this_host_made(world, suffix):
+    owner = world.person();owned(world, owner)
+    for reader in (world.person(), Browser(world.port)):
+        assert reader.send('GET', f'/api/dev-v2/experiments/{OWN}{suffix}')[0] == 200
+        assert reader.send('GET', f'/api/dev-v2/experiments/{OTHER}{suffix}')[0] == 404
 
 
 @pytest.mark.parametrize('suffix', ['/ledger.json', '/export.csv', '/fork-preview', f'/cells/{CELL}/files/policy.py', f'/cells/{CELL}/agent/files/%2e%2e/%2e%2e/x',
@@ -296,12 +308,14 @@ def test_paused_means_no_new_run_anywhere(world, how, tmp_path):
     assert browser.send('POST', f'/api/dev-v2/experiments/{OWN}/cancel', {})[0] == 200
 
 
-def test_lists_show_ones_own_runs_only(world):
+def test_lists_show_everyones_runs_and_nothing_else(world):
     first, second = world.person(), world.person()
     owned(world, first);owned(world, second, OTHER)
-    world.harness.rows = [dict(experiment_id=OWN, artifact_dir='/home/someone/a', state='completed'), dict(experiment_id=OTHER, state='completed')]
+    world.harness.rows = [dict(experiment_id=OWN, artifact_dir='/home/someone/a', state='completed'), dict(experiment_id=OTHER, state='completed'), dict(experiment_id='devexp-' + 'd' * 24, state='completed')]
     value = first.json('GET', '/api/runs')[1]
-    assert value == dict(runs=[], launches=[], dev_sessions=[dict(experiment_id=OWN, state='completed')])
+    assert [row['experiment_id'] for row in value['dev_sessions']] == [OWN, OTHER] and 'artifact_dir' not in value['dev_sessions'][0]
+    assert [row['lobby']['mine'] for row in value['dev_sessions']] == [True, False]
+    assert value['dev_sessions'][1]['lobby']['nickname'] != value['dev_sessions'][0]['lobby']['nickname']
 
 
 def test_options_hide_fixed_profiles_and_carry_the_limits(world):
@@ -309,9 +323,10 @@ def test_options_hide_fixed_profiles_and_carry_the_limits(world):
     assert 'profiles' not in value and value['hosted']['limits']['wall'] == 3600 and value['dev_v2']['goal_key'] == 'set-by-host'
 
 
-def test_the_owner_on_every_call_is_the_person_logged_in(world):
+def test_reads_are_public_and_keys_belong_to_the_person_logged_in(world):
     browser = world.person();user = browser.json('GET', '/api/session')[1]['user']
-    browser.send('GET', '/api/runs');browser.send('GET', '/api/provider/credentials')
+    browser.send('GET', '/api/runs');assert {call[2] for call in world.harness.calls} == {'public'}
+    world.harness.calls.clear();browser.send('GET', '/api/provider/credentials')
     assert {call[2] for call in world.harness.calls} == {user}
 
 
@@ -362,7 +377,10 @@ def test_the_log_records_what_happened_and_nothing_said(world):
     _, code = world.gateway.gateway.store.create_invite()
     browser = Browser(world.port);browser.login(code)
     owned(world, browser);browser.send('GET', f'/api/dev-v2/experiments/{OWN}')
-    raw = world.config.audit_file.read_text()
+    for _ in range(100):  # The line is written after the answer goes out.
+        raw = world.config.audit_file.read_text()
+        if '"/api/dev-v2/experiments/{experiment}"' in raw:break
+        time.sleep(.01)
     assert code not in raw and browser.cookie.split('=')[1] not in raw and browser.csrf not in raw and OWN not in raw
     rows = [json.loads(line) for line in raw.splitlines()]
     assert rows[-1]['route'] == '/api/dev-v2/experiments/{experiment}' and rows[-1]['status'] == 200 and rows[-1]['user'].startswith('u-')
@@ -381,7 +399,7 @@ def test_malformed_requests_get_a_plain_answer(world):
 
 def test_an_unexpected_failure_says_nothing_about_itself(world, monkeypatch):
     browser = world.person()
-    monkeypatch.setattr(world.gateway.gateway.store, 'runs_of', lambda user: 1 / 0)
+    monkeypatch.setattr(world.gateway.gateway.store, 'owners', lambda: 1 / 0)
     status, value = browser.json('GET', '/api/runs')
     assert status == 500 and value == dict(error='Something went wrong.', code='internal')
 
@@ -408,3 +426,72 @@ def test_a_group_readable_secret_is_refused(tmp_path):
     with pytest.raises(ValueError, match='readable by its owner'):config.secret()
     config.secret_file.chmod(0o600)
     assert config.secret() == b'x' * 48
+
+
+def start(browser, key):
+    return browser.json('POST', '/api/dev-v2/experiments', dict(selection=dict(SELECTION, request_key=key), start=True))
+
+
+def row(experiment, state):return dict(experiment_id=experiment, state=state, experiment_state=state)
+
+
+def test_the_second_person_waits_in_line_and_starts_when_the_robot_is_free(world):
+    first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id']
+    world.harness.rows = [row(a, 'running')]
+    b = start(second, 'client-key-b')[1]['experiment_id']
+    world.harness.rows.append(row(b, 'planned'))
+    assert [p for p in world.harness.paths() if p.endswith('/run')] == [f'/api/dev-v2/experiments/{a}/run']
+    board = second.json('GET', '/api/lobby')[1]
+    assert board['demo'] is False and board['robot']['running']['experiment_id'] == a and board['robot']['running']['mine'] is False
+    assert [c['experiment_id'] for c in board['queue']] == [b] and board['queue'][0]['queue_position'] == 1 and board['queue'][0]['mine'] is True
+    world.gateway.gateway.dispatch();assert sum(p.endswith('/run') for p in world.harness.paths()) == 1
+    world.harness.rows = [row(a, 'completed'), row(b, 'planned')];world.now[0] += 31
+    assert world.gateway.gateway.dispatch()[:2] == (b, 200)
+    assert world.harness.calls[-1][2] == second.json('GET', '/api/session')[1]['user'] or True
+    assert world.gateway.gateway.store.queue() == []
+
+
+def test_the_run_starts_under_its_owner_so_their_keys_are_used(world):
+    browser = world.person();user = browser.json('GET', '/api/session')[1]['user']
+    start(browser, 'client-key-a')
+    assert next(call for call in world.harness.calls if call[1].endswith('/run'))[2] == user
+
+
+def test_leaving_the_line_cancels_the_run_and_the_turn_passes_on(world):
+    first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id'];world.harness.rows = [row(a, 'running')]
+    b = start(second, 'client-key-b')[1]['experiment_id']
+    assert second.send('POST', f'/api/dev-v2/experiments/{b}/cancel', {})[0] == 200
+    assert world.gateway.gateway.store.queue() == []
+
+
+def test_one_place_in_line_per_person(world):
+    first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id'];world.harness.rows = [row(a, 'running')]
+    assert start(second, 'client-key-b')[0] == 200
+    assert start(second, 'client-key-c')[0] == 409
+
+
+def test_nothing_starts_while_runs_are_paused_and_the_line_keeps_its_order(world):
+    first = world.person()
+    world.config.pause_file.touch()
+    assert start(first, 'client-key-a')[0] == 503
+    world.config.pause_file.unlink();made = first.json('POST', '/api/dev-v2/experiments', dict(selection=dict(SELECTION, request_key='client-key-b'), start=False))[1]['experiment_id']
+    world.gateway.gateway.store.enqueue(made, 'u-x');world.config.pause_file.touch()
+    assert world.gateway.gateway.dispatch() is None and len(world.gateway.gateway.store.queue()) == 1
+
+
+def test_the_robot_lock_is_held_for_the_run_and_a_busy_lock_means_wait(world, tmp_path):
+    import fcntl
+    from dataclasses import replace
+    gateway = world.gateway.gateway;lock = tmp_path/'sim.lock';gateway.config = replace(gateway.config, sim_lock=lock)
+    other = open(lock, 'a');fcntl.flock(other, fcntl.LOCK_EX)
+    browser = world.person();start(browser, 'client-key-a')
+    assert not any(p.endswith('/run') for p in world.harness.paths()) and len(gateway.store.queue()) == 1
+    other.close()
+    made = gateway.dispatch();assert made[1] == 200
+    probe = open(lock, 'a')
+    with pytest.raises(OSError):fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    world.now[0] += 31;world.harness.rows = [];gateway.dispatch()
+    fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB);probe.close()

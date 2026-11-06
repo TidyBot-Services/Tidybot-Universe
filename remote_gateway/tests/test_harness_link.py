@@ -134,7 +134,7 @@ def test_a_key_that_reads_text_only_reaches_the_run_as_declared(link):
     assert 'eval' in view['agent']['text_only_roles'] and 'advisor' not in view['agent']['text_only_roles']
 
 
-def test_a_run_is_created_read_and_listed_by_its_owner_only(link):
+def test_a_run_is_public_to_read_and_only_its_owner_may_act(link):
     alice, bob = link.person(), link.person()
     selection = link.choice(alice)
     status, made = alice.json('POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
@@ -144,8 +144,9 @@ def test_a_run_is_created_read_and_listed_by_its_owner_only(link):
     assert status == 200, view
     assert view['agent']['model_source'] == 'parcc' and view['agent']['reduced_budget']['versions'] == 3 and view['agent']['reduced_budget']['wall_seconds'] == 3600
     assert [row['experiment_id'] for row in alice.json('GET', '/api/runs')[1]['dev_sessions']] == [eid]
-    assert bob.json('GET', '/api/runs')[1]['dev_sessions'] == []
-    assert bob.send('GET', f'/api/dev-v2/experiments/{eid}')[0] == 404
+    assert [row['lobby']['mine'] for row in bob.json('GET', '/api/runs')[1]['dev_sessions']] == [False]
+    assert bob.send('GET', f'/api/dev-v2/experiments/{eid}')[0] == 200
+    assert bob.send('POST', f'/api/dev-v2/experiments/{eid}/cancel', {})[0] == 404
     for answer in (made, view, alice.json('GET', f'/api/dev-v2/experiments/{eid}')[1], alice.json('GET', '/api/runs')[1]):
         assert str(link.root) not in json.dumps(answer), 'a host path reached the browser'
 

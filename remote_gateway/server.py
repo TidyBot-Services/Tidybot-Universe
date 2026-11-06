@@ -1,5 +1,6 @@
 """The HTTP side: login, the page, and the few routes a browser may use. Anything not listed here answers 404."""
 from base64 import b64encode
+import fcntl
 from hashlib import sha256
 from http import HTTPStatus
 from http.cookies import CookieError, SimpleCookie
@@ -23,6 +24,7 @@ JSON_LIMIT = 8192
 PASSED_HEADERS = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified')
 BASE_HEADERS = {'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY'}
 UNOWNED = policy.Refused('not_found', 'Not found.', 404)
+PUBLIC = 'public'  # Who the harness sees for anything anyone may read. It holds no keys.
 SCRIPT = re.compile(r'<script>(.*?)</script>', re.S)
 
 
@@ -74,8 +76,53 @@ class Gateway:
         self.rate = RateLimits(config.limits, clock)
         self.audit = Audit(config.audit_file, clock)
 
+        self.dispatching = threading.Lock();self.lock_file = None;self.starting_until = 0
+
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
+
+    def listing(self):
+        status, value = self.upstream.json(PUBLIC, 'GET', '/api/runs')
+        if status != 200:raise UpstreamError('the run host did not list its runs')
+        return value
+
+    def board(self, viewer, listing=None):
+        listing = listing if listing is not None else self.listing()
+        return policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits)
+
+    def take_robot(self):
+        if self.lock_file or not self.config.sim_lock:return True
+        handle = open(self.config.sim_lock, 'a')
+        try:fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            return False
+        self.lock_file = handle
+        return True
+
+    def free_robot(self):
+        if self.lock_file:
+            self.lock_file.close();self.lock_file = None
+
+    def dispatch(self):
+        """Start the next run in line if the robot is free. Returns what the host said about that run, or None if nothing started."""
+        with self.dispatching:
+            line = self.store.queue()
+            listing = self.listing()
+            busy = any(policy.running(row) for row in listing.get('dev_sessions', [])) or self.clock() < self.starting_until
+            if not busy:self.free_robot()
+            if busy or not line or self.paused() or not self.take_robot():return None
+            head = line[0]
+            status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
+            self.store.dequeue(head['experiment_id'])
+            if status == 200:self.starting_until = self.clock() + 30
+            else:self.free_robot()
+            return head['experiment_id'], status, value
+
+    def loop(self, stop):
+        while not stop.wait(3):
+            try:self.dispatch()
+            except Exception as error:print('dispatch error:', type(error).__name__, file=sys.stderr, flush=True)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -151,18 +198,17 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/login':return self.login(parts)
         token = self.session_token()
         session = self.gateway.store.session(token) if token else None
-        if session is None:
-            if path.startswith('/api/'):raise policy.Refused('login_required', 'Please log in.', 401)
-            return self.redirect('/login')
-        self.user = session['user_id']
+        if session is None and not self.open_to_all(path):raise policy.Refused('login_required', 'Please log in.', 401)
+        self.user = session['user_id'] if session else None
         # The page's own files are cheap and never reach the harness; losing one would break the page.
-        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
-        if self.command != 'GET' and not secrets.compare_digest(self.headers.get('X-Attention-Token', ''), session['csrf']):
+        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_address[0]):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
+        if session and self.command != 'GET' and not secrets.compare_digest(self.headers.get('X-Attention-Token', ''), session['csrf']):
             raise policy.Refused('csrf_token_required', 'Reload the page and try again.', 403)
         if path in ('/', '/ui'):return self.redirect('/ui/', 302)
         if path == '/ui/' and self.command == 'GET':return self.page(session)
         if path.startswith('/ui/') and self.command == 'GET':return self.asset(path[4:])
         if path == '/api/session':return self.session_route(session, token)
+        if path == '/api/lobby' and self.command == 'GET':return self.send_json(policy.scrub(self.gateway.board(self.user)))
         if path == '/api/run-options' and self.command == 'GET':return self.options()
         if path == '/api/runs' and self.command == 'GET':return self.runs()
         if path == '/api/notices' and self.command == 'GET':return self.send_json(dict(generated_at=None, notices=[]))
@@ -171,6 +217,11 @@ class Handler(BaseHTTPRequestHandler):
         match = policy.EXPERIMENT.fullmatch(path)
         if match:return self.experiment(parts, *match.groups())
         raise UNOWNED
+
+    def open_to_all(self, path):
+        """Anyone may watch: the page and everyone's runs. Everything that starts, changes or uses a key needs an invite."""
+        if self.command != 'GET':return False
+        return path in ('/', '/ui', '/ui/', '/api/run-options', '/api/runs', '/api/lobby', '/api/notices') or path.startswith('/ui/') or policy.EXPERIMENT.fullmatch(path) is not None
 
     def login(self, parts):
         if self.command == 'GET':
@@ -193,7 +244,8 @@ class Handler(BaseHTTPRequestHandler):
     def page(self, session):
         page = (self.gateway.config.ui_dir / 'index.html').read_text(encoding='utf-8')
         # The session's CSRF token stands where the operator page has its control token, so the page needs no second code path.
-        page = page.replace('data-mode="live"', f'data-mode="live" data-control-token="{session["csrf"]}" data-gateway="1"', 1)
+        marks = f'data-control-token="{session["csrf"]}"' if session else 'data-guest="1"'
+        page = page.replace('data-mode="live"', f'data-mode="live" {marks} data-gateway="1" data-remote="1"', 1)
         page = page.replace(' media="print" onload="this.media=\'all\'"', '', 1)  # An inline handler would need a looser policy.
         inline = ' '.join("'sha256-%s'" % b64encode(sha256(script.encode()).digest()).decode() for script in SCRIPT.findall(page))
         self.send_bytes(page.encode(), 'text/html; charset=utf-8', headers={'Content-Security-Policy':
@@ -214,17 +266,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(dict(ok=True), headers={'Set-Cookie': self.cookie('', 0)})
 
     def options(self):
-        status, value = self.gateway.upstream.json(self.user, 'GET', '/api/run-options')
+        status, value = self.gateway.upstream.json(self.user or PUBLIC, 'GET', '/api/run-options')
         if status != 200:raise UpstreamError('the run host did not list its tasks')
         self.send_json(policy.filter_options(value, self.gateway.config.limits))
 
-    def listing(self):
-        status, value = self.gateway.upstream.json(self.user, 'GET', '/api/runs')
-        if status != 200:raise UpstreamError('the run host did not list its runs')
-        return value
-
     def runs(self):
-        self.send_json(policy.filter_runs(self.listing(), self.gateway.store.runs_of(self.user)))
+        listing = self.gateway.listing()
+        self.send_json(policy.filter_runs(listing, self.gateway.store.owners(), self.gateway.board(self.user, listing)))
 
     def provider(self, parts):
         path = parts.path
@@ -250,7 +298,8 @@ class Handler(BaseHTTPRequestHandler):
     def guard_active(self):
         if self.gateway.paused():raise policy.Refused('runs_paused', 'New runs are paused right now.', 503)
         limits = self.gateway.config.limits
-        if policy.active_runs(self.listing(), self.gateway.store.runs_of(self.user)) >= limits.active_runs:
+        queued = sum(row['user_id'] == self.user for row in self.gateway.store.queue())
+        if policy.active_runs(self.gateway.listing(), self.gateway.store.runs_of(self.user)) + queued >= limits.active_runs:
             raise policy.Refused('run_active', 'You already have a run going. Finish or cancel it first.', 409)
 
     def create(self):
@@ -267,25 +316,37 @@ class Handler(BaseHTTPRequestHandler):
         if status != 200:return self.send_json(policy.scrub(made), status)
         self.gateway.store.record_run(made['experiment_id'], self.user, self.gateway.config.host_id)
         if body.get('start') is True:
-            status, started = upstream.json(self.user, 'POST', f'/api/dev-v2/experiments/{made["experiment_id"]}/run', {})
-            if status != 200:return self.send_json(policy.scrub(started), status)
+            refused = self.join_queue(made['experiment_id'])
+            if refused:return self.send_json(policy.scrub(refused[1]), refused[0])
         self.send_json(policy.scrub(made))
 
+    def join_queue(self, experiment_id):
+        """Into the line, and straight onto the robot if it is free. A host that refuses the start says so to the person who asked."""
+        self.gateway.store.enqueue(experiment_id, self.user)
+        started = self.gateway.dispatch()
+        if started and started[0] == experiment_id and started[1] != 200:return started[1], started[2]
+        return None
+
     def experiment(self, parts, experiment_id, suffix):
-        if not self.gateway.store.owns(self.user, experiment_id):raise UNOWNED
         if self.command == 'GET':
-            if not policy.readable(suffix) or not policy.QUERY.fullmatch(parts.query):raise UNOWNED
+            if not self.gateway.store.known(experiment_id) or not policy.readable(suffix) or not policy.QUERY.fullmatch(parts.query):raise UNOWNED
             return self.relay(self.path, headers={'Range': self.headers['Range']} if 'Range' in self.headers else None)
+        if not self.gateway.store.owns(self.user, experiment_id):raise UNOWNED
         if self.command == 'POST' and suffix == 'help-reply' and not parts.query:
             return self.relay(self.path, json.dumps(policy.help_reply(self.read_json())).encode())
         if self.command != 'POST' or suffix not in policy.COMMANDS or parts.query:raise UNOWNED
         if self.read_json() != {}:raise policy.Refused('invalid_body', 'This command takes no settings.', 400)
-        if suffix == 'run':self.guard_active()
+        if suffix == 'run':
+            self.guard_active()
+            refused = self.join_queue(experiment_id)
+            if refused:return self.send_json(policy.scrub(refused[1]), refused[0])
+            return self.send_json(dict(experiment_id=experiment_id, queued=True))
+        if suffix == 'cancel':self.gateway.store.dequeue(experiment_id)
         self.relay(self.path, b'{}')
 
     def relay(self, target, body=b'', headers=None):
         """One signed call. JSON is scrubbed on its way through; everything else (video, frames) streams untouched."""
-        connection, response = self.gateway.upstream.open(self.user, self.command, target, body, headers)
+        connection, response = self.gateway.upstream.open(self.user or PUBLIC, self.command, target, body, headers)
         try:
             kind = response.getheader('Content-Type', '')
             if kind.startswith('application/json'):

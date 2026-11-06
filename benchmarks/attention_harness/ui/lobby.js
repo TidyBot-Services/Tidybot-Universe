@@ -74,6 +74,7 @@
     if (c.state === 'running') return 'Running';
     if (c.state === 'waiting_human') return c.mine ? 'Needs you' : 'Needs a person';
     if (c.state === 'cancelled') return 'Cancelled';
+    if (c.state === 'created') return 'Not started';
     return RESULT[c.result] || 'Finished';
   }
   const isActive = record => ['running', 'waiting_human'].includes(record.lobby?.state);
@@ -129,7 +130,7 @@
   const tiles = items => `<div class="lb-tiles">${items.map(([big, name]) => `<div><b>${esc(big)}</b>${esc(name)}</div>`).join('')}</div>`;
   function outcomeHtml(snapshot) {
     const c = snapshot.lobby;
-    if (!c || !['queued', 'running', 'waiting_human'].includes(c.state)) return '';
+    if (!c || !['queued', 'running', 'waiting_human'].includes(c.state) || (c.real && c.state !== 'queued')) return '';
     const k = c.attempt.current, n = c.attempt.limit, owner = c.mine ? 'You are' : `${esc(c.nickname)} is`;
     if (c.state === 'queued') {
       const ahead = (state.snap.queue || []).filter(q => q.queue_position < c.queue_position).length + (state.snap.robot?.running ? 1 : 0);
@@ -145,7 +146,7 @@
   // Returns the whole 04 section for the lobby states, or '' to let the page draw it from the run's own data.
   function helpHtml(snapshot, heading, HumanReply, replayMoments) {
     const c = snapshot.lobby;
-    if (!c) return '';
+    if (!c || c.real) return '';  // A real run answers from its own panel.
     const head = heading || '';
     if (!c.mine) {
       if (c.state !== 'waiting_human') return '';
@@ -217,10 +218,10 @@
     const c = snapshot?.lobby;
     if (!c) return '';
     if (c.mine) return provenance(c);
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer, pause or stop it.</span><button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button></div>${provenance(c)}`;
+    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer or stop it.</span><button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button></div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
-  const simAgo = text => `sim · ${text}`;
+  const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;
   function bindBanner(view) {
     view.querySelector('[data-lb-back]')?.addEventListener('click', () => {
       const mine = [state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
@@ -234,7 +235,7 @@
     note: 'Remote limit: 3 versions · 1 hour · 3 help requests, because everyone shares one robot. Results are not comparable with the official 10-version runs.'};
   const newRunLimits = () => state.enabled ? NEW_RUN_LIMITS : null;
   function newRunNotice() {
-    return state.enabled ? '<p class="ab-launch-note ab-launch-source" data-remote-note><span>REMOTE</span><strong>Real runs are not connected yet.</strong><small>Set everything as in the main UI. Join demo replays a recording of this task and does not use these settings.</small></p>' : '';
+    return state.enabled && state.snap?.demo ? '<p class="ab-launch-note ab-launch-source" data-remote-note><span>REMOTE</span><strong>Real runs are not connected yet.</strong><small>Set everything as in the main UI. Join demo replays a recording of this task and does not use these settings.</small></p>' : '';
   }
   // The extra section of the New run dialog: where the new run would stand in the queue.
   function newRunHtml() {
@@ -248,13 +249,13 @@
   function shapeNewRun(form) {
     if (!state.enabled) return;
     const join = form.querySelector('[data-start-yes]');
-    join.insertAdjacentHTML('beforebegin', '<button type="button" class="ab-button-quiet" data-remote-start disabled title="Real runs are not connected yet">Start run</button>');
+    if (state.snap?.demo) join.insertAdjacentHTML('beforebegin', '<button type="button" class="ab-button-quiet" data-remote-start disabled title="Real runs are not connected yet">Start run</button>');
     form.goal_id.readOnly = true;
     form.goal_id.closest('label').insertAdjacentHTML('beforeend', '<small>Set by the shared host.</small>');
   }
   // Any task can be configured; only the demo join needs a recording of it.
   function syncJoin(form, profile) {
-    if (!state.enabled) return;
+    if (!state.enabled || !state.snap?.demo) return;
     const join = form.querySelector('[data-start-yes]'), recorded = (state.snap?.demo_info?.tasks || []).includes(profile?.task_id);
     join.textContent = recorded ? 'Join demo' : 'No demo yet';
     if (!recorded) join.disabled = true;
@@ -264,7 +265,7 @@
   // The 01 cards of someone else's run name the source only, never the model or a key.
   function setupForOthers(snapshot, html) {
     const c = snapshot.lobby;
-    if (!c) return html;
+    if (!c || c.real) return html;
     const label = esc(SOURCE[c.dev_source] || 'Lab');
     const dev = /(<span>Dev agent<\/span><b>)[^<]*(<\/b><small>)([^<]*)(<\/small>)/;
     const eval_ = /(<span>Eval agent<\/span><b>)[^<]*(<\/b>)/;

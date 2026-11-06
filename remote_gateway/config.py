@@ -49,6 +49,7 @@ class Config:
     cookie_secure: bool = True
     session_hours: int = 24
     stop_files: tuple = ()
+    sim_lock: Path | None = None  # Held while a run uses the robot, so nothing else on the host starts one.
     limits: Limits = field(default_factory=Limits)
 
     def __post_init__(self):
@@ -77,5 +78,6 @@ def load(path):
     known = {f.name for f in fields(Config)}
     if not isinstance(value, dict) or set(value) - known:raise ValueError('unknown gateway settings')
     limits = Limits(**value.pop('limits', {}))
+    lock = value.pop('sim_lock', None)
     return Config(state_dir=Path(value.pop('state_dir')), ui_dir=Path(value.pop('ui_dir')), stop_files=tuple(value.pop('stop_files', ())),
-                  limits=limits, **value)
+                  sim_lock=Path(lock) if lock else None, limits=limits, **value)

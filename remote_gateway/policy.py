@@ -54,14 +54,47 @@ def scrub(value):
     return value
 
 
-def filter_runs(listing, owned):
-    rows = [row for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owned]
+def _state(row):
+    return row.get('experiment_state') or row.get('state')
+
+
+def running(row):
+    return _state(row) not in IDLE_STATES | ENDED_STATES
+
+
+def filter_runs(listing, owners, board=None):
+    """Every run on this host is public. Each row carries its card, so the page can place it in the lobby."""
+    cards = {c['experiment_id']: c for c in ([board['robot']['running']] + board['queue'] + board['recent']) if c} if board else {}
+    rows = [dict(row, lobby=cards[row['experiment_id']]) if row.get('experiment_id') in cards else row
+            for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owners]
     return dict(runs=[], launches=[], dev_sessions=scrub(rows))
 
 
 def active_runs(listing, owned):
-    def state(row):return row.get('experiment_state') or row.get('state')
-    return sum(1 for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owned and state(row) not in IDLE_STATES | ENDED_STATES)
+    return sum(1 for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owned and running(row))
+
+
+def _card(row, *, nickname, mine, position, eta, limits):
+    state = _state(row);versions = row.get('versions') or []
+    solved = any(v.get('native_success') is True for v in versions if isinstance(v, dict))
+    shown = 'queued' if position else 'running' if running(row) else 'cancelled' if state == 'cancelled' else 'created' if state in IDLE_STATES else 'finished'
+    return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
+                state=shown, result=None if shown != 'finished' else 'solved' if solved else 'failed', mine=mine, real=True, started_at=row.get('created_at'), ended_at=None,
+                attempt=dict(current=len(versions), limit=limits.versions), queue_position=position, eta_start_seconds=eta, help_waiting_seconds=None, waiting=None, recording=None)
+
+
+def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0):
+    """What the lobby shows: the one robot, who is next, and what finished. Real runs only."""
+    rows = {row['experiment_id']: row for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owners}
+    make = lambda row, position=None, eta=None:_card(row, nickname=nicknames.get(owners[row['experiment_id']], 'Someone'), mine=owners[row['experiment_id']] == viewer,
+                                                     position=position, eta=eta, limits=limits)
+    live = next((make(row) for row in rows.values() if running(row)), None)
+    waiting = [row['experiment_id'] for row in queue if row['experiment_id'] in rows]
+    line = [make(rows[eid], i + 1, busy_seconds + i * limits.wall_seconds) for i, eid in enumerate(waiting)]
+    done = sorted((row for eid, row in rows.items() if not running(row) and eid not in waiting), key=lambda r:r.get('created_at') or 0, reverse=True)
+    recent = [make(row) for row in done[:40]]
+    return dict(demo=False, robot=dict(running=live), queue=line, recent=recent, me=dict(nickname=nicknames.get(viewer)) if viewer else None, clock=dict(speed=1), events=[],
+                counts=dict(needs_you=0, queued=len(line), running=int(bool(live))), limits=dict(help_wait_seconds=limits.human_reply_seconds))
 
 
 def filter_options(options, limits):

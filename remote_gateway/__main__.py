@@ -3,6 +3,7 @@ import argparse
 import os
 from pathlib import Path
 import secrets
+import threading
 
 from .config import load
 from .store import Store
@@ -26,6 +27,7 @@ def main():
     if args.command == 'serve':
         from .server import create_server
         server = create_server(config)
+        threading.Thread(target=server.gateway.loop, args=(threading.Event(),), daemon=True).start()
         print(f'gateway on http://{config.listen_host}:{config.listen_port}/', flush=True)
         server.serve_forever()
     elif args.command == 'secret':

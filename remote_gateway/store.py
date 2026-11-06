@@ -13,7 +13,11 @@ CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, created_at REAL NOT NULL, 
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, csrf TEXT NOT NULL, expires_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS runs(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, host_id TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS runs_user ON runs(user_id);
+CREATE TABLE IF NOT EXISTS queue(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, queued_at REAL NOT NULL);
 '''
+
+
+ANIMALS = ('Fox', 'Panda', 'Badger', 'Otter', 'Heron', 'Lynx', 'Marten', 'Wren', 'Ibex', 'Tapir')
 
 
 def digest(value):
@@ -93,6 +97,27 @@ class Store:
 
     def runs_of(self, user_id):
         with self.tx() as db:return {r['experiment_id'] for r in db.execute('SELECT experiment_id FROM runs WHERE user_id=?', (user_id,))}
+
+    def nicknames(self):
+        """A stable public name for each person, from the order they joined. It says nothing about who they are."""
+        with self.tx() as db:rows = db.execute('SELECT id FROM users ORDER BY created_at,id').fetchall()
+        return {r['id']: f'{ANIMALS[i % len(ANIMALS)]}-{i + 1}' for i, r in enumerate(rows)}
+
+    def owners(self):
+        with self.tx() as db:return {r['experiment_id']: r['user_id'] for r in db.execute('SELECT experiment_id,user_id FROM runs')}
+
+    def known(self, experiment_id):
+        with self.tx() as db:return db.execute('SELECT 1 FROM runs WHERE experiment_id=?', (experiment_id,)).fetchone() is not None
+
+    def enqueue(self, experiment_id, user_id):
+        with self.tx() as db:db.execute('INSERT OR IGNORE INTO queue VALUES(?,?,?)', (experiment_id, user_id, self.clock()))
+
+    def dequeue(self, experiment_id):
+        with self.tx() as db:return db.execute('DELETE FROM queue WHERE experiment_id=?', (experiment_id,)).rowcount > 0
+
+    def queue(self):
+        """First come, first served."""
+        with self.tx() as db:return [dict(r) for r in db.execute('SELECT experiment_id,user_id FROM queue ORDER BY queued_at,rowid')]
 
     def runs_today(self, user_id):
         with self.tx() as db:
