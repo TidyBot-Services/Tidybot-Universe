@@ -5349,7 +5349,7 @@
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
-  let storyOpen=null;
+  let storyOpen=null,storyPinned=false;
   function bindAgentHistory(snapshot) {
     const root=view.querySelector('[data-agent-history]');if(!root)return;
     const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
@@ -5382,11 +5382,11 @@
       const box=drawer.getBoundingClientRect();rest=ticks.map(k=>{const r=k.getBoundingClientRect();return r.left-box.left+r.width/2;});
     }
     function close(){storyOpen=null;drawer.classList.remove('open','note');row.querySelectorAll('.op-story-card').forEach(c=>c.classList.remove('open'));}
-    const keep=()=>clearTimeout(closing),later=()=>{keep();closing=setTimeout(close,500);};
+    const keep=()=>clearTimeout(closing),later=()=>{keep();if(!storyPinned)closing=setTimeout(close,500);};
     row.querySelectorAll('.op-story-card').forEach(card=>{const index=Number(card.dataset.storyPart);
-      card.addEventListener('mouseenter',()=>{keep();clearTimeout(timer);timer=setTimeout(()=>open(index),160);});
+      card.addEventListener('mouseenter',()=>{keep();clearTimeout(timer);if(!storyPinned)timer=setTimeout(()=>open(index),160);});
       card.addEventListener('mouseleave',()=>{clearTimeout(timer);later();});
-      card.addEventListener('click',()=>{clearTimeout(timer);keep();open(index);});});
+      card.addEventListener('click',()=>{clearTimeout(timer);keep();if(storyPinned&&storyOpen===index){storyPinned=false;close();return;}storyPinned=true;open(index);});});
     drawer.addEventListener('mouseenter',keep);
     drawer.addEventListener('mouseleave',()=>{pointer=null;wake();later();});
     drawer.addEventListener('pointermove',event=>{pointer=event.clientX-drawer.getBoundingClientRect().left;wake();});
