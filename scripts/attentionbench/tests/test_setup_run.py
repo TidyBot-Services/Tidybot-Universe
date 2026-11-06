@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import threading
 from types import SimpleNamespace
@@ -644,3 +645,19 @@ def test_a_key_route_request_passes_the_agent_configuration(roles, source):
     assert frozen['agent_provider']['roles']['eval']['vision'] is False
     assert frozen['agent_limits'] == {'versions': 2, 'wall_seconds': 3600}
     assert config.display_source(selection) == source
+
+
+def test_a_dead_scheduler_is_noticed(tmp_path):
+    eid = 'devexp-x'
+    folder = tmp_path / 'data/daily-experiments' / eid
+    folder.mkdir(parents=True)
+    assert not run.scheduler_gone(tmp_path, eid)  # Not started yet.
+    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+    try:
+        ticks = Path(f'/proc/{child.pid}/stat').read_text().rsplit(')', 1)[1].split()[19]
+        (folder / f'scheduler-process-{child.pid}.json').write_text(json.dumps({'pid': child.pid, 'start_ticks': ticks}))
+        assert not run.scheduler_gone(tmp_path, eid)
+    finally:
+        child.kill()
+        child.wait()
+    assert run.scheduler_gone(tmp_path, eid)

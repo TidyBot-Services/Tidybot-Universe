@@ -19,7 +19,7 @@
 | AdvisorProxy | 模拟人类，回答 hint；**10-19 规则：它看到的 = 人在界面上看到的，以界面为唯一标准** | **10-19：由共用“请求视图”（`dev_request_view.py`）生成输入**：任务、请求问题（及 Dev 假设/理由，目前没有则为 generic）、五视角录像帧（≤10 帧，记视角与哈希）、公开步骤及停止原因（与界面同一套文案）、本版 diff、Eval 评审（判定、客观原因、参考建议）、展示的录像秒数 | 原生评估器、仿真 oracle | **`parcc/Qwen`（视觉，10-19 用户决定；与 Eval 同一基础模型）**，温度 0，默认 2 次×55 s | 已实现并在真实运行验证（`fadaf8f`）：5 版本中 4 次求助均带 6 帧回答；视觉重试失败按既有规则使 cell 无效。旧 daily 实验仍走旧文本路径（`dev_help.py` 的 `AdvisorProvider`），字节不变 |
 | 原生评估器 | 离线给每个版本打分 | 仿真状态 | — | 任务自带 `_check_success` | 已实现；结果只写入回执并在报告中读取。在 `dev_v2_loop.py`、`dev_help.py`、`eval_agent.py`、`v2_evaluator.py`、`dev_advisor_proxy.py` 中检索 `native_success|native_result`，只有回执引用，没有进入模型输入的读取点（静态检索，不能证明任意运行产物绝无污染） |
 
-- **10-19：**Eval 与 AdvisorProxy 允许同一模型，条件是提示词版本与哈希、缓存版本与命名空间、会话命名空间均不同，否则拒绝（`dev_configuration.independent_eval_advisor`，**唯一被放宽的校验**）。这是**已知限制**：两个角色共用基础模型，独立性靠不同提示词、状态和缓存，不靠不同模型；试点规则 R6 同步改为该条件。
+- **10-19：**Eval 与 AdvisorProxy 允许同一模型，条件是提示词版本与哈希、缓存版本与命名空间、会话命名空间均不同，否则拒绝（`dev_configuration.independent_eval_advisor`，**唯一被放宽的校验**）。11-07 用户决定：Advisor 模型不可用时退回只读文字的模型，这时 Advisor 没有命名空间，提示词和缓存版本仍须不同。这是**已知限制**：两个角色共用基础模型，独立性靠不同提示词、状态和缓存，不靠不同模型；试点规则 R6 同步改为该条件。
 - **10-19 角色分工（用户决定）：Dev 迭代；Eval 判断完成度并给客观失败原因（另给单独标注的参考建议）；AdvisorProxy 根据界面上人能看到的全部内容给建议。**Dev 只拿 `passed + reason`；`reference_suggestion` 只给界面与 AdvisorProxy。Eval 的评审卡在界面 03 区显示，AdvisorProxy 经界面同一视图看到。
 
 ## 3. 格子（cell）
