@@ -40,7 +40,7 @@
  "repos": {
   "attention_memory_service": {
    "branch": "attentionbench/baseline-20261015",
-   "commit": "93878815caa28b54f4947403d0f0bf00fb287f71",
+   "commit": "cf94da3dbb93e4656f9a1b1c466ce40827303afa",
    "url": "https://github.com/TidyBot-Services/attention_memory_service.git"
   },
   "attentionbench": {
