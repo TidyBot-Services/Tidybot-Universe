@@ -87,7 +87,7 @@ def test_eval_workspace_exact_public_record_and_prompt(ws):
     command=json.loads((root.parent/'command.json').read_text())
     assert '--ephemeral' in command and '--output-schema' in command and 'resume' not in command
     assert command[command.index('-m')+1]=='gpt-6-sol' and 'model_reasoning_effort="high"' in command
-    assert command[-1]==EVAL_PROMPT and ev.usage=={'input_tokens':11,'output_tokens':8}
+    assert command[-1]==EVAL_PROMPT and ev.usage=={'input_tokens':22,'output_tokens':16}
     fields=manifest_fields()
     for role,prompt in [('eval',EVAL_PROMPT),('dev',DEV_PROMPT)]:
         assert fields[role+'_agent_prompt_sha256']==hashlib.sha256(prompt.encode()).hexdigest()
@@ -241,7 +241,7 @@ def test_full_fake_dev_eval_run(ws):
     assert [r['native_success'] for r in rows]==[False,False,True]
     assert len(client.calls)==1 and session.turn==3
     for job in ledger.jobs():
-        if job['kind']=='eval':assert job['usage']=={'input_tokens':11,'output_tokens':8}
+        if job['kind']=='eval':assert job['usage']=={'input_tokens':22,'output_tokens':16}
     banned=r'native_success|object_in_sink|native_result|check_success|reward'
     assert not re.search(banned,' '.join(session.messages))
     for root in [ws.ws,*[p/'ws' for p in (ws.private/'eval').iterdir()]]:

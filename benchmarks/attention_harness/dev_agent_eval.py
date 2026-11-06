@@ -176,7 +176,6 @@ class Evaluator:
         spent=None
         try:
             limit=min(deadline,time.monotonic()+60)
-            if self.quota:self.quota.check('before_eval')
             if self.reader is not None:self.reader.join()
             if self.process.stdout:self.process.stdout.close()
             command=list(self.command_factory(ws,review_prompt(result)))

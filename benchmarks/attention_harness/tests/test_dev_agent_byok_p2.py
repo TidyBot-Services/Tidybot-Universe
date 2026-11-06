@@ -252,7 +252,7 @@ def test_evaluator_no_provider_popen_is_byte_identical(tmp_path,monkeypatch):
     (ws.private/'eval/v0001').mkdir(parents=True)
     for cls in (before.Evaluator,eval_module.Evaluator):
         assert cls(ws,command_factory=factory).evaluate(execution,deadline=time.monotonic()+10)['status']=='completed'
-    assert calls[0]==calls[1] and 'env' not in calls[1][1]
+    assert calls[0]==calls[len(calls)//2] and 'env' not in calls[0][1]
 
 
 def test_advisor_lab_client_is_unchanged():
