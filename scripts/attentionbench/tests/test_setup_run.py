@@ -267,6 +267,12 @@ def args(ws, port, **changes):
     return argparse.Namespace(**values)
 
 
+def test_summary_finds_an_agent_run_verdict(tmp_path):
+    snapshot = {'state': 'cancelled', 'cells': [{'versions': [{'version': 1, 'agent': {'eval_verdict': 'fail'}}]}]}
+    result = run.summary(tmp_path, 'devexp-' + '0' * 24, 'key', snapshot)
+    assert result['version_count'] == 1 and result['eval_verdict'] == 'fail'
+
+
 def test_run_terminal_and_summary(server, tmp_path, monkeypatch):
     actions = []
     monkeypatch.setattr(run, 'command', lambda action, *a: actions.append(action))

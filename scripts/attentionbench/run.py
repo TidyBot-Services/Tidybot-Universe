@@ -156,8 +156,9 @@ def confirmed(route: routes.Route, requested: str) -> routes.Route:
 def summary(ws: Path, eid: str, key: str, snapshot: dict, route: str = 'codex', warnings: tuple = ()) -> dict:
     cells = snapshot.get('cells', [])
     versions = [version for cell in cells for version in cell.get('versions', [])]
-    verdicts = [version.get('eval_verdict', version.get('eval')) for version in versions
-                if version.get('eval_verdict', version.get('eval')) is not None]
+    # An agent run keeps its verdict under the version's agent record.
+    found = [source.get('eval_verdict', source.get('eval')) for version in versions for source in (version, version.get('agent') or {})]
+    verdicts = [verdict for verdict in found if verdict is not None]
     run_dir = ws / 'data/run'
     run_dir.mkdir(parents=True, exist_ok=True)
     experiment_file = run_dir / f'{eid}-experiment.json'
