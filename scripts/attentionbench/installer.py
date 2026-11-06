@@ -72,6 +72,10 @@ def apparmor_userns_restricted(probe, policy: Path = Path('/proc/sys/kernel/appa
     return probe is not None and probe.returncode != 0 and apparmor_policy_on(policy)
 
 
+def apparmor_on_this_host() -> bool:
+    return Path(USERNS_TARGET).parent.is_dir()
+
+
 def apparmor_policy_on(policy: Path = Path('/proc/sys/kernel/apparmor_restrict_unprivileged_userns')) -> bool:
     try:
         return policy.read_text().strip() == '1'

@@ -35,6 +35,7 @@ def test_restriction_reason_and_options(monkeypatch):
 def host(monkeypatch, *, packages=(), restricted=True, tty=True):
     monkeypatch.setattr(setup, 'system_packages', lambda: list(packages))
     monkeypatch.setattr(installer, 'apparmor_policy_on', lambda: restricted)
+    monkeypatch.setattr(installer, 'apparmor_on_this_host', lambda: True)
     monkeypatch.setattr(installer, 'namespace_status', lambda: (not restricted, installer.USERNS_REASON, installer.USERNS_FIX))
     monkeypatch.setattr(setup.sys.stdin, 'isatty', lambda: tty)
 
@@ -79,6 +80,12 @@ def test_one_question_covers_packages_and_apparmor(monkeypatch, capsys, answer, 
             ['sudo', 'apparmor_parser', '-r', installer.USERNS_TARGET],
         ]
     assert 'profile attentionbench-bwrap-userns' in capsys.readouterr().out
+
+
+def test_a_container_is_not_asked_for_an_apparmor_change(monkeypatch):
+    host(monkeypatch, packages=['bubblewrap'])
+    monkeypatch.setattr(installer, 'apparmor_on_this_host', lambda: False)
+    assert setup.system_commands() == ([['sudo', 'apt-get', 'install', '-y', 'bubblewrap']], False)
 
 
 def test_a_failed_host_command_stops_setup(monkeypatch):
