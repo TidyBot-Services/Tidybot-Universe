@@ -32,6 +32,25 @@ MAX_TOKENS = 32768
 class BridgeError(ValueError): pass
 
 
+# A model stuck on a call that cannot start pays for its whole context on every try: one real run spent
+# 979 calls and about 15 USD on a mistyped workdir. Ending the turn tells the model why.
+TOOL_FAILURE_LIMIT = 25
+TOOL_FAILURE = 'exec_command failed'
+
+
+def failed_tool_streak(items):
+    """How many of the latest tool calls failed before they started."""
+    streak = 0
+    for item in reversed(items or []):
+        kind = item.get('type', 'message')
+        if kind == 'function_call_output':
+            if not _text(item.get('output')).startswith(TOOL_FAILURE): break
+            streak += 1
+        elif kind == 'message' and item.get('role') != 'assistant':
+            break
+    return streak
+
+
 def parcc_key():
     key = os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
     path = Path.home() / '.litellm-key'
@@ -307,6 +326,9 @@ class ChatBridge:
             row.update(requested_model=chat['model'], messages=len(chat['messages']), tools=len(chat.get('tools', [])),
                        reasoning_effort=chat.get('reasoning_effort'))
             if self.provider is None and chat['model'] not in PARCC_DEV_MODELS: raise BridgeError('model_not_bridged:' + chat['model'])
+            if failed_tool_streak(body.get('input')) >= TOOL_FAILURE_LIMIT:
+                raise BridgeError('The last %d tool calls failed before they started. Do not repeat them: check that '
+                                  'the workdir argument exists, or leave it out.' % TOOL_FAILURE_LIMIT)
             chunks = (self.upstream(chat, self.key, url=self.provider.chat_url) if self.provider is not None
                       else self.upstream(chat, self.key))
             meta = next(chunks)
