@@ -72,14 +72,16 @@ def normalize_configuration(selection):
 
 def independent_eval_advisor(evaluation,advisor):
  """The only same-model exception: distinct prompts, cache namespaces and calls."""
+ # A text-only Advisor has no namespaces to share: its cache is keyed by its own version and it keeps no session.
+ text=advisor.get('mode')=='text_only'
  if evaluation['model']==advisor['model'] and (
   evaluation['prompt_version']==advisor['prompt_version'] or
   evaluation['prompt_sha256']==advisor['prompt_sha256'] or
   evaluation['cache_version']==advisor['cache_version'] or
-  not evaluation.get('cache_namespace') or not advisor.get('cache_namespace') or
-  evaluation['cache_namespace']==advisor['cache_namespace'] or
-  not evaluation.get('session_namespace') or not advisor.get('session_namespace') or
-  evaluation['session_namespace']==advisor['session_namespace']):
+  not evaluation.get('cache_namespace') or not evaluation.get('session_namespace') or
+  (not text and (not advisor.get('cache_namespace') or not advisor.get('session_namespace') or
+   evaluation['cache_namespace']==advisor['cache_namespace'] or
+   evaluation['session_namespace']==advisor['session_namespace']))):
   raise ValueError('Eval and Advisor sharing a model require distinct prompts, cache namespaces and session namespaces')
  return True
 def require_scene_gate(mode,selection,tasks,seeds):
