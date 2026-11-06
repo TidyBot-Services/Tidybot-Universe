@@ -214,17 +214,18 @@
   }
   // Which real recording a simulated run replays (shown in the run's detail, never in the sidebar list).
   const provenance = c => c.recording ? `<p class="lb-prov" data-lobby-prov><b>Simulated</b> · replays the recording of <code>${esc(String(c.recording.id).slice(0, 16))}…</code> (${esc(c.recording.attempts)} recorded attempts)${c.mine ? '. Your answers do not change what happens next.' : '.'}</p>` : '';
+  const mineCard = () => [state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
   function banner(snapshot) {
     const c = snapshot?.lobby;
     if (!c) return '';
     if (c.mine) return provenance(c);
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer or stop it.</span><button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button></div>${provenance(c)}`;
+    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer or stop it.</span>${mineCard() ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button>' : ''}</div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
   const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;
   function bindBanner(view) {
     view.querySelector('[data-lb-back]')?.addEventListener('click', () => {
-      const mine = [state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
+      const mine = mineCard();
       if (mine) state.hooks.open?.(mine.experiment_id);
     });
   }

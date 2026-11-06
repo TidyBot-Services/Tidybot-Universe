@@ -538,7 +538,7 @@
   function sidebarTaskSummary(rows,run){
     const executing=rows.filter(recordIsActive).length;
     const suite=rows.groupTitle?'':({robocasa365:'RoboCasa365',robocasa:'RoboCasa',robosuite:'Robosuite'}[rows[0].suite]||rows[0].suite);
-    const demo=rows.some(r=>r.lobby),recent=rows.slice(0,10).reverse(),count=`${rows.length} ${DEBUG_VIEW?(rows.length===1?'record':'records'):(rows.length===1?'run':'runs')}`;
+    const demo=window.Lobby.snap?.demo&&(rows.some(r=>r.lobby)),recent=rows.slice(0,10).reverse(),count=`${rows.length} ${DEBUG_VIEW?(rows.length===1?'record':'records'):(rows.length===1?'run':'runs')}`;
     if(!DEBUG_VIEW){
       // Task card header (10-30): title and run count, an outcome bar over all runs, then the suite.
       const tones=[['success','solved'],['failed','failed'],['waiting','need you'],['running','running'],['idle','other']];

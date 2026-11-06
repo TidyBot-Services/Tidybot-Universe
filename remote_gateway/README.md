@@ -15,7 +15,7 @@ Python standard library only. Paths below are examples.
 
 ```json
 {"state_dir": "gateway-state", "upstream": "http://127.0.0.1:8860", "ui_dir": "benchmarks/attention_harness/ui",
- "listen_port": 8861, "cookie_secure": false, "stop_files": []}
+ "listen_port": 8861, "cookie_secure": false, "stop_files": [], "sim_lock": "/path/to/sim.lock"}
 ```
 
 `cookie_secure` stays true (the default) anywhere a browser reaches this over TLS; false is for plain loopback only.
@@ -60,7 +60,8 @@ each run records the host it was created on. Nothing here reads the harness's di
 ## What it does
 
 - **Login**: an invite code becomes a session cookie (HttpOnly, SameSite=Strict, Secure unless turned off). Writes also need the session's CSRF token.
-- **Ownership**: a run belongs to the person who created it. Anyone else gets 404, the same as a run that does not exist, and the harness is not asked.
+- **Watching**: anyone may open the page and read every run, signed in or not. Starting a run, stopping it, replying and keys need an invite; only a run's owner may act on it.
+- **Queue**: Start joins a first-come line, one place per person. The gateway starts the next run when no run is active, under its owner, and holds `sim_lock` while it runs.
 - **New run**: built from named fields, never copied. All three roles must be the lab's PARCC or a key this person saved, so nothing can reach the lab's Codex. Limits are clamped here, whatever the page sends.
 - **Keys**: pass through to the harness's memory, scoped to the person by the signed owner. The gateway keeps no key, and logs no body.
 - **Answers**: lists are rebuilt from owned runs; JSON loses host paths and the harness's private fields. Video and frames stream unchanged, with Range.
@@ -73,7 +74,6 @@ each run records the host it was created on. Nothing here reads the harness's di
 Not done, on purpose. Each needs its own decision.
 
 - **Reaching it from outside**: no tunnel or reverse proxy exists. Opening it to the internet is a separate step that the owner approves in person.
-- **Queue**: one simulation runs at a time. A second person's Start is refused until the robot is free; nothing waits in line for them yet.
 - **Client address**: behind a tunnel every login looks like loopback, so the login limit would be shared by everyone until a trusted forwarded address is read.
 - **Isolation**: one harness holds everyone's keys in one process. Before the internet that should become one instance per person, under a dedicated system user (needs sudo).
 - **Keys in memory**: swap and core dumps can write memory to disk. Both need closing on the host (needs sudo).
