@@ -5329,7 +5329,8 @@
   function storyParts(tries) {
     const parts=[];let run=[];
     const flush=()=>{if(run.length)parts.push({tries:run});run=[];};
-    tries.forEach(t=>{if(t.submitted){flush();parts.push({attempt:t});}else run.push(t);});
+    let helps=0;
+    tries.forEach(t=>{if(t.submitted){flush();parts.push({attempt:t});}else run.push(t);if(t.help){flush();parts.push({help:t,number:++helps});}});
     flush();return parts;
   }
   function storyCounts(tries) {
@@ -5340,10 +5341,11 @@
     const tries=agent.tries||[];
     if(!tries.length)return '';
     const cards=storyParts(tries).map((part,index)=>{
+      if(part.help)return `<button type="button" class="op-story-card op-story-help" data-story-part="${index}"><small>After Try ${part.help.number}</small>Help ${part.number}<small>${part.help.help.provider==='human'?'Person replied':'AI advisor'}</small></button>`;
       if(part.attempt){const t=part.attempt,result=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
-        return `<button type="button" class="op-story-card op-story-attempt${t.help?' help':''}" data-story-part="${index}"><small>Try ${t.number}</small>Attempt ${t.attempt}<small>${result}</small></button>`;}
-      const counts=storyCounts(part.tries),first=part.tries[0].number,last=part.tries.at(-1).number,helps=part.tries.filter(t=>t.help).length;
-      return `<button type="button" class="op-story-card" data-story-part="${index}" style="--weight:${Math.max(2,Math.sqrt(part.tries.length)).toFixed(2)}"><small>${first===last?`Try ${first}`:`Try ${first}–${last}`}${helps?` · <span>${helps} help</span>`:''}</small><b>${esc(storyKind(counts[0][0]))}</b><span class="op-story-mini">${counts.map(([kind,n])=>`<i data-kind="${kind}" style="flex:${n}"></i>`).join('')}</span></button>`;
+        return `<button type="button" class="op-story-card op-story-attempt" data-story-part="${index}"><small>Try ${t.number}</small>Attempt ${t.attempt}<small>${result}</small></button>`;}
+      const counts=storyCounts(part.tries),first=part.tries[0].number,last=part.tries.at(-1).number;
+      return `<button type="button" class="op-story-card" data-story-part="${index}" style="--weight:${Math.max(2,Math.sqrt(part.tries.length)).toFixed(2)}"><small>${first===last?`Try ${first}`:`Try ${first}–${last}`}</small><b>${esc(storyKind(counts[0][0]))}</b><span class="op-story-mini">${counts.map(([kind,n])=>`<i data-kind="${kind}" style="flex:${n}"></i>`).join('')}</span></button>`;
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
@@ -5354,7 +5356,7 @@
     const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
     let timer=0,closing=0,frame=0,pointer=null,ticks=[],rest=[],now=[],aim=[];
     const say=t=>{caption.textContent='';if(!t)return;const name=document.createElement('b');name.textContent=t.submitted?`Attempt ${t.attempt} · Try ${t.number}`:`Try ${t.number}`;caption.append(name,document.createTextNode(t.why));
-      if(t.help?.content){const reply=document.createElement('p');const who=document.createElement('small');who.textContent=t.help.provider==='human'?'Person replied':'AI advisor';reply.append(who,document.createTextNode(t.help.content));caption.append(reply);}};
+};
     const paint=()=>ticks.forEach((tick,i)=>{tick.style.height=20+34*now[i]+'px';tick.style.width=7+7*now[i]+'px';});
     const step=()=>{let moving=false;now.forEach((value,i)=>{const gap=aim[i]-value;if(Math.abs(gap)>.002){now[i]+=gap*.26;moving=true;}else now[i]=aim[i];});paint();frame=moving?requestAnimationFrame(step):0;};
     const wake=()=>{rest.forEach((x,i)=>{const far=pointer==null||calm?Infinity:(pointer-x)/52;aim[i]=Math.exp(-far*far);});if(!frame)frame=requestAnimationFrame(step);};
@@ -5364,10 +5366,11 @@
       if(storyOpen===index&&drawer.classList.contains('open'))return;
       storyOpen=index;row.querySelectorAll('.op-story-card').forEach(c=>c.classList.toggle('open',c===card));place(card);
       drawer.textContent='';delete drawer.dataset.pick;ticks=[];rest=[];now=[];aim=[];pointer=null;
+      const col=(cols,title,text)=>{if(!text)return;const box=document.createElement('div'),head=document.createElement('b'),body=document.createElement('p');head.textContent=title;body.textContent=text;box.append(head,body);cols.append(box);};
+      if(part.help){const h=part.help.help,cols=document.createElement('div');cols.className='op-story-cols';col(cols,'Why it asked',h.why);col(cols,h.provider==='human'?'Your reply':'The advisor said',h.content);drawer.append(cols);drawer.classList.add('open','note');say(null);return;}
       if(part.attempt){const t=part.attempt,verdict=document.createElement('span');verdict.className='op-story-verdict'+(t.passed===true?' ok':'');verdict.textContent=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
         const cols=document.createElement('div');cols.className='op-story-cols';
-        const col=(title,text)=>{if(!text)return;const box=document.createElement('div'),head=document.createElement('b'),body=document.createElement('p');head.textContent=title;body.textContent=text;box.append(head,body);cols.append(box);};
-        col('What went wrong',t.wrong||t.why);col('Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
+        col(cols,'What went wrong',t.wrong||t.why);col(cols,'Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
       drawer.classList.remove('note');
       const first=part.tries[0].number,last=part.tries.at(-1).number,summary=document.createElement('div');summary.className='op-story-summary';const range=document.createElement('b');range.textContent=first===last?`Try ${first}`:`Try ${first}–${last}`;summary.append(range);let pinned=null;
       storyCounts(part.tries).forEach(([kind,count])=>{const chip=document.createElement('button');chip.type='button';chip.innerHTML=`<i data-kind="${kind}"></i>${esc(storyKind(kind))} <b>${count}</b>`;
@@ -5400,7 +5403,7 @@
       ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
       fallback?`${agentFallbackNotice(fallback)} <small>${esc(tryName(fallback.execution_id))}</small>`:''].filter(Boolean);
     const wait=agent.human_wait,heading=wait?operatorHeading('04','YOUR MOVE',`<b data-agent-reply-countdown data-deadline="${wait.deadline_at}" data-seconds="${wait.seconds}"></b>`):operatorHeading('04','HELP &amp; REPLIES','');
-    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${agentStory(agent)}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${rows.length?`<details class="op-story-more"><summary>Help replies (${rows.length})</summary>${rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join('')}</details>`:'<p>No help requests recorded.</p>'}${(agent.errors||[]).length?`<details class="op-story-more" data-agent-policy-errors><summary>Technical details (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}</section>`;
+    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${agentStory(agent)}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${!rows.length&&!(agent.tries||[]).length?'<p>No help requests recorded.</p>':''}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;

@@ -17,6 +17,15 @@ ERRORS = (
     (r'ik_joint_margin', 'reach', "That pose was too close to the arm's limits"),
     (r'joint tracking exceeds', 'reach', 'The arm could not hold its target closely enough'),
 )
+HELP_REASONS = {
+    'stuck_within_version': 'The same failure kept repeating',
+    'same_failure_after_code_change': 'The same failure came back after a code change',
+    'unchanged_repeated_failure': 'The code did not change and the failure repeated',
+    'cause_unresolved': 'The cause was still unclear after several versions',
+    'request_after_each_failure': 'The attempt failed its review',
+    'retry_threshold_reached': 'It failed too many times in a row',
+    'agent_initiated_help': 'The Dev agent asked for help',
+}
 _cache = {}
 
 
@@ -57,7 +66,8 @@ def _one(private, public, eid, attempt):
                    wrong=plain.get('wrong'), next=plain.get('next'))
     help_row = _json(public, f'executions/{eid}/help.json')
     if help_row and help_row.get('delivered') is True:
-        row['help'] = dict(content=help_row.get('content'), provider=help_row.get('provider', 'advisor'))
+        reason = (help_row.get('decision') or {}).get('reason')
+        row['help'] = dict(content=help_row.get('content'), provider=help_row.get('provider', 'advisor'), why=HELP_REASONS.get(reason, 'The robot asked for help'))
     return row
 
 

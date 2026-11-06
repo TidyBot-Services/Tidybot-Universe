@@ -34,12 +34,12 @@ def test_a_failure_in_plain_words(message, kind, words):
 def test_tries_keep_order_and_attempts_carry_their_review(tmp_path):
     private = tmp_path/'private';public = private/'public'
     execution(public, 1, 'run', status='completed')
-    execution(public, 2, 'run', help=dict(delivered=True, content='Go lower.', provider='human'))
+    execution(public, 2, 'run', help=dict(delivered=True, content='Go lower.', provider='human', decision=dict(reason='stuck_within_version')))
     execution(public, 3, 'submit')
     write(public, 'versions/v0001/eval.json', dict(passed=False, reason='no'))
     write(private, 'eval/v0001/plain.json', dict(wrong='It missed.', next='Go lower.'))
     rows = story.tries(private)
-    assert [r['number'] for r in rows] == [1, 2, 3] and rows[0]['kind'] == 'done' and rows[1]['help']['provider'] == 'human'
+    assert [r['number'] for r in rows] == [1, 2, 3] and rows[0]['kind'] == 'done' and rows[1]['help']['provider'] == 'human' and rows[1]['help']['why'] == 'The same failure kept repeating'
     assert rows[2]['attempt'] == 1 and rows[2]['passed'] is False and rows[2]['wrong'] == 'It missed.'
 
 

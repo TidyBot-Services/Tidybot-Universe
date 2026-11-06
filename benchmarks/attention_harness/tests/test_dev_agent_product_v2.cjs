@@ -42,7 +42,7 @@ test('v2 help panel shows all required states and errors, including non-delivere
    assert.ok(html.includes(`title="${code}"`),code);
  }
  assert.match(html,/<small>Try 4<\/small>/);
- assert.match(html,/data-agent-policy-errors/);
+ assert.doesNotMatch(html,/data-agent-policy-errors/);
  const story=api.agentFullStory(s);assert.equal((story.match(/data-agent-help-id=/g)||[]).length,3);
 });
 test('the policy dropdown lists the eight Agent policies and no matrix',()=>{
@@ -92,8 +92,9 @@ test('the history reads as chapters with plain names, never internal ids',async(
  const s=await snapshot(),api=apiFor(s);
  s.agent.tries=[{execution_id:'e000001',number:1,submitted:false,ok:false,kind:'reach',why:'x'},{execution_id:'e000002',number:2,submitted:false,ok:false,kind:'reach',why:'x',help:{content:'y'}},{execution_id:'e000003',number:3,submitted:true,attempt:1,passed:false,ok:false,kind:'hold',why:'z'},{execution_id:'e000004',number:4,submitted:false,ok:false,kind:'hold',why:'z'}];
  const html=api.agentPolicyHelp(s);
- assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('1 help')&&html.includes('Attempt 1')&&html.includes('Not passed')&&html.includes('Can&#39;t reach'));
- assert.equal((html.match(/data-story-part/g)||[]).length,3);
+ assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('Help 1')&&html.includes('After Try 2')&&html.includes('Attempt 1')&&html.includes('Not passed')&&html.includes('Can&#39;t reach'));
+ assert.equal((html.match(/data-story-part/g)||[]).length,4);
+ assert.ok(!html.includes('Technical details')&&!html.includes('Help replies'));
  assert.ok(!html.slice(html.indexOf('data-agent-history'),html.indexOf('data-story-caption')).includes('e00000'));
 });
 test('v2 automatic ask notices cover success, blocked limits and unknown codes',async()=>{
