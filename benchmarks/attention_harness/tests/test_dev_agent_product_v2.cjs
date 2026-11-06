@@ -80,8 +80,9 @@ test('v2 help reasons use readable text with original codes on hover',()=>{
 test('a waiting help request offers a reply form and a reply from a person is labelled',async()=>{
  const s=await snapshot(),api=apiFor(s);
  assert.ok(!api.agentPolicyHelp(s).includes('data-agent-reply'));
- s.agent.human_wait={execution_id:'e000005',cell:'c'.repeat(64),question:'What should <it> do?',deadline_at:Date.now()/1000+60};
+ s.agent.human_wait={execution_id:'e000005',cell:'c'.repeat(64),question:'What should <it> do?',deadline_at:Date.now()/1000+60,seconds:120};
  const html=api.agentPolicyHelp(s);
+ assert.ok(html.includes('op-reply-live')&&html.includes('YOUR MOVE')&&html.includes('data-seconds="120"')&&!html.includes('HELP &amp; REPLIES'));
  assert.ok(html.includes('data-state="waiting"')&&html.includes('data-agent-reply')&&html.includes('data-execution-id="e000005"'));
  assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
  assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human'},1).includes('Person replied'));

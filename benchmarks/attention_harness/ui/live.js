@@ -3556,8 +3556,11 @@
         stored(key,null);lastRendered='';await refresh();
       }catch(error){message.textContent=`Reply not submitted: ${DEBUG_VIEW?error.message:plainError(error.message)}`;form.querySelectorAll('button').forEach(b=>b.disabled=false);}
     };
-    form.elements.content.addEventListener('input',()=>stored(key,form.elements.content.value));
-    form.addEventListener('submit',event=>{event.preventDefault();if(form.reportValidity())send({content:form.elements.content.value});});
+    const input=form.elements.content,grow=()=>{input.style.height='auto';input.style.height=Math.min(140,input.scrollHeight)+'px';};
+    input.addEventListener('input',()=>{stored(key,input.value);grow();});
+    input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();form.requestSubmit();}});
+    form.addEventListener('submit',event=>{event.preventDefault();if(form.reportValidity())send({content:input.value});});
+    grow();updateAgentClock();
     form.querySelector('[data-hr-skip]').addEventListener('click',()=>send({skip:true}));
   }
   function bindDevGuidance(snapshot){
@@ -4957,12 +4960,18 @@
     if(previousRun===run.run_id&&overviewFocus)view.querySelector(overviewFocus)?.focus({preventScroll:true});
   }
 
+  function updateAgentClock() {
+    const clock=view.querySelector('[data-agent-reply-countdown]');if(!clock)return;
+    const left=Math.max(0,Number(clock.dataset.deadline)-Date.now()/1000),whole=Math.ceil(left),panel=clock.closest('.op-reply-live');
+    clock.textContent=`${Math.floor(whole/60)}:${String(whole%60).padStart(2,'0')}`;
+    panel.style.setProperty('--reply-left',Math.min(1,left/Number(clock.dataset.seconds)).toFixed(3));
+    panel.dataset.urgent=String(left<=20);
+  }
   function updateReplyClock() {
     if (!currentSnapshot) return;
     if (requestAlertKey && !actionableRequests(currentSnapshot).some(request =>
       `attention.request-alert:${JSON.stringify([currentSnapshot.run.run_id,request.request_id])}` === requestAlertKey)) dismissRequestAlert();
-    const agentClock = view.querySelector('[data-agent-reply-countdown]');
-    if (agentClock) agentClock.textContent = countdown({deadline_at:Number(agentClock.dataset.deadline)});
+    updateAgentClock();
     const deadline = view.querySelector('[data-reply-countdown]');
     if (!deadline || deadline.dataset.expired === 'true') return;
     const request = currentSnapshot.requests.find(r => r.request_id ===
@@ -5311,15 +5320,18 @@
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
   }
+  function agentReplyForm(wait) {
+    const draft=stored('attention.agent-reply:'+wait.execution_id)||'';
+    return `<form class="op-reply" data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}"><div class="op-reply-ask"><div class="op-reply-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v1M15 13v1"/></svg></div><div class="op-reply-bubble"><small>Robot</small>${esc(wait.question)}</div></div>${operatorQuickReplies()}<div class="op-reply-compose"><textarea name="content" maxlength="2000" rows="1" required aria-label="Your reply" placeholder="Write a short tip…">${esc(draft)}</textarea><button class="op-reply-send" type="submit" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div><div class="op-reply-foot">${HumanReply.skipButton()}<span>No reply in time: the AI advisor answers.</span></div><p data-agent-reply-message role="status"></p></form>`;
+  }
   function agentPolicyHelp(snapshot) {
     const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;
     const pending=agent.pending_ask,fallback=agent.forced_fallback;
     const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(pending.execution_id)}</small>`:'',
       ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
       fallback?`${agentFallbackNotice(fallback)} <small>${esc(fallback.execution_id||'')}</small>`:''].filter(Boolean);
-    const wait=agent.human_wait,draft=wait?stored('attention.agent-reply:'+wait.execution_id)||'':'';
-    const reply=wait?`<div class="op-action need"><h4>The robot needs your help</h4>${HumanReply.blocks({a:'<p>The latest attempt is in 03 · Replay &amp; attempts. Watch it before you reply.</p>',b:`<p>${esc(wait.question)}</p><p class="ab-countdown" data-agent-reply-countdown data-deadline="${wait.deadline_at}"></p>`,c:`<form data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}">${operatorQuickReplies()}<label class="op-guidance-label">Your reply<textarea name="content" maxlength="2000" required placeholder="Write a short tip in plain words.">${esc(draft)}</textarea></label><div class="op-controls"><button class="ab-button-primary" type="submit" value="answer">Send reply</button>${HumanReply.skipButton()}</div><p data-agent-reply-message role="status"></p></form>`,d:'<p>Your reply goes to the Dev agent for its next step. If the time runs out, the AI advisor answers instead and the record says so.</p>'})}</div>`:'';
-    return `<section class="panel detail ab-current-request" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${operatorHeading('04','HELP &amp; REPLIES','')}${reply}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
+    const wait=agent.human_wait,heading=wait?operatorHeading('04','YOUR MOVE',`<b data-agent-reply-countdown data-deadline="${wait.deadline_at}" data-seconds="${wait.seconds}"></b>`):operatorHeading('04','HELP &amp; REPLIES','');
+    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;

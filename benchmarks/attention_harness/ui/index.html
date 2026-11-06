@@ -3594,6 +3594,39 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-bubble{border:0;border-radius:6px;background:#fff;color:#242822;padding:4px 8px;font:600 11.5px/1.4 var(--mono,monospace);box-shadow:0 2px 8px #0005}
 #attentionbench-clear[id][data-operator-view="true"] figure.op-video .op-skip-tick{width:2px;height:10px;border:0;border-radius:1px;background:#fff;opacity:.6}
 @media (max-width:640px){#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport button{min-width:40px;min-height:40px}#attentionbench-clear[id][data-operator-view="true"] figure.op-video .ab-replay-transport [data-replay-play]{width:40px;height:40px;min-width:40px;min-height:40px}}
+
+/* Panel 04 while a run waits for its owner: the panel's own title bar becomes the alert and drains as the time runs out. */
+.op-reply-live{--r-fill:#c44420;--r-fill2:#8f3016;--r-acc:#d94d27;--r-card:#fff;--r-line:#d3d4c6;--r-mut:#686e64}
+html[data-theme="dark"] .op-reply-live{--r-fill:#d9542c;--r-fill2:#7c2f18;--r-acc:#ec6a43;--r-card:#23272c;--r-line:#33383d;--r-mut:#a3a199}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live{border-color:var(--r-fill)!important}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live::before{display:none}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-heading{align-items:center;flex-wrap:nowrap!important;margin:-20px -22px 16px;padding:12px 22px;border-bottom:0!important;background:linear-gradient(90deg,var(--r-fill) calc(var(--reply-left,1)*100%),var(--r-fill2) 0)}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live.op-reply-live .panel-title.op-heading{border-bottom:0!important}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-heading h3{color:#fff}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-heading>span:last-child{margin-left:auto;flex:none;width:auto!important;margin-top:0}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live [data-agent-reply-countdown]{color:#fff;font:700 38px/1 var(--display,'Barlow Condensed',sans-serif);font-variant-numeric:tabular-nums}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live[data-urgent="true"] .op-heading{animation:op-reply-flash 1s infinite}
+@keyframes op-reply-flash{50%{background:var(--r-fill2)}}
+@media (prefers-reduced-motion:reduce){#attentionbench-clear[data-operator-view="true"] .op-reply-live[data-urgent="true"] .op-heading{animation:none}}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply{--r-in:62px;margin:0;text-align:left}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-ask{display:flex;gap:14px;align-items:center}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-face{width:48px;height:48px;flex:none;border-radius:50%;background:#242822;color:#fff;display:grid;place-items:center}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-face svg{width:26px;height:26px}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-bubble{min-width:0;max-width:680px;background:var(--r-card);border:1px solid var(--r-line);border-radius:18px 18px 18px 4px;padding:12px 16px}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-bubble small{display:block;font-size:12px;color:var(--r-mut)}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 10px var(--r-in)}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-chips button{min-height:0;border:0!important;box-shadow:none!important;background:color-mix(in srgb,var(--r-acc) 13%,transparent)!important;color:var(--r-acc)!important;border-radius:14px 14px 4px 14px;padding:6px 13px;font-size:13px;font-weight:500}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-chips button:hover{background:var(--r-acc)!important;color:#fff!important}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-compose{margin-left:var(--r-in);display:flex;gap:8px;align-items:flex-end;background:var(--r-card);border:1px solid var(--r-line);border-radius:24px;padding:6px 6px 6px 16px}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-compose:focus-within{border-color:var(--r-acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--r-acc) 18%,transparent)}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-compose textarea{flex:1;min-width:0;min-height:34px;max-height:140px;margin:0;padding:6px 0;font:inherit;color:inherit;border:0!important;box-shadow:none!important;background:none!important;outline:none;resize:none;overflow:hidden}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-send{width:40px;height:40px;min-height:0;flex:none;padding:0;border-radius:50%;border:0!important;box-shadow:none!important;background:var(--r-fill)!important;color:#fff!important;display:grid;place-items:center}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-send svg{width:18px;height:18px}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-foot{margin:8px 0 0 var(--r-in);display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--r-mut)}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-foot button{min-height:0;padding:4px 0;border:0!important;box-shadow:none!important;background:none!important;color:var(--r-mut)!important;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live [data-agent-reply-message]:empty{display:none}
+#attentionbench-clear[data-operator-view="true"] .op-reply-live [data-agent-reply-message]{margin:8px 0 0 var(--r-in);color:var(--r-acc);font-size:13px}
+@media (max-width:640px){#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply{--r-in:0px}#attentionbench-clear[data-operator-view="true"] .op-reply-live .op-reply-face{display:none}}
 </style>
 <div class="ribbon">ATTENTIONBENCH · OPERATIONS</div>
 <header class="top"><div class="brand" aria-label="Tidybot Attention Bench"><span class="brand-signature">TIDYBOT</span><b>ATTENTION BENCH</b></div><div class="demo">● STORE</div></header>

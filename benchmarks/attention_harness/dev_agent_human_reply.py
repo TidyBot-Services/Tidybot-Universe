@@ -43,7 +43,7 @@ def answer(private, execution_id, *, question, seconds, poll=.5, clock=time.time
     """Wait up to seconds for a person. Returns their words, or None when the Advisor should answer."""
     folder = _folder(private, execution_id);folder.mkdir(parents=True, exist_ok=True)
     deadline = clock()+seconds
-    (folder/WAIT).write_text(json.dumps(dict(execution_id=execution_id, question=question, deadline_at=deadline)), encoding='utf-8')
+    (folder/WAIT).write_text(json.dumps(dict(execution_id=execution_id, question=question, deadline_at=deadline, seconds=seconds)), encoding='utf-8')
     while clock() < deadline and not (folder/OUTCOME).exists():sleep(poll)
     outcome = _settle(folder, dict(kind='timed_out', at=clock()))
     return outcome.get('content') if outcome.get('kind') == 'reply' else None
