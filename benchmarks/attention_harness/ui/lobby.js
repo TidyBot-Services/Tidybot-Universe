@@ -142,16 +142,15 @@
     }
     return `<div class="op-outcome running" data-operator-outcome="running" role="status"><strong>● RUNNING</strong><div><p>Attempt ${Math.min(k + 1, n)} of ${n} is running.</p></div></div>`;
   }
-  const privateBlock = (title, text) => `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" data-lobby-private aria-label="Help and replies"><div class="op-action none"><h4>🔒 ${esc(title)}</h4><p>${esc(text)}</p></div></section>`;
-
   // Returns the whole 04 section for the lobby states, or '' to let the page draw it from the run's own data.
   function helpHtml(snapshot, heading, HumanReply, replayMoments) {
     const c = snapshot.lobby;
     if (!c) return '';
     const head = heading || '';
     if (!c.mine) {
-      if (c.state === 'finished' && c.share_replies) return '';
-      return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" data-lobby-private aria-label="Help and replies">${head}<div class="op-action none"><h4>🔒 Private</h4><p>${c.state === 'waiting_human' ? `The robot is asking ${esc(c.nickname)} for help right now.` : `${esc(c.nickname)}'s questions and replies are not shown.`}</p><p>${c.state === 'finished' ? 'Only the owner can share them.' : 'If the owner turns on sharing after the run ends, they appear here.'}</p></div></section>`;
+      if (c.state !== 'waiting_human') return '';
+      const w = c.waiting || {};
+      return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${head}<div class="op-action none"><h4>${esc(c.nickname)} is being asked for help</h4><p>After attempt ${esc(w.attempt ?? c.attempt.current)}: ${esc(w.failure || 'the attempt did not succeed')}.</p><p>Asked: “${esc(w.question || 'What should the robot do differently on its next attempt?')}”</p></div></section>`;
     }
     if (c.state === 'queued') return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${head}<div class="op-action none"><h4>Nothing to do yet</h4><p>When the robot asks for help it appears here and a notice shows in the top bar.</p></div></section>`;
     if (c.state === 'running') return `<section class="panel detail ab-current-request" data-core-region="request" data-state="idle" aria-label="Help and replies">${head}<div class="op-action none"><h4>Nothing to do right now</h4><p>The robot is working on attempt ${esc(c.attempt.current + 1)}. If it asks for help, it appears here.</p></div></section>`;
@@ -166,13 +165,9 @@
     }
     return '';
   }
-  // The sharing switch of a finished run of mine, added under 04.
-  function sharingHtml(snapshot) {
-    const c = snapshot.lobby;
-    if (!c?.mine || c.state !== 'finished') return '';
-    return `<div class="lb-share" data-lb-share><label><input type="checkbox" data-lb-share-box ${c.share_replies ? 'checked' : ''}> Let others see this run's help requests and replies in its replay</label><small>${c.share_replies ? 'Shared · you can turn it off any time.' : 'Off · others see only status and result.'}</small></div>`;
-  }
-  const resourcesHtml = snapshot => snapshot.lobby && !snapshot.lobby.mine ? `<section class="panel ab-resource-details" data-resource-details data-lobby-private aria-label="Resources"><div class="op-action none"><h4>🔒 Only the owner sees resources</h4><p>Attempts: ${esc(snapshot.lobby.attempt.current)} of ${esc(snapshot.lobby.attempt.limit)}.</p></div></section>` : '';
+  // Everything in the lobby is public: there is no switch, and everyone reads the same panels.
+  const sharingHtml = () => '';
+  const resourcesHtml = () => '';
 
   async function send(path, body, token) {
     const response = await fetch(path, {method: 'POST', credentials: 'same-origin', cache: 'no-store', headers: {'Content-Type': 'application/json', 'X-Attention-Token': token || rootEl.dataset.controlToken || ''}, body: JSON.stringify(body || {})});
@@ -206,10 +201,6 @@
     };
     view.querySelector('[data-lb-send]')?.addEventListener('click', () => submit('answered'));
     view.querySelector('[data-hr-skip]')?.addEventListener('click', () => submit('skipped'));
-    view.querySelector('[data-lb-share-box]')?.addEventListener('change', async e => {
-      await send(`/api/lobby/runs/${encodeURIComponent(c.run_id)}/share`, {share: e.target.checked});
-      state.hooks.changed?.(false, true);
-    });
     // Keep the waiting clock moving without redrawing the form the person is typing in.
     const wait = view.querySelector('[data-lb-wait]');
     if (wait) wait.textContent = `Waiting ${clock(c.help_waiting_seconds)} · auto-skip at ${clock(state.snap.limits.help_wait_seconds)}`;
@@ -245,14 +236,13 @@
   function newRunNotice() {
     return state.enabled ? '<p class="ab-launch-note ab-launch-source" data-remote-note><span>REMOTE</span><strong>Real runs are not connected yet.</strong><small>Set everything as in the main UI. Join demo replays a recording of this task and does not use these settings.</small></p>' : '';
   }
-  // The extra section of the New run dialog: sharing, and where the new run would stand in the queue.
+  // The extra section of the New run dialog: where the new run would stand in the queue.
   function newRunHtml() {
     if (!state.enabled) return '';
     const snap = state.snap, waiting = (snap.queue || []).length, running = snap.robot?.running ? 1 : 0;
     const place = waiting + running + 1;
     const mineBusy = [snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
-    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Sharing &amp; queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
-      <label class="ab-reviewer-toggle"><input name="lb_share" type="checkbox"><span class="ab-switch" aria-hidden="true"></span><span><strong>Let others see my help requests and replies in the replay</strong><small>Off by default. Others always see status, progress and result, never your key.</small></span></label>
+    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
       <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;
   }
   function shapeNewRun(form) {

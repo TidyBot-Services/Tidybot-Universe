@@ -168,9 +168,9 @@ test('NEW-RUN-BUDGET: a lowered budget survives repaints and a new task starts f
 const sectionHeads = form => form.locator('h4').evaluateAll(els => els.filter(e => e.getClientRects().length).map(e => e.textContent.trim()));
 const fieldNames = form => form.locator('.ab-launch-section input[name], .ab-launch-section select[name]').evaluateAll(els => els.map(e => e.name).filter(name => name !== 'lb_share').sort());
 
-test('REMOTE-FORM: Remote shows main\'s sections and fields, plus Sharing & queue', async t => {
+test('REMOTE-FORM: Remote shows main\'s sections and fields, plus Queue', async t => {
   const main = await dialog(t), remote = await dialog(t, {remote: ['pick_place_counter_to_sink']});
-  assert.deepEqual(await sectionHeads(remote.form), [...await sectionHeads(main.form), '07Sharing & queue']);
+  assert.deepEqual(await sectionHeads(remote.form), [...await sectionHeads(main.form), '07Queue']);
   assert.deepEqual(await fieldNames(remote.form), await fieldNames(main.form));
   const hidden = await remote.form.locator('.ab-launch-section').evaluateAll(els => els.filter(e => !e.getClientRects().length).length);
   assert.equal(hidden, 0);

@@ -93,7 +93,7 @@ def test_help_reply_sharing_and_body_validation(served):
     own = json.loads(call(base,'/api/lobby',cookie=cookie)[1])
     public = json.loads(call(base,'/api/lobby',cookie=other)[1])
     assert own['robot']['running']['waiting']['question']
-    assert public['robot']['running']['waiting'] is None
+    assert public['robot']['running']['waiting']['question']
     for content in ('',None,7,['bad'],'x'*4001,token,'api_key=TEST-KEY','192.0.2.9'):
         status,raw,_ = call(base,f'/api/lobby/runs/{rid}/reply',method='POST',token=token,cookie=cookie,
                             body={'outcome':'answered','content':content})
@@ -104,9 +104,7 @@ def test_help_reply_sharing_and_body_validation(served):
     assert b'MY PRIVATE ANSWER' not in call(base,'/api/lobby',cookie=cookie)[1]
     path = f'/api/lobby/runs/{rid}/replies'
     assert b'MY PRIVATE ANSWER' in call(base,path,cookie=cookie)[1]
-    assert call(base,path,cookie=other)[0] == 403
-    call(base,f'/api/lobby/runs/{rid}/share',method='POST',token=token,cookie=cookie,body={'share':True})
-    assert call(base,path,cookie=other)[0] == 403
+    assert b'MY PRIVATE ANSWER' in call(base,path,cookie=other)[1]
     clock.step(60);demo.tick()
     call(base,f'/api/lobby/runs/{rid}/reply',method='POST',token=token,cookie=cookie,body={'outcome':'skipped'})
     clock.step(60);demo.tick()

@@ -2897,7 +2897,7 @@
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled){
-            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(provider,form.model_source.value),share_replies:Boolean(form.lb_share?.checked)});
+            const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(provider,form.model_source.value),share_replies:true});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
             keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
           }

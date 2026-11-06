@@ -258,7 +258,7 @@ class Lobby:
     def tick(self, now=None):
         with self.tx() as db:self._advance(db, self.clock() if now is None else now)
 
-    def enqueue(self, viewer, *, task_key, strategy='autonomous', dev_source='lab_codex', share_replies=False):
+    def enqueue(self, viewer, *, task_key, strategy='autonomous', dev_source='lab_codex', share_replies=True):
         if not isinstance(strategy,str) or strategy not in (*POLICY_IDS,'agent_initiated_help'):
             raise LobbyError('invalid_body', 400)
         if not isinstance(dev_source,str) or dev_source not in ('lab_codex', 'lab_glm', 'own_key') or type(share_replies) is not bool:
@@ -314,8 +314,6 @@ class Lobby:
             row = db.execute('SELECT payload FROM runs WHERE id=?', (run_id,)).fetchone()
             if not row:raise LobbyError('not_found', 404)
             run = json.loads(row[0])
-            if (not viewer or run['owner'] != viewer['id']) and not (run['share_replies'] and run['state'] in TERMINAL):
-                raise LobbyError('not_owner', 403)
             return [json.loads(r[0]) for r in db.execute('SELECT payload FROM replies WHERE run_id=? ORDER BY attempt', (run_id,))]
 
     def set_speed(self, speed):
@@ -360,7 +358,7 @@ class Lobby:
                 'recording':dict(id=run['source_id'], attempts=len(self.sources[run['source_id']]['attempt_done_at'])),
                 'queue_position':position, 'eta_start_seconds':int(math.floor((remaining+(position-1)*median)/30+0.5)*30) if position else None,
                 'help_waiting_seconds':max(0, now-waiting['asked_at']) if waiting else None,
-                'waiting':{k:waiting[k] for k in ('attempt','question','failure','asked_at')} if mine and waiting else None}
+                'waiting':{k:waiting[k] for k in ('attempt','question','failure','asked_at')} if waiting else None}
 
     def card(self, run_id, viewer):
         with self.tx() as db:

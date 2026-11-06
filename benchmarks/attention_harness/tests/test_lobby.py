@@ -66,14 +66,14 @@ def test_eta_rounding_and_finished_median(tmp_path):
     assert lobby.snapshot(a)['queue'][0]['eta_start_seconds'] == 180
 
 
-def test_help_timeout_real_seconds_and_privacy(queue):
+def test_help_timeout_real_seconds_and_public_question(queue):
     lobby, clock = queue
     owner, other = join(lobby),join(lobby)
     run = enqueue(lobby,owner);lobby.tick()
     clock.step(60);lobby.tick()
     assert lobby.card(run['run_id'],owner)['state'] == 'waiting_human'
     assert lobby.card(run['run_id'],owner)['waiting']['question'] == 'Where should I move?'
-    assert lobby.card(run['run_id'],other)['waiting'] is None
+    assert lobby.card(run['run_id'],other)['waiting']['question'] == 'Where should I move?'
     lobby.set_speed(60)
     clock.step(599);lobby.tick()
     assert lobby.card(run['run_id'],owner)['state'] == 'waiting_human'
@@ -84,18 +84,14 @@ def test_help_timeout_real_seconds_and_privacy(queue):
     assert 'Where should I move?' not in json.dumps(lobby.snapshot(other))
 
 
-def test_replies_shared_only_after_terminal_and_never_in_events(queue):
+def test_replies_are_public_at_once_and_never_in_events(queue):
     lobby,clock = queue
     owner,other = join(lobby),join(lobby)
     run = enqueue(lobby,owner);lobby.tick();clock.step(60);lobby.tick()
-    lobby.reply(run['run_id'],owner,outcome='answered',category='reach',content='PRIVATE REPLY SENTINEL')
-    lobby.share(run['run_id'],owner,True)
-    with pytest.raises(LobbyError,match='not_owner'):lobby.replies(run['run_id'],other)
-    clock.step(120);lobby.tick()
-    assert lobby.replies(run['run_id'],other)[0]['content'] == 'PRIVATE REPLY SENTINEL'
-    assert 'PRIVATE REPLY SENTINEL' not in json.dumps(lobby.snapshot(owner))
-    lobby.share(run['run_id'],owner,False)
-    with pytest.raises(LobbyError,match='not_owner'):lobby.replies(run['run_id'],other)
+    lobby.reply(run['run_id'],owner,outcome='answered',category='reach',content='REPLY SENTINEL')
+    assert lobby.replies(run['run_id'],other)[0]['content'] == 'REPLY SENTINEL'
+    assert lobby.replies(run['run_id'],None)[0]['content'] == 'REPLY SENTINEL'
+    assert 'REPLY SENTINEL' not in json.dumps(lobby.snapshot(owner))
     with pytest.raises(LobbyError,match='not_waiting'):lobby.reply(run['run_id'],owner,outcome='skipped')
 
 

@@ -39,11 +39,11 @@ test('the source shown for a demo run follows who pays',async()=>{
   assert.equal(Lobby.devSource(null,'parcc'),'lab_glm');
   assert.equal(Lobby.devSource({roles:{dev:{credential:'lab',provider:'parcc'},eval:{credential:'mine'}}},'parcc'),'own_key');
 });
-test('Sharing & queue comes after main\'s six sections, with the same switch as 04, and live.js hides nothing',async()=>{
+test('Queue comes after main\'s six sections, with no sharing switch, and live.js hides nothing',async()=>{
   const Lobby=await loadLobby(['pick_place_counter_to_sink']);
   const html=Lobby.newRunHtml();
-  assert.match(html,/<h4><span class="op-number">07<\/span>Sharing &amp; queue<\/h4>/);
-  assert.match(html,/<label class="ab-reviewer-toggle"><input name="lb_share" type="checkbox"><span class="ab-switch"/);
+  assert.match(html,/<h4><span class="op-number">07<\/span>Queue<\/h4>/);
+  assert.doesNotMatch(html,/lb_share/);
   assert.doesNotMatch(html,/ab-check/);
   // Nothing may write into the first switch of the form by class: in Remote that is the Sharing switch.
   assert.doesNotMatch(live,/form\.querySelector\('\.ab-reviewer-toggle small'\)/);
