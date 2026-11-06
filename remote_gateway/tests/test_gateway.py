@@ -28,6 +28,8 @@ SELECTION = dict(request_key='client-key-1', tasks=['open_cabinet'], seeds=[102]
                  agent_provider=dict(roles=dict(dev=PARCC(), eval=PARCC(), advisor=PARCC())))
 OPTIONS = dict(dev_v2=dict(profiles=[dict(task_id='open_cabinet', enabled=True)], agent_policies=dict(policies=[dict(policy_id='autonomous')])), profiles=[dict(id='formal')])
 
+FRAME_HEADERS = {'X-Frame-Sequence': '7', 'X-Frame-Version': 'v1', 'X-Frame-Sha256': 'f' * 64, 'X-Frame-Age': '0.4', 'X-Episode-Id': 'ep', 'X-Preview-State': 'live'}
+
 
 class Harness:
     """Answers like the harness and refuses what the harness would refuse."""
@@ -58,6 +60,7 @@ class Harness:
                     outer.made += 1
                     return self.answer(dict(experiment_id=OWN[:-1] + str(outer.made), cells=[dict(key=CELL, artifact_dir='/home/someone/run')], owner='operator'))
                 if path.endswith('/run'):return self.answer(dict(error='cannot start at /home/someone/x') if outer.start_status != 200 else dict(worker_started=True), outer.start_status)
+                if path.split('?')[0].endswith('/live/frame'):return self.answer(b'jpeg', 200, 'image/jpeg', FRAME_HEADERS)
                 if path.endswith('/video.mp4'):
                     if self.headers.get('Range') == 'bytes=2-5':return self.answer(b'2345', 206, 'video/mp4', {'Content-Range': 'bytes 2-5/10', 'Accept-Ranges': 'bytes'})
                     return self.answer(b'0123456789', 200, 'video/mp4')
@@ -356,6 +359,18 @@ def test_video_streams_with_range_and_is_not_rewritten(world):
     assert (status, content, response.getheader('Content-Type')) == (200, b'0123456789', 'video/mp4')
     status, content, response = browser.send('GET', path, headers={'Range': 'bytes=2-5'})
     assert (status, content, response.getheader('Content-Range')) == (206, b'2345', 'bytes 2-5/10')
+
+
+def test_a_camera_frame_keeps_the_identity_the_page_checks(world):
+    browser = world.person();owned(world, browser)
+    status, content, response = browser.send('GET', f'/api/dev-v2/experiments/{OWN}/cells/{CELL}/live/frame?seq=7')
+    assert (status, content, response.getheader('Content-Type')) == (200, b'jpeg', 'image/jpeg')
+    assert {name: response.getheader(name) for name in FRAME_HEADERS} == FRAME_HEADERS
+
+
+def test_every_header_the_page_reads_gets_through():
+    read = set(re.findall(r"'(X-(?:Frame|Episode|Preview)[A-Za-z0-9-]*)'", (UI / 'live.js').read_text()))
+    assert {'X-Frame-Sequence', 'X-Frame-Sha256', 'X-Episode-Id'} <= read <= set(gateway_server.PASSED_HEADERS)
 
 
 def test_too_many_requests_are_slowed(world):

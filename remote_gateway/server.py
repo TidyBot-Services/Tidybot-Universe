@@ -21,7 +21,9 @@ from .upstream import Upstream, UpstreamError
 
 COOKIE = 'ab_session'
 JSON_LIMIT = 8192
-PASSED_HEADERS = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified')
+# The page matches each camera frame to its identity with the X- headers, and throws away a frame that comes without them.
+PASSED_HEADERS = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified',
+                  'X-Frame-Sequence', 'X-Frame-Version', 'X-Frame-Sha256', 'X-Frame-Age', 'X-Episode-Id', 'X-Preview-State')
 BASE_HEADERS = {'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY'}
 UNOWNED = policy.Refused('not_found', 'Not found.', 404)
 PUBLIC = 'public'  # Who the harness sees for anything anyone may read. It holds no keys.
