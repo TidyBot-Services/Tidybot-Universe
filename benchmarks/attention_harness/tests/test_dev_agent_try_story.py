@@ -125,3 +125,18 @@ def test_a_provider_run_sends_the_rewrite_through_the_evals_own_bridge(tmp_path,
     evaluator, result, calls, root = fake_eval(tmp_path, monkeypatch, turn('Wrong: It missed.\nNext: Go lower.', 7), provider)
     assert len(made) == 1 and made[0].closed and (root/'plain.json').exists() and evaluator.usage['input_tokens'] == 107
     assert Bridge.base_url in ' '.join(calls[0]) and Bridge.base_url in ' '.join(calls[1]) and calls[1][calls[1].index('-m')+1] == 'parcc/GLM'
+
+
+def test_a_review_without_a_rewrite_reads_without_citations():
+    text = story.readable_review(dict(status='completed', reason='The grasp failed (trace.json[11]) and it stayed at (0.49, -2.37, 0.93) m outside the sink (final_observation.json).'))
+    assert text == 'The grasp failed and it stayed outside the sink.'
+    assert story.readable_review(dict(status='unavailable', reason='Eval unavailable for v0003: timeout')) is None
+
+
+def test_an_attempt_keeps_the_review_and_why_it_is_missing(tmp_path):
+    private = tmp_path/'private';public = private/'public'
+    execution(public, 1, 'submit', status='completed');write(public, 'versions/v0001/eval.json', dict(status='completed', passed=True, reason='It pressed the button.'))
+    execution(public, 2, 'submit', status='completed');write(public, 'versions/v0002/eval.json', dict(status='unavailable', passed=None, error='timeout', reason='x'))
+    first, second = story.tries(private)
+    assert first['passed'] is True and first['review'] == 'It pressed the button.' and first['why'] == 'The code ran without errors'
+    assert second['passed'] is None and second['review'] is None and second['review_error'] == 'timeout'

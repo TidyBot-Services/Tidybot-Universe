@@ -36,6 +36,14 @@ def plain_error(message):
     return 'other', re.sub(r'^\w*(Error|Rejected):\s*', '', (message or 'The try failed').strip())[:160]
 
 
+def readable_review(review):
+    """Eval's own sentence for a run without a rewrite, minus file citations and coordinates."""
+    if review.get('status') != 'completed' or not isinstance(review.get('reason'), str):return None
+    text = re.sub(r'\s*\([^()]*(\.json|\.py|\.txt|trace)[^()]*\)', '', review['reason'])
+    text = re.sub(r'\s*(at\s+)?\(-?\d+\.\d+,\s*-?\d+\.\d+,\s*-?\d+\.\d+\)\s*m?', ' ', text)
+    return re.sub(r'\s+', ' ', text).replace(' .', '.').strip()
+
+
 def _json(root, name):
     try:return json.loads(read_beneath(root, name, LIMIT, shared=True))
     except (OSError, ValueError):return None
@@ -56,14 +64,14 @@ def _one(private, public, eid, attempt):
     run = _json(public, f'executions/{eid}/execution.json') or {}
     result = _json(public, f'executions/{eid}/result.json') or {}
     done = result.get('status') == 'completed'
-    kind, why = ('done', 'Ran to the end') if done else plain_error(_failure(public, eid))
+    kind, why = ('done', 'The code ran without errors') if done else plain_error(_failure(public, eid))
     row = dict(execution_id=eid, number=int(eid[1:]), submitted=run.get('op') == 'submit', ok=done, kind=kind, why=why)
     if row['submitted']:
         vid = 'v%04d' % attempt
         review = _json(public, f'versions/{vid}/eval.json') or {}
         plain = _json(private, f'eval/{vid}/plain.json') or {}
         row.update(attempt=attempt, passed=review.get('passed') if type(review.get('passed')) is bool else None,
-                   wrong=plain.get('wrong'), next=plain.get('next'))
+                   wrong=plain.get('wrong'), next=plain.get('next'), review=readable_review(review), review_error=review.get('error'))
     help_row = _json(public, f'executions/{eid}/help.json')
     if help_row and help_row.get('delivered') is True:
         reason = (help_row.get('decision') or {}).get('reason')

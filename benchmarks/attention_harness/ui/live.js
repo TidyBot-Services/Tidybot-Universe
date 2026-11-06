@@ -5321,7 +5321,7 @@
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
   }
-  function storyKind(kind) {return {reach:"Can't reach",hold:"Can't hold",other:'Other',done:'Ran to the end'}[kind];}
+  function storyKind(kind) {return {reach:"Can't reach",hold:"Can't hold",other:'Other',done:'Ran without errors'}[kind];}
   function tryName(id) {
     const found=/^e0*(\d+)$/.exec(String(id||''));
     return found?`Try ${found[1]}`:String(id||'');
@@ -5370,7 +5370,7 @@
       if(part.help){const h=part.help.help,cols=document.createElement('div');cols.className='op-story-cols';col(cols,'Why it asked',h.why);col(cols,h.provider==='human'?'Your reply':'The advisor said',h.content);drawer.append(cols);drawer.classList.add('open','note');say(null);return;}
       if(part.attempt){const t=part.attempt,verdict=document.createElement('span');verdict.className='op-story-verdict'+(t.passed===true?' ok':'');verdict.textContent=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
         const cols=document.createElement('div');cols.className='op-story-cols';
-        col(cols,'What went wrong',t.wrong||t.why);col(cols,'Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
+        if(t.passed===null)col(cols,'What happened',t.review_error==='timeout'?'The review timed out, so this attempt has no verdict.':'No review was recorded for this attempt.');else col(cols,t.passed?'What happened':'What went wrong',t.wrong||t.review||t.why);if(t.passed===false)col(cols,'Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
       drawer.classList.remove('note');
       const first=part.tries[0].number,last=part.tries.at(-1).number,summary=document.createElement('div');summary.className='op-story-summary';const range=document.createElement('b');range.textContent=first===last?`Try ${first}`:`Try ${first}–${last}`;summary.append(range);let pinned=null;
       storyCounts(part.tries).forEach(([kind,count])=>{const chip=document.createElement('button');chip.type='button';chip.innerHTML=`<i data-kind="${kind}"></i>${esc(storyKind(kind))} <b>${count}</b>`;
