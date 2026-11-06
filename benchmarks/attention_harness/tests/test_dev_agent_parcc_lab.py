@@ -125,6 +125,10 @@ def test_a_text_only_advisor_on_a_run_key_passes_the_scheduler_check():
     made=config.configuration(dict(BASE,agent_provider=dict(roles=roles)))
     checked=dev_advisor_proxy.normalize(made['advisor_proxy'],'codex',agent=True,provider_role=blind)
     assert (checked['mode'],checked['model'],checked['model_source'])==('text_only','parcc/GLM','byok')
+    from benchmarks.attention_harness.dev_configuration import independent_eval_advisor
+    assert independent_eval_advisor(made['eval_agent'],checked)
+    with pytest.raises(ValueError):independent_eval_advisor(made['eval_agent'],{**checked,'prompt_version':made['eval_agent']['prompt_version']})
+    with pytest.raises(ValueError):independent_eval_advisor(made['eval_agent'],{**checked,'cache_version':made['eval_agent']['cache_version']})
 
 
 @pytest.mark.parametrize('role,value',[('dev',False),('eval',True),('eval','no')])
