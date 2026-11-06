@@ -10,6 +10,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from ..ffmpeg_hold import final_hold
+
 
 def _write(path, value):
     temporary=path.with_suffix('.tmp')
@@ -142,7 +144,7 @@ def finalize_recording(episode_dir, context, execution_status):
         command=['ffmpeg','-y','-hide_banner','-loglevel','error','-f','image2',
             '-ts_from_file','2','-framerate','25','-i',str(encoding/'%06d.jpg'),
             '-vsync','vfr','-c:v','libx264','-pix_fmt','yuv420p',
-            '-enc_time_base','1:1000','-video_track_timescale','1000','-r','25',
+            '-enc_time_base','1:1000','-video_track_timescale','1000',*final_hold(.04),
             '-movflags','+faststart',str(temporary)]
         process=subprocess.run(command,capture_output=True,timeout=20)
         if process.returncode:

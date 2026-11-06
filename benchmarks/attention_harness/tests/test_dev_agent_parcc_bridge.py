@@ -1,11 +1,14 @@
 import json
+import sys
+import urllib.error
 import urllib.request
 
 import pytest
 
 from benchmarks.attention_harness import dev_agent_config
-from benchmarks.attention_harness.dev_agent_parcc_bridge import IMAGE_NOTICE, BridgeError, ParccBridge, to_chat
-from benchmarks.attention_harness.dev_agent_session import CodexAgentSession
+from benchmarks.attention_harness.dev_agent_parcc_bridge import (IMAGE_NOTICE, TOOL_FAILURE_LIMIT, BridgeError, ParccBridge,
+                                                                 failed_tool_streak, to_chat)
+from benchmarks.attention_harness.dev_agent_session import CodexAgentSession, SessionError
 
 SECRET = 'sk-test-SECRET-never-logged'
 
@@ -67,6 +70,50 @@ def test_bridge_streams_responses_events_and_logs_without_key(tmp_path):
     row = json.loads(log)
     assert row['upstream_models'] == ['parcc/GLM'] and row['upstream_request_id'] == 'req-1'
     assert SECRET not in log and 'codex-side' not in log and 'Authorization' not in log
+
+
+def _failed_calls(count, last_output='exec_command failed: CreateProcess { message: "No such file" }'):
+    calls = []
+    for index in range(count):
+        calls += [dict(type='function_call', name='exec_command', arguments='{"cmd":"pwd","workdir":"/gone"}', call_id=f'c{index}'),
+                  dict(type='function_call_output', call_id=f'c{index}', output=last_output)]
+    return calls
+
+
+def test_streak_counts_only_calls_that_never_started():
+    assert failed_tool_streak(_failed_calls(3)) == 3
+    assert failed_tool_streak(_failed_calls(3) + [dict(type='message', role='assistant', content='retrying')]) == 3
+    assert failed_tool_streak(_failed_calls(3) + _failed_calls(1, 'exit code 1')) == 0
+    assert failed_tool_streak(_failed_calls(3) + [dict(type='message', role='user', content='Continue.')]) == 0
+    assert failed_tool_streak(None) == 0
+
+
+def test_bridge_ends_a_turn_stuck_on_a_call_that_cannot_start(tmp_path):
+    seen = []
+    def upstream(chat, key):
+        seen.append(chat)
+        yield dict(_request_id='req-1')
+        yield dict(model='parcc/GLM', choices=[dict(delta=dict(content='ok'), finish_reason='stop')])
+    bridge = ParccBridge(tmp_path, key=SECRET, upstream=upstream)
+    try:
+        assert _post(bridge, dict(model='parcc/GLM', input=_failed_calls(TOOL_FAILURE_LIMIT - 1)))
+        with pytest.raises(urllib.error.HTTPError) as refused:
+            _post(bridge, dict(model='parcc/GLM', input=_failed_calls(TOOL_FAILURE_LIMIT)))
+    finally:
+        bridge.close()
+    assert refused.value.code == 400 and 'workdir' in refused.value.read().decode()
+    assert len(seen) == 1
+
+
+def test_a_failed_turn_tells_the_next_turn_why(tmp_path):
+    # A real short process, never a fake one: cancel() calls os.killpg, and killpg(1) is kill(-1), which hits every process.
+    events = [dict(type='thread.started', thread_id='t1'), dict(type='turn.failed', error=dict(message='The last 25 tool calls failed'))]
+    script = 'import sys\nsys.stdin.read()\nprint(%r)\nsys.exit(1)' % '\n'.join(json.dumps(event) for event in events)
+    (tmp_path / 'ws').mkdir(); (tmp_path / 'private').mkdir()
+    session = CodexAgentSession(tmp_path / 'ws', tmp_path / 'private', command_factory=lambda ws, prompt: [
+        sys.executable, '-c', script, '-m', 'x', '-c', 'model_reasoning_effort="low"'])
+    with pytest.raises(SessionError, match='turn_failed: The last 25 tool calls failed'):
+        list(session.start('go'))
 
 
 def test_bridge_refuses_other_models(tmp_path):

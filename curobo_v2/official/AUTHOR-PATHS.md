@@ -1,5 +1,7 @@
 # Author paths allowed in the official-env comparison (fixed list)
 
+One further rule is not a path. setuptools writes `NAMESPACES` in the cuRobo editable finder in directory order, which differs between filesystems. `AUTHOR_NAMESPACES` in `official_normalization.py` restores the author's order of those 61 names after the paths are mapped back; a set of names that differs is refused, and the file must still equal the author's hash byte for byte.
+
 The local dev trust check (P5) accepts a differing file in the collaborator's cuRobo env only when,
 after mapping the collaborator's own paths back to ONE of the author paths below, the file (or the
 hash recorded for it in a RECORD) is byte-for-byte equal to the author's. No other path, prefix

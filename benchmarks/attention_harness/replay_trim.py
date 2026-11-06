@@ -15,6 +15,8 @@ import tempfile
 
 import numpy as np
 
+from .ffmpeg_hold import final_hold
+
 SCHEMA = 'attentionbench.replay-trim.v1'
 VIEWS = ('overview','side','top','left_wrist','right_wrist')
 PARAMS = dict(gap_s=1.,hold_s=1.,dedupe_tau=.0002,min_break_s=1.,
@@ -147,12 +149,12 @@ def _encode(source, target, plan, temporary):
         path=selected/f'{k:06d}.png';shutil.move(decoded[frame['src_index']],path)
         stamp=1_000_000_000_000_000_000+round(frame['trim']*1e9);os.utime(path,ns=(stamp,stamp))
     # image2 timestamps preserve VFR without appending a duplicate sentinel frame.
-    # -r sets the final packet's hold; a fine encoder time base preserves all PTS.
+    # final_hold sets the last packet; a fine encoder time base preserves all PTS.
     # No B frames: reordered DTS made MP4 stream duration underreport long holds.
-    rate=f"{1/plan['durations'][-1]:.9f}"
-    _run(['ffmpeg','-nostdin','-y','-v','error','-f','image2','-ts_from_file','2','-framerate',rate,
+    hold=plan['durations'][-1]
+    _run(['ffmpeg','-nostdin','-y','-v','error','-f','image2','-ts_from_file','2','-framerate',f'{1/hold:.9f}',
         '-i',str(selected/'%06d.png'),'-vsync','vfr','-c:v','libx264','-crf','20','-pix_fmt','yuv420p','-bf','0',
-        '-enc_time_base','1:60000','-video_track_timescale','60000','-r',rate,'-movflags','+faststart',str(target)],check_timestamps=True)
+        '-enc_time_base','1:60000','-video_track_timescale','60000',*final_hold(hold),'-movflags','+faststart',str(target)],check_timestamps=True)
     probe=json.loads(_run(['ffprobe','-v','error','-select_streams','v:0','-show_entries',
         'packet=pts_time,dts_time','-show_entries','stream=duration','-of','json',str(target)]))
     packets=probe['packets'];dts=[float(p['dts_time']) for p in packets]

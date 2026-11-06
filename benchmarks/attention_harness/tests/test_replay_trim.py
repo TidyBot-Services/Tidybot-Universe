@@ -1,10 +1,12 @@
 """Replay sidecars: originals are immutable; all media tests run locally on tiny clips."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
+import sys
 import time
 
 import numpy as np
@@ -12,6 +14,7 @@ from PIL import Image
 import pytest
 
 from benchmarks.attention_harness import replay_trim as trim
+from benchmarks.attention_harness.ffmpeg_hold import final_hold
 
 
 def hashes(root):
@@ -28,7 +31,7 @@ def execution(root, times=(0., .2, 4., 4.2), colors=(20, 20, 180, 220), views=()
         stamp=1_000_000_000_000_000_000+round(seconds*1e9);os.utime(path, ns=(stamp,stamp))
     subprocess.run(['ffmpeg','-nostdin','-v','error','-f','image2','-ts_from_file','2','-framerate','25',
         '-i',str(source/'%06d.png'),'-vsync','vfr','-c:v','libx264','-crf','20','-pix_fmt','yuv420p',
-        '-enc_time_base','1:60000','-video_track_timescale','60000','-r','25',
+        '-enc_time_base','1:60000','-video_track_timescale','60000',*final_hold(.04),
         str(root/'advisor_replay.mp4')],check=True,capture_output=True)
     shutil.rmtree(source)
     for view in views:shutil.copyfile(root/'advisor_replay.mp4', root/f'advisor_replay_{view}.mp4')
@@ -420,6 +423,21 @@ def test_trace_interpolation_and_unknown_video_end(tmp_path,monkeypatch):
     value=trim.analyze(root)
     assert value['original_duration_seconds']==4.2
     assert value['durations'][-1]==pytest.approx(1/30)
+
+
+@pytest.mark.parametrize('offered,expected',[
+    (b'  -ts <string>\n  -duration <string>\n',['-bf','0','-bsf:v','setts=duration=0.500000000/TB']),
+    (b'  -ts <string>\n  -pts <string>\n',['-r','2.000000000'])])
+def test_final_hold_uses_what_this_ffmpeg_offers(monkeypatch,offered,expected):
+    monkeypatch.setattr(subprocess,'run',lambda *a,**k:subprocess.CompletedProcess(a,0,stdout=offered))
+    assert final_hold(.5)==expected
+
+
+def test_setup_media_check_passes_on_this_ffmpeg(tmp_path):
+    root=Path(__file__).resolve().parents[3]
+    done=subprocess.run([sys.executable,str(root/'scripts/attentionbench/media_check.py'),str(tmp_path)],
+                        env=os.environ|{'PYTHONPATH':str(root)},capture_output=True,text=True,timeout=60)
+    assert done.returncode==0,done.stdout+done.stderr
 
 
 def test_commit_marker_not_published_when_encoding_fails(tmp_path,monkeypatch):
