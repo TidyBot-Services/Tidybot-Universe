@@ -360,7 +360,7 @@ class DemoEngine:
         if name.endswith(('help.json','request-view.json')) and run['state'] not in TERMINAL:
             if not number or int(number[1]) >= run['current']:raise LobbyError('not_found',404)
         mine = bool(viewer and run['owner']==viewer['id'])
-        if not mine and not (re.fullmatch(r'agent/files/(?:compat/v\d+/(?:bundle|trace|frames|camera_views)\.json|replays/e\d+/[a-f0-9]{64}/(?:advisor_replay(?:_[a-z_]+)?|trim/(?:overview|side|top|left_wrist|right_wrist))\.mp4|executions/e\d+/frames(?:\.json|/[A-Za-z0-9_.-]+\.png))',name)
+        if not mine and not (re.fullmatch(r'agent/files/(?:compat/v\d+/(?:bundle|trace|frames|camera_views)\.json|compat/e\d+/replay\.json|replays/e\d+/[a-f0-9]{64}/(?:advisor_replay(?:_[a-z_]+)?|trim/(?:overview|side|top|left_wrist|right_wrist))\.mp4|executions/e\d+/frames(?:\.json|/[A-Za-z0-9_.-]+\.png))',name)
                              or re.fullmatch(r'files/[A-Za-z0-9_.-]+\.(?:mp4|png|jpg)',name)):
             raise LobbyError('private_artifact',403)
         # Non-version assets must already have a reference in the current cut.

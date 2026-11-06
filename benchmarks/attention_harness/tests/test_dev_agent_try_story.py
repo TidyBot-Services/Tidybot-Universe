@@ -186,3 +186,16 @@ def test_the_running_try_serves_live_frames_and_a_finished_one_does_not(tmp_path
     execution(tmp_path/'agent/private/public', 1, 'run', status='completed')
     assert agent_response(cell)[0]['state'] == 'waiting_first_frame' and agent_response(cell, image=True)[2] == 404
     assert agent_response(dict(cell, state='cancelled'))[0]['state'] == 'terminal_saved'
+
+
+def test_a_finished_try_gives_the_replay_panel_what_an_attempt_gives(monkeypatch):
+    from benchmarks.attention_harness import dev_agent_ui_projection as projection
+    files = {'executions/e000002/result.json': {'status': 'failed', 'error': 'no reach'}, 'executions/e000002/trace.json': [{'operation': 'move'}]}
+    videos = {'advisor_replay.mp4': {'uri': 'agent-view/replays/e000002/' + 'a' * 64 + '/advisor_replay.mp4', 'sha256': 'a' * 64}}
+    monkeypatch.setattr(projection, 'public', lambda cell, name, default=None: files.get(name, default))
+    monkeypatch.setattr(projection, 'recording', lambda cell, eid: ({'replay_timing': {}}, {'views': {'external': {'status': 'saved', 'video': 'advisor_replay.mp4'}}}, videos))
+    monkeypatch.setattr(projection, 'trim_for', lambda cell, eid: {'schema': 'trim'})
+    value, kind = projection.evidence({}, 'compat/e000002/replay.json')
+    assert kind == 'application/json' and value['replays'] == videos and value['sdk_events'] == [{'operation': 'move'}]
+    assert value['recording'] == {'replay_timing': {}, 'trim': {'schema': 'trim'}, 'video_saved': True} and value['error'] == 'no reach'
+    with pytest.raises(FileNotFoundError):projection.evidence({}, 'compat/e000003/replay.json')

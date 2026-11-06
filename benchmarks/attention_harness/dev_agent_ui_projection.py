@@ -526,6 +526,18 @@ def version_evidence(cell, version, *, media=True, instruments=True):
     return row, assets
 
 
+def try_replay(cell, eid):
+    """What the replay panel reads, for a finished try whether or not it was submitted."""
+    outcome = public(cell, f'executions/{eid}/result.json')
+    if outcome is None:
+        raise FileNotFoundError('Try not finished')
+    rec, views, videos = recording(cell, eid)
+    trim = trim_for(cell, eid)
+    if trim is not None:rec = dict(rec, trim=trim)
+    return dict(recording=dict(rec, video_saved='advisor_replay.mp4' in videos), views=views.get('views', {}), replays=videos,
+                sdk_events=public(cell, f'executions/{eid}/trace.json', []), error=outcome.get('error'))
+
+
 def public_config(cell):
     from .dev_agent_view import clean
     root = Path(cell['artifact_dir'])/'agent/private/public'
@@ -550,6 +562,9 @@ def evidence(cell, name):
             raise FileNotFoundError('Agent recording digest mismatch')
         # A Path lets the server answer Range requests (206) like one-call files/.
         return path, 'video/mp4'
+    match = re.fullmatch(r'compat/(e\d+)/replay\.json', name)
+    if match:
+        return json.loads(wire(try_replay(cell, match[1]))), 'application/json'
     match = re.fullmatch(r'compat/(v\d+)/(policy\.py|sources/[A-Za-z0-9_-]+\.py|(?:bundle|trace|frames|state-log|eval|help|request-view|camera_views)\.json|'+VIDEO+r')', name)
     if not match:
         raise FileNotFoundError('Not agent display evidence')

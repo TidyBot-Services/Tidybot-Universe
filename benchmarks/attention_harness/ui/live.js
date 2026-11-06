@@ -3227,10 +3227,13 @@
     const key = `attention.history:${run.run_id}`;
     const explicitView = stored(key);
     let selected = explicitView || 'live';
-    if (selected !== 'live' && !attempts.some(a => a.attempt_id === selected)) selected = 'live';
+    const tryRows = snapshot.try_attempts || [];
+    if (selected !== 'live' && !attempts.some(a => a.attempt_id === selected) && !tryRows.some(a => a.attempt_id === selected)) selected = 'live';
     const latestRecorded = Object.values(snapshot.traces).find(t => t.attempt_id === latest?.attempt_id && (t.evidence || []).some(e => e.media_url && (e.mime_type?.startsWith('video/') || e.mime_type?.startsWith('image/') && ['camera_initial','recording_frame'].includes(e.kind))));
     const currentReplay = run.suite === 'robocasa365' && selected === 'live' && (latest?.ended_at != null || latest?.execution_complete) && latestRecorded && (!snapshot.station.camera_attempt_id || snapshot.station.camera_attempt_id === latest.attempt_id);
-    const attempt = attempts.find(a => a.attempt_id === selected) || (currentReplay || (!DEBUG_VIEW && explicitView !== 'live' && (latest?.ended_at != null || latest?.execution_complete)) ? latest : null);
+    // With no robot moving, an Agent run shows its latest try the way a finished attempt is shown.
+    const attempt = attempts.find(a => a.attempt_id === selected) || tryRows.find(a => a.attempt_id === selected) || (currentReplay || (!DEBUG_VIEW && explicitView !== 'live' && (latest?.ended_at != null || latest?.execution_complete)) ? latest : null)
+      || (selected === 'live' && !snapshot.station.camera_url ? tryRows.at(-1) : null) || null;
     const trace = currentReplay ? latestRecorded : Object.values(snapshot.traces).find(t => t.attempt_id === attempt?.attempt_id);
     const media = (trace?.evidence || []).filter(e => e.media_url);
     const allVideos=media.filter(e=>e.mime_type?.startsWith('video/'));
@@ -4044,7 +4047,7 @@
     const failed=attempt && !neverStarted(snapshot) && snapshot.eval?.native_outcomes?.[attempt.attempt_id]?.native_success !== true && ['failed','timed_out'].includes(attempt.status);
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
     const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}</div>`:'';
-    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">Attempt ${attempt.index+1} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="Attempt ${attempt.index+1} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
+    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
     const stills=images.filter(e=>!['camera_initial','initial_observation','camera_final','final_observation'].includes(e.kind)).map(e=>`<figure><img data-history-image loading="lazy" ${flipStaticRows?'style="transform:scaleY(-1)"':''} src="${esc(e.media_url)}" alt="Saved attempt frame"><figcaption>Saved static frame · not a video</figcaption></figure>`).join('');
     const station=cameraStation(snapshot);
     const devJobs=(!isTerminal(snapshot) && snapshot.dev_session?.jobs) || [];
@@ -4057,7 +4060,6 @@
     const strip=tryLive||tryBetween?`<div class="op-live-strip" data-state="${tryLive?'live':'prep'}"><i class="op-live-dot" aria-hidden="true"></i><b>${tryLive?'LIVE':'WORKING'}</b><span>${tryLive?'The robot is moving':'Between tries · the AI is working on its next step'}</span></div>`:`<div class="op-live-strip" data-state="${active?'live':prep?'prep':'idle'}"><i class="op-live-dot" aria-hidden="true"></i><b>${active?'LIVE':prep?'WORKING':'CURRENT VIEW'}</b><span>${active?`Attempt ${(last?.index??0)+1} · Now: <em data-op-now data-events="${nowEvent?1:0}">${esc(nowEvent?plainEvent(nowEvent):'Getting ready')}</em>`:prep?esc(prepText):'The robot is not running right now'}</span>${active&&epoch(last?.started_at)!=null?`<time data-op-since="${epoch(last.started_at)}"></time>`:''}</div>`;
     let live;
     if (lifecycle && lifecycle.phase!=='sdk') live=`${strip}<div class="op-idle" data-lifecycle="${esc(lifecycle.phase)}"><b>${esc(lifecycleCopy?.short)}</b><p>${esc(lifecycleCopy?.text)}</p>${lifecycle.phase==='prepared'?'<p>No simulator or camera has been started.</p>':''}</div>`;
-    else if (!station.camera_url && agentTryVideo(snapshot)) live=`${strip}${agentTryVideo(snapshot)}`;
     else if (station.camera_url) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-op-ended="${busy||tryLive?'false':'true'}" data-op-key="${esc(previewKey(snapshot))}" data-state="loading"><div class="ab-station-camera"><img id="ab-camera-frame" ${station.camera_image_transform==='flip_y'?'style="transform:scaleY(-1)"':''} ${streaming?`hidden data-live-stream-key="${esc(previewKey(snapshot))}" data-preview-url="${esc(station.camera_preview_url)}"`:`src="${esc(station.camera_url)}"`} alt="${esc(cameraSuite)} camera frame"><span>${esc(cameraLabel)}</span></div>${loadingOverlay('live')}</div>${streaming?'<span data-preview-freshness role="status">Connecting to live preview…</span>':''}`;
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
@@ -4066,8 +4068,10 @@
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch Attempt ${attempt.index+1}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} Attempt ${a.index+1}</button>`).join('')}${attempt?.try_number?`<button type="button" data-history-select="${esc(attempt.attempt_id)}" aria-pressed="true">${attemptName(attempt)}</button>`:''}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${attempt?.try_number&&tryBetween?strip:''}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${attempt?.try_number?`<p class="op-hint" data-agent-try-label>${esc(attempt.try_label)}</p>`:snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
+
+  function attemptName(a) {return a.try_number?`Try ${a.try_number}`:`Attempt ${a.index+1}`;}
 
   function operatorPlanRow(version,agent=false) {
     const full=agent?(version.plan?.note||version.plan?.summary||'No plan recorded.'):(version.reason||'No change description recorded.');
@@ -5341,11 +5345,6 @@
     const counts={};tries.forEach(t=>{counts[t.kind]=(counts[t.kind]||0)+1;});
     return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).map(kind=>[kind,counts[kind]]);
   }
-  function agentTryVideo(snapshot) {
-    const tries=snapshot.agent?.tries||[],chosen=tries.find(t=>t.number===storyVideo&&t.video)||tries.filter(t=>t.video).at(-1);
-    if(!chosen)return '';
-    return `<div class="op-try-video"><video data-agent-try-video controls muted playsinline preload="metadata" src="${esc(snapshot.agent.files_base+chosen.video)}"></video><p data-agent-try-label>${esc(tryLabel(chosen))}</p></div>`;
-  }
   function tryLabel(t) {return `${t.submitted?`Attempt ${t.attempt} · `:''}Try ${t.number} · ${t.why}`;}
   function agentStory(agent) {
     const tries=agent.tries||[];
@@ -5359,7 +5358,7 @@
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
-  let storyOpen=null,storyPinned=false,storyVideo=null;
+  let storyOpen=null,storyPinned=false;
   function bindAgentHistory(snapshot) {
     const root=view.querySelector('[data-agent-history]');if(!root)return;
     const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
@@ -5387,7 +5386,7 @@
         chip.addEventListener('mouseenter',()=>{drawer.dataset.pick=kind;});chip.addEventListener('mouseleave',()=>{if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});
         chip.addEventListener('click',()=>{pinned=pinned===kind?null:kind;summary.querySelectorAll('button').forEach(b=>b.classList.toggle('pin',b===chip&&pinned===kind));if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});summary.append(chip);});
       const line=document.createElement('div');line.className='op-story-ticks';
-      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);if(t.video){storyVideo=t.number;const player=view.querySelector('[data-agent-try-video]');if(player){player.src=snapshot.agent.files_base+t.video;view.querySelector('[data-agent-try-label]').textContent=tryLabel(t);}}});line.append(tick);return tick;});
+      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);const shown=t.submitted?currentSnapshot.attempts.find(a=>a.index===t.attempt-1):currentSnapshot.try_attempts?.find(a=>a.try_number===t.number);if(shown){stored(`attention.history:${snapshot.run.run_id}`,shown.attempt_id);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});}});line.append(tick);return tick;});
       drawer.append(summary,line);drawer.classList.add('open');now=ticks.map(()=>0);aim=ticks.map(()=>0);
       const box=drawer.getBoundingClientRect();rest=ticks.map(k=>{const r=k.getBoundingClientRect();return r.left-box.left+r.width/2;});
     }
@@ -5483,8 +5482,10 @@
     // While a try runs its frames are live; between tries the page shows the latest try's recording.
     const agentCell=`/api/dev-v2/experiments/${encodeURIComponent(cell.experiment_id)}/cells/${encodeURIComponent(cell.key)}`;
     snapshot.agent.files_base=agentCell+'/agent/files/';
-    Object.assign(snapshot.station,cell.agent.executing?{camera_url:agentCell+'/live/frame',camera_preview_url:agentCell+'/live/frame',camera_state_url:agentCell+'/live',camera_views:null,camera_monitor_v2:true,camera_monitor_terminal:false,camera_monitor_identity:`${cell.key}:${cell.agent.executing}`}
+    const liveView=(key,name)=>[key,{name,preview_url:`${agentCell}/live/frame${key==='external'?'':`?view=${key}`}`,state_url:`${agentCell}/live${key==='external'?'':`?view=${key}`}`}];
+    Object.assign(snapshot.station,cell.agent.executing?{camera_url:agentCell+'/live/frame',camera_preview_url:agentCell+'/live/frame',camera_state_url:agentCell+'/live',camera_views:Object.fromEntries([['external','Overview'],['side','Side'],['top','Top-down'],['left_wrist','Left wrist'],['right_wrist','Right wrist']].map(row=>liveView(...row))),camera_monitor_v2:true,camera_monitor_terminal:false,camera_monitor_identity:`${cell.key}:${cell.agent.executing}`}
       :{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false});
+    await addAgentTries(snapshot,cell,session);
     for(const version of snapshot.dev_session.versions){
       const trace=Object.values(snapshot.traces).find(t=>t.attempt_id===`attempt:${cell.key}:${version.version-1}`);
       if(trace)trace.events=agentReplayEvents(trace.events,version);
@@ -5504,6 +5505,29 @@
       } catch(error){snapshot.dev_evidence_gaps.push(`v${version.version} frames: ${error.message}`);}
     }
     return snapshot;
+  }
+  // A try that was never submitted has no attempt, so it joins the replay panel beside them: it must not count as the run's latest attempt.
+  const agentTryReplays=new Map();
+  async function addAgentTries(snapshot,cell,session) {
+    const tries=(cell.agent.tries||[]).filter(t=>!t.submitted&&t.video);
+    await Promise.all(tries.filter(t=>!agentTryReplays.has(t.video)).map(async t=>{
+      const response=await fetch(`${snapshot.agent.files_base}compat/${t.execution_id}/replay.json`,{cache:'no-store'}).catch(()=>null);
+      if(response?.ok)agentTryReplays.set(t.video,await response.json());
+    }));
+    snapshot.try_attempts=[];
+    for(const t of tries) {
+      const raw=agentTryReplays.get(t.video);if(!raw)continue;
+      const attemptId=`try:${cell.key}:${t.number}`,traceId=`${session.session_id}:${t.execution_id}`;
+      const saved=Object.entries(raw.views||{}).filter(([key,row])=>row?.status==='saved'&&raw.replays?.[row.video]);
+      const order=['external','side','top','left_wrist','right_wrist'];saved.sort((a,b)=>order.indexOf(a[0])-order.indexOf(b[0]));
+      const views=saved.length?Object.fromEntries(saved.map(([key,row])=>[key,{name:row.label||key,width:row.width,height:row.height}])):null;
+      const evidence=saved.map(([key,row])=>({kind:key==='external'?'advisor_replay':`advisor_replay_${key}`,mime_type:'video/mp4',media_url:devFile(session,raw.replays[row.video].uri),evidence_id:raw.replays[row.video].sha256}));
+      const events=(raw.sdk_events||[]).map((event,index)=>({...event,event_id:`${traceId}:${index}`,sequence:index,event_type:'sdk.call',operation:[event.source,event.operation].filter(Boolean).join('.')}));
+      snapshot.traces[traceId]={trace_id:traceId,execution_id:t.execution_id,attempt_id:attemptId,events,recording:views?{...raw.recording,views}:raw.recording,evidence,
+        failure:raw.error?{stage:'execution',error_type:'ExecutionError',message:typeof raw.error==='string'?raw.error:raw.error.message||JSON.stringify(raw.error)}:null};
+      if(trimUsable(raw.recording?.trim,views))attachTrim(snapshot.traces[traceId],raw.recording.trim,session);
+      snapshot.try_attempts.push({attempt_id:attemptId,index:t.number-1,try_number:t.number,try_label:tryLabel(t),dev_version:0,status:t.ok?'succeeded':'failed',started_at:null,ended_at:null,execution_complete:true});
+    }
   }
   function devV2State(cellState, experimentState) {
     if(['needs_review','cancelled','condition_invalid','failed','stopped','budget_exhausted','not_started','paused'].includes(experimentState))
