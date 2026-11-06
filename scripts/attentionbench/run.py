@@ -174,6 +174,20 @@ def summary(ws: Path, eid: str, key: str, snapshot: dict, route: str = 'codex', 
     return result
 
 
+def scheduler_gone(ws: Path, eid: str) -> bool:
+    """True once a scheduler started for this run and none of them is alive."""
+    started = list((ws / 'data/daily-experiments' / eid).glob('scheduler-process-*.json'))
+    for record in started:
+        try:
+            known = json.loads(record.read_text())
+            stat = Path(f"/proc/{known['pid']}/stat").read_text().rsplit(')', 1)[1].split()
+        except (OSError, ValueError, KeyError, IndexError):
+            continue
+        if stat[0] != 'Z' and stat[19] == known.get('start_ticks'):
+            return False
+    return bool(started)
+
+
 def execute(args: argparse.Namespace) -> int:
     if not args.workspace:
         raise installer.StepError('workspace', 'no workspace given', 'Pass the --workspace used by setup.sh.')
@@ -227,6 +241,7 @@ def execute(args: argparse.Namespace) -> int:
             latest = created
             interrupted = False
             misses = 0
+            stopped = 0
             try:
                 while True:
                     try:
@@ -238,6 +253,11 @@ def execute(args: argparse.Namespace) -> int:
                             raise RuntimeError(f'the UI stopped answering: {exc}') from exc
                         print(f'UI did not answer ({exc}); trying again', flush=True)
                     if latest.get('state') in TERMINAL:
+                        break
+                    # Two polls apart, so a scheduler that just finished can still report its final state.
+                    stopped = stopped + 1 if scheduler_gone(ws, eid) else 0
+                    if stopped >= 2:
+                        print('The run scheduler stopped; cancelling.', flush=True)
                         break
                     if time.monotonic() >= deadline:
                         print('Run time limit reached; cancelling.', flush=True)
@@ -259,6 +279,10 @@ def execute(args: argparse.Namespace) -> int:
                     raise RuntimeError(f'{eid} did not reach a terminal state after cancellation')
             result = summary(ws, eid, body['selection']['request_key'], latest, route.name, warnings)
             print(json.dumps(result, indent=2), flush=True)
+            if stopped >= 2:
+                log = ws / 'data/daily-experiments' / eid / 'scheduler.log'
+                reason = log.read_text(errors='replace').strip().splitlines()[-1:] if log.is_file() else []
+                raise installer.StepError('run', f"the run scheduler stopped: {' '.join(reason) or 'no log'}", f'Read {log}.')
             return 130 if interrupted else 0
         finally:
             if not args.no_stop:
