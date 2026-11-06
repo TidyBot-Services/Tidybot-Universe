@@ -422,6 +422,9 @@ class DailyDevV2:
             from .dev_agent_view import projection,artifact
             if kind in ('view','agent/view'):return projection(s,c),'application/json'
             if agent_name:return artifact(c,agent_name)
+            if kind.startswith('live'):
+                from .dev_live_monitor import agent_response
+                return agent_response(c,image=kind.endswith('/frame'),query=parse_qs(parsed.query))
             raise FileNotFoundError('Agent evidence requires the public agent view')
         if kind.startswith('agent/'):raise FileNotFoundError('Not an agent run')
         if kind=='view':return self.view(s,c),'application/json'

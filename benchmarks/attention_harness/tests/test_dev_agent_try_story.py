@@ -148,3 +148,41 @@ def test_the_human_wait_reaches_the_help_policy_from_the_run_selection():
     assert helper_config(dict(a=1), manifest, dict(task_id='t'), 'agent-policy-v2') == dict(a=1, initial_source='s', human_reply_seconds=120)
     assert 'human_reply_seconds' not in helper_config({}, dict(manifest, selection={}), dict(task_id='t'), 'agent-policy-v2')
     assert helper_config(dict(a=1), manifest, dict(task_id='t'), 'agent-policy-v1') == dict(a=1)
+
+
+def test_only_the_try_without_a_public_record_is_running(tmp_path):
+    private = tmp_path/'private';public = private/'public'
+    (private/'executions/e000001').mkdir(parents=True);(private/'executions/e000002').mkdir()
+    execution(public, 1, 'run', status='completed')
+    assert story.active_execution(private) == 'e000002'
+    execution(public, 2, 'run', status='completed')
+    assert story.active_execution(private) is None
+
+
+def test_a_try_with_a_recording_names_it_by_digest(tmp_path):
+    import hashlib
+    private = tmp_path/'private';public = private/'public'
+    execution(public, 1, 'run', status='completed')
+    video = private/'executions/e000001/openarm/advisor_replay.mp4';video.parent.mkdir(parents=True);video.write_bytes(b'mp4')
+    assert story.tries(private)[0]['video'] == f'replays/e000001/{hashlib.sha256(b"mp4").hexdigest()}/advisor_replay.mp4'
+
+
+def live_cell(tmp_path, state='running'):
+    private = tmp_path/'agent/private';folder = private/'executions/e000001/openarm/live';folder.mkdir(parents=True)
+    (folder/'frame-000003.jpg').write_bytes(b'jpeg')
+    (folder/'latest.json').write_text(json.dumps(dict(file='frame-000003.jpg', sequence=3, version=1, episode_id='a'*32, wall_time=time.time())))
+    return dict(artifact_dir=str(tmp_path), state=state)
+
+
+def test_the_running_try_serves_live_frames_and_a_finished_one_does_not(tmp_path):
+    from benchmarks.attention_harness.dev_live_monitor import agent_response
+    cell = live_cell(tmp_path)
+    row, kind, status, _ = agent_response(cell)
+    assert status == 200 and row['state'] == 'live' and row['sequence'] == 3
+    raw, kind, status, headers = agent_response(cell, image=True, query=dict(seq=['3'], sha=[row['frame_sha256']]))
+    assert raw == b'jpeg' and kind == 'image/jpeg' and headers['X-Frame-Sequence'] == '3'
+    assert agent_response(cell, image=True, query=dict(seq=['2']))[2] == 409
+    assert agent_response(cell, query=dict(view=['../x']))[2] == 404
+    execution(tmp_path/'agent/private/public', 1, 'run', status='completed')
+    assert agent_response(cell)[0]['state'] == 'waiting_first_frame' and agent_response(cell, image=True)[2] == 404
+    assert agent_response(dict(cell, state='cancelled'))[0]['state'] == 'terminal_saved'

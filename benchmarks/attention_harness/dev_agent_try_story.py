@@ -1,4 +1,5 @@
 """An Agent run told in plain words: every try the robot made, what stopped it, and a short review for people."""
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -16,6 +17,8 @@ ERRORS = (
     (r'action_delta_limit', 'reach', 'The requested move was too large for one step'),
     (r'ik_joint_margin', 'reach', "That pose was too close to the arm's limits"),
     (r'joint tracking exceeds', 'reach', 'The arm could not hold its target closely enough'),
+    (r'exceeds original URDF limit', 'hold', 'The gripper moved past its safe limit'),
+    (r'collaborator_timeout', 'other', 'The try ran out of time'),
 )
 HELP_REASONS = {
     'stuck_within_version': 'The same failure kept repeating',
@@ -72,11 +75,20 @@ def _one(private, public, eid, attempt):
         plain = _json(private, f'eval/{vid}/plain.json') or {}
         row.update(attempt=attempt, passed=review.get('passed') if type(review.get('passed')) is bool else None,
                    wrong=plain.get('wrong'), next=plain.get('next'), review=readable_review(review), review_error=review.get('error'))
+    video = next(iter(sorted((private/'executions'/eid).glob('*/advisor_replay.mp4'))), None)
+    if video:row['video'] = f'replays/{eid}/{hashlib.sha256(video.read_bytes()).hexdigest()}/advisor_replay.mp4'
     help_row = _json(public, f'executions/{eid}/help.json')
     if help_row and help_row.get('delivered') is True:
         reason = (help_row.get('decision') or {}).get('reason')
         row['help'] = dict(content=help_row.get('content'), provider=help_row.get('provider', 'advisor'), why=HELP_REASONS.get(reason, 'The robot asked for help'))
     return row
+
+
+def active_execution(private):
+    """The try the robot is doing now: it has started but its public record is not out yet."""
+    private = Path(private)
+    started = sorted(p.name for p in (private/'executions').glob('e*') if p.is_dir() and re.fullmatch(r'e\d+', p.name))
+    return started[-1] if started and not (private/'public/executions'/started[-1]/'result.json').exists() else None
 
 
 def tries(private):

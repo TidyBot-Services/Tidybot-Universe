@@ -4056,6 +4056,7 @@
     const strip=`<div class="op-live-strip" data-state="${active?'live':prep?'prep':'idle'}"><i class="op-live-dot" aria-hidden="true"></i><b>${active?'LIVE':prep?'WORKING':'CURRENT VIEW'}</b><span>${active?`Attempt ${(last?.index??0)+1} · Now: <em data-op-now data-events="${nowEvent?1:0}">${esc(nowEvent?plainEvent(nowEvent):'Getting ready')}</em>`:prep?esc(prepText):'The robot is not running right now'}</span>${active&&epoch(last?.started_at)!=null?`<time data-op-since="${epoch(last.started_at)}"></time>`:''}</div>`;
     let live;
     if (lifecycle && lifecycle.phase!=='sdk') live=`${strip}<div class="op-idle" data-lifecycle="${esc(lifecycle.phase)}"><b>${esc(lifecycleCopy?.short)}</b><p>${esc(lifecycleCopy?.text)}</p>${lifecycle.phase==='prepared'?'<p>No simulator or camera has been started.</p>':''}</div>`;
+    else if (!station.camera_url && agentTryVideo(snapshot)) live=`${strip}${agentTryVideo(snapshot)}`;
     else if (station.camera_url) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-op-ended="${busy?'false':'true'}" data-op-key="${esc(previewKey(snapshot))}" data-state="loading"><div class="ab-station-camera"><img id="ab-camera-frame" ${station.camera_image_transform==='flip_y'?'style="transform:scaleY(-1)"':''} ${streaming?`hidden data-live-stream-key="${esc(previewKey(snapshot))}" data-preview-url="${esc(station.camera_preview_url)}"`:`src="${esc(station.camera_url)}"`} alt="${esc(cameraSuite)} camera frame"><span>${esc(cameraLabel)}</span></div>${loadingOverlay('live')}</div>${streaming?'<span data-preview-freshness role="status">Connecting to live preview…</span>':''}`;
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
@@ -5339,6 +5340,12 @@
     const counts={};tries.forEach(t=>{counts[t.kind]=(counts[t.kind]||0)+1;});
     return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).map(kind=>[kind,counts[kind]]);
   }
+  function agentTryVideo(snapshot) {
+    const tries=snapshot.agent?.tries||[],chosen=tries.find(t=>t.number===storyVideo&&t.video)||tries.filter(t=>t.video).at(-1);
+    if(!chosen)return '';
+    return `<div class="op-try-video"><video data-agent-try-video controls muted playsinline preload="metadata" src="${esc(snapshot.agent.files_base+chosen.video)}"></video><p data-agent-try-label>${esc(tryLabel(chosen))}</p></div>`;
+  }
+  function tryLabel(t) {return `${t.submitted?`Attempt ${t.attempt} · `:''}Try ${t.number} · ${t.why}`;}
   function agentStory(agent) {
     const tries=agent.tries||[];
     if(!tries.length)return '';
@@ -5351,7 +5358,7 @@
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
-  let storyOpen=null,storyPinned=false;
+  let storyOpen=null,storyPinned=false,storyVideo=null;
   function bindAgentHistory(snapshot) {
     const root=view.querySelector('[data-agent-history]');if(!root)return;
     const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
@@ -5379,7 +5386,7 @@
         chip.addEventListener('mouseenter',()=>{drawer.dataset.pick=kind;});chip.addEventListener('mouseleave',()=>{if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});
         chip.addEventListener('click',()=>{pinned=pinned===kind?null:kind;summary.querySelectorAll('button').forEach(b=>b.classList.toggle('pin',b===chip&&pinned===kind));if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});summary.append(chip);});
       const line=document.createElement('div');line.className='op-story-ticks';
-      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);});line.append(tick);return tick;});
+      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);if(t.video){storyVideo=t.number;const player=view.querySelector('[data-agent-try-video]');if(player){player.src=snapshot.agent.files_base+t.video;view.querySelector('[data-agent-try-label]').textContent=tryLabel(t);}}});line.append(tick);return tick;});
       drawer.append(summary,line);drawer.classList.add('open');now=ticks.map(()=>0);aim=ticks.map(()=>0);
       const box=drawer.getBoundingClientRect();rest=ticks.map(k=>{const r=k.getBoundingClientRect();return r.left-box.left+r.width/2;});
     }
@@ -5472,8 +5479,11 @@
       if(help.delivered)snapshot.responses[responseId]={response_id:responseId,request_id:id,responder:'advisor_proxy',response_type:'hint',content:help.content||'',created_at:interval.settled_at};
     }
     snapshot.attention_control.read_only=true;
-    // Agent captures are saved evidence; no one-call live-camera endpoint exists.
-    Object.assign(snapshot.station,{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false});
+    // While a try runs its frames are live; between tries the page shows the latest try's recording.
+    const agentCell=`/api/dev-v2/experiments/${encodeURIComponent(cell.experiment_id)}/cells/${encodeURIComponent(cell.key)}`;
+    snapshot.agent.files_base=agentCell+'/agent/files/';
+    Object.assign(snapshot.station,cell.agent.executing?{camera_url:agentCell+'/live/frame',camera_preview_url:agentCell+'/live/frame',camera_state_url:agentCell+'/live',camera_views:null,camera_monitor_v2:true,camera_monitor_terminal:false,camera_monitor_identity:`${cell.key}:${cell.agent.executing}`}
+      :{camera_url:null,camera_preview_url:null,camera_state_url:null,camera_views:null,camera_monitor_v2:false});
     for(const version of snapshot.dev_session.versions){
       const trace=Object.values(snapshot.traces).find(t=>t.attempt_id===`attempt:${cell.key}:${version.version-1}`);
       if(trace)trace.events=agentReplayEvents(trace.events,version);

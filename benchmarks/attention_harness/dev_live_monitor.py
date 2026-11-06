@@ -142,6 +142,42 @@ def live(store, exp_id, key, view=None):
     return c, row, frame
 
 
+def agent_response(cell, *, image=False, query=None):
+    """The same contract for an Agent run. Its try writes frames in its own folder, and only the running try is live."""
+    from .dev_agent_try_story import active_execution
+    now = time.time();query = query or {}
+    row = dict(state='waiting_first_frame', monitor_state='waiting_first_frame', age_seconds=None, server_time=now, sequence=None, version=None,
+               episode_id=None, frame_sha256=None, stale_after_s=stale_threshold(), phase='unknown', cell_state=cell['state'], waiting_since=None)
+    if cell['state'] in TERMINAL:
+        row.update(state='terminal_saved', monitor_state='terminal_saved')
+        return (dict(row, error='No published frame', code='no_frame'), 'application/json', 404, {}) if image else (row, 'application/json', 200, {})
+    view = query.get('view', [None])[0]
+    if view not in (None, 'external') and view not in VIEW_KEYS:return dict(row, error='Unknown camera view', code='unknown_view'), 'application/json', 404, {}
+    private = Path(cell['artifact_dir']).resolve()/'agent/private'
+    active = active_execution(private)
+    sub = 'live' if view in (None, 'external') else f'live/views/{view}'
+    found = sorted((private/'executions'/active).glob(f'*/{sub}/latest.json'), key=lambda p:p.stat().st_mtime) if active else []
+    meta = None
+    if found:
+        try:meta = json.loads(found[-1].read_bytes())
+        except (OSError, ValueError):meta = None
+    if not isinstance(meta, dict) or not re.fullmatch(r'frame-\d{6}\.jpg', str(meta.get('file', ''))):
+        return (dict(row, error='No published frame', code='no_frame'), 'application/json', 404, {}) if image else (row, 'application/json', 200, {})
+    frame = found[-1].parent/meta['file']
+    try:raw = frame.read_bytes()
+    except OSError:return (dict(row, error='Frame changed', code='identity_changed'), 'application/json', 409, {}) if image else (row, 'application/json', 200, {})
+    digest = hashlib.sha256(raw).hexdigest()
+    age = frame_age(meta.get('wall_time'), now);state = 'live' if age is not None and age <= row['stale_after_s'] else 'stale'
+    row.update(state=state, monitor_state=state, age_seconds=age, sequence=meta.get('sequence'), version=meta.get('version'), episode_id=meta.get('episode_id'), frame_sha256=digest)
+    if not image:return row, 'application/json', 200, {}
+    for parameter, field in {'episode': 'episode_id', 'version': 'version', 'seq': 'sequence', 'sha': 'frame_sha256'}.items():
+        if parameter in query and str(query[parameter][0]) != str(row[field]):
+            return dict(row, error='Frame identity changed', code='identity_changed'), 'application/json', 409, {}
+    headers = {'X-Frame-Sequence': str(row['sequence']), 'X-Preview-State': state, 'X-Episode-Id': str(row['episode_id']), 'X-Frame-Version': str(row['version']), 'X-Frame-Sha256': digest}
+    if age is not None:headers['X-Frame-Age'] = str(age)
+    return raw, 'image/jpeg', 200, headers
+
+
 def response(store, exp_id, key, *, image=False, query=None):
     try:
         view = (query or {}).get('view', [None])[0]
