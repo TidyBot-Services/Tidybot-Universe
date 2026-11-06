@@ -18,11 +18,11 @@ An NVIDIA driver older than 570.124.06 gives a warning, and the planner proof on
 
 | Item | Ubuntu 22.04 | Ubuntu 24.04 |
 |---|---|---|
-| `setup.sh` and `doctor` on the host | Verified | Not verified yet |
+| `setup.sh` and `doctor` on the host | Verified | Verified |
 | `bwrap` sandbox | Works by default | Needs the one-time AppArmor change below |
-| Planner chain and GPU build proof | Verified (RTX 5070 Ti, sm_120, driver 580.178.04) | Not verified yet |
-| `run.sh` agent run | Verified with Codex | Not verified yet |
-| Own-key and PARCC routes through `run.sh` | Not verified yet | Not verified yet |
+| Planner chain and GPU build proof | Verified (RTX 5070 Ti, sm_120, driver 580.178.04) | Verified (RTX 5090, sm_120, driver 580.126.09) |
+| `run.sh` agent run | Verified with Codex | Verified with PARCC |
+| Own-key and PARCC routes through `run.sh` | Not verified yet | PARCC verified; own key not verified yet |
 | Docker appendix | Verified on a 22.04 host | Not verified; use the AppArmor 4 profile named there |
 
 The UI, simulator and cuRobo environments bring their own Python, compiler and CUDA toolchain, so the system Python (3.10 on 22.04, 3.12 on 24.04) only starts `setup.sh`. `uv` must be allowed to download Python 3.10 and 3.11; `setup.sh` checks this.
@@ -107,6 +107,8 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 `--eval-model` and `--advisor-model` set those agents separately. The same choices are in the UI under Models & keys. The Codex CLI runs the agents on every route; only the `codex` route needs a login, and only that route uses Codex quota. Agent runs on it read the weekly quota from Codex's own session records and accept a reading at most 10 minutes old, so `run.sh` makes one short Codex call (`codex exec --skip-git-repo-check "Reply with ok."`) when no recent reading exists.
 
 Dev needs tool calls and streaming, Eval needs both too, and the Advisor needs plain chat. Eval and Advisor should read images. **A model that cannot read images still runs, with a warning:** `run.sh` prints `Eval did not see images`, the summary lists it under `warnings`, and the run page says so. That agent is sent text in place of each image, so its judgement rests on text alone. If a route's default Eval or Advisor model is down, `run.sh` falls back to Dev's model and says so. Own-key runs have a time limit but no spending limit, so check your provider's billing.
+
+On `parcc`, the first call to `parcc/Qwen` can take over a minute while the model wakes, so a first `verify.sh` may report `advisor parcc/Qwen: failed` with `TimeoutError`. Run it again. `parcc/GLM` runs and records video, but in our 20-minute and 90-minute runs it never submitted a version on its own.
 
 Memory validation runs still need the `codex` route.
 
