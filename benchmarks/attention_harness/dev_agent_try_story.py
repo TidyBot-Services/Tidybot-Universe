@@ -2,8 +2,6 @@
 import json
 import re
 from pathlib import Path
-import time
-import urllib.request
 
 from .dev_agent_workspace import read_beneath
 
@@ -97,13 +95,6 @@ def parse_review(text):
     return dict(wrong=wrong, next=after)
 
 
-def plain_review(review, provider, *, timeout, transport=None):
-    """Eval's words rewritten for people. Eval's own answer and everything Dev sees stay as they were."""
-    from .dev_agent_provider import open_request
-    body = dict(model=provider.model, max_tokens=1500, messages=[dict(role='system', content=SYSTEM),
-                dict(role='user', content=f"Review: {review.get('reason', '')}\nAdvice: {review.get('advice', '')}")])
-    request = urllib.request.Request(provider.spec.chat_url, data=json.dumps(body).encode(),
-                                     headers={'Authorization': 'Bearer '+provider.secret.reveal(), 'Content-Type': 'application/json'})
-    with (transport or open_request)(request, timeout=timeout) as response:
-        answer = json.load(response)
-    return parse_review(answer['choices'][0]['message'].get('content'))
+def review_prompt(review):
+    """The whole instruction for one turn: this rewrite is not a task, and the workspace has nothing to do with it."""
+    return f"{SYSTEM} Do not run any command or read any file.\n\nReview: {review.get('reason', '')}\nAdvice: {review.get('advice', '')}"

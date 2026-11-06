@@ -151,6 +151,7 @@ class Evaluator:
                     atomic_write(root,'verdict.json',encode(verdict))
                     verdict=dev_view(verdict,self.success_condition,json.loads((ws/'final_observation.json').read_bytes()))
                 result=dict(status='completed',**feedback(verdict))
+                self.write_plain_review(ws,root,result,deadline,options)
         except (TimeoutError,subprocess.TimeoutExpired):
             error='timeout';result=unavailable(vid,error)
             atomic_write(root,'error.json',encode(dict(error_class=error,error_text='Eval exceeded its hard deadline')))
@@ -166,19 +167,51 @@ class Evaluator:
         finally:
             self.cancel()
             if root.exists():atomic_write(root,'usage.json',encode(dict(usage=self.usage if self.usage is not None else 'unknown',error=error)))
-        self.write_plain_review(root,result,deadline)
         return result
 
-    def write_plain_review(self,root,result,deadline):
-        """For the page only: never read by Dev, and a failure here changes nothing about the run."""
-        left=min(30,deadline-time.monotonic())
-        if self.provider is None or result.get('status')!='completed' or left<=1:return
-        from .dev_agent_try_story import plain_review
+    def write_plain_review(self,ws,root,result,deadline,options):
+        """For the page only, and never read by Dev. One more turn of the same model through the same route, so it is
+        logged and charged like the review itself. A failure here changes nothing about the run."""
+        from .dev_agent_try_story import parse_review,review_prompt
+        spent=None
         try:
-            plain=plain_review(result,self.provider,timeout=left)
+            limit=min(deadline,time.monotonic()+60)
+            if self.quota:self.quota.check('before_eval')
+            if self.reader is not None:self.reader.join()
+            if self.process.stdout:self.process.stdout.close()
+            command=list(self.command_factory(ws,review_prompt(result)))
+            command[command.index('-m')+1]=self.model
+            if self.bridge is not None:
+                from .dev_agent_parcc_bridge import provider_args
+                i=command.index('-m')
+                command[i:i]=provider_args(self.bridge.base_url,token_env=self.provider.token_env)
+            command[command.index('exec')+1:command.index('exec')+1]=['--ephemeral']
+            answer=None
+            with (root/'plain-events.jsonl').open('wb') as logs,(root/'plain-stderr.txt').open('wb') as errors:
+                with self._bridge_lock:
+                    if self.cancelled.is_set():raise TimeoutError('timeout')
+                    self.process=subprocess.Popen(command,cwd=ws,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
+                                                  stderr=errors,start_new_session=True,**options)
+                    self.reader=None
+                timer=threading.Timer(max(.01,limit-time.monotonic()),self.process.kill);timer.start()
+                try:
+                    for line in self.process.stdout:
+                        logs.write(line)
+                        event=json.loads(line)
+                        if self.quota:self.quota.event(event)
+                        if event.get('type')=='turn.completed' and isinstance(event.get('usage'),dict):spent=event['usage']
+                        item=event.get('item',{})
+                        if event.get('type')=='item.completed' and item.get('type')=='agent_message':answer=item.get('text')
+                    self.process.wait(timeout=max(.01,limit-time.monotonic()))
+                finally:timer.cancel()
+            plain=parse_review(answer)
             if plain:atomic_write(root,'plain.json',encode(plain))
+            else:atomic_write(root,'plain-error.json',encode(dict(error_class='unreadable_answer')))
         except Exception as exc:
             atomic_write(root,'plain-error.json',encode(dict(error_class=type(exc).__name__)))
+        if isinstance(spent,dict) and all(type(v) is int and v>=0 for v in spent.values()):
+            atomic_write(root,'plain-usage.json',encode(spent))
+            if self.usage is not None:self.usage={k:self.usage.get(k,0)+spent.get(k,0) for k in {*self.usage,*spent}}
 
     def cancel(self):
         self.cancelled.set()
