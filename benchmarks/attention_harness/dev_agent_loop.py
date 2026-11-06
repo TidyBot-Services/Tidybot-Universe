@@ -342,6 +342,15 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             if broker:broker._regenerate_history()
 
 
+def helper_config(config, manifest, cell, agent_policy_version):
+    """What the help policy reads. The human wait is a per-run choice, so it lives in the selection, not the cell config."""
+    if agent_policy_version!='agent-policy-v2':return config
+    result=dict(config,initial_source=manifest['initial_sources'][cell['task_id']]['source'])
+    seconds=manifest.get('selection',{}).get('human_reply_seconds')
+    if seconds:result['human_reply_seconds']=seconds
+    return result
+
+
 def advisor_client(client, config, provider=None):
     if provider is not None:
         from .dev_agent_byok_client import ByokChatClient
@@ -459,8 +468,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         agent_policy_version=config.get('agent_policy_version','agent-policy-v1')
         advisor=None if validation else advisor_client(client,config,**({'provider':providers['advisor']} if providers['advisor'] else {}))
         helper=None if validation else Helper(workspace,ledger,policy=cell['policy_id'],parameters=manifest['policies'][cell['policy_id']],
-            config=(dict(config,initial_source=manifest['initial_sources'][cell['task_id']]['source'])
-                    if agent_policy_version=='agent-policy-v2' else config),
+            config=helper_config(config,manifest,cell,agent_policy_version),
             client=advisor,demo=manifest['demos'][cell['task_id']],quota=quota if providers['advisor'] is None else None,memory=memory,agent_policy_version=agent_policy_version)
         evaluator=Evaluator(workspace,model=manifest['eval_model'],quota=quota if providers['eval'] is None else None,success_condition=condition,
             **({'provider':providers['eval']} if providers['eval'] else {}),

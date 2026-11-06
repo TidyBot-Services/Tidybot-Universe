@@ -140,3 +140,11 @@ def test_an_attempt_keeps_the_review_and_why_it_is_missing(tmp_path):
     first, second = story.tries(private)
     assert first['passed'] is True and first['review'] == 'It pressed the button.' and first['why'] == 'The code ran without errors'
     assert second['passed'] is None and second['review'] is None and second['review_error'] == 'timeout'
+
+
+def test_the_human_wait_reaches_the_help_policy_from_the_run_selection():
+    from benchmarks.attention_harness.dev_agent_loop import helper_config
+    manifest = dict(selection=dict(human_reply_seconds=120), initial_sources=dict(t=dict(source='s')))
+    assert helper_config(dict(a=1), manifest, dict(task_id='t'), 'agent-policy-v2') == dict(a=1, initial_source='s', human_reply_seconds=120)
+    assert 'human_reply_seconds' not in helper_config({}, dict(manifest, selection={}), dict(task_id='t'), 'agent-policy-v2')
+    assert helper_config(dict(a=1), manifest, dict(task_id='t'), 'agent-policy-v1') == dict(a=1)
