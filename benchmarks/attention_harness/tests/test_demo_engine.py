@@ -120,6 +120,15 @@ def test_slice_view_all_cuts_and_phases_are_pure(k,phase):
     else:assert result['dev_v2_compat']['used'] == source['dev_v2_compat']['used']
 
 
+def test_redaction_keeps_camera_angles_for_observers():
+    """Observers pick angles from the manifest: each saved row needs its fixed video name to survive."""
+    names = ['advisor_replay.mp4']+[f'advisor_replay_{v}.mp4' for v in TRIM_VIEWS[1:]]
+    manifest = dict(views={n:dict(label=n,status='saved',video=n,width=960,height=540) for n in names})
+    assert [row['video'] for row in redact_for_other(manifest)['views'].values()] == names
+    for bad in ('../advisor_replay.mp4','advisor_replay_side.mp4/../x','advisor_replay_secret.mp4','/etc/passwd','policy.py'):
+        assert redact_for_other(dict(video=bad))['video'] is None
+
+
 def test_redaction_fails_closed_preserves_shape_and_labels():
     view = recording();redacted = redact_for_other(view)
     assert set(redacted) == set(view)

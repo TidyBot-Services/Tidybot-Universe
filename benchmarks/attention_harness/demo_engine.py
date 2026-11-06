@@ -169,6 +169,8 @@ def redact_for_other(view):
             if parent in ('state','status','phase','kind','op','policy_id','mode','dev_mode','channel','agent_policy_version',
                           'execution_state','execution_status','mime_type','source','operation','event_type','view','filename','name','label','uri','url','video','artifact_dir',
                           'basis','timestamp_basis','event_clock'):
+                # A camera manifest names each angle's video by its fixed file name, not by a path.
+                if parent == 'video' and re.fullmatch(r'advisor_replay(?:_(?:side|top|left_wrist|right_wrist))?\.mp4',value):return value
                 if parent in ('uri','url','video','artifact_dir'):
                     return value if value.startswith(('/api/dev-v2/experiments/','agent-view/')) and '..' not in value else None
                 if parent == 'filename':return value if re.fullmatch(r'(?:frames/)?[A-Za-z0-9_.-]+',value) else None
