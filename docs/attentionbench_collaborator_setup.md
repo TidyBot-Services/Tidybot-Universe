@@ -88,7 +88,7 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 | Scene and renderer | The registered scene matches and a camera frame has content |
 | Planner | The planner proof passes on this GPU |
 | Sandbox | The agent sandbox starts and denies what it must deny |
-| Recording | H.264 encoding and `ffprobe` work |
+| Recording | A short recording encodes and trims through the code every run uses |
 
 `verify.sh --model NAME` also asks that route's provider what each agent needs.
 
