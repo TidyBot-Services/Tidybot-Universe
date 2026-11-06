@@ -166,7 +166,19 @@ class Evaluator:
         finally:
             self.cancel()
             if root.exists():atomic_write(root,'usage.json',encode(dict(usage=self.usage if self.usage is not None else 'unknown',error=error)))
+        self.write_plain_review(root,result,deadline)
         return result
+
+    def write_plain_review(self,root,result,deadline):
+        """For the page only: never read by Dev, and a failure here changes nothing about the run."""
+        left=min(30,deadline-time.monotonic())
+        if self.provider is None or result.get('status')!='completed' or left<=1:return
+        from .dev_agent_try_story import plain_review
+        try:
+            plain=plain_review(result,self.provider,timeout=left)
+            if plain:atomic_write(root,'plain.json',encode(plain))
+        except Exception as exc:
+            atomic_write(root,'plain-error.json',encode(dict(error_class=type(exc).__name__)))
 
     def cancel(self):
         self.cancelled.set()

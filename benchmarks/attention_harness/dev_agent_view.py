@@ -244,10 +244,12 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         result['agent']['reduced_budget']=dict(selection['agent_limits'],default_versions=10,default_wall_seconds=21600)
     if selection.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2':
         from .dev_agent_human_reply import pending as human_pending
+        from .dev_agent_try_story import tries as story_tries
         attention=soft(private,'attention.json',{}) or {}
         result['agent'].update(agent_policy_version='agent-policy-v2',
             pending_ask=clean(attention.get('pending_ask')), active_help=clean(attention.get('active_help')),
             human_wait=clean(human_pending(private,cell=key)),
+            tries=clean(story_tries(private)),
             forced_fallback=clean(soft(public,'events/forced-fallback.json')),
             ask_required=[r for r in records if r.get('error')=='ask_required'])
     from .dev_agent_ui_projection import compat, error_groups

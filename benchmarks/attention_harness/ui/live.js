@@ -3651,7 +3651,7 @@
     const resources=snapshot.resources,s=snapshot.dev_session;
     if(snapshot.agent){
       const a=snapshot.agent,resource=key=>({used:a.counts[key]??0,limit:a.limits[key]});
-      return [['formal_versions','Versions',resource('formal_versions')],['executions','Executions',resource('moving_executions')],['probes','Probes',resource('read_only_probes')],['help_count','Help',resource('help')],['eval_calls','Eval',{used:a.counts.eval_runs??0,limit:a.limits.formal_versions}],['wall_seconds','Total time',resources.wall_seconds,true]];
+      return [['formal_versions','Versions',resource('formal_versions')],['executions','Tries',resource('moving_executions')],['probes','Probes',resource('read_only_probes')],['help_count','Help',resource('help')],['eval_calls','Eval',{used:a.counts.eval_runs??0,limit:a.limits.formal_versions}],['wall_seconds','Total time',resources.wall_seconds,true]];
     }
     const attempts=s?resources.executions:{used:snapshot.attempts.length,limit:snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id===snapshot.run.run_id)?.locked?.max_attempts};
     return [['executions','Attempts',attempts],['eval_calls','Reviews requested',snapshot.dev_eval_enabled?resources.eval_calls:null],['help_count','Help requests',resources.help_count || resources.assistance || (snapshot.attention_control?.hint_limit != null?{used:snapshot.attention_control.hint_count,limit:snapshot.attention_control.hint_limit}:null)],['help_wait_seconds','Waiting for replies',s?resources.help_wait_seconds:null,true],['model_calls','AI plan rewrites',s?(resources.model_calls || resources.dev_calls):null],['execution_seconds','Robot run time',resources.execution_seconds,true],['wall_seconds','Total time',resources.wall_seconds || (!s?{used:null,limit:null}:null),true]];
@@ -4777,6 +4777,7 @@
     view.querySelector('[data-overview-open-sidebar]')?.addEventListener('click',()=>{sidebarOpen=true;sidebarLayout();});
     bindDevGuidance(snapshot);
     bindAgentReply(snapshot);
+    bindAgentHistory(snapshot);
     if(devDraftFocus){const input=view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');if(input){input.focus({preventScroll:true});input.setSelectionRange(...devDraftFocus);}}
     refreshAttemptDag(snapshot);
     refreshFlowDetail(snapshot);
@@ -5316,9 +5317,77 @@
     if(help.agent_policy_version==='agent-policy-v2'){
       const kind={forced:'Forced question',agent_initiated:'Agent initiated question',system_injected:'System injected hint'}[help.ask_kind]||'Help request';
       const fee=help.actual_cost_known?`${seconds.toFixed(1)} s · ${help.actual_help_count||0} help charged`:help.charged?'Cost pending settlement':'0 s · not charged';
-      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(help.execution_id)}</small><span>${esc(kind)}</span><span>${delivered?(help.provider==='human'?'Person replied':'Delivered'):'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
+      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(tryName(help.execution_id))}</small><span>${esc(kind)}</span><span>${delivered?(help.provider==='human'?'Person replied':'Delivered'):'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
+  }
+  function storyKind(kind) {return {reach:"Can't reach",hold:"Can't hold",other:'Other',done:'Ran to the end'}[kind];}
+  function tryName(id) {
+    const found=/^e0*(\d+)$/.exec(String(id||''));
+    return found?`Try ${found[1]}`:String(id||'');
+  }
+  function storyParts(tries) {
+    const parts=[];let run=[];
+    const flush=()=>{if(run.length)parts.push({tries:run});run=[];};
+    tries.forEach(t=>{if(t.submitted){flush();parts.push({attempt:t});}else run.push(t);});
+    flush();return parts;
+  }
+  function storyCounts(tries) {
+    const counts={};tries.forEach(t=>{counts[t.kind]=(counts[t.kind]||0)+1;});
+    return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).map(kind=>[kind,counts[kind]]);
+  }
+  function agentStory(agent) {
+    const tries=agent.tries||[];
+    if(!tries.length)return '';
+    const cards=storyParts(tries).map((part,index)=>{
+      if(part.attempt){const t=part.attempt,result=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
+        return `<button type="button" class="op-story-card op-story-attempt${t.help?' help':''}" data-story-part="${index}"><small>Try ${t.number}</small>Attempt ${t.attempt}<small>${result}</small></button>`;}
+      const counts=storyCounts(part.tries),first=part.tries[0].number,last=part.tries.at(-1).number,helps=part.tries.filter(t=>t.help).length;
+      return `<button type="button" class="op-story-card" data-story-part="${index}" style="--weight:${Math.max(2,Math.sqrt(part.tries.length)).toFixed(2)}"><small>${first===last?`Try ${first}`:`Try ${first}–${last}`}${helps?` · <span>${helps} help</span>`:''}</small><b>${esc(storyKind(counts[0][0]))}</b><span class="op-story-mini">${counts.map(([kind,n])=>`<i data-kind="${kind}" style="flex:${n}"></i>`).join('')}</span></button>`;
+    }).join('');
+    return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
+  }
+  let storyOpen=null;
+  function bindAgentHistory(snapshot) {
+    const root=view.querySelector('[data-agent-history]');if(!root)return;
+    const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
+    const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+    let timer=0,closing=0,frame=0,pointer=null,ticks=[],rest=[],now=[],aim=[];
+    const say=t=>{caption.textContent='';if(!t)return;const name=document.createElement('b');name.textContent=t.submitted?`Attempt ${t.attempt} · Try ${t.number}`:`Try ${t.number}`;caption.append(name,document.createTextNode(t.why));
+      if(t.help?.content){const reply=document.createElement('p');const who=document.createElement('small');who.textContent=t.help.provider==='human'?'Person replied':'AI advisor';reply.append(who,document.createTextNode(t.help.content));caption.append(reply);}};
+    const paint=()=>ticks.forEach((tick,i)=>{tick.style.height=20+34*now[i]+'px';tick.style.width=7+7*now[i]+'px';});
+    const step=()=>{let moving=false;now.forEach((value,i)=>{const gap=aim[i]-value;if(Math.abs(gap)>.002){now[i]+=gap*.26;moving=true;}else now[i]=aim[i];});paint();frame=moving?requestAnimationFrame(step):0;};
+    const wake=()=>{rest.forEach((x,i)=>{const far=pointer==null||calm?Infinity:(pointer-x)/52;aim[i]=Math.exp(-far*far);});if(!frame)frame=requestAnimationFrame(step);};
+    const place=card=>{if(matchMedia('(max-width:640px)').matches)card.after(drawer);else row.after(drawer);};
+    function open(index) {
+      const card=row.querySelector(`[data-story-part="${index}"]`),part=parts[index];if(!card||!part)return;
+      if(storyOpen===index&&drawer.classList.contains('open'))return;
+      storyOpen=index;row.querySelectorAll('.op-story-card').forEach(c=>c.classList.toggle('open',c===card));place(card);
+      drawer.textContent='';delete drawer.dataset.pick;ticks=[];rest=[];now=[];aim=[];pointer=null;
+      if(part.attempt){const t=part.attempt,verdict=document.createElement('span');verdict.className='op-story-verdict'+(t.passed===true?' ok':'');verdict.textContent=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
+        const cols=document.createElement('div');cols.className='op-story-cols';
+        const col=(title,text)=>{if(!text)return;const box=document.createElement('div'),head=document.createElement('b'),body=document.createElement('p');head.textContent=title;body.textContent=text;box.append(head,body);cols.append(box);};
+        col('What went wrong',t.wrong||t.why);col('Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
+      drawer.classList.remove('note');
+      const first=part.tries[0].number,last=part.tries.at(-1).number,summary=document.createElement('div');summary.className='op-story-summary';const range=document.createElement('b');range.textContent=first===last?`Try ${first}`:`Try ${first}–${last}`;summary.append(range);let pinned=null;
+      storyCounts(part.tries).forEach(([kind,count])=>{const chip=document.createElement('button');chip.type='button';chip.innerHTML=`<i data-kind="${kind}"></i>${esc(storyKind(kind))} <b>${count}</b>`;
+        chip.addEventListener('mouseenter',()=>{drawer.dataset.pick=kind;});chip.addEventListener('mouseleave',()=>{if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});
+        chip.addEventListener('click',()=>{pinned=pinned===kind?null:kind;summary.querySelectorAll('button').forEach(b=>b.classList.toggle('pin',b===chip&&pinned===kind));if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});summary.append(chip);});
+      const line=document.createElement('div');line.className='op-story-ticks';
+      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);});line.append(tick);return tick;});
+      drawer.append(summary,line);drawer.classList.add('open');now=ticks.map(()=>0);aim=ticks.map(()=>0);
+      const box=drawer.getBoundingClientRect();rest=ticks.map(k=>{const r=k.getBoundingClientRect();return r.left-box.left+r.width/2;});
+    }
+    function close(){storyOpen=null;drawer.classList.remove('open','note');row.querySelectorAll('.op-story-card').forEach(c=>c.classList.remove('open'));}
+    const keep=()=>clearTimeout(closing),later=()=>{keep();closing=setTimeout(close,500);};
+    row.querySelectorAll('.op-story-card').forEach(card=>{const index=Number(card.dataset.storyPart);
+      card.addEventListener('mouseenter',()=>{keep();clearTimeout(timer);timer=setTimeout(()=>open(index),160);});
+      card.addEventListener('mouseleave',()=>{clearTimeout(timer);later();});
+      card.addEventListener('click',()=>{clearTimeout(timer);keep();open(index);});});
+    drawer.addEventListener('mouseenter',keep);
+    drawer.addEventListener('mouseleave',()=>{pointer=null;wake();later();});
+    drawer.addEventListener('pointermove',event=>{pointer=event.clientX-drawer.getBoundingClientRect().left;wake();});
+    if(storyOpen!=null){const last=storyOpen;storyOpen=null;open(last);}
   }
   function agentReplyForm(wait) {
     const draft=stored('attention.agent-reply:'+wait.execution_id)||'';
@@ -5327,11 +5396,11 @@
   function agentPolicyHelp(snapshot) {
     const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;
     const pending=agent.pending_ask,fallback=agent.forced_fallback;
-    const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(pending.execution_id)}</small>`:'',
+    const notices=[pending?`${agentPolicyCode('pending_ask')} · ${agentPolicyCode(pending.reason)} <small>${esc(tryName(pending.execution_id))}</small>`:'',
       ...(agent.ask_required||[]).map(r=>`${agentPolicyCode('ask_required')} <small>${esc(r.id)}</small>`),
-      fallback?`${agentFallbackNotice(fallback)} <small>${esc(fallback.execution_id||'')}</small>`:''].filter(Boolean);
+      fallback?`${agentFallbackNotice(fallback)} <small>${esc(tryName(fallback.execution_id))}</small>`:''].filter(Boolean);
     const wait=agent.human_wait,heading=wait?operatorHeading('04','YOUR MOVE',`<b data-agent-reply-countdown data-deadline="${wait.deadline_at}" data-seconds="${wait.seconds}"></b>`):operatorHeading('04','HELP &amp; REPLIES','');
-    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${(agent.errors||[]).length?`<details open data-agent-policy-errors><summary>Recorded errors (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}${rows.length?rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join(''):'<p>No help requests recorded.</p>'}</section>`;
+    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${agentStory(agent)}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${rows.length?`<details class="op-story-more"><summary>Help replies (${rows.length})</summary>${rows.map((row,index)=>agentHelpCard(row.help,index+1)+operatorRequestView(snapshot.requests.find(r=>r.request_id===row.id)?.request_view,row.id)).join('')}</details>`:'<p>No help requests recorded.</p>'}${(agent.errors||[]).length?`<details class="op-story-more" data-agent-policy-errors><summary>Technical details (${agent.errors.length})</summary>${agent.errors.map(e=>`<p>${esc(e.source)}: ${esc(typeof e.error==='string'?e.error:JSON.stringify(e.error))}</p>`).join('')}</details>`:''}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;

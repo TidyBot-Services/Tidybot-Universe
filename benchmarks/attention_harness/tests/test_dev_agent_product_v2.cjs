@@ -36,12 +36,12 @@ test('v2 keeps multiple practice help requests, stable eid identities and charge
 test('v2 help panel shows all required states and errors, including non-delivered actual fees',async()=>{
  const s=await snapshot(),api=apiFor(s),html=api.workspaceHTML(s,null);
  const visible=html.replace(/<[^>]*>/g,'');
- for(const text of ['e000001','e000002','e000003','Forced question','Agent initiated question','The agent asked for help','The attempt failed its review','Delivered','Not delivered','23.0 s','Must ask before next attempt','Submit held: ask first (no charge)','Asked automatically · before the next attempt','Automatic ask skipped: time limit reached (no charge)','DriveError: synthetic visible failure'])assert.ok(visible.includes(text),text);
+ for(const text of ['Try 1','Try 2','Try 3','Forced question','Agent initiated question','The agent asked for help','The attempt failed its review','Delivered','Not delivered','23.0 s','Must ask before next attempt','Submit held: ask first (no charge)','Asked automatically · before the next attempt','Automatic ask skipped: time limit reached (no charge)','DriveError: synthetic visible failure'])assert.ok(visible.includes(text),text);
  for(const code of ['agent_requested','eval_failed','pending_ask','ask_required','forced_fallback · next_submit','forced_fallback_blocked: wall_stop']){
    assert.ok(!visible.includes(code),code);
    assert.ok(html.includes(`title="${code}"`),code);
  }
- assert.match(html,/<small>e000004<\/small>/);
+ assert.match(html,/<small>Try 4<\/small>/);
  assert.match(html,/data-agent-policy-errors/);
  const story=api.agentFullStory(s);assert.equal((story.match(/data-agent-help-id=/g)||[]).length,3);
 });
@@ -87,6 +87,14 @@ test('a waiting help request offers a reply form and a reply from a person is la
  assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
  assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human'},1).includes('Person replied'));
  assert.ok(!api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'advisor'},1).includes('Person replied'));
+});
+test('the history reads as chapters with plain names, never internal ids',async()=>{
+ const s=await snapshot(),api=apiFor(s);
+ s.agent.tries=[{execution_id:'e000001',number:1,submitted:false,ok:false,kind:'reach',why:'x'},{execution_id:'e000002',number:2,submitted:false,ok:false,kind:'reach',why:'x',help:{content:'y'}},{execution_id:'e000003',number:3,submitted:true,attempt:1,passed:false,ok:false,kind:'hold',why:'z'},{execution_id:'e000004',number:4,submitted:false,ok:false,kind:'hold',why:'z'}];
+ const html=api.agentPolicyHelp(s);
+ assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('1 help')&&html.includes('Attempt 1')&&html.includes('Not passed')&&html.includes('Can&#39;t reach'));
+ assert.equal((html.match(/data-story-part/g)||[]).length,3);
+ assert.ok(!html.slice(html.indexOf('data-agent-history'),html.indexOf('data-story-caption')).includes('e00000'));
 });
 test('v2 automatic ask notices cover success, blocked limits and unknown codes',async()=>{
  const s=await snapshot(),api=apiFor(s);
