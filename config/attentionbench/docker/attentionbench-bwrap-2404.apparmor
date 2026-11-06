@@ -1,4 +1,4 @@
-# AttentionBench L2 container profile for 24.04 hosts (unverified).
+# AttentionBench L2 container profile for 24.04 hosts.
 # Same as Docker's docker-default template, except mount/umount/pivot_root are allowed so that
 # bubblewrap can build its sandbox inside an unprivileged user namespace.
 abi <abi/4.0>,

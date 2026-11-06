@@ -30,8 +30,11 @@ def main() -> int:
     for role in routes.ROLES:
         result = probe(spec, Secret(key), models[role], role=role)
         blind = role != 'dev' and [name for name, value in result.checks.items() if value == 'fail'] == ['vision']
-        failed |= not result.ok and not blind
-        state = 'ok' if result.ok else 'text only: this role will not see images' if blind else 'failed'
+        # Same rule as run.sh: Dev's model stands in for a route default that does not answer.
+        stand_in = role != 'dev' and not getattr(args, f'{role}_model') and models[role] != models['dev']
+        failed |= not result.ok and not blind and not stand_in
+        state = ('ok' if result.ok else 'text only: this role will not see images' if blind
+                 else f"not answering; run.sh will use {models['dev']} instead" if stand_in else 'failed')
         print(f'{role} {models[role]}: {state}; {result.checks}')
         if not result.ok and not blind:
             print('; '.join(error['message'] for error in result.errors))

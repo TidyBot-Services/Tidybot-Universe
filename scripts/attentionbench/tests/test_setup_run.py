@@ -661,3 +661,15 @@ def test_a_dead_scheduler_is_noticed(tmp_path):
         child.kill()
         child.wait()
     assert run.scheduler_gone(tmp_path, eid)
+
+
+@pytest.mark.parametrize('argv,code', [([], 0), (['--advisor-model', 'parcc/Qwen'], 1)])
+def test_route_check_lets_dev_stand_in_for_a_silent_default(monkeypatch, capsys, argv, code):
+    from scripts.attentionbench import route_check
+    monkeypatch.setenv('PARCC_API_KEY', 'x')
+    silent = SimpleNamespace(ok=False, checks={'chat': 'fail', 'vision': 'fail'}, errors=[{'message': 'TimeoutError'}])
+    fine = SimpleNamespace(ok=True, checks={'chat': 'ok'}, errors=[])
+    monkeypatch.setattr(route_check, 'probe', lambda spec, key, model, role: silent if model == 'parcc/Qwen' else fine)
+    monkeypatch.setattr(sys, 'argv', ['route_check', 'parcc', *argv])
+    assert route_check.main() == code
+    assert ('run.sh will use parcc/GLM' in capsys.readouterr().out) == (code == 0)
