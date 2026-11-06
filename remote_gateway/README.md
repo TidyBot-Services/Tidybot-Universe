@@ -47,6 +47,10 @@ python -m remote_gateway --config gateway.json invite --days 14
 That prints an invite id and the code. The code is shown once and stored only as a hash. One code is one person.
 `invites`, `revoke-invite`, `revoke-user`, `pause` and `resume` do what they say; `pause` refuses new runs and leaves running ones alone.
 
+## Run it as services
+
+`deploy/` holds two systemd user units, so the gateway and harness outlive any shell. Replace `__SRC__` (the checkout), `__PY__` (its Python) and `__DATA__` (the folder with `gateway.json`, `gateway-state` and `public`), copy them to `~/.config/systemd/user/`, then `systemctl --user daemon-reload`. Restarting the harness ends a run in progress. Keep the host's no-new-runs flag in `stop_files`; emptying that list is what allows real runs.
+
 ## Moving the harness to another host
 
 `upstream` is the only place that says where the harness is. The harness accepts a loopback peer only, so run a tunnel on this

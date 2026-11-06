@@ -1,0 +1,14 @@
+[Unit]
+Description=AttentionBench public gateway (loopback only)
+After=attentionbench-public-harness.service
+Wants=attentionbench-public-harness.service
+
+[Service]
+WorkingDirectory=__SRC__
+Environment=PYTHONPATH=__SRC__
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=__PY__ -B -u -m remote_gateway --config __DATA__/gateway.json serve
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
