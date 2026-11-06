@@ -5,7 +5,7 @@ FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_p
 # The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
 DEFAULT_VERSIONS=10
 DEFAULT_WALL_SECONDS=21600
-MIN_WALL_SECONDS=3600
+MIN_WALL_SECONDS=1200
 MODELS={'gpt-6.1-sol','gpt-6-astra','gpt-6-sol'}
 DEFAULT_MODEL='gpt-6.1-sol'
 # AdvisorProxy on agent runs (10-29). Absent in older selections, which keep the fixed one-call Advisor.

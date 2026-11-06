@@ -2023,25 +2023,25 @@
   function devPolicyChoices(options) {
     return (options?.agent_policies?.policies||[]).map(p=>p.policy_id);
   }
-  // The Agent envelope: versions 1-10 and 1-6 hours. A run may lower both; the server refuses anything larger.
-  const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=3600;
+  // The Agent envelope: versions 1-10 and 20 minutes to 6 hours. A run may lower both; the server refuses anything larger.
+  const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=1200;
   // What New run shows and checks. Remote replaces it with the shared host's limits (Lobby.newRunLimits).
-  const AGENT_LIMITS={versions:AGENT_DEFAULT_VERSIONS,wall:AGENT_DEFAULT_WALL,help:5,maxHelp:10,versionsRange:'1–10 · default 10',wallRange:'1–6 hours · default 6',
+  const AGENT_LIMITS={versions:AGENT_DEFAULT_VERSIONS,wall:AGENT_DEFAULT_WALL,help:5,maxHelp:10,versionsRange:'1–10 · default 10',wallRange:'20 minutes–6 hours · default 6',
     note:'Official Agent budget: 10 versions · 6 hours. Lower either one to test cheaply; the run is then marked as a reduced budget.'};
-  const hoursText=seconds=>{const hours=seconds/3600;return `${hours} hour${hours===1?'':'s'}`;};
+  const hoursText=seconds=>{if(seconds<3600)return `${Math.round(seconds/60)} minutes`;const hours=seconds/3600;return `${hours} hour${hours===1?'':'s'}`;};
   // The line under the 03 heading. It describes whoever pays: the lab quota only exists for Lab models, and the limits it
   // used to quote live in 05, so an own key never shows a quota stop.
   function agentReasonText(mode,{versions,wall,stop,source}) {
     if(mode==='all')return 'Billed to your own key; the lab quota does not apply. Limits are set in 05. Native success ends the run.';
     if(mode==='different')return 'Each agent is billed to the source chosen in Agent models below. Limits are set in 05. Native success ends the run.';
-    const v=Math.min(10,Math.max(1,Number(versions)||10)),hours=Math.min(21600,Math.max(3600,Number(wall)||21600))/3600;
-    return `${v} formal versions · 40 executions · 300 read-only probes · ${hoursText(hours*3600)}${source==='codex'?` · stops at ${Number(stop)||90}% quota`:''}. Eval picks its own model; native success ends the run.`;
+    const v=Math.min(10,Math.max(1,Number(versions)||10)),seconds=Math.min(21600,Math.max(AGENT_MIN_WALL,Number(wall)||21600));
+    return `${v} formal versions · 40 executions · 300 read-only probes · ${hoursText(seconds)}${source==='codex'?` · stops at ${Number(stop)||90}% quota`:''}. Eval picks its own model; native success ends the run.`;
   }
   function agentBudgetCheck(versions,wallSeconds,limits=AGENT_LIMITS) {
     const v=Number(versions),w=Number(wallSeconds),errors={};
     if(!Number.isInteger(v)||v<1)errors.versions='Enter 1 to 10 versions.';
     else if(v>limits.versions)errors.versions=`Largest allowed: ${limits.versions} versions. A bigger budget needs separate approval.`;
-    if(!Number.isInteger(w)||w<AGENT_MIN_WALL)errors.wall='Shortest allowed: 1 hour (3600 seconds).';
+    if(!Number.isInteger(w)||w<AGENT_MIN_WALL)errors.wall='Shortest allowed: 20 minutes (1200 seconds).';
     else if(w>limits.wall)errors.wall=`Longest allowed: ${hoursText(limits.wall)} (${limits.wall} seconds). A longer run needs separate approval.`;
     const valid=!Object.keys(errors).length,reduced=valid&&(v<limits.versions||w<limits.wall);
     return {errors,valid,reduced,limits:reduced?{versions:v,wall_seconds:w}:null};
@@ -2637,7 +2637,7 @@
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.versionsRange}</small><input name="max_attempts" type="number" min="1" max="${limits.versions}" value="${limits.versions}" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
-            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="3600" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
+            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
             <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>

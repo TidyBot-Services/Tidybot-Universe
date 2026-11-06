@@ -123,7 +123,7 @@ def rebuild(body, *, user, options, limits, credentials):
                   dev_model=roles['dev']['model'], eval_model=roles['eval']['model'], advisor_model=roles['advisor']['model'],
                   agent_provider=dict(roles=roles),
                   agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'),
-                                    wall_seconds=_integer(wanted.get('wall_seconds', limits.wall_seconds), 3600, limits.wall_seconds, 'wall_seconds')))
+                                    wall_seconds=_integer(wanted.get('wall_seconds', limits.wall_seconds), 1200, limits.wall_seconds, 'wall_seconds')))
     if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', human_reply_seconds=limits.human_reply_seconds)
     if rules:result['rules_profile'] = rules
     suffix = selection.get('name_suffix')

@@ -39,7 +39,7 @@ def test_normalize_accepts_lower_values_and_drops_the_official_budget():
 @pytest.mark.parametrize('value,message', [
     (dict(versions=11, wall_seconds=21600), 'exceed'), (dict(versions=10, wall_seconds=21601), 'exceed'),
     (dict(versions=99, wall_seconds=99999), 'exceed'),
-    (dict(versions=0, wall_seconds=7200), 'below'), (dict(versions=2, wall_seconds=3599), 'below'),
+    (dict(versions=0, wall_seconds=7200), 'below'), (dict(versions=2, wall_seconds=1199), 'below'),
     (dict(versions=-1, wall_seconds=7200), 'below'),
     (dict(versions=True, wall_seconds=7200), 'invalid'), (dict(versions=2.0, wall_seconds=7200), 'invalid'),
     (dict(versions='2', wall_seconds=7200), 'invalid'), (dict(versions=2), 'invalid'),

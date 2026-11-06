@@ -18,7 +18,7 @@ test('the Agent envelope: lower is allowed, higher is refused, the official budg
   assert.equal(api.agentBudgetCheck('2','7200').reduced,true);
   assert.equal(api.agentBudgetCheck(10,3600).reduced,true);
   assert.equal(api.agentBudgetCheck(1,21600).reduced,true);
-  for(const [v,w,key] of [[11,21600,'versions'],[0,21600,'versions'],[2.5,21600,'versions'],['',21600,'versions'],[10,21601,'wall'],[10,3599,'wall'],[10,'x','wall']]){
+  for(const [v,w,key] of [[11,21600,'versions'],[0,21600,'versions'],[2.5,21600,'versions'],['',21600,'versions'],[10,21601,'wall'],[10,1199,'wall'],[10,'x','wall']]){
     const result=api.agentBudgetCheck(v,w);
     assert.equal(result.valid,false,`${v}/${w}`);assert.ok(result.errors[key],`${v}/${w} ${key}`);assert.equal(result.limits,null);
   }
@@ -53,7 +53,7 @@ test('Run again restores a reduced budget',()=>{
 
 test('05 starts at the official budget, only lowers, and a repaint leaves the edit alone',()=>{
   assert.match(source,/name="max_attempts" type="number" min="1" max="\$\{limits\.versions\}" value="\$\{limits\.versions\}" required/);
-  assert.match(source,/name="wall_seconds" type="number" min="3600" max="\$\{limits\.wall\}" value="\$\{limits\.wall\}"/);
+  assert.match(source,/name="wall_seconds" type="number" min="1200" max="\$\{limits\.wall\}" value="\$\{limits\.wall\}"/);
   assert.match(source,/form\.max_attempts\.value=limits\.versions;form\.wall_seconds\.value=limits\.wall;/);
   assert.match(source,/AGENT_LIMITS=\{versions:AGENT_DEFAULT_VERSIONS,wall:AGENT_DEFAULT_WALL,/);
   const fragment=source.slice(source.indexOf('      function syncAgentOptions()'),source.indexOf('      function updatePreview()'));

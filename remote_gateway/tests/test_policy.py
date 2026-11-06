@@ -134,7 +134,7 @@ def test_the_log_shows_no_identifiers():
 
 
 def test_settings_refuse_what_could_never_be_honoured(tmp_path):
-    for bad in (dict(versions=11), dict(wall_seconds=1800), dict(wall_seconds=5400), dict(help_requests=0)):
+    for bad in (dict(versions=11), dict(wall_seconds=1199), dict(wall_seconds=3601), dict(help_requests=0)):
         with pytest.raises(ValueError):Limits(**bad)
     with pytest.raises(ValueError, match='loopback'):Config(state_dir=tmp_path, upstream='http://127.0.0.1:1', ui_dir=tmp_path, listen_host='0.0.0.0')
 
@@ -152,3 +152,9 @@ def test_only_an_interactive_run_waits_for_its_owner():
     made = lambda mode: policy.rebuild(body(mode=mode), user='u-1', options=OPTIONS, limits=LIMITS, credentials=MINE)
     assert made('interactive')['human_reply_seconds'] == LIMITS.human_reply_seconds
     assert 'human_reply_seconds' not in made('experiment')
+
+
+def test_a_twenty_minute_limit_is_offered_in_minutes():
+    limits = Limits(wall_seconds=1200).public()
+    assert limits['wall'] == 1200 and limits['wallRange'].startswith('20 minutes') and '20 minutes' in limits['note']
+    assert policy.rebuild(body(agent_limits=dict(versions=2, wall_seconds=1200)), user='u-1', options=OPTIONS, limits=Limits(wall_seconds=1200), credentials=MINE)['agent_limits']['wall_seconds'] == 1200

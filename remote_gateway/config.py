@@ -21,19 +21,19 @@ class Limits:
     logins_per_hour: int = 10
 
     def __post_init__(self):
-        # Agent runs accept 1-10 versions and 1-6 hours; a limit outside that could never be honoured.
-        if not 1 <= self.versions <= 10 or not 3600 <= self.wall_seconds <= 21600 or self.wall_seconds % 3600:
-            raise ValueError('versions must be 1-10 and wall_seconds whole hours from 3600 to 21600')
+        # Agent runs accept 1-10 versions and 20 minutes to 6 hours; a limit outside that could never be honoured.
+        if not 1 <= self.versions <= 10 or not 1200 <= self.wall_seconds <= 21600 or self.wall_seconds % 60:
+            raise ValueError('versions must be 1-10 and wall_seconds whole minutes from 1200 to 21600')
         if not 30 <= self.human_reply_seconds <= 600:raise ValueError('human_reply_seconds must be 30-600')
         if not 1 <= self.help_requests <= 10 or self.runs_per_day < 1 or self.active_runs < 1:
             raise ValueError('help_requests, runs_per_day and active_runs must be positive')
 
     def public(self):
         """What New run shows; the same shape as the main UI's own limits."""
-        hours = self.wall_seconds // 3600
-        time = '1 hour' if hours == 1 else f'{hours} hours'
+        minutes, hours = self.wall_seconds // 60, self.wall_seconds / 3600
+        time = f'{minutes} minutes' if minutes < 60 or minutes % 60 else '1 hour' if hours == 1 else f'{int(hours)} hours'
         return dict(versions=self.versions, wall=self.wall_seconds, help=self.help_requests, maxHelp=self.help_requests,
-                    versionsRange=f'1–{self.versions} · Remote limit', wallRange=('1 hour' if hours == 1 else f'1–{hours} hours') + ' · Remote limit',
+                    versionsRange=f'1–{self.versions} · Remote limit', wallRange=(time if minutes <= 20 else f'20 minutes–{time}') + ' · Remote limit',
                     note=f'Remote limit: {self.versions} versions · {time} · {self.help_requests} help requests, because everyone shares one robot. '
                          'Results are not comparable with the official 10-version runs.')
 
