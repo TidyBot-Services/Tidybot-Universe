@@ -9,7 +9,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -52,15 +51,10 @@ def check_sandbox(ws: Path) -> tuple[bool, str]:
 
 
 def check_media(ws: Path) -> tuple[bool, str]:
-    """Run recordings need H.264 encoding and ffprobe."""
-    with tempfile.TemporaryDirectory(dir=ws / 'data/run') as temp:
-        video = Path(temp) / 'check.mp4'
-        ok, output = _run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=duration=1:size=64x64:rate=5',
-                           '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(video)], timeout=60)
-        if not ok:
-            return False, output
-        ok, output = _run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', str(video)], timeout=60)
-        return ok and 'h264' in output, 'H.264 recording works' if ok and 'h264' in output else output
+    """Every execution's recording, through the code that encodes and trims it."""
+    env = os.environ | {'PYTHONPATH': str(ROOT), 'PYTHONDONTWRITEBYTECODE': '1'}
+    ok, output = _run([str(ws / 'sim/runtime/venv/bin/python'), str(SCRIPTS / 'media_check.py'), str(ws / 'data/run')], env=env, timeout=120)
+    return ok, 'a short recording encodes and trims' if ok else output
 
 
 def check_route(ws: Path, args: argparse.Namespace) -> tuple[bool, str]:

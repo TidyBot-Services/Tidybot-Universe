@@ -7,7 +7,7 @@ You need Ubuntu 22.04 or 24.04 on x86_64, an NVIDIA GPU with its driver, Git, ne
 `setup.sh` does the rest:
 
 - It installs pinned copies of `uv`, Conda and the Codex CLI in `WS/tools`. Your own copies are neither used nor changed.
-- It lists the Ubuntu packages this host still lacks (`build-essential`, `bubblewrap`, `ffmpeg`, `libegl1`, `libgl1`, `libglib2.0-0`, `libgomp1`) and any AppArmor change, and asks **once** before running them with `sudo`. If you decline, or stdin is not a terminal, it prints the commands and changes nothing.
+- It lists the Ubuntu packages this host still lacks (`build-essential`, `bubblewrap`, `ffmpeg`, `libegl1`, `libgl1`, `libglib2.0-0`, `libgomp1`) and any AppArmor change, and asks **once** before running them with `sudo`. If you decline, or stdin is not a terminal, it prints the commands and changes nothing. The install still goes on; a missing AppArmor change then stops `doctor` at the end, and rerunning `setup.sh` after the change is quick.
 - It ignores your shell's `PYTHONPATH`, `LD_LIBRARY_PATH`, active Conda or virtual environment, `PIP_*`, `UV_*`, `CC` and `CUDA_HOME`. Proxy, certificate and package-index settings pass through, and so does `CUDA_VISIBLE_DEVICES`.
 
 No model account is needed to install or to verify the workspace. Only a real run needs one, see [Model routes](#model-routes).
@@ -88,13 +88,13 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 | Scene and renderer | The registered scene matches and a camera frame has content |
 | Planner | The planner proof passes on this GPU |
 | Sandbox | The agent sandbox starts and denies what it must deny |
-| Recording | H.264 encoding and `ffprobe` work |
+| Recording | A short recording encodes and trims through the code every run uses |
 
 `verify.sh --model NAME` also asks that route's provider what each agent needs.
 
 ### Model routes
 
-`run.sh --model NAME` chooses who answers for the Dev, Eval and Advisor agents. Without `--model` it takes the first ready route in the table's order, and it stops with instructions if none is ready. A key is read from the environment or key file, sent once to the local UI's memory, and never printed or written to a file.
+`run.sh --model NAME` chooses who answers for the Dev, Eval and Advisor agents. Without `--model` it takes the first ready route in the table's order, skips a Codex login that no longer answers, and stops with instructions if none is ready. A key is read from the environment or key file, sent once to the local UI's memory, and never printed or written to a file.
 
 | Route | You provide | Default models |
 |---|---|---|
@@ -128,7 +128,7 @@ The build proof runs as a standalone script under the newly built cuRobo Python 
 
 The parent project inventory is not part of the official content comparison. The original r12 native task tree's `.git/config` identifies `https://github.com/TidyBot-Services/maniskill-robocasa-tasks.git`, its HEAD is `b18bbf1`, and all 122 runtime source files in the inventory match that public commit byte for byte in the available local checkout. A local assembly comparison against r12 found zero differences in the 179 `config/openarm-model` files, 22 `config/openarm_description` files, 122 native task source files, and 24 Franka meshes. The model inputs come from tracked `openarm_phase0_recheck/model/compat_v6`; the robot YAML is stored as a root-substituted template. Most Franka meshes come from the pinned official cuRobo source. Three project-specific meshes are now carried in this checkout. Every excluded author-only or generated inventory entry and its reason is listed in `scripts/attentionbench/r12-project-omissions.json`: 256 Git administrative files, five generated egg-info files, four acceptance-run files, and the author's CUPTI probe source and compiled library. The parent snapshot omits that probe; since P4d the d05 layer compiles it locally in the pinned environment. The 1,237 copied project files form the parent snapshot; d05 still checks its full locked inventory before deriving.
 
-**Official-environment comparison:** L2 passed with five fixed path map-back rules documented in [`curobo_v2/official/AUTHOR-PATHS.md`](../curobo_v2/official/AUTHOR-PATHS.md). A different machine may show new differences; send the `--report-official-diff` output back for review and do not relax the check. Offline unit tests do not attest the planner chain.
+**Official-environment comparison:** The comparison uses five fixed path map-back rules and one fixed order rule, documented in [`curobo_v2/official/AUTHOR-PATHS.md`](../curobo_v2/official/AUTHOR-PATHS.md). A different machine may show new differences; send the `--report-official-diff` output back for review and do not relax the check. Offline unit tests do not attest the planner chain.
 
 **Scene fingerprint:** `verify.sh` runs `scripts/attentionbench/scene_fingerprint_check.py`, which must print `matches_registered: True`.
 

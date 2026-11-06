@@ -11,6 +11,7 @@ const read = name => fs.readFileSync(path.join(ui, name), 'utf8');
 const pages = {
   '/ui/': read('index.html').replace('data-mode="demo"', 'data-mode="live"').replace('data-mode="live"', 'data-mode="live" data-control-token="t" data-remote-tab="1"'),
   '/ui/home.html': read('home.html').replace('<body', '<body data-remote-tab="1"'),
+  '/ui/memory.html': read('memory.html').replace('<body', '<body data-remote-tab="1"'),
 };
 const runOptions = fs.readFileSync(path.join(__dirname, 'fixtures/run_options_agent.json'), 'utf8');
 let browser;
@@ -70,4 +71,14 @@ for (const [url, name] of [['/ui/', 'Run'], ['/ui/home.html', 'Home']]) test(`TO
   await page.locator('.ab-shell-top .ab-notices-button').click();
   const panel = await page.locator('.ab-shell-top .ab-notices-panel').evaluate(node => { const box = node.getBoundingClientRect(); return {left: box.left, right: box.right}; });
   assert.ok(panel.left >= 0 && panel.right <= 390, `the panel runs from ${panel.left} to ${panel.right}`);
+});
+
+// Real checks carry a long sentence that may not wrap on a wide screen, and 64-character hashes.
+test('TOP-BAR: on a phone the Automatic checks box of Memory stays on the screen', async t => {
+  const page = await open(t, '/ui/memory.html', 390);
+  await page.locator('#automatic-checks-body').evaluate(body => {
+    body.innerHTML = `<div class="ac-head"><span class="ac-what">Checks</span><span class="ac-runs"><span>${'Separate runs, each on its own copy of the data, '.repeat(2)}</span></span></div><small>${'a'.repeat(64)}</small>`;
+  });
+  const seen = await measure(page);
+  assert.ok(seen.page <= seen.screen, `the page is ${seen.page}px wide`);
 });

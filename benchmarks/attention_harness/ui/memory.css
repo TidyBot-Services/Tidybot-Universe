@@ -74,7 +74,7 @@ html[data-theme="dark"] #automatic-checks{--ac-fail:#e08670}
 #automatic-checks .ac-five{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;align-items:center;margin:2px 0;color:var(--sh-mut);font:500 10.5px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em}
 #automatic-checks .ac-five span{display:flex;gap:3px}#automatic-checks .ac-five i{width:10px;height:10px;box-sizing:border-box;border-radius:2px;border:1px solid var(--sh-line)}#automatic-checks .ac-five i.f{border-color:var(--ac-fail);background:var(--ac-fail)}
 @keyframes ac-pulse{0%,100%{opacity:1}50%{opacity:.35}}
-@media(max-width:900px){#automatic-checks{flex-direction:column;gap:10px}#automatic-checks .ac-grid{grid-template-columns:1fr}#automatic-checks .ac-runs{margin-left:0}}
+@media(max-width:900px){#automatic-checks{flex-direction:column;gap:10px}#automatic-checks-body{width:100%;overflow-wrap:anywhere}#automatic-checks .ac-grid{grid-template-columns:1fr}#automatic-checks .ac-runs{margin-left:0;white-space:normal}}
 
 #automatic-checks .ac-cross{margin-top:14px;padding:14px;border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card)}
 #automatic-checks .ac-cross h3{margin:0 0 12px;font-size:14px}

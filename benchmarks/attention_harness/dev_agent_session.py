@@ -116,7 +116,9 @@ class CodexAgentSession(AgentSession):
                         completed=True
                         usage=event.get('usage')
                         if isinstance(usage,dict) and usage and all(type(v) is int and v>=0 for v in usage.values()):self.usage=usage
-                    elif event['type'] in ('turn.failed','error'):failure='turn_failed'
+                    elif event['type'] in ('turn.failed','error'):
+                        detail=event.get('message') or (event.get('error') or {}).get('message')
+                        failure='turn_failed'+(': '+detail if isinstance(detail,str) else '')
                     yield event
                 code=self.process.wait()
                 if not self.cancelled:

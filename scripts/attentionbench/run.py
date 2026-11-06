@@ -137,11 +137,28 @@ def command(action: str, ws: Path, ui_port: int, memory_port: int) -> None:
                                   f'Inspect {ws / "data/run"} logs and retry {action}.')
 
 
+def confirmed(route: routes.Route, requested: str) -> routes.Route:
+    """An expired login still passes `codex login status`, so only a call proves the automatic choice."""
+    if route.name != 'codex':
+        return route
+    try:
+        # The quota reading from setup's warm-up is usually stale by now (runs accept 10 minutes).
+        setup.warmup(False)
+    except installer.StepError as exc:
+        others = [name for name in routes.available() if name != 'codex']
+        if requested != 'auto' or not others:
+            raise
+        print(f'WARNING: {exc}\nCodex does not answer, so this run uses route {others[0]}.', flush=True)
+        return routes.ROUTES[others[0]]
+    return route
+
+
 def summary(ws: Path, eid: str, key: str, snapshot: dict, route: str = 'codex', warnings: tuple = ()) -> dict:
     cells = snapshot.get('cells', [])
     versions = [version for cell in cells for version in cell.get('versions', [])]
-    verdicts = [version.get('eval_verdict', version.get('eval')) for version in versions
-                if version.get('eval_verdict', version.get('eval')) is not None]
+    # An agent run keeps its verdict under the version's agent record.
+    found = [source.get('eval_verdict', source.get('eval')) for version in versions for source in (version, version.get('agent') or {})]
+    verdicts = [verdict for verdict in found if verdict is not None]
     run_dir = ws / 'data/run'
     run_dir.mkdir(parents=True, exist_ok=True)
     experiment_file = run_dir / f'{eid}-experiment.json'
@@ -189,10 +206,8 @@ def execute(args: argparse.Namespace) -> int:
             raise installer.StepError('lock', f'{lock_file} is busy', 'Wait for the other run to finish.')
     try:
         base = f'http://127.0.0.1:{ui_port}'
+        route = confirmed(route, args.model)
         print(f'Model route: {route.name}', flush=True)
-        if route.name == 'codex':
-            # The quota reading from setup's warm-up is usually stale by now (runs accept 10 minutes).
-            setup.warmup(False)
         command('start', ws, ui_port, memory_port)
         try:
             token = control.control_token(base + '/ui/')

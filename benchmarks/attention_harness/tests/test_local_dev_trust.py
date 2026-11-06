@@ -1,4 +1,5 @@
 """Local trust accepts only a content-matched, path-bound development chain."""
+import ast
 import copy
 import base64
 import hashlib
@@ -426,6 +427,41 @@ def test_synthetic_conda_binary_slot_and_other_byte(tmp_path):
     assert check() == 'binary-prefix'
     path.write_bytes(path.read_bytes().replace(b'tail', b'fail'))
     assert check() is None
+
+
+def _finder(values):
+    return f'MAPPING = {{}}\nNAMESPACES: dict[str, list[str]] = {values!r}\nPATH = 1\n'.encode()
+
+
+def test_finder_namespaces_return_to_the_author_order_and_nothing_else_changes():
+    paths = {'prefix': '/author/env', 'library_root': '/author/lib'}
+    order = normalization.AUTHOR_NAMESPACES
+    values = lambda names, root: {name: [f'{root}/{name}'] for name in names}
+    mapped = lambda data: normalization.normalized_text_path(data, '/local/env', '/local/lib', paths)
+    wanted = _finder(values(order, '/author/lib'))
+    assert mapped(_finder(values(reversed(order), '/local/lib'))) == wanted
+    changed = values(reversed(order), '/local/lib') | {'docs': ['/local/lib/elsewhere']}
+    assert mapped(_finder(changed)) != wanted
+    assert mapped(_finder(values(order[1:], '/local/lib'))) is None
+    assert mapped(_finder(values((*order, 'extra'), '/local/lib'))) is None
+    assert mapped(b'{"url": "file:///local/lib"}') == b'{"url": "file:///author/lib"}'
+
+
+def test_real_finder_from_another_filesystem_order_matches_the_author_hash():
+    name = 'lib/python3.11/site-packages/__editable___nvidia_curobo_0_8_0_post1_dev43_finder.py'
+    if not (AUTHOR_ENV / name).is_file():
+        pytest.skip('read-only author environment is absent')
+    manifests = auth.OFFICIAL_MANIFESTS
+    paths = json.loads((manifests / 'author-paths.json').read_bytes())
+    expected = json.loads((manifests / 'r12-prefix-files.json').read_bytes())[name]
+    data = (AUTHOR_ENV / name).read_bytes().replace(paths['library_root'].encode(), b'/local/lib')
+    line = normalization.NAMESPACES_LINE.search(data).group(1)
+    values = ast.literal_eval(line.decode())
+    other = data.replace(line, repr(dict(reversed(values.items()))).encode())
+    assert other != data
+    assert normalization.normalized(name, other, '/local/env', '/local/lib', paths, {}) == ('text-path', expected)
+    bent = other.replace(b'/local/lib/docs', b'/local/lib/docz', 1)
+    assert normalization.normalized(name, bent, '/local/env', '/local/lib', paths, {}) != ('text-path', expected)
 
 
 def test_official_content_binds_normalized_record_to_local_lock(chain):

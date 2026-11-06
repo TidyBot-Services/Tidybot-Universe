@@ -622,7 +622,7 @@ def doctor(args) -> int:
            f'Rerun setup.sh; it installs {lock["codex"]["version"]} in the workspace.')
     found = routes.available()
     results.append({'check': 'model-routes', 'status': 'PASS' if found else 'WARN',
-                    'reason': 'ready: ' + ', '.join(found) if found else 'no model route is ready; setup and verify do not need one, run.sh does',
+                    'reason': 'configured: ' + ', '.join(found) if found else 'no model route is ready; setup and verify do not need one, run.sh does',
                     'fix': '' if found else '; '.join(f'{name}: {routes.ROUTES[name].hint}' for name in routes.AUTO_ORDER)})
     media = bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
     _check(results, 'ffmpeg', media, 'ffmpeg and ffprobe available' if media else 'ffmpeg or ffprobe missing', 'Rerun setup.sh or install the ffmpeg package.')

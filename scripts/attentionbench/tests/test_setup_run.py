@@ -112,6 +112,16 @@ def test_prerequisite_missing_executable_has_install_instruction(fake_prereqs, c
     assert failures and all('; install: ' in line for line in failures)
 
 
+def test_a_declined_apparmor_change_does_not_stop_the_install(fake_prereqs, monkeypatch, capsys):
+    _, ws = fake_prereqs
+    monkeypatch.setattr(setup, '_isolation', lambda: (False, setup.installer.USERNS_REASON))
+    assert setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'WARN bwrap user namespaces' in capsys.readouterr().out
+    monkeypatch.setattr(setup, '_isolation', lambda: (False, 'bwrap namespace probe failed: denied'))
+    assert not setup.prerequisites(ws, dry_run=False, ui_port=8769, memory_port=8878)
+    assert 'FAIL bwrap user namespaces' in capsys.readouterr().out
+
+
 def test_prerequisites_disk_and_port_and_dry_warning(fake_prereqs, monkeypatch, capsys):
     _, ws = fake_prereqs
     monkeypatch.setattr(setup.os, 'statvfs', lambda path: SimpleNamespace(f_bavail=10, f_frsize=1024**3))
@@ -257,6 +267,12 @@ def args(ws, port, **changes):
     return argparse.Namespace(**values)
 
 
+def test_summary_finds_an_agent_run_verdict(tmp_path):
+    snapshot = {'state': 'cancelled', 'cells': [{'versions': [{'version': 1, 'agent': {'eval_verdict': 'fail'}}]}]}
+    result = run.summary(tmp_path, 'devexp-' + '0' * 24, 'key', snapshot)
+    assert result['version_count'] == 1 and result['eval_verdict'] == 'fail'
+
+
 def test_run_terminal_and_summary(server, tmp_path, monkeypatch):
     actions = []
     monkeypatch.setattr(run, 'command', lambda action, *a: actions.append(action))
@@ -383,7 +399,7 @@ def test_a_checkout_elsewhere_moves_into_the_workspace_and_restarts(tmp_path, mo
     assert commands[0][:2] == ['git', 'clone'] and commands[0][-1] == str(ws / 'repos/attentionbench')
     assert ['git', '-C', str(ws / 'repos/attentionbench'), 'checkout', '--detach', 'abc1234'] in commands
     assert commands[-1][-1] == 'https://example.test/repo.git'
-    assert restarts[0][1:3] == ['-I', str(ws / 'repos/attentionbench/scripts/attentionbench/setup.py')]
+    assert restarts[0][1:4] == ['-I', '-u', str(ws / 'repos/attentionbench/scripts/attentionbench/setup.py')]
 
 
 def test_a_checkout_already_in_place_stays(tmp_path, monkeypatch):
@@ -428,7 +444,8 @@ def test_a_failed_warm_up_does_not_fail_an_installed_workspace(tmp_path, monkeyp
         raise setup.installer.StepError('codex warm-up', 'quota', 'later')
     monkeypatch.setattr(setup, 'warmup', fail)
     assert setup.main(['--workspace', str(tmp_path)]) == 0
-    assert 'WARN' in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert 'WARN' in output and 'Model routes ready: codex' not in output
 
 
 def route_args(**changes):
@@ -517,6 +534,22 @@ def test_auto_route_prefers_a_logged_in_codex_then_keys(monkeypatch):
     monkeypatch.setattr(run.routes, 'available', lambda: [])
     with pytest.raises(LookupError, match='codex login'):
         run.routes.choose('auto')
+
+
+def test_an_automatic_choice_leaves_a_codex_login_that_does_not_answer(monkeypatch, capsys):
+    def fail(no_warmup):
+        raise run.installer.StepError('codex warm-up', '401', 'log in')
+    monkeypatch.setattr(run.setup, 'warmup', fail)
+    monkeypatch.setattr(run.routes, 'available', lambda: ['codex', 'parcc'])
+    codex = run.routes.ROUTES['codex']
+    assert run.confirmed(codex, 'auto').name == 'parcc'
+    assert 'uses route parcc' in capsys.readouterr().out
+    with pytest.raises(run.installer.StepError):
+        run.confirmed(codex, 'codex')
+    monkeypatch.setattr(run.routes, 'available', lambda: ['codex'])
+    with pytest.raises(run.installer.StepError):
+        run.confirmed(codex, 'auto')
+    assert run.confirmed(run.routes.ROUTES['parcc'], 'auto').name == 'parcc'
 
 
 def test_key_comes_from_a_named_variable_or_the_key_file(monkeypatch, tmp_path):
