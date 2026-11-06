@@ -216,3 +216,16 @@ def test_an_unreachable_parcc_refuses_the_start_and_the_run_stays_startable(tmp_
     monkeypatch.setattr(provider_module,'open_request',fake_probe_transport())
     status,value=call(service,token,'POST',f'/api/dev-v2/experiments/{eid}/run',{})
     assert status==200 and value['worker_started'] and len(launched)==1,value
+
+
+@pytest.mark.parametrize('advisor_model',['parcc/Qwen','parcc/GLM'])
+def test_the_worker_accepts_what_a_lab_run_froze(advisor_model):
+    """Every start re-validates the frozen config; a lab Eval or Advisor used to stop the worker there."""
+    from benchmarks.attention_harness import dev_advisor_proxy, eval_agent
+    from benchmarks.attention_harness.dev_agent_config import configuration, provider_roles
+    role=lambda model:dict(credential='lab',provider='parcc',model=model)
+    value=dict(roles=dict(dev=role('parcc/GLM'),eval=role('parcc/GLM'),advisor=role(advisor_model)))
+    frozen=configuration(dict(dev_mode='agent',tasks=['t'],seeds=[1],policies=['reactive_help'],mode='interactive',agent_provider=value))
+    roles=provider_roles(value)['roles']
+    assert eval_agent.normalize(frozen['eval_agent'],'codex',agent=True,provider_role=roles['eval'])['model']=='parcc/GLM'
+    assert dev_advisor_proxy.normalize(frozen['advisor_proxy'],'codex',agent=True,provider_role=roles['advisor'])['model']==advisor_model

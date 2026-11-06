@@ -54,8 +54,10 @@ def normalize(value, model_source='parcc', *, agent=False, provider_role=None):
         if value.get('model') in ADVISOR_MODELS:base['model']=value['model']
     if agent and provider_role and provider_role.get('credential')!='lab':
         base.update(model=provider_role['model'],model_source='byok')
-    if model_source=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
-    if old:base=dict(text_only(base),**({'model':base['model']} if base.get('model_source')=='byok' else {}))
+    elif agent and provider_role and provider_role.get('provider')=='parcc':
+        base.update(model=provider_role['model'],model_source='parcc')
+    if base.get('model_source')=='codex' and old:raise ValueError('legacy Advisor cannot use Codex')
+    if old:base=dict(text_only(base),**({'model':base['model']} if base.get('model_source') in ('byok','parcc') else {}))
     if set(value)-set(base):raise ValueError('unknown Advisor configuration')
     out={**base,**value}
     for key in ('model','mode','prompt_version','prompt_sha256','cache_version','cache_namespace','session_namespace','model_source','reasoning_effort'):

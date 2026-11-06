@@ -99,7 +99,9 @@ def normalize(value, model_source='parcc', *, agent=False, provider_role=None):
         if value.get('model') in MODELS:base['model']=value['model']
     if agent and provider_role and provider_role.get('credential')!='lab':
         base.update(model=provider_role['model'],model_source='byok')
-    if model_source=='codex' and value.get('prompt_version')==OLD_PROMPT_VERSION:raise ValueError('legacy Eval cannot use Codex')
+    elif agent and provider_role and provider_role.get('provider')=='parcc':
+        base.update(model=provider_role['model'],model_source='parcc')
+    if base.get('model_source')=='codex' and value.get('prompt_version')==OLD_PROMPT_VERSION:raise ValueError('legacy Eval cannot use Codex')
     if value.get('prompt_version')==OLD_PROMPT_VERSION:
         base['prompt_version']=OLD_PROMPT_VERSION
         base['prompt_sha256']=hashlib.sha256(SYSTEM_V2.encode()).hexdigest()
