@@ -84,7 +84,9 @@ def system_commands() -> tuple[list[list[str]], bool]:
     """Every change that needs an administrator, as one list, and whether AppArmor is among them."""
     packages = system_packages()
     commands = [['sudo', 'apt-get', 'install', '-y', *packages]] if packages else []
-    restricted = installer.apparmor_policy_on() and not installer.namespace_status()[0]
+    # A container reads the host's policy but has no AppArmor of its own to change.
+    restricted = (installer.apparmor_policy_on() and not installer.namespace_status()[0]
+                  and installer.apparmor_on_this_host())
     if restricted:
         commands += [['sudo', 'install', '-m', '0644', str(installer.USERNS_PROFILE), installer.USERNS_TARGET],
                      ['sudo', 'apparmor_parser', '-r', installer.USERNS_TARGET]]
