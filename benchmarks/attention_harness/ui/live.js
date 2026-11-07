@@ -2990,6 +2990,8 @@
           const result = await response.json();
           if (!response.ok) throw new Error(providerErrorText(result)||`HTTP ${response.status}`);
           keys.clearSecrets();
+          // Remote: the new run is drawn only once the lobby knows it, or 02 offers no Stop to someone already in line.
+          if(window.Lobby.enabled)await Lobby.refresh();
           selectedDev = 'v2-'+result.cells[0].key;
           linkedSource = null;
           linkedConfiguration = null;

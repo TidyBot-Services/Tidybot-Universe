@@ -47,7 +47,16 @@
       // The waiting clock ticks every second without changing the data, so it does not force a redraw.
       if (first || next !== state.fp) { state.fp = next; state.hooks.changed?.(first); }
     } catch (_) { /* keep the last picture; the next poll tries again */ }
-    state.timer = global.setTimeout(poll, doc.hidden ? 5000 : 1500);
+    state.timer = global.setTimeout(next, doc.hidden ? 5000 : 1500);
+  }
+  // One poll at a time: a poll asked for now waits for the one in flight, then reads again, so it sees what was just made.
+  function next() { state.inflight = poll().finally(() => { state.inflight = null; }); return state.inflight; }
+  async function refresh() {
+    if (!state.started || rootEl.dataset.remote !== '1') return;
+    global.clearTimeout(state.timer);
+    if (state.inflight) await state.inflight;
+    global.clearTimeout(state.timer);
+    return next();
   }
   const snapshot_demo = () => !!state.snap?.demo;
   function stop() { state.enabled = false; delete rootEl.dataset.lobby; delete doc.documentElement.dataset.lobby; }
@@ -280,6 +289,8 @@
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
     newRunHtml, newRunNotice, newRunLimits, shapeNewRun, syncJoin, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting, card(experimentId).start_error] : null),
-    start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
+    start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; next(); } },
+    // A run made a moment ago has no card until the next poll (1.5 s, 5 s in a background tab); without it 02 greys out Stop.
+    refresh,
   };
 })(window);
