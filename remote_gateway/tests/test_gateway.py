@@ -498,17 +498,21 @@ def line_up_behind_a_finished_run(world):
     return b
 
 
-def test_a_place_in_line_survives_the_last_run_still_exiting(world):
+def test_a_place_in_line_survives_the_stopped_run_still_exiting(world):
     b = line_up_behind_a_finished_run(world);gateway = world.gateway.gateway
-    world.harness.start_status, world.harness.start_error = 409, 'external scheduler process still active'
+    gateway.settling_until = world.now[0] + 60
+    world.harness.start_status, world.harness.start_error = 409, 'experiment is not startable'
     assert gateway.dispatch() is None and [row['experiment_id'] for row in gateway.store.queue()] == [b]
     world.harness.start_status = 200
     assert gateway.dispatch()[:2] == (b, 200) and gateway.store.queue() == []
 
 
-def test_a_run_the_host_truly_refuses_leaves_the_line(world):
+def test_a_run_still_refused_after_the_wait_leaves_the_line(world):
     b = line_up_behind_a_finished_run(world);gateway = world.gateway.gateway
-    world.harness.start_status, world.harness.start_error = 409, 'display evidence drift'
+    gateway.settling_until = world.now[0] + 60
+    world.harness.start_status = 409
+    assert gateway.dispatch() is None
+    world.now[0] += 61
     assert gateway.dispatch()[:2] == (b, 409) and gateway.store.queue() == []
 
 

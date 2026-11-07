@@ -65,11 +65,6 @@ def running(row):
     return _state(row) not in IDLE_STATES | ENDED_STATES
 
 
-def host_still_busy(status, value):
-    """The harness refuses a start while the last run's processes exit; a stopped run is listed as ended before they are gone."""
-    return status == 409 and isinstance(value, dict) and any(text in str(value.get('error')) for text in ('worker already active', 'scheduler process still active', 'scheduler already owns'))
-
-
 def filter_runs(listing, owners, board=None):
     """Every run on this host is public. Each row carries its card, so the page can place it in the lobby."""
     cards = {c['experiment_id']: c for c in ([board['robot']['running']] + board['queue'] + board['recent']) if c} if board else {}

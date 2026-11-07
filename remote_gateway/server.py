@@ -26,6 +26,7 @@ PASSED_HEADERS = ('Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ran
                   'X-Frame-Sequence', 'X-Frame-Version', 'X-Frame-Sha256', 'X-Frame-Age', 'X-Episode-Id', 'X-Preview-State')
 BASE_HEADERS = {'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY'}
 UNOWNED = policy.Refused('not_found', 'Not found.', 404)
+SETTLE_SECONDS = 60  # How long a stopped run's processes may take to exit.
 PUBLIC = 'public'  # Who the harness sees for anything anyone may read. It holds no keys.
 SCRIPT = re.compile(r'<script>(.*?)</script>', re.S)
 
@@ -79,7 +80,7 @@ class Gateway:
         self.rate = RateLimits(config.limits, clock)
         self.audit = Audit(config.audit_file, clock)
 
-        self.dispatching = threading.Lock();self.lock_file = None;self.starting_until = 0
+        self.dispatching = threading.Lock();self.lock_file = None;self.settling_until = 0.0;self.starting_until = 0
 
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
@@ -117,7 +118,9 @@ class Gateway:
             if busy or not line or self.paused() or not self.take_robot():return None
             head = line[0]
             status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
-            if policy.host_still_busy(status, value):  # The last run is still exiting, so this one keeps its place and the next pass retries.
+            if status != 200:print('dispatch refused:', status, str(value.get('error') if isinstance(value, dict) else value)[:200], file=sys.stderr, flush=True)
+            # A stopped run is listed as ended before its processes are gone, so for a while a refusal keeps this one's place and the next pass retries.
+            if status == 409 and self.clock() < self.settling_until:
                 self.free_robot()
                 return None
             self.store.dequeue(head['experiment_id'])
@@ -353,7 +356,9 @@ class Handler(BaseHTTPRequestHandler):
             refused = self.join_queue(experiment_id)
             if refused:return self.send_json(policy.scrub(refused[1]), refused[0])
             return self.send_json(dict(experiment_id=experiment_id, queued=True))
-        if suffix == 'cancel':self.gateway.store.dequeue(experiment_id)
+        if suffix == 'cancel':
+            self.gateway.store.dequeue(experiment_id)
+            self.gateway.settling_until = self.gateway.clock() + SETTLE_SECONDS
         self.relay(self.path, b'{}')
 
     def relay(self, target, body=b'', headers=None):
