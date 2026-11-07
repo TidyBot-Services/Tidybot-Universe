@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import http.client
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -109,6 +110,16 @@ def test_a_run_shown_as_prepared_for_a_moment_is_not_a_lost_start():
     from remote_gateway.simtest.sim_users import START_GRACE_SECONDS, start_lost
     assert not start_lost('PREPARED / NOT STARTED', 3)
     assert start_lost('✕ DID NOT START', 0) and start_lost('PREPARED / NOT STARTED', START_GRACE_SECONDS)
+
+
+def test_the_disk_check_survives_files_that_vanish_but_not_a_missing_total(tmp_path, monkeypatch):
+    from remote_gateway.simtest import run_sim
+    bin_dir = tmp_path / 'bin';bin_dir.mkdir()
+    du = bin_dir / 'du';du.write_text('#!/bin/sh\necho "du: cannot access x: No such file or directory" >&2\necho "8192\t$2"\nexit 1\n');du.chmod(0o755)
+    monkeypatch.setenv('PATH', f'{bin_dir}:{os.environ["PATH"]}')
+    assert run_sim.host_disk('', tmp_path)[1] == 8192  # du walked past a file a run had just deleted.
+    du.write_text('#!/bin/sh\nexit 1\n')
+    with pytest.raises(IndexError):run_sim.host_disk('', tmp_path)  # No total at all: the guard treats this as over the limit.
 
 
 def sign(owner, method, target, body=b''):

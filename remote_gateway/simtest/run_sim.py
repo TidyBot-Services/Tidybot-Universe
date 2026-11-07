@@ -140,7 +140,8 @@ def host_run(prefix, command):
 def host_disk(prefix, root):
     """Free bytes on the run host, and the bytes already under its run root."""
     free = int(host_run(prefix, f'df -B1 --output=avail {root}').split()[-1])
-    used = int(host_run(prefix, f'du -sb {root}').split()[0])
+    # A running run deletes its temporary files while du walks them, and du then exits 1 after printing the total. A total is still required.
+    used = int(host_run(prefix, f"sh -c 'du -sb {root} 2>/dev/null; true'").split()[0])
     return free, used
 
 
