@@ -3998,6 +3998,8 @@
     const reason = String(s?.reason || snapshot.eval?.stopped_reason || '');
     const end=s&&devEndSummary(s);
     if(end?.key==='action_approval')return end.explanation+(end.review?'; review required for unresolved work':'');
+    // Remote time-share: the run stopped itself; a failed state must not read as a system problem or a cancel.
+    if(key==='no_progress')return 'it stopped itself: no new Try, version or help request for 2 hours (nobody cancelled it, and it was not a system problem)';
     if (['executions','model_calls','dev_calls','max_attempts'].includes(key)) return `it used all ${maximum} allowed attempts`;
     if (/help|assistance/.test(key || '')) return 'it used all help requests';
     if (/tokens|AI/.test(key || '')) return 'it ran out of AI budget';
