@@ -9,7 +9,7 @@
 | 脚本和监控页 | 已写好，在 `remote_gateway/simtest/` |
 | 自动测试 | `remote_gateway/tests` 全部通过，其中新增 `test_simtest.py` |
 | 离线全流程 | 跑通：真实 Chrome + 真实网关 + 真实页面 + 假后端，9 个用户，48 项检查全过，包含全屏警示。页面判定“有错误”，因为测出了下面的产品问题 |
-| 真实 run | 已跑，部分完成，见 `~/桌面/AttentionBench-Workspace/docs/REPORT-remote-crowd-real-20261107.md`。PARCC 连不上，Dev、Eval、Advisor 全用 Codex |
+| 真实 run | 第一轮：部分完成，Dev/Eval/Advisor 全用 Codex，见 `docs/REPORT-remote-crowd-real-20261107.md`。第二轮：Dev 用 gpt-6.1-sol high，Eval/Advisor 用 PARCC GLM；页面全过，3 次求助都没送到（harness 关键词检查误拦），见 `docs/REPORT-remote-crowd-sol-20261107.md` |
 
 ## 一、模拟用户
 
@@ -37,9 +37,9 @@
 | 规模 | 9 人全剧情，时钟 8 倍，一轮约 6 分钟 | 同样 9 人跑 1 轮：6 个真实 run，每个从开始起最多 30 分钟；U2 不上机器人；U5 看到画面就停 |
 | 占用 | 不用 GPU 和模型，磁盘小于 3M | 最长约 3 小时，单仿真串行 |
 
-假后端校验网关签名，并记录“同一时间两个 run”。真实测试的 Dev 用 Codex（gpt-6-astra）。原计划 Eval 和 Advisor 用 PARCC，但 11-07 从 truares 连不上 PARCC，中控台决定三者都用 Codex。
+假后端校验网关签名，并记录“同一时间两个 run”。真实测试的 Dev 用 Codex gpt-6.1-sol（reasoning high），Eval 和 Advisor 用 PARCC GLM（Qwen 被 403 拒绝）。第一轮 PARCC 连不上，三者都用了 Codex gpt-6-astra。真实模式结束时会读每个 run 的求助记录，求助了但没送到人或 Advisor 的记为错误。
 
-**回复是模拟的：** U1、U6、U7 的回复由 `reply_writer.py` 调 Codex 写出，再由模拟用户在页面回复框发送，走完整的页面和网关路径。这不算真人验证，报告里会写明。写回复失败时不发送，监控页报错，由 Advisor 接手。
+**回复是模拟的：** U1、U6、U7 的回复由 `reply_writer.py` 调 Codex（gpt-6.1-sol high）写出，再由模拟用户在页面回复框发送，走完整的页面和网关路径。这不算真人验证，报告里会写明。写回复失败时不发送，监控页报错，由 Advisor 接手。
 
 ## 三、监控网页
 

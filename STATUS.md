@@ -1,11 +1,11 @@
 <!-- remote-crowd-20261107 -->
-## 11-07：Remote 多用户真实测试（分支 `claude/bold-gates-c82b8e`；部分完成，工程测试，非正式实验）
+## 11-07：Remote 多用户真实测试（分支 `claude/bold-gates-c82b8e`；工程测试，非正式实验）
 
-- **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、安全线（磁盘、Codex 额度）、测试结束时清理遗留 run。
-- **真实测试**：truares 上 9 人依次用了 8 个真实 run，求助的真人回复、跳过、超时转 Advisor 都在真实 run 上发生过，越权检查全被拒。run 之间按日志时间没有重叠。Dev、Eval、Advisor 全用 Codex（PARCC 从 truares 连不上，是否因 VPN 未证实）。回复由 Codex 生成，不算真人验证。
-- **未通过**：主测试判定“有错误”，其中 5 条来自磁盘安全线误叫停（已修，U7、U8 补跑通过），1 条是 U2 排队时 Stop 按钮显示为灰色（原因未查明）。PARCC 链路和 429 没有测到。
-- **证据**：报告 `~/桌面/AttentionBench-Workspace/docs/REPORT-remote-crowd-real-20261107.md`；监控页 8870、8877（只监听本机）；`remote_gateway/tests` 198 项通过；最新离线 52 项检查全过。
-- **下一步**：中控台合并本分支（其中 `af466a2` 是产品修复）；用户确认后清理约 21G 测试 run；PARCC 恢复后补测这条链路。
+- **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、安全线（磁盘、Codex 额度）、测试结束时清理遗留 run、真实模式下核对求助是否送到。
+- **第一轮**（Dev/Eval/Advisor 全用 Codex gpt-6-astra）：部分完成。求助的真人回复、跳过、超时转 Advisor 都在真实 run 上发生过。报告 `~/桌面/AttentionBench-Workspace/docs/REPORT-remote-crowd-real-20261107.md`。
+- **第二轮**（Dev 用 gpt-6.1-sol high，Eval/Advisor 用 PARCC GLM）：页面和网关全过（38 项检查、越权 11 次全拒、7 个真实 run 无重叠），U2 Stop 灰按钮已修好。判定“有错误”：3 次求助都没送到人或 Advisor。原因有两个：GLM 文字路径的 Advisor 被 `safety_interrupt` 字段误拦；Dev 自己写的 "evaluator" 一词让求助在 Dev 边界被拒。两者都没修，等用户决定。PARCC Eval 本轮没被调用（没有 run 提交正式版本）。报告 `~/桌面/AttentionBench-Workspace/docs/REPORT-remote-crowd-sol-20261107.md`。
+- **证据**：监控页 8870、8877、8886（只监听本机）；`remote_gateway/tests` 199 项通过；离线 52 项检查全过；前端测试修前修后都是同样 44 项失败，没有新增。
+- **下一步**：中控台合并本分支（产品修复是 `af466a2`、`8cebc3f`）；用户决定上面两处关键词检查怎么改；用户确认后清理测试 run（约 21G + 15G）。
 <!-- /remote-crowd-20261107 -->
 
 <!-- general-setup-20261105 -->
