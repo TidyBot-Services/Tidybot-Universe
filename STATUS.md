@@ -1,3 +1,12 @@
+<!-- remote-timeshare-20261108 -->
+## 11-08：Remote 分时共用仿真（分支 `claude/peaceful-perlman-d76267`，提交 `2035b5a`；工程验证，未部署，非正式实验）
+
+- **已做**：最多 N=3 个 Remote run 同时开着；harness 每次 Try／正式版本执行前拿主机的 sim.lock，执行完交回，按执行先来先得（交回后再要就排到队尾）；只读探测不拿。等机器人的时间不计入 run 时长。Remote 不限时长（含探测进程写死的 6 小时）；连续 2 小时活动时间没有新执行、版本或求助就自动停，原因 `no_progress`，页面写明不是取消。版本、求助、探测、额度、磁盘上限不变。超时的执行要确认仿真停了才交出令牌。只在 `--public-gateway-mode` 加 `--sim-lock`、`--run-slots` 时生效，8769 本地不变。单 run token 上限未做（用户未定，已留位置）。
+- **P0 实测**：truares 是 RTX 5070 Ti 16G（不是 5090），qifei 是 RTX 5090 32G；每个开着的 run 最多约 3.4G 显存；N 两台都定 3。详见 `~/桌面/AttentionBench-Workspace/docs/PLAN-remote-sim-timeshare-20261108.md`。
+- **证据**：`remote_gateway/tests` 211 项通过；新增 `test_sim_timeshare.py` 18 项（令牌轮流、等待不计时、无进展停止、超时保留令牌，以及各自对应的本地路径不变）和 `test_remote_timeshare_ui.cjs` 5 项通过；离线多用户测试（真实 Chrome + 真实网关 + 假后端，9 人）53 项检查全过，0 违规，同时开着峰值 3 个；全量回归 8280 通过 / 682 失败 / 48 错误，基线 `2321653` 为 8252 / 680 / 48，原有失败名单完全一致；多出的 2 项是新测试在 /tmp 副本里找不到 paths.json，基线里同类 28 项同样失败，设好工作区后通过；前端 48 个 cjs 前后都是 38 过 10 失败，输出相同。
+- **没做**：没有部署到 truares 或 qifei，没跑真实 run。
+- **下一步**：中控台合并；部署时 harness 要加 `--sim-lock <主机的锁> --run-slots 3`，网关 `limits.run_slots` 跟它一致；再用真实 run 验证。
+<!-- /remote-timeshare-20261108 -->
 <!-- remote-crowd-20261107 -->
 ## 11-07：Remote 多用户真实测试（分支 `claude/bold-gates-c82b8e`；工程测试，非正式实验）
 
