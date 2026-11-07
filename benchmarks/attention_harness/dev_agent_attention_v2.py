@@ -14,6 +14,7 @@ from dataclasses import asdict
 from . import dev_agent_policies as policies
 from .dev_agent_attention import Helper, flat_usage, request_view
 from . import dev_agent_human_reply as human_reply
+DEV_AUTHORED_VIEW_FIELDS = frozenset({'diff', 'reasoning', 'question'})
 from .dev_agent_eval import feedback
 from .dev_agent_workspace import atomic_write, encode, read_beneath, shared_name
 from .dev_help import public_screen
@@ -350,7 +351,9 @@ class HelperV2(Helper):
         if self.ledger.snapshot()['remaining']['help']<=0:return rejected('assistance_budget_exhausted')
         try:
             view = self.view_builder(self, eid, decision, origin=origin, question=question)
-            public_screen(view)
+            # User 11-08: Dev's own words (its code diff, run log and code, its question) are not screened for
+            # evaluation terms; Dev never sees private evaluation, so a word like "evaluator" there is Dev's own.
+            public_screen({k:v for k,v in view.items() if k not in DEV_AUTHORED_VIEW_FIELDS})
         except Exception as exc:
             atomic_write(self.workspace.private, 'help/'+eid+'/error.json', encode(dict(error=str(exc))))
             return rejected('public_view_unavailable')

@@ -36,7 +36,8 @@ def credential():
     return value or None
 
 SCHEMA = 'attentionbench.dev-v2-eval-review.v1'
-FORBIDDEN = re.compile(r'native_success|_check_success|native_result|safety', re.I)
+# safety_interrupt is a public receipt field every execution carries (user 11-08); other safety terms stay private.
+FORBIDDEN = re.compile(r'native_success|_check_success|native_result|safety(?!_interrupt)', re.I)
 # Explicit whitelist: reviews return to Dev. Never open scoring, service,
 # receipt, scene or full configuration files, even to discover evidence.
 TEXT_FILES = ('trace.json', 'policy.py', 'policy-stderr.txt',
