@@ -223,7 +223,7 @@ def test_a_help_request_that_never_reached_anyone_is_an_error_with_the_hosts_rea
     (agent / 'ws' / 'history' / 'help.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
     (agent / 'private' / 'help' / 'e000002' / 'error.json').write_text(json.dumps(dict(error='evaluation-derived text rejected at Dev boundary')))
     events = tmp_path / 'events.jsonl'
-    events.write_text(json.dumps(dict(lane='U7', kind='state', run_id=run_id)) + '\n')
+    events.write_text(json.dumps(dict(lane='U7', kind='state', run_id=run_id)) + '\n' + json.dumps(dict(lane='G1', kind='state', run_id=run_id)) + '\n')
     assert run_sim.help_checks(tmp_path / 'runs', events, []) == 1
     problem = json.loads(events.read_text().splitlines()[-1])
     assert problem['lane'] == 'U7' and problem['level'] == 'error' and problem['source'] == '求助没送到'

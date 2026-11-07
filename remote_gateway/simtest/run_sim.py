@@ -153,7 +153,9 @@ def help_checks(run_root, events, codes):
     """Real runs: what each help request became on the host. The page only shows what reached it, so a request the robot made
     that never reached the person or the Advisor is written here as an error, with the host's own reason."""
     rows = [json.loads(line) for line in events.open(encoding='utf-8')]
-    runs = {row['run_id']: row.get('lane') for row in rows if row.get('run_id')}
+    runs = {}
+    for row in rows:  # The person who made a run names it first; a guest who watches it later does not own it.
+        if row.get('run_id'):runs.setdefault(row['run_id'], row.get('lane'))
     log = sim_users.Log(events, codes);found = 0
     for run_id, lane in runs.items():
         for history in Path(run_root).glob(f'{run_id}/artifacts/{run_id}/cells/*/agent/ws/history/help.jsonl'):
