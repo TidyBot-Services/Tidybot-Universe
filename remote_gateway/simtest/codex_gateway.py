@@ -1,5 +1,6 @@
 """The gateway for this test only: Dev is the lab's Codex (gpt-6.1-sol, reasoning high), under a stop line.
-Eval and Advisor are the lab's PARCC GLM (PARCC's Qwen is refused with 403 as of 2026-11-07).
+Eval and Advisor are the lab's PARCC GLM (PARCC's Qwen is refused with 403 as of 2026-11-07),
+or with --reviewers codex the same Codex model as Dev.
 
 The public gateway refuses Codex on purpose, and that does not change: nothing else starts this file, and neither its
 defaults nor its deploy templates know about it. The page is unchanged; a person picks the lab models as usual.
@@ -19,11 +20,13 @@ PARCC = dict(credential='lab', provider='parcc', model='parcc/GLM')
 STOP_PERCENT = 77  # The user's stop line; the public gateway's constant is 90.
 
 
-def with_test_roles(rebuild, *, model=MODEL, effort=EFFORT, stop_percent=STOP_PERCENT):
+def with_test_roles(rebuild, *, model=MODEL, effort=EFFORT, stop_percent=STOP_PERCENT, reviewers='parcc'):
     def rebuilt(*args, **kwargs):
         result = rebuild(*args, **kwargs)
-        roles = dict(dev=dict(credential='lab', provider='openai', model=model), eval=dict(PARCC), advisor=dict(PARCC))
-        return dict(result, agent_provider=dict(roles=roles), dev_model=model, dev_reasoning_effort=effort, eval_model=PARCC['model'], advisor_model=PARCC['model'],
+        codex = dict(credential='lab', provider='openai', model=model)
+        review = dict(codex) if reviewers == 'codex' else dict(PARCC)
+        roles = dict(dev=codex, eval=review, advisor=dict(review))
+        return dict(result, agent_provider=dict(roles=roles), dev_model=model, dev_reasoning_effort=effort, eval_model=review['model'], advisor_model=review['model'],
                     quota_stop_percent=stop_percent)
     return rebuilt
 
@@ -33,13 +36,14 @@ def main():
     parser.add_argument('--config', required=True)
     parser.add_argument('--model', default=MODEL)
     parser.add_argument('--stop-percent', type=float, default=STOP_PERCENT)
+    parser.add_argument('--reviewers', choices=('parcc', 'codex'), default='parcc')
     args = parser.parse_args()
-    policy.rebuild = with_test_roles(policy.rebuild, model=args.model, stop_percent=args.stop_percent)
+    policy.rebuild = with_test_roles(policy.rebuild, model=args.model, stop_percent=args.stop_percent, reviewers=args.reviewers)
     config = load(args.config)
     config.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     server = create_server(config)
     threading.Thread(target=server.gateway.loop, args=(threading.Event(),), daemon=True).start()
-    print(f'test gateway (Dev on Codex {args.model} high, Eval and Advisor on PARCC GLM) on http://{config.listen_host}:{config.listen_port}/', flush=True)
+    print(f'test gateway (Dev on Codex {args.model} high, Eval and Advisor on {args.reviewers}) on http://{config.listen_host}:{config.listen_port}/', flush=True)
     server.serve_forever()
 
 
