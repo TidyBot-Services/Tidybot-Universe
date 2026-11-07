@@ -8,7 +8,7 @@ const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const block=source.slice(source.indexOf('  function replayTarget('),source.indexOf('  function operatorReplayTarget('));
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const saved=new Map();
-const api=vm.runInNewContext(block+'\n({replayTarget,trimMode,trimUsable,attachTrim,skipText,operatorSkipRow,operatorTrimBar})',{
+const api=vm.runInNewContext(block+'\n({replayTarget,trimMode,trimUsable,attachTrim,tryReplayDue,skipText,operatorSkipRow,operatorTrimBar})',{
   esc,preference:(key,value)=>{if(value===undefined)return saved.get(key)??null;saved.set(key,value);},
   devFile:(session,uri)=>`/files/${uri}`,
   operatorTime:seconds=>{const v=Math.max(0,Math.round(Number(seconds)||0));return `${Math.floor(v/60)}:${String(v%60).padStart(2,'0')}`;}
@@ -84,4 +84,14 @@ test('skipped spans read as plain words with the real time range',()=>{
   saved.set('attention.replay-trim','original');
   assert.match(api.operatorTrimBar(trim),/data-trim-mode="original" aria-pressed="true"[\s\S]*Full recording · 0:51/);
   saved.delete('attention.replay-trim');
+});
+
+test('a try replay read before its trim was built is asked for again, for a bounded time',()=>{
+  const untrimmed={recording:{video_saved:true}},at=first=>({first,last:first});
+  assert.equal(api.tryReplayDue(undefined,undefined,0),true,'never read');
+  assert.equal(api.tryReplayDue(untrimmed,at(0),5000),false,'too soon after the last read');
+  assert.equal(api.tryReplayDue(untrimmed,at(0),9000),true,'the trim may have arrived');
+  assert.equal(api.tryReplayDue(untrimmed,{first:0,last:355000},364000),false,'the build is over');
+  assert.equal(api.tryReplayDue({recording:{video_saved:true,trim}},at(0),9000),false,'trim arrived');
+  assert.equal(api.tryReplayDue({recording:{video_saved:false}},at(0),9000),false,'no video, no trim to wait for');
 });

@@ -832,6 +832,14 @@
       && traces.every((t,i)=>Number.isFinite(t) && Number.isFinite(videos[i]) && videos[i]>=0 && (!i || t>traces[i-1] && videos[i]>videos[i-1]))
       && Object.keys(viewRows||{external:1}).every(key=>trim.videos?.[trimView(key)]?.uri);
   }
+  // A try's result is public before its trim is built (up to 5 min later), so a replay
+  // read without a trim is asked for again until the trim arrives or the build must be over.
+  const TRY_TRIM_WAIT_MS=360000,TRY_TRIM_POLL_MS=9000;
+  function tryReplayDue(raw,fetched,now) {
+    if(!raw)return true;
+    if(raw.recording?.trim||!raw.recording?.video_saved)return false;
+    return now-fetched.first<TRY_TRIM_WAIT_MS&&now-fetched.last>=TRY_TRIM_POLL_MS;
+  }
   function attachTrim(trace,trim,session) {
     const original=trace.recording;
     const timing={basis:'relative',event_clock:'sdk_completion',frame_trace_seconds:trim.replay_timing.frame_trace_seconds,frame_video_seconds:trim.replay_timing.frame_video_seconds};
@@ -5515,10 +5523,11 @@
     return snapshot;
   }
   // A try that was never submitted has no attempt, so it joins the replay panel beside them: it must not count as the run's latest attempt.
-  const agentTryReplays=new Map();
+  const agentTryReplays=new Map(),agentTryFetches=new Map();
   async function addAgentTries(snapshot,cell,session) {
     const tries=(cell.agent.tries||[]).filter(t=>!t.submitted&&t.video);
-    await Promise.all(tries.filter(t=>!agentTryReplays.has(t.video)).map(async t=>{
+    await Promise.all(tries.filter(t=>tryReplayDue(agentTryReplays.get(t.video),agentTryFetches.get(t.video),Date.now())).map(async t=>{
+      const now=Date.now(),fetched=agentTryFetches.get(t.video)||{first:now};fetched.last=now;agentTryFetches.set(t.video,fetched);
       const response=await fetch(`${snapshot.agent.files_base}compat/${t.execution_id}/replay.json`,{cache:'no-store'}).catch(()=>null);
       if(response?.ok)agentTryReplays.set(t.video,await response.json());
     }));

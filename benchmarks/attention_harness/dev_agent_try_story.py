@@ -63,6 +63,15 @@ def _failure(public, eid):
     return lines[-1] if lines else ''
 
 
+def _did_not_move(private, eid):
+    """The recorder refuses a try with no control step: there is nothing to play."""
+    for path in sorted((private/'executions'/eid).glob('*/camera_recording.json')):
+        try:error = json.loads(path.read_text()).get('error')
+        except (OSError, ValueError, AttributeError):continue
+        if 'Fewer than two real control-step frames' in str(error):return True
+    return False
+
+
 def _one(private, public, eid, attempt):
     run = _json(public, f'executions/{eid}/execution.json') or {}
     result = _json(public, f'executions/{eid}/result.json') or {}
@@ -77,6 +86,7 @@ def _one(private, public, eid, attempt):
                    wrong=plain.get('wrong'), next=plain.get('next'), review=readable_review(review), review_error=review.get('error'))
     video = next(iter(sorted((private/'executions'/eid).glob('*/advisor_replay.mp4'))), None)
     if video:row['video'] = f'replays/{eid}/{hashlib.sha256(video.read_bytes()).hexdigest()}/advisor_replay.mp4'
+    elif done and _did_not_move(private, eid):row['why'] = 'The code ran, but the robot did not move, so there is no video'
     help_row = _json(public, f'executions/{eid}/help.json')
     if help_row and help_row.get('delivered') is True:
         reason = (help_row.get('decision') or {}).get('reason')

@@ -167,6 +167,17 @@ def test_a_try_with_a_recording_names_it_by_digest(tmp_path):
     assert story.tries(private)[0]['video'] == f'replays/e000001/{hashlib.sha256(b"mp4").hexdigest()}/advisor_replay.mp4'
 
 
+def test_a_try_that_never_moved_says_why_it_has_no_video(tmp_path):
+    private = tmp_path/'private';public = private/'public'
+    execution(public, 1, 'run', status='completed');execution(public, 2, 'run', status='completed')
+    for eid, error in (('e000001', 'ValueError: Fewer than two real control-step frames were saved'), ('e000002', 'disk full')):
+        path = private/'executions'/eid/'openarm/camera_recording.json';path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(dict(error=error, video_saved=False)))
+    first, second = story.tries(private)
+    assert first['why'] == 'The code ran, but the robot did not move, so there is no video' and 'video' not in first
+    assert second['why'] == 'The code ran without errors'
+
+
 def live_cell(tmp_path, state='running'):
     private = tmp_path/'agent/private';folder = private/'executions/e000001/openarm/live';folder.mkdir(parents=True)
     (folder/'frame-000003.jpg').write_bytes(b'jpeg')
