@@ -106,11 +106,14 @@ class Executor:
 
 
 class Prober:
-    def __init__(self, config, *, sim_python, private_dir, owner_factory=None):
+    def __init__(self, config, *, sim_python, private_dir, owner_factory=None, run_seconds=21600):
         from openarm365_dev_v2.owner import NativeOwnerV2
         if config.get('budget_tier')!='dev' or config.get('runner_boundary')!='dev_loop':raise ValueError('dev_tier_required')
         self.config=config;self.python=sim_python;self.private=Path(private_dir)
-        self.owner_factory=owner_factory or NativeOwnerV2;self.owner=None;self.cancelled=threading.Event();self.index=0;self.run_deadline=time.monotonic()+21600
+        self.owner_factory=owner_factory or NativeOwnerV2;self.owner=None;self.cancelled=threading.Event();self.index=0
+        # Local runs: the owner lives at most 6 hours. Remote time-share (run_seconds=None) has no time limit; each probe still has its own deadline.
+        from .dev_agent_ledger import UNLIMITED_REMAINING
+        self.run_deadline=time.monotonic()+(UNLIMITED_REMAINING if run_seconds is None else run_seconds)
         # The worker binds PR_SET_PDEATHSIG to the thread that spawned it, and the
         # broker runs each probe on a fresh thread. Spawn from one long-lived thread
         # so the warm owner survives between probes (10-28 real run).

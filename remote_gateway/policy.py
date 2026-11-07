@@ -3,6 +3,8 @@ import hashlib
 import re
 from urllib.parse import parse_qs, unquote
 
+from .config import NOMINAL_WALL_SECONDS
+
 EXPERIMENT = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})(?:/(.+))?')
 READABLE = re.compile(r'report|export\.json|cells/[a-f0-9]{64}/(?:view|agent/view|live|live/frame|agent/files/.+)')
 COMMANDS = {'run', 'cancel', 'pause'}
@@ -67,7 +69,7 @@ def running(row):
 
 def filter_runs(listing, owners, board=None):
     """Every run on this host is public. Each row carries its card, so the page can place it in the lobby."""
-    cards = {c['experiment_id']: c for c in ([board['robot']['running']] + board['queue'] + board['recent']) if c} if board else {}
+    cards = {c['experiment_id']: c for c in (board['robot'].get('open', []) + [board['robot']['running']] + board['queue'] + board['recent']) if c} if board else {}
     rows = [dict(row, lobby=cards[row['experiment_id']]) if row.get('experiment_id') in cards else row
             for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owners]
     return dict(runs=[], launches=[], dev_sessions=scrub(rows))
@@ -77,6 +79,14 @@ def active_runs(listing, owned):
     return sum(1 for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owned and running(row))
 
 
+def robot_state(row):
+    """Where an open run stands with the one robot: on it, waiting for it (with how many ahead), or not needing it now."""
+    robot = row.get('robot') if isinstance(row.get('robot'), dict) else {}
+    if robot.get('state') == 'executing':return dict(state='executing')
+    if robot.get('state') == 'waiting':return dict(state='waiting', ahead=robot.get('ahead') if type(robot.get('ahead')) is int else None)
+    return dict(state='thinking')
+
+
 def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None):
     state = _state(row);versions = row.get('versions') or [];wait = row.get('human_wait') if running(row) else None
     solved = any(v.get('native_success') is True for v in versions if isinstance(v, dict))
@@ -84,21 +94,26 @@ def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None
     return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
                 state=shown, result=None if shown != 'finished' else 'solved' if solved else 'failed', mine=mine, real=True, started_at=row.get('created_at'), ended_at=None,
                 attempt=dict(current=len(versions), limit=limits.versions), queue_position=position, eta_start_seconds=eta, help_waiting_seconds=max(0, wait['seconds'] - (wait['deadline_at'] - now)) if wait else None,
-                waiting=dict(question=wait.get('question')) if wait else None, recording=None, start_error=start_error if shown == 'created' else None)
+                waiting=dict(question=wait.get('question')) if wait else None, recording=None, start_error=start_error if shown == 'created' else None,
+                robot=robot_state(row) if running(row) else None)
 
 
 def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, now=0, start_errors=None):
-    """What the lobby shows: the one robot, who is next, and what finished. Real runs only."""
+    """What the lobby shows: the open runs (up to run_slots) and which of them is on the one robot, who is next, and what finished.
+    Real runs only. robot.running is the run executing on the robot right now, if any."""
     rows = {row['experiment_id']: row for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owners}
     make = lambda row, position=None, eta=None:_card(row, nickname=nicknames.get(owners[row['experiment_id']], 'Someone'), mine=owners[row['experiment_id']] == viewer,
                                                      position=position, eta=eta, limits=limits, now=now, start_error=(start_errors or {}).get(row['experiment_id']))
-    live = next((make(row) for row in rows.values() if running(row)), None)
+    opened = sorted((make(row) for row in rows.values() if running(row)), key=lambda c:c['started_at'] or 0)
+    live = next((c for c in opened if c['robot']['state'] == 'executing'), None)
     waiting = [row['experiment_id'] for row in queue if row['experiment_id'] in rows]
-    line = [make(rows[eid], i + 1, busy_seconds + i * limits.wall_seconds) for i, eid in enumerate(waiting)]
+    # No time limit, so no honest start estimate: a place in line is all the lobby says.
+    line = [make(rows[eid], i + 1, None) for i, eid in enumerate(waiting)]
     done = sorted((row for eid, row in rows.items() if not running(row) and eid not in waiting), key=lambda r:r.get('created_at') or 0, reverse=True)
     recent = [make(row) for row in done[:40]]
-    return dict(demo=False, robot=dict(running=live), queue=line, recent=recent, me=dict(nickname=nicknames.get(viewer)) if viewer else None, clock=dict(speed=1), events=[],
-                counts=dict(needs_you=int(bool(live and live['mine'] and live['state'] == 'waiting_human')), queued=len(line), running=int(bool(live))), limits=dict(help_wait_seconds=limits.human_reply_seconds))
+    return dict(demo=False, robot=dict(running=live, open=opened, slots=limits.run_slots, waiting=sum(c['robot']['state'] == 'waiting' for c in opened)), queue=line, recent=recent,
+                me=dict(nickname=nicknames.get(viewer)) if viewer else None, clock=dict(speed=1), events=[],
+                counts=dict(needs_you=sum(c['mine'] and c['state'] == 'waiting_human' for c in opened), queued=len(line), running=len(opened)), limits=dict(help_wait_seconds=limits.human_reply_seconds))
 
 
 def filter_options(options, limits):
@@ -171,11 +186,11 @@ def rebuild(body, *, user, options, limits, credentials):
     tag = hashlib.sha256(f'{user}\n{client_key}'.encode()).hexdigest()[:32]
     result = dict(request_key=f'gw-{user}-{tag}', goal_key=f'gw-{user}-{tag}', tasks=[tasks[0]], seeds=[_integer(seeds[0], 1, 99999, 'seed')], policies=[policies[0]],
                   mode=selection['mode'], help_budget=_integer(selection.get('help_budget'), 1, limits.help_requests, 'help_requests'),
-                  dev_mode='agent', model_source='codex', budget_tier='dev', quota_stop_percent=90, wall_limit=21600,
+                  dev_mode='agent', model_source='codex', budget_tier='dev', quota_stop_percent=90, wall_limit=NOMINAL_WALL_SECONDS,
                   dev_model=roles['dev']['model'], eval_model=roles['eval']['model'], advisor_model=roles['advisor']['model'],
                   agent_provider=dict(roles=roles),
-                  agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'),
-                                    wall_seconds=_integer(wanted.get('wall_seconds', limits.wall_seconds), 1200, limits.wall_seconds, 'wall_seconds')))
+                  # No time limit on Remote: the wall field is recorded at its nominal value whatever the page sends.
+                  agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'), wall_seconds=NOMINAL_WALL_SECONDS))
     if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', human_reply_seconds=limits.human_reply_seconds)
     if rules:result['rules_profile'] = rules
     suffix = selection.get('name_suffix')

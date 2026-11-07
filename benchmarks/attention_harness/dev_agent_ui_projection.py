@@ -649,9 +649,10 @@ def compat(cell, agent, ledger_jobs):
     used = {key: counts.get(value, 0) for key,value in mapping.items()}
     budget['provider_tokens'] = None; used['provider_tokens'] = None
     held = {key: agent['held'].get(value, 0) for key,value in mapping.items()}
+    unlimited = agent.get('wall_limit') is None  # Remote time-share: no time limit
     goal = dict(wall_used=agent['wall_seconds'], wall_limit=agent['wall_limit'],
-                wall_remaining=max(0, agent['wall_limit']-agent['wall_seconds']), limits=budget, used=used, reserved=held)
-    phase = 'terminal' if agent['phase']=='stopped' else {'waiting on execution':'sdk','Eval':'eval','help':'advisor','turn running':'model'}.get(agent['phase'], 'prepared')
+                wall_remaining=None if unlimited else max(0, agent['wall_limit']-agent['wall_seconds']), limits=budget, used=used, reserved=held)
+    phase = 'terminal' if agent['phase']=='stopped' else {'waiting on execution':'sdk','waiting for robot':'robot_wait','Eval':'eval','help':'advisor','turn running':'model'}.get(agent['phase'], 'prepared')
     # Same shapes as a one-call cell: a finished run has no lifecycle, only ended
     # run controls, plus the Codex quota points spent (first and last sample).
     terminal = phase == 'terminal'
@@ -663,7 +664,7 @@ def compat(cell, agent, ledger_jobs):
                 **({'reduced_budget': agent['reduced_budget']} if agent.get('reduced_budget') else {}),
                 dev_mode='agent', agent_policy_version=agent.get('agent_policy_version','agent-policy-v1'), artifact_dir=ROOT, versions=versions, help_intervals=intervals,
                 trailing_activity=next((i for i in activity if i['version_id'] is None), None), jobs=jobs, budget=budget, used=used,
-                ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True},
+                ledger={'goal':goal}, lifecycle=None if terminal else {'phase':phase, 'can_stop':True, **({'robot_ahead':(agent.get('robot') or {}).get('ahead')} if phase=='robot_wait' else {})},
                 run_controls=controls, quota_usage=quota_usage(cell))
 
 

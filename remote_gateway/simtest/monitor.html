@@ -62,10 +62,10 @@ function render(s){
   const v=$('verdict');v.textContent={pass:'✓ 全部通过',fail:'✕ 有错误',running:'进行中'}[t.verdict];v.style.background=t.verdict==='fail'?'var(--crit)':t.verdict==='pass'?'var(--good)':'';v.style.color=t.verdict==='running'?'':'#fff';
   $('clock').textContent=`开始 ${time(s.began)} · 已过 ${span(end-start)}`;
   const stale=s.ended?0:s.last_event?s.now-s.last_event:0,fails=Object.entries(s.source_failures||{});
-  const alarms=[...fails.map(([k,f])=>`${k} 读取失败：${f.message}`),...(stale>30?[`已经 ${Math.round(stale)} 秒没有新事件，模拟脚本可能卡住或已退出`]:[]),...(s.fake?.violations?.length?[`违反“同一时间一个仿真”：${s.fake.violations.length} 次`]:[])];
+  const alarms=[...fails.map(([k,f])=>`${k} 读取失败：${f.message}`),...(stale>30?[`已经 ${Math.round(stale)} 秒没有新事件，模拟脚本可能卡住或已退出`]:[]),...(s.fake?.violations?.length?[`违反分时规则（超过运行名额，或两个 Try 同时在机器人上）：${s.fake.violations.length} 次`]:[])];
   failure=alarms.join('；');
   const disk=s.disk,low=disk&&disk.free_gb<disk.floor_gb;
-  $('tiles').innerHTML=[tile('机器人上',robot?`${robot.nickname}`:'空闲',s.fake?`假后端 ${s.fake.on_robot.length} 个 run`:''),tile('排队',`${s.lobby?.queue?.length??'未知'} 人`,(s.lobby?.queue||[]).slice(0,3).map(q=>q.nickname).join('、')),
+  $('tiles').innerHTML=[tile('机器人上',robot?`${robot.nickname}`:'空闲',s.fake?`假后端 ${s.fake.on_robot.length} 个 run`:''),tile('开着的 run',s.lobby?.robot?.open?`${s.lobby.robot.open.length} / ${s.lobby.robot.slots}`:'未知',s.lobby?.robot?.open?`等机器人 ${s.lobby.robot.waiting} 个`:''),tile('排队',`${s.lobby?.queue?.length??'未知'} 人`,(s.lobby?.queue||[]).slice(0,3).map(q=>q.nickname).join('、')),
     tile('用户',`${t.people_done} / ${t.people}`,'已结束 / 总数'),tile('错误',t.errors,`预期拒绝 ${t.expected_refusals}`,t.errors>0),tile('检查项',`${t.checks-t.checks_failed} / ${t.checks}`,t.checks_failed?`${t.checks_failed} 项未过`:'全部通过',t.checks_failed>0),
     tile('sim.lock',s.lock?.state??'未知',s.lock?.pid?`pid ${s.lock.pid}`:''),tile('根盘剩余',disk?`${disk.free_gb} G`:'未知',disk?`已用 ${disk.used_percent}% · 底线 ${disk.floor_gb} G`:'',low)].join('');
   $('errorbox').style.display=errors.length?'block':'none';$('errortitle').textContent=`错误 ${errors.length} 条（最新在上）`;

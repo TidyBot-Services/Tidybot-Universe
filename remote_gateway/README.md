@@ -33,7 +33,7 @@ python -m benchmarks.attention_harness.init_store --store public/attention.sqlit
 ```
 
 ```bash
-python -m benchmarks.attention_harness.ui_server --store public/attention.sqlite3 --artifact-root public/artifacts --run-catalog public/catalog.json --dev-v2-root public/runs --dev-v2-per-run-budget --port 8860 --public-gateway-mode --gateway-secret-fd 3 3< gateway-state/gateway.secret
+python -m benchmarks.attention_harness.ui_server --store public/attention.sqlite3 --artifact-root public/artifacts --run-catalog public/catalog.json --dev-v2-root public/runs --dev-v2-per-run-budget --port 8860 --public-gateway-mode --gateway-secret-fd 3 --sim-lock /path/to/sim.lock --run-slots 3 3< gateway-state/gateway.secret
 ```
 
 ```bash
@@ -61,7 +61,7 @@ each run records the host it was created on. Nothing here reads the harness's di
 
 - **Login**: an invite code becomes a session cookie (HttpOnly, SameSite=Strict, Secure unless turned off). Writes also need the session's CSRF token.
 - **Watching**: anyone may open the page and read every run, signed in or not. Starting a run, stopping it, replying and keys need an invite; only a run's owner may act on it.
-- **Queue**: Start joins a first-come line, one place per person. The gateway starts the next run when no run is active, under its owner, and holds `sim_lock` while it runs.
+- **Queue and time-share**: Start joins a first-come line, one place per person. The gateway starts the next run whenever fewer than `limits.run_slots` runs are open (default 3), under its owner. It never holds the robot: the harness (started with `--sim-lock` and `--run-slots`) takes the host's lock for one Try or version at a time, first come first served by execution, so a run that just used the robot waits behind whoever was already waiting. Read-only probes do not take it. Waiting for the robot does not count toward a run's time. Remote runs have no time limit; a run with no new execution, version or help request for 2 hours of active time stops itself with reason `no_progress`. Version, help, probe, quota and disk limits are unchanged. The gateway's `sim_lock` setting is now read only by the crowd-test monitor.
 - **New run**: built from named fields, never copied. All three roles must be the lab's PARCC or a key this person saved (a preset provider, or a custom endpoint when the harness has `ATTENTION_ALLOW_CUSTOM_PROVIDER_URL=1`; it must be HTTPS on public addresses), so nothing can reach the lab's Codex. Limits are clamped here, whatever the page sends.
 - **Keys**: pass through to the harness's memory, scoped to the person by the signed owner. The gateway keeps no key, and logs no body.
 - **Answers**: lists are rebuilt from owned runs; JSON loses host paths and the harness's private fields. Video and frames stream unchanged, with Range.

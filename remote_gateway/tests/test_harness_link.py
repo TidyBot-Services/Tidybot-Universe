@@ -153,7 +153,7 @@ def test_a_run_is_public_to_read_and_only_its_owner_may_act(link):
     eid, key = made['experiment_id'], made['cells'][0]['key']
     status, view = alice.json('GET', f'/api/dev-v2/experiments/{eid}/cells/{key}/view')
     assert status == 200, view
-    assert view['agent']['model_source'] == 'parcc' and view['agent']['reduced_budget']['versions'] == 3 and view['agent']['reduced_budget']['wall_seconds'] == 3600
+    assert view['agent']['model_source'] == 'parcc' and view['agent']['reduced_budget']['versions'] == 3 and view['agent']['reduced_budget']['wall_seconds'] == 21600
     assert [row['experiment_id'] for row in alice.json('GET', '/api/runs')[1]['dev_sessions']] == [eid]
     assert [row['lobby']['mine'] for row in bob.json('GET', '/api/runs')[1]['dev_sessions']] == [False]
     assert bob.send('GET', f'/api/dev-v2/experiments/{eid}')[0] == 200

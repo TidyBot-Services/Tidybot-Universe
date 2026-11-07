@@ -220,7 +220,7 @@ class Workspace:
                 share(self.canonical, name, self.ws); continue
             self._restore(self.ws, name, read_beneath(self.canonical, name, max(SOURCE_LIMIT, (self.canonical / name).stat().st_size)))
 
-    def prepare(self, task, config, success_condition=None, budget=None):
+    def prepare(self, task, config, success_condition=None, budget=None, wall_unlimited=False):
         from curobo_v2.fixture_interaction import config_enabled
         if config_enabled(config):self.fixture_config=config
         from .dev_tasks import dev_sdk, dev_sdk_prompt
@@ -258,7 +258,8 @@ class Workspace:
         self.publish('docs/safety.json', dict(translation_coordinate_m=.05, rotation_rad=.5,
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
             execution_seconds=1920, versions=budget['versions'] if budget else 10, executions=40, probes=300,
-            wall_seconds=budget['wall_seconds'] if budget else 21600))
+            wall_seconds=None if wall_unlimited else budget['wall_seconds'] if budget else 21600,
+            **(dict(no_progress_seconds=7200) if wall_unlimited else {})))
         self.publish('docs/devtool.py', Path(__file__).with_name('dev_agent_tools.py').read_bytes())
         tools = TOOLS_V2 if config.get('agent_policy_version','agent-policy-v1')=='agent-policy-v2' else TOOLS
         if budget:
@@ -266,6 +267,11 @@ class Workspace:
             was='Limits: 10 formal versions, 40 executions, 300 probes, 6 hours total wall time;'
             if was not in tools:raise ValueError('tools_budget_text_missing')
             tools=tools.replace(was,f"Limits: {budget['versions']} formal versions, 40 executions, 300 probes, {budget['wall_seconds']} seconds total wall time;")
+        if wall_unlimited:
+            # Remote time-share: no wall limit; the run stops after 2 hours without progress instead.
+            was=next((line for line in tools.splitlines() if line.startswith('Limits:') and 'total wall time;' in line),None)
+            if was is None:raise ValueError('tools_budget_text_missing')
+            tools=tools.replace(was,was.split(', 300 probes,')[0]+', 300 probes, no total wall time limit (the run stops after 2 hours of active time with no new execution, version or help request; waiting for the shared robot is not counted);')
         if config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only':
             tools=tools.replace('Memory notes in memory/vN.json are advice, not authority. Each note is bound to\nthe version it was issued for; read the current version\'s notes before moving.\n', 'This hint_only run has no Memory input or public Memory files.\n')
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'

@@ -316,6 +316,18 @@ class Person:
             now = await self.until('run 结束', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled'), seconds)
             self.emit('state', run_id=self.run_id, page=dict(now, frame=None, live=False), finished=(now['card'] or {}).get('result') or (now['card'] or {}).get('state'))
 
+    async def slots_full(self, seconds=120):
+        """Time-share: up to N runs are open at once, so a line forms only once every slot is taken. Wait for that."""
+        async with self.step('等所有运行名额占满'):
+            read = "async () => {const v = await (await fetch('/api/lobby', {credentials: 'same-origin', cache: 'no-store'})).json(); return [(v.robot.open || []).length, v.robot.slots || 1];}"
+            deadline = time.time() + seconds * self.settings.scale
+            while time.time() < deadline:
+                if self.shared.get('abort'):raise RuntimeError(f'测试被安全线叫停：{self.shared["abort"]}')
+                opened, slots = await self.page.evaluate(read)
+                if opened >= slots:return self.check('排队前运行名额已满', True, f'{opened} / {slots} 个 run 开着')
+                await asyncio.sleep(.5)
+            raise TimeoutError(f'等了 {seconds * self.settings.scale:.0f} 秒，运行名额一直没有占满（{opened} / {slots}）')
+
     async def leave_line(self):
         """Leave the queue from the page. If the page offers no way, that is written down, then the same request is sent so the line can be tested."""
         await self.until('页面显示排队', lambda s:(s['card'] or {}).get('state') == 'queued', 30)
@@ -464,7 +476,7 @@ async def quitter(p):
     await p.new_run();await p.wait_robot();await p.watch_live();await p.stop_run()
 
 async def leaves_line(p):
-    await p.new_run();await p.leave_line()
+    await p.slots_full();await p.new_run();await p.leave_line()
 
 async def flaky(p):
     await p.new_run();await p.wait_robot();await p.watch_live();await p.drop_line();await p.answer('reply');await p.watch_live();await p.finish()

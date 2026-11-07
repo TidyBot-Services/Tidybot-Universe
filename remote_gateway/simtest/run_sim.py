@@ -40,9 +40,10 @@ def wait_up(url, seconds=20):
     raise SystemExit(f'没有起来：{url}')
 
 
-def gateway_config(directory, *, port, upstream, sim_lock=None, stop_files=()):
+def gateway_config(directory, *, port, upstream, sim_lock=None, stop_files=(), slots=3):
+    # Run slots are not a limit to open: they follow the host's GPU memory and disk (the time-share plan's P0).
     value = dict(state_dir=str(directory / 'gateway-state'), upstream=upstream, ui_dir=str(ROOT / 'benchmarks/attention_harness/ui'), listen_port=port, cookie_secure=False, stop_files=list(stop_files),
-                 limits=OPEN_LIMITS, sim_lock=str(sim_lock) if sim_lock else None)
+                 limits=dict(OPEN_LIMITS, run_slots=slots), sim_lock=str(sim_lock) if sim_lock else None)
     path = directory / 'gateway.json';path.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding='utf-8')
     return path
 
@@ -83,6 +84,11 @@ def outcome_checks(port, events, cast, codes):
         if story not in wanted or run is None:continue
         got = [item['provider'] for item in run['helped']]
         log.write(lane=lane, name=name, kind='check', check=f'后端收到的求助结果是 {wanted[story]}', ok=wanted[story] in got, detail=f'后端记录 {got}')
+    # Time-share: the runs really overlapped, and the robot still had one Try at a time (the fake records any breach as a violation).
+    log.write(lane='-', kind='check', check=f'同时开着的 run 最多 {world["slots"]} 个，且确实有多个同时开着', ok=2 <= world.get('peak_open', 0) <= world['slots'],
+              detail=f'峰值 {world.get("peak_open")} 个，名额 {world["slots"]}')
+    waited = {run_id[-8:]:run['waited_seconds'] for run_id, run in world['runs'].items() if run.get('waited_seconds')}
+    log.write(lane='-', kind='check', check='有 Try 排过机器人（等待不计入 run 时间）', ok=bool(waited), detail=f'等过的 run 与秒数：{waited}')
     log.write(lane='-', kind='check-end')
     # The verdict is read after these lines are in, so a wrong outcome cannot pass.
     time.sleep(1.5)
@@ -101,11 +107,11 @@ def offline(args):
     (directory / 'gateway-state').mkdir(exist_ok=True, mode=0o700)
     for name in ('events.jsonl', 'report.json'):(directory / name).unlink(missing_ok=True)
     shutil.rmtree(directory / 'shots', ignore_errors=True)
-    config = gateway_config(directory, port=args.gateway_port, upstream=f'http://127.0.0.1:{args.fake_port}')
+    config = gateway_config(directory, port=args.gateway_port, upstream=f'http://127.0.0.1:{args.fake_port}', slots=args.slots)
     state = directory / 'gateway-state'
     for name in ('gateway.sqlite3', 'audit.jsonl', 'gateway.secret'):(state / name).unlink(missing_ok=True)
     gateway_cli(config, 'secret')
-    processes = [spawn(['-m', 'remote_gateway.simtest.fake_harness', '--port', str(args.fake_port), '--secret-file', str(state / 'gateway.secret'), '--speed', str(args.speed), '--try-seconds', str(args.try_seconds), '--think-seconds', str(args.think_seconds)], directory / 'fake.log')]
+    processes = [spawn(['-m', 'remote_gateway.simtest.fake_harness', '--port', str(args.fake_port), '--secret-file', str(state / 'gateway.secret'), '--speed', str(args.speed), '--try-seconds', str(args.try_seconds), '--think-seconds', str(args.think_seconds), '--slots', str(args.slots)], directory / 'fake.log')]
     try:
         wait_up(f'http://127.0.0.1:{args.fake_port}/sim/state')
         processes.append(spawn(['-m', 'remote_gateway.simtest.codex_gateway', '--config', str(config)], directory / 'gateway.log'))
@@ -271,6 +277,7 @@ def main():
     parser.add_argument('--speed', type=float, default=8)
     parser.add_argument('--try-seconds', type=float, default=64)
     parser.add_argument('--think-seconds', type=float, default=8)
+    parser.add_argument('--slots', type=int, default=3, help='run slots: runs open at once, on the gateway and the fake host')
     parser.add_argument('--scale', type=float, default=1)
     parser.add_argument('--drop-seconds', type=float, default=5)
     parser.add_argument('--fault', nargs=2, action='append', default=[], metavar=('SECONDS', 'JSON'), type=str, help='at this second, set this fault on the fake host')

@@ -62,8 +62,10 @@ def test_two_people_never_share_a_request_key():
 
 
 def test_limits_default_to_the_ceiling_and_cannot_be_raised():
-    assert rebuilt(body(agent_limits=None))['agent_limits'] == dict(versions=3, wall_seconds=3600)
-    for change, code in ((dict(agent_limits=dict(versions=4, wall_seconds=3600)), 'invalid_versions'), (dict(agent_limits=dict(versions=2, wall_seconds=7200)), 'invalid_wall_seconds'),
+    # No time limit on Remote: the wall field is the nominal value whatever is asked, and asking for more is not refused.
+    assert rebuilt(body(agent_limits=None))['agent_limits'] == dict(versions=3, wall_seconds=21600)
+    assert rebuilt(body(agent_limits=dict(versions=2, wall_seconds=7200)))['agent_limits'] == dict(versions=2, wall_seconds=21600)
+    for change, code in ((dict(agent_limits=dict(versions=4, wall_seconds=3600)), 'invalid_versions'),
                          (dict(agent_limits=dict(versions=True, wall_seconds=3600)), 'invalid_versions'), (dict(help_budget=4), 'invalid_help_requests'), (dict(seeds=['1']), 'invalid_seed')):
         with pytest.raises(policy.Refused) as refused:rebuilt(body(**change))
         assert refused.value.code == code
@@ -154,10 +156,16 @@ def test_only_an_interactive_run_waits_for_its_owner():
     assert 'human_reply_seconds' not in made('experiment')
 
 
-def test_a_twenty_minute_limit_is_offered_in_minutes():
-    limits = Limits(wall_seconds=1200).public()
-    assert limits['wall'] == 1200 and limits['wallRange'].startswith('20 minutes') and '20 minutes' in limits['note']
-    assert policy.rebuild(body(agent_limits=dict(versions=2, wall_seconds=1200)), user='u-1', options=OPTIONS, limits=Limits(wall_seconds=1200), credentials=MINE)['agent_limits']['wall_seconds'] == 1200
+def test_new_run_says_there_is_no_time_limit_whatever_an_old_config_says():
+    limits = Limits(wall_seconds=1200, run_slots=3).public()
+    assert limits['noTimeLimit'] is True and limits['wall'] == 21600 and limits['wallRange'].startswith('No time limit')
+    assert 'no time limit' in limits['note'] and 'Up to 3 runs are open at once' in limits['note'] and '2 hours' in limits['note']
+    assert policy.rebuild(body(agent_limits=dict(versions=2, wall_seconds=1200)), user='u-1', options=OPTIONS, limits=Limits(wall_seconds=1200), credentials=MINE)['agent_limits']['wall_seconds'] == 21600
+
+
+@pytest.mark.parametrize('slots', [0, 17, True])
+def test_run_slots_are_a_small_positive_number(slots):
+    with pytest.raises(ValueError):Limits(run_slots=slots)
 
 
 def test_the_cover_leaves_out_this_machine():
@@ -183,7 +191,8 @@ def test_a_run_waiting_for_its_owner_says_so_in_the_lobby():
     wait = dict(deadline_at=1100, seconds=120, question='What next?', execution_id='e000001')
     row = dict(experiment_id='devexp-' + 'a' * 24, state='running', experiment_state='running', human_wait=wait)
     board = _board(row, now=1040)
-    card = board['robot']['running']
+    card = board['robot']['open'][0]
+    assert board['robot']['running'] is None  # Waiting for a person is not using the robot.
     assert card['state'] == 'waiting_human' and card['help_waiting_seconds'] == 60 and card['waiting'] == dict(question='What next?')
     assert board['counts']['needs_you'] == 1
     assert _board(row, now=1040, viewer='u-2')['counts']['needs_you'] == 0  # Everyone sees the state; it needs only its owner.
@@ -198,3 +207,18 @@ def test_a_run_that_could_not_start_carries_the_reason():
     eid = 'devexp-' + 'a' * 24
     card = _board(dict(experiment_id=eid, state='planned', experiment_state='planned'), start_errors={eid: 'no GPU'})['recent'][0]
     assert card['state'] == 'created' and card['start_error'] == 'no GPU'
+
+
+def test_the_lobby_shows_every_open_run_and_which_one_is_on_the_robot():
+    rows = [dict(experiment_id='devexp-' + c * 24, state='running', experiment_state='running', created_at=n, robot=robot)
+            for n, (c, robot) in enumerate([('a', dict(state='executing')), ('b', dict(state='waiting', ahead=1, since=5)), ('c', None)])]
+    board = policy.board(dict(dev_sessions=rows), owners={r['experiment_id']: 'u-1' for r in rows}, nicknames={'u-1': 'Fox-1'}, queue=[], limits=Limits(run_slots=3), viewer='u-1')
+    assert [c['robot'] for c in board['robot']['open']] == [dict(state='executing'), dict(state='waiting', ahead=1), dict(state='thinking')]
+    assert board['robot']['running']['experiment_id'] == 'devexp-' + 'a' * 24 and board['robot']['slots'] == 3 and board['robot']['waiting'] == 1
+    assert board['counts']['running'] == 3
+
+
+def test_a_place_in_line_has_no_time_estimate_because_runs_have_no_time_limit():
+    rows = [dict(experiment_id='devexp-' + 'a' * 24, state='planned', experiment_state='planned')]
+    board = policy.board(dict(dev_sessions=rows), owners={rows[0]['experiment_id']: 'u-1'}, nicknames={}, queue=[dict(experiment_id=rows[0]['experiment_id'], user_id='u-1')], limits=Limits(), viewer='u-1')
+    assert board['queue'][0]['queue_position'] == 1 and board['queue'][0]['eta_start_seconds'] is None

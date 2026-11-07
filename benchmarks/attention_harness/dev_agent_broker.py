@@ -4,7 +4,7 @@ All collaborators receive absolute monotonic deadlines and must implement cancel
 An unacknowledged timeout quarantines the cell, preserving its charge and excluding
 subsequent work. The caller never retries an ambiguous moving execution.
 """
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 import concurrent.futures
 import fcntl
 import hashlib
@@ -18,6 +18,7 @@ from .dev_agent_workspace import read_beneath, atomic_write, encode, REQUEST_LIM
 from .dev_agent_diagnostics import screen_text, public_observation, project_planner_result
 from .dev_agent_feedback import public_outcome
 from .dev_agent_eval import feedback, unavailable
+from .sim_timeshare import SimWaitCancelled
 
 SCHEMA = 'attentionbench.dev-agent-request.v1'
 OPS = {'submit', 'run', 'observe', 'find_objects', 'find_fixtures', 'ik_check', 'plan_dry_run', 'ask_help', 'status'}
@@ -75,8 +76,10 @@ class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
                  agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
                  on_execution=None, on_settled=None, quiesce=nullcontext, memory=None, before_step=lambda kind:True,
-                 agent_policy_version='agent-policy-v1', validation=False):
+                 agent_policy_version='agent-policy-v1', validation=False, sim_token=None):
         if agent_mode is not True: raise ValueError('agent_mode_required')
+        # Remote time-share only (sim_timeshare.SimToken): each execution waits its turn for the host's one robot.
+        self.sim_token=sim_token
         if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
             raise ValueError('unsupported agent policy version')
         if helper and getattr(helper,'agent_policy_version',agent_policy_version)!=agent_policy_version:
@@ -327,6 +330,28 @@ class Broker:
             self.pool.submit(self._dispatch,rid,source,False)
             return
 
+    def _robot(self):
+        """Hold the host's simulator token for exactly this one execution (Remote time-share), or nothing."""
+        if self.sim_token is None:return nullcontext()
+        from .sim_timeshare import write_state
+        from .dev_loop import process_identity
+        private=self.workspace.private;owner=process_identity()
+        ledger=getattr(self.budget,'ledger',None)
+        def waiting(ahead):
+            if ledger:ledger.sim_wait_begin()
+            write_state(private,dict(state='waiting',ahead=ahead,since=time.time(),owner=owner))
+        def granted(waited):
+            if ledger:ledger.sim_wait_end()
+            write_state(private,dict(state='executing',since=time.time(),waited_seconds=round(waited,1),owner=owner))
+        @contextmanager
+        def hold():
+            try:
+                with self.sim_token.hold(cancelled=self.closing.is_set,on_wait=waiting,on_granted=granted) as grant:yield grant
+            finally:
+                if ledger:ledger.sim_wait_end()
+                write_state(private,None)
+        return hold()
+
     def _bounded(self, collaborator, method, *args, timeout, quarantine=True):
         deadline = min(self.budget.deadline, time.monotonic() + timeout)
         done = threading.Event(); result = []
@@ -462,21 +487,33 @@ class Broker:
                     eid = response['execution_id']
                     directory = self.workspace.private / 'executions' / eid
                     directory.mkdir(parents=True)
-                    errored = None;not_dispatched=False
+                    errored = None;not_dispatched=False;stopped_after_timeout=None
                     try:
                         if self.memory:self.memory.recheck()
                         if hasattr(self.executor, 'bind_execution') and hasattr(self.budget, 'ledger'):
                             self.executor.bind_execution(self.budget.ledger.cell,
                                 int(response['version_id'][1:]) if op == 'submit' else None, eid)
-                        result = self._bounded(self.executor, self.executor.execute, source, directory,
-                                               timeout=self.timeouts[op], quarantine=False)
+                        with self._robot() as robot:
+                            try:
+                                result = self._bounded(self.executor, self.executor.execute, source, directory,
+                                                       timeout=self.timeouts[op], quarantine=False)
+                            except TimeoutError:
+                                # The robot is handed on only once this simulator is known to have stopped.
+                                stopped_after_timeout=self._stopped(self.executor)
+                                if not stopped_after_timeout and robot is not None:robot.keep()
+                                raise
+                    except SimWaitCancelled:
+                        # Stopped while waiting in line: nothing ran, nothing moved.
+                        not_dispatched=True;response['execution_dispatched']=False
+                        result=dict(status='not_executed',error='stopped_waiting_for_robot',trace=[],stdout='',
+                                    stderr='The run was stopped while it waited for the robot; this code was not executed.\n')
                     except MemoryRevoked:
                         memory_revoked=True;not_dispatched=True
                         response['execution_dispatched']=False
                         result=dict(status='memory_revoked',error='memory_revoked',trace=[],
                                     stdout='',stderr='',memory_revoked=True)
                     except Exception as exc:
-                        if isinstance(exc, TimeoutError) and not self._stopped(self.executor):
+                        if isinstance(exc, TimeoutError) and not (stopped_after_timeout if stopped_after_timeout is not None else self._stopped(self.executor)):
                             raise BrokerInvariant('execution_not_stopped_after_timeout') from exc
                         # Each execution owns a fresh simulator (stopped above on timeout);
                         # its failure is that execution's result, not an unknown run state.

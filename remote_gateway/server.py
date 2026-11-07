@@ -1,6 +1,5 @@
 """The HTTP side: login, the page, and the few routes a browser may use. Anything not listed here answers 404."""
 from base64 import b64encode
-import fcntl
 from hashlib import sha256
 from http import HTTPStatus
 from http.cookies import CookieError, SimpleCookie
@@ -80,7 +79,8 @@ class Gateway:
         self.rate = RateLimits(config.limits, clock)
         self.audit = Audit(config.audit_file, clock)
 
-        self.dispatching = threading.Lock();self.lock_file = None;self.settling_until = 0.0;self.starting_until = 0
+        # Runs started in the last 30 seconds, which the host may not list as running yet: they hold their slot meanwhile.
+        self.dispatching = threading.Lock();self.settling_until = 0.0;self.starting = {}
 
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
@@ -94,22 +94,15 @@ class Gateway:
         listing = listing if listing is not None else self.listing()
         return policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits, now=self.clock(), start_errors=self.store.start_failures())
 
-    def take_robot(self):
-        if self.lock_file or not self.config.sim_lock:return True
-        handle = open(self.config.sim_lock, 'a')
-        try:fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except OSError:
-            handle.close()
-            return False
-        self.lock_file = handle
-        return True
-
-    def free_robot(self):
-        if self.lock_file:
-            self.lock_file.close();self.lock_file = None
+    def open_runs(self, listing):
+        """Runs holding a slot: those the host lists as running, and those started moments ago that it may not list yet."""
+        now = self.clock();rows = {row.get('experiment_id'): row for row in listing.get('dev_sessions', [])}
+        self.starting = {eid: until for eid, until in self.starting.items() if until > now and not (eid in rows and policy._state(rows[eid]) in policy.ENDED_STATES)}
+        return {eid for eid, row in rows.items() if policy.running(row)} | set(self.starting)
 
     def dispatch(self):
-        """Start the next run in line if the robot is free. Returns what the host said about that run, or None if nothing started."""
+        """Start the next run in line if a run slot is free. Returns what the host said about that run, or None if nothing started.
+        The robot itself is not held here: the harness takes it for one execution at a time."""
         # A start can hold the host for 20 seconds or more. Whoever joins the line meanwhile keeps their place and is answered at once; the loop starts them.
         if not self.dispatching.acquire(blocking=False):return None
         try:return self.start_next()
@@ -118,20 +111,17 @@ class Gateway:
     def start_next(self):
         line = self.store.queue()
         listing = self.listing()
-        busy = any(policy.running(row) for row in listing.get('dev_sessions', [])) or self.clock() < self.starting_until
-        if not busy:self.free_robot()
-        if busy or not line or self.paused() or not self.take_robot():return None
+        if len(self.open_runs(listing)) >= self.config.limits.run_slots or not line or self.paused():return None
         head = line[0]
         status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
         if status != 200:print('dispatch refused:', status, str(value.get('error') if isinstance(value, dict) else value)[:200], file=sys.stderr, flush=True)
         # A stopped run is listed as ended before its processes are gone, so for a while a refusal keeps this one's place and the next pass retries.
-        if status == 409 and self.clock() < self.settling_until:
-            self.free_robot()
+        # The host counting one more open run than the list shows is the same race: the place is kept.
+        if status == 409 and (self.clock() < self.settling_until or 'run slots are in use' in str(value.get('error') if isinstance(value, dict) else value)):
             return None
         self.store.dequeue(head['experiment_id'])
-        if status == 200:self.starting_until = self.clock() + 30
+        if status == 200:self.starting[head['experiment_id']] = self.clock() + 30
         else:
-            self.free_robot()
             # Whoever waited in line may be away; the reason stays on the run for them to read.
             self.store.start_failed(head['experiment_id'], str(value.get('error') if isinstance(value, dict) and value.get('error') else f'The run host refused the start (HTTP {status}).')[:300])
         return head['experiment_id'], status, value

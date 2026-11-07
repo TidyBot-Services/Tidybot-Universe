@@ -1,8 +1,11 @@
 """A stand-in for the harness: same routes, same signature check, same JSON shapes, no simulator, no model and no disk.
 
 The real gateway and the real page sit in front of it, so everything between a browser and the harness is the real code.
-Its clock runs faster than the wall (--speed). It also keeps the one rule the real host must keep: only one run on the
-robot. A start while another run is on the robot is recorded as a violation, and the monitor shows it.
+Its clock runs faster than the wall (--speed). It keeps the real host's time-share rules: up to --slots runs open at once,
+and one robot token that each Try takes in turn, first come first served, so a run that just used it goes behind
+whoever waits. More open runs than slots, or two Tries on the robot at once, is recorded as a violation, and the monitor
+shows it. Time waiting for the robot is not counted in a run's time. The stall fault makes a run stop progressing, and
+after --no-progress-seconds it ends itself with reason no_progress, as the real harness does.
 
 GET /sim/state and POST /sim/fault answer without a signature, on loopback only, for the monitor and for fault tests.
 """
@@ -46,25 +49,31 @@ class Run:
         self.experiment_id, self.key, self.owner, self.selection, self.created_at = experiment_id, key, owner, selection, created_at
         self.state, self.reason = 'planned', None
         self.started_at = None;self.tries = [];self.executing = None;self.wait = None;self.sequence = 0
-        self.helped = [];self.phase = 'not started'
+        self.helped = [];self.phase = 'not started';self.waited = 0.;self.asked_at = None;self.robot_since = None;self.stop_detail = None
 
 
 class World:
-    def __init__(self, *, speed=1.0, secret=b'', tries=3, try_seconds=40, think_seconds=10, seed=1):
+    def __init__(self, *, speed=1.0, secret=b'', tries=3, try_seconds=40, think_seconds=10, seed=1, slots=3, no_progress_seconds=7200):
         self.speed, self.secret, self.tries, self.try_seconds, self.think_seconds = speed, secret, tries, try_seconds, think_seconds
+        self.slots, self.no_progress_seconds = slots, no_progress_seconds
         self.lock = threading.RLock();self.runs = {};self.random = random.Random(seed);self.violations = [];self.fault = {};self.calls = 0;self.frames = 0;self.credentials = {}
+        self.line = [];self.holder = None;self.grants = [];self.peak_open = 0
 
     # The clock
-    def on_robot(self):
+    def open_runs(self):
         return [run for run in self.runs.values() if run.state == 'running']
+
+    def on_robot(self):
+        return [self.holder] if self.holder is not None else []
 
     def start(self, run):
         with self.lock:
-            others = [r.experiment_id for r in self.on_robot() if r is not run]
-            if others:
-                self.violations.append(dict(at=time.time(), started=run.experiment_id, while_running=others))
+            others = [r.experiment_id for r in self.open_runs() if r is not run]
+            if len(others) >= self.slots:
+                self.violations.append(dict(at=time.time(), started=run.experiment_id, while_running=others, rule=f'more than {self.slots} runs open'))
                 return False
             run.state, run.started_at, run.phase = 'running', time.time(), 'turn running'
+            self.peak_open = max(self.peak_open, len(others) + 1)
             threading.Thread(target=self.live, args=(run,), daemon=True).start()
             return True
 
@@ -76,15 +85,61 @@ class World:
             time.sleep(.05)
         return run.state == 'running'
 
+    def take_robot(self, run):
+        """Wait in line for the one robot. False when the run was stopped meanwhile."""
+        asked = run.asked_at = time.time()
+        with self.lock:self.line.append(run)
+        try:
+            while True:
+                with self.lock:
+                    if run.state != 'running':return False
+                    if self.line[0] is run and self.holder is None:
+                        self.holder = run;run.robot_since = time.time();self.grants.append(run.experiment_id)
+                        return True
+                run.phase = 'waiting for robot'
+                time.sleep(.02)
+        finally:
+            with self.lock:
+                if run in self.line:self.line.remove(run)
+            run.waited += time.time() - asked;run.asked_at = None
+
+    def give_robot(self, run):
+        with self.lock:
+            if self.holder is run:self.holder = None
+            run.robot_since = None
+
+    def robot(self, run):
+        """What the real harness lists for an open run: on the robot, or waiting with how many ahead."""
+        with self.lock:
+            if self.holder is run:return dict(state='executing')
+            if run in self.line:return dict(state='waiting', ahead=self.line.index(run) + (self.holder is not None))
+        return None
+
+    def stall(self, run):
+        """The stall fault: no new Try, version or help, so the run ends itself after the no-progress time."""
+        run.phase = 'turn running'
+        if not self.pause(run, self.no_progress_seconds):return
+        with self.lock:
+            if run.state == 'running':
+                run.state, run.reason, run.phase = 'failed', 'no_progress', 'stopped'
+                run.stop_detail = 'Stopped automatically: no new execution, version or help request for 2 hours of active time (waits for the robot not counted).'
+
     def live(self, run):
         help_wanted = run.selection['policies'][0] in HELP_POLICIES and run.selection.get('human_reply_seconds')
         for number in range(1, self.tries + 1):
             eid = 'e%06d' % number
             run.phase = 'turn running'
             if not self.pause(run, self.think_seconds):return
-            run.phase, run.executing = 'waiting on execution', dict(execution_id=eid, number=number, submitted=False, started_at=time.time())
-            if not self.pause(run, self.try_seconds):return
-            run.executing = None
+            if self.fault.get('stall') in (True, run.owner):return self.stall(run)
+            if not self.take_robot(run):return
+            with self.lock:
+                # Checked apart from the line above: whatever grants the robot, two Tries must never overlap.
+                busy = [r.experiment_id for r in self.runs.values() if r is not run and r.executing]
+                if busy:self.violations.append(dict(at=time.time(), started=run.experiment_id, while_running=busy, rule='two Tries on the robot'))
+                run.phase, run.executing = 'waiting on execution', dict(execution_id=eid, number=number, submitted=False, started_at=time.time())
+            ran = self.pause(run, self.try_seconds)
+            run.executing = None;self.give_robot(run)
+            if not ran:return
             run.tries.append(dict(execution_id=eid, number=number, submitted=False, ok=False, kind='hold', why='The gripper closed but did not hold the object'))
             if help_wanted and number == 1:
                 if not self.ask(run, eid):return
@@ -107,6 +162,8 @@ class World:
         row.update(experiment_id=run.experiment_id, key=run.key, session_id='v2-' + run.key, state=run.state, experiment_state=run.state, reason=run.reason, created_at=run.created_at,
                    policy_id=run.selection['policies'][0], seed=run.selection['seeds'][0], task_id=run.selection['tasks'][0], mode=run.selection['mode'], owner=run.owner)
         if run.state == 'running' and run.wait:row['human_wait'] = copy.deepcopy(run.wait)
+        robot = self.robot(run) if run.state == 'running' else None
+        if robot:row['robot'] = robot
         return row
 
     def view(self, run):
@@ -115,15 +172,20 @@ class World:
         shown = 'created' if planned else run.state
         view.update(key=run.key, experiment_id=run.experiment_id, state=shown, reason=run.reason, policy_id=run.selection['policies'][0], seed=run.selection['seeds'][0],
                     task_id=run.selection['tasks'][0], mode=run.selection['mode'])
+        robot = None if ended else self.robot(run)
+        asked = run.asked_at;waiting = run.waited + (time.time() - asked if asked else 0)
         agent.update(phase=run.phase, reason=run.reason, tries=copy.deepcopy(run.tries), executing=None if ended else run.executing, human_wait=None if ended else copy.deepcopy(run.wait),
-                     wall_seconds=int(time.time() - run.started_at) if run.started_at else 0)
+                     # Active time only: waiting for the robot is not counted, as on the real host. No time limit.
+                     wall_seconds=int(max(0, time.time() - run.started_at - waiting)) if run.started_at else 0, wall_limit=None, wall_unlimited=True,
+                     sim_wait_seconds=round(waiting), robot=robot, stop_detail=run.stop_detail)
         compat.update(key=run.key, experiment_id=run.experiment_id, state=shown, reason=run.reason, policy_id=view['policy_id'], seed=view['seed'], task_id=view['task_id'], mode=view['mode'])
         if planned:
             compat.update(status='not started', lifecycle=dict(phase='prepared', can_start=True, can_stop=False, start_label='Start run', experiment_id=run.experiment_id,
                                                                scope=[dict(task_id=view['task_id'], seed=view['seed'], state=shown)], scope_count=1, scheduler_active=False))
             compat['run_controls'] = dict(compat['run_controls'], state='created', can_start=True, can_pause=False)
         elif not ended:
-            compat.update(lifecycle=dict(phase={'waiting on execution': 'sdk', 'help': 'advisor'}.get(run.phase, 'model'), can_stop=True))
+            phase = {'waiting on execution': 'sdk', 'waiting for robot': 'robot_wait', 'help': 'advisor'}.get(run.phase, 'model')
+            compat.update(lifecycle=dict(phase=phase, can_stop=True, **({'robot_ahead': (robot or {}).get('ahead')} if phase == 'robot_wait' else {})))
             compat['run_controls'] = dict(compat['run_controls'], state='running', can_start=False, can_pause=True, current_step='on the robot' if run.executing else 'thinking')
         return view
 
@@ -148,8 +210,10 @@ class World:
 
     def summary(self):
         with self.lock:
-            return dict(on_robot=[r.experiment_id for r in self.on_robot()], violations=self.violations[-20:], calls=self.calls, frames=self.frames, fault=self.fault,
+            return dict(on_robot=[r.experiment_id for r in self.on_robot()], open=[r.experiment_id for r in self.open_runs()], robot_line=[r.experiment_id for r in self.line], slots=self.slots, peak_open=self.peak_open,
+                        grants=self.grants[-50:], violations=self.violations[-20:], calls=self.calls, frames=self.frames, fault=self.fault,
                         runs={r.experiment_id: dict(state=r.state, reason=r.reason, owner=r.owner, phase=r.phase, tries=len(r.tries), helped=r.helped, waiting=bool(r.wait), dev_model=r.selection.get('dev_model'),
+                                            waited_seconds=round(r.waited, 2), stop_detail=r.stop_detail,
                                                                      quota_stop_percent=r.selection.get('quota_stop_percent'), eval_provider=r.selection['agent_provider']['roles']['eval']['provider'],
                                                                      advisor_provider=r.selection['agent_provider']['roles']['advisor']['provider'], dev_reasoning_effort=r.selection.get('dev_reasoning_effort')) for r in self.runs.values()})
 
@@ -233,7 +297,7 @@ class Handler(BaseHTTPRequestHandler):
         if run.owner != owner:return self.answer(dict(error='not owner'), 403)  # The gateway must stop this first.
         if suffix == 'run':
             if world.fault.get('start_fails') in (True, owner):return self.answer(dict(error='cannot start at /home/someone/x: simulated start failure'), 500)
-            if not world.start(run):return self.answer(dict(error='Another run is on the robot.'), 409)
+            if not world.start(run):return self.answer(dict(error=f'All {world.slots} run slots are in use; this run keeps its place'), 409)
             return self.answer(dict(worker_started=True))
         if suffix == 'cancel':
             with world.lock:
@@ -263,8 +327,11 @@ def main():
     parser.add_argument('--tries', type=int, default=3)
     parser.add_argument('--try-seconds', type=float, default=40)
     parser.add_argument('--think-seconds', type=float, default=10)
+    parser.add_argument('--slots', type=int, default=3)
+    parser.add_argument('--no-progress-seconds', type=float, default=7200)
     args = parser.parse_args()
-    world = World(speed=args.speed, secret=args.secret_file.read_bytes(), tries=args.tries, try_seconds=args.try_seconds, think_seconds=args.think_seconds)
+    world = World(speed=args.speed, secret=args.secret_file.read_bytes(), tries=args.tries, try_seconds=args.try_seconds, think_seconds=args.think_seconds,
+                  slots=args.slots, no_progress_seconds=args.no_progress_seconds)
     create_server(args.port, world).serve_forever()
 
 

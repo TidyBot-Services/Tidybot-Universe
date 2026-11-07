@@ -85,7 +85,7 @@ def test_invite_codes_never_reach_the_log(tmp_path):
 def test_no_limit_lives_in_the_test_instance_and_nowhere_else(tmp_path):
     path = run_sim.gateway_config(tmp_path, port=8871, upstream='http://127.0.0.1:8872')
     limits = load(path).limits
-    assert (limits.runs_per_day, limits.versions, limits.help_requests, limits.wall_seconds, limits.active_runs) == (100000, 10, 10, 21600, 1000)
+    assert (limits.runs_per_day, limits.versions, limits.help_requests, limits.wall_seconds, limits.active_runs, limits.run_slots) == (100000, 10, 10, 21600, 1000, 3)
     assert limits.requests_per_second >= 100000 and limits.live_requests_per_second >= 100000 and limits.logins_per_hour >= 100000
     assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=3, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
 
@@ -154,12 +154,67 @@ def test_the_fake_host_refuses_anything_unsigned(fake):
     assert call(fake[1], 'GET', '/api/runs', signed=False)[0] == 401
 
 
-def test_a_second_run_on_the_robot_is_a_violation(fake):
-    world, port = fake
-    first, second = made(port, 'client-key-1'), made(port, 'client-key-2', 'u-2')
-    assert call(port, 'POST', f'/api/dev-v2/experiments/{first}/run', {})[0] == 200
-    assert call(port, 'POST', f'/api/dev-v2/experiments/{second}/run', {}, owner='u-2')[0] == 409
-    assert world.summary()['violations'][0]['started'] == second
+def test_more_open_runs_than_slots_is_a_violation(fake):
+    world, port = fake;world.slots = 2
+    runs = [made(port, f'client-key-{n}', f'u-{n}') for n in range(3)]
+    assert [call(port, 'POST', f'/api/dev-v2/experiments/{r}/run', {}, owner=f'u-{n}')[0] for n, r in enumerate(runs)] == [200, 200, 409]
+    assert world.summary()['violations'][0]['started'] == runs[2] and world.summary()['peak_open'] == 2
+
+
+def wait_for(test, seconds=10):
+    deadline = time.time() + seconds
+    while time.time() < deadline:
+        if test():return True
+        time.sleep(.02)
+    return False
+
+
+def test_open_runs_take_turns_on_the_robot_first_come_first_served_and_waiting_is_not_counted(fake):
+    world, port = fake;world.tries = 2;world.try_seconds = 30;world.think_seconds = .5  # At speed 100: Tries of .3 s, thinking .005 s.
+    runs = [made(port, f'client-key-{n}', f'u-{n}') for n in range(3)]
+    for n, r in enumerate(runs):assert call(port, 'POST', f'/api/dev-v2/experiments/{r}/run', {}, owner=f'u-{n}')[0] == 200
+    seen = []
+    def look():
+        rows = call(port, 'GET', '/api/runs')[1]['dev_sessions']
+        seen.append({row['experiment_id']: (row.get('robot') or {}).get('state') for row in rows})
+        return all(world.runs[r].state == 'failed' for r in runs)
+    assert wait_for(look, 20)
+    summary = world.summary()
+    assert summary['violations'] == [] and summary['peak_open'] == 3
+    grants = summary['grants']
+    assert len(grants) == 6 and grants[:3] == runs  # Everyone's first Try before anyone's second: a run that just used the robot goes behind.
+    assert all(a != b for a, b in zip(grants, grants[1:]))
+    assert any(list(states.values()).count('waiting') >= 1 and list(states.values()).count('executing') == 1 for states in seen)
+    assert all(list(states.values()).count('executing') <= 1 for states in seen)
+    waited = world.runs[runs[2]].waited;assert waited > .3
+    view = world.view(world.runs[runs[2]])['agent']
+    assert view['wall_limit'] is None and view['sim_wait_seconds'] == round(waited)
+
+
+def test_a_stalled_run_ends_itself_with_no_progress_not_as_a_cancel(fake):
+    world, port = fake;world.no_progress_seconds = 50;world.fault = dict(stall='u-1')
+    run = made(port, 'client-key-1');call(port, 'POST', f'/api/dev-v2/experiments/{run}/run', {})
+    assert wait_for(lambda:world.runs[run].state != 'running', 5)
+    assert (world.runs[run].state, world.runs[run].reason) == ('failed', 'no_progress') and 'no new execution' in world.runs[run].stop_detail
+
+
+def test_through_the_real_gateway_three_runs_open_and_the_fourth_waits_for_a_slot(fake, tmp_path):
+    from remote_gateway.config import load
+    from remote_gateway.server import Gateway
+    world, port = fake;world.tries = 1;world.try_seconds = 200;world.think_seconds = 1
+    config = run_sim.gateway_config(tmp_path, port=8899, upstream=f'http://127.0.0.1:{port}', slots=3)
+    (tmp_path / 'gateway-state').mkdir(mode=0o700);secret = tmp_path / 'gateway-state/gateway.secret';secret.write_bytes(SECRET);secret.chmod(0o600)
+    gateway = Gateway(load(config))
+    runs = [made(port, f'client-key-{n}', f'u-{n}') for n in range(4)]
+    for n, r in enumerate(runs):gateway.store.record_run(r, f'u-{n}', 'local');gateway.store.enqueue(r, f'u-{n}')
+    for _ in range(4):gateway.dispatch()
+    assert [world.runs[r].state for r in runs] == ['running'] * 3 + ['planned'] and [q['experiment_id'] for q in gateway.store.queue()] == [runs[3]]
+    assert wait_for(lambda:any((c['robot'] or {}).get('state') == 'waiting' for c in gateway.board('u-0')['robot']['open']), 5)
+    board = gateway.board('u-0')
+    assert len(board['robot']['open']) == 3 and board['robot']['running'] is not None and board['robot']['slots'] == 3
+    assert wait_for(lambda:world.runs[runs[0]].state == 'failed', 10)
+    gateway.starting.clear()  # Past the 30 s start allowance, without waiting for it.
+    assert gateway.dispatch()[:2] == (runs[3], 200) and world.summary()['violations'] == []
 
 
 def test_a_run_asks_then_takes_one_reply_only(fake):

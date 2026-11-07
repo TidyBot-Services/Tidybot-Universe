@@ -17,6 +17,9 @@ CONTINUE_MESSAGE='Eval judged this version as passed, but the run has not ended;
 # The only causes allowed to end a run early (r5, 10-29). Everything that
 # happens inside one version - execution, completion read, Eval, help, export,
 # history - is that version's result; native unknown means "not completed".
+# Remote time-share: what the page and the record say when a run stopped itself for making no progress. Never a cancel.
+NO_PROGRESS_MESSAGE='Stopped automatically: no new execution, version or help request for 2 hours of active time (waits for the robot not counted).'
+NO_PROGRESS_POLL=30
 FATAL_CAUSES=frozenset({'ledger_invariant','broker_invariant','quota_stop','quota_unavailable','wall_stop','operator_cancel',
                         # Added: the Dev model process itself failing 3 turns in a row.
                         'session_failure'})
@@ -52,6 +55,10 @@ def bootstrap(workspace, ledger, policy):
         was=('10 formal versions, 40 moving executions, 300 read-only probes','21600 active wall seconds')
         if any(text not in prompt for text in was):raise ValueError('prompt_budget_text_missing')
         prompt=prompt.replace(was[0],f"{ledger.limits['formal_versions']} formal versions, 40 moving executions, 300 read-only probes").replace(was[1],f'{ledger.wall_seconds} active wall seconds')
+    if getattr(ledger,'wall_unlimited',False):
+        sentence='The run has %d active wall seconds.'%ledger.wall_seconds
+        if sentence not in prompt:raise ValueError('prompt_budget_text_missing')
+        prompt=prompt.replace(sentence,'The run has no wall-clock limit, but it stops after 7200 active seconds with no new execution, version or help request. Executions may wait for the shared robot; that wait is not counted.')
     return prompt+'\nHelp policy: '+policy+'. See docs/tools.md for its exact availability.\nBudgets: '+json.dumps(ledger.limits,sort_keys=True)
 
 
@@ -73,7 +80,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
           memory=None, exporter=None, before_step=lambda kind:True,
-          agent_policy_version='agent-policy-v1', validation=False, advisor_client_constructed=False):
+          agent_policy_version='agent-policy-v1', validation=False, advisor_client_constructed=False, sim_token=None):
     """Injectable offline seam; production always supplies a preflighted session."""
     if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
         raise ValueError('unsupported agent policy version')
@@ -176,6 +183,9 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                 memory_error(int(vid[1:])+1,exc,'open')
     def settled(response):
         nonlocal stop
+        if getattr(ledger,'wall_unlimited',False) and response.get('status')=='completed' and (
+                response['op']=='ask_help' or (response['op'] in ('submit','run') and response.get('execution_dispatched') is not False)):
+            ledger.mark_progress()
         # The execution receipt is settled and recording hashes are final here.
         if response['op'] in ('submit','run') and response.get('execution_id'):
             episode=getattr(executor,'episode',None)
@@ -220,7 +230,22 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
             agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
             on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory if memory_visible else None,
-            before_step=before_step,agent_policy_version=agent_policy_version,validation=validation)
+            before_step=before_step,agent_policy_version=agent_policy_version,validation=validation,sim_token=sim_token)
+        def stalled():
+            snap=ledger.snapshot()
+            return 'no_progress_seconds' in snap and snap['idle_seconds']>=snap['no_progress_seconds'] and broker.active is None
+        watching=None
+        if getattr(ledger,'wall_unlimited',False):
+            import threading
+            watching=threading.Event()
+            def watchdog():
+                # A model turn can be silent for a long time; the no-progress stop must not wait for its next event.
+                while not watching.wait(NO_PROGRESS_POLL):
+                    try:
+                        if broker.stop_reason is None and stalled():
+                            broker.stop_reason='no_progress';session.cancel('no_progress')
+                    except Exception:traceback.print_exc()
+            threading.Thread(target=watchdog,daemon=True,name='no-progress-watchdog').start()
         if validation:
             from .memory_agent_validation import seal_controller
             seal_controller(memory,helper,broker,advisor_client_constructed=advisor_client_constructed)
@@ -261,6 +286,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                 stop='operator_paused' if command=='pause' else 'operator_cancel';break
             snap=ledger.snapshot()
             if snap['wall_remaining']<=0 or (external_deadline is not None and time.time()>=external_deadline):stop='wall_stop';break
+            if broker.stop_reason=='no_progress' or stalled():stop='no_progress';break
             if snap['remaining']['formal_versions']<=0 or snap['remaining']['moving_executions']<=0:
                 stop='budget_exhausted';break
             if quota:quota.check('before_resume' if session.thread_id else 'before_turn')
@@ -284,6 +310,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                         last_sample=time.monotonic()
                     if ledger.snapshot()['wall_remaining']<=0 or (external_deadline is not None and time.time()>=external_deadline):
                         broker.stop_reason='wall_stop';broker.closing.set()
+                    if broker.stop_reason is None and stalled():broker.stop_reason='no_progress'
                     broker.poll()
                     if stop is None and broker.stop_reason and broker.active is None:
                         stop=broker.stop_reason;session.cancel(stop)
@@ -297,6 +324,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                     if control()=='cancel':broker.closing.set()
                     time.sleep(.02)
                 ledger.settle(jid,dict(error=failure),usage=session.usage if isinstance(session.usage,dict) else None)
+            if stop is None and broker.stop_reason=='no_progress':stop='no_progress'
             session_failures=session_failures+1 if failure and stop is None else 0
             if stop:break
             if broker.quarantined or session_failures>=SESSION_FAILURE_LIMIT:stop='fatal_error';break
@@ -311,10 +339,12 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             prompt+='Unseen events: '+json.dumps(unseen,sort_keys=True)+'. Budgets left: '+json.dumps(ledger.snapshot()['remaining'],sort_keys=True)
             if memory and memory_visible:prompt+='\n'+memory.message
             workspace.publish('events/resume-t%06d.json'%(session.turn+1),dict(message=prompt));save()
+        if watching:watching.set()
         finish_v2(stop)
         if stop=='operator_paused':ledger.pause()
         result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
                     reason=stop,resources=ledger.snapshot())
+        if stop=='no_progress':result['stop_detail']=NO_PROGRESS_MESSAGE
         if export_errors:result['export_errors']=export_errors
         if memory_errors:result['memory_errors']=memory_errors
         if stop=='fatal_error':
@@ -397,7 +427,10 @@ def providers_for_run(manifest, **options):
     return {role:provider_for_run(manifest,role=role,**options) for role in ('dev','eval','advisor')}
 
 
-def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None, validation=None, allow_private_hosts=(), public_gateway_mode=False):
+def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, *, client=None, runner_factory=None, outer_deadline_epoch=None, validation=None, allow_private_hosts=(), public_gateway_mode=False, sim_lock=None):
+    """sim_lock is Remote time-share only: the host's lock file. The run then has no time limit, stops after
+    NO_PROGRESS_SECONDS without progress, and each execution waits its turn for the robot. None keeps the local behaviour."""
+    if sim_lock is not None and validation is not None:raise ValueError('time-share is for Remote runs only')
     from .dev_agent_isolation import verify_runtime,codex_identity,IsolationUnavailable
     from .dev_agent_adapters import Executor,Prober
     from openarm365_dev_v2.dev_config import SIM_PYTHON
@@ -414,7 +447,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             from .dev_agent_policy_freeze import validate
             validate(manifest)
             if cell.get('agent_policy_version')!='agent-policy-v2':raise ValueError('agent_policy_cell_version_mismatch')
-        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None,budget=manifest.get('agent_limits'))
+        ledger=AgentLedger(store.path,key,help_limit=manifest['selection']['help_budget'],validation=validation is not None,budget=manifest.get('agent_limits'),wall_unlimited=sim_lock is not None)
         ledger.resume()
         import uuid
         setup_id='setup:'+uuid.uuid4().hex
@@ -426,7 +459,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         if not (workspace.canonical/'task.json').exists():
             workspace.prepare(dict(task_id=cell['task_id'],task_prompt=config['task_prompt']),
                 dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition,
-                budget=manifest.get('agent_limits'))
+                budget=manifest.get('agent_limits'),wall_unlimited=sim_lock is not None)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
         if validation:
             from .memory_agent_validation import seed
@@ -479,8 +512,12 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             execution_options=dict(validation_arm=validation['arm_record'],agent_configuration=dict(
                 dev_model=session.model,dev_reasoning_effort=session.reasoning_effort,
                 eval_model=evaluator.model,agent_policy_version=agent_policy_version))
+        sim_token=None
+        if sim_lock is not None:
+            from .sim_timeshare import SimToken
+            sim_token=SimToken(sim_lock,label=exp['experiment_id'])
         result=drive(workspace,session,ledger,executor=Executor(config,sim_python=SIM_PYTHON,runner_factory=runner_factory,**execution_options),
-            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private),evaluator=evaluator,helper=helper,quota=quota if providers['dev'] is None else None,policy=cell['policy_id'],
+            prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private,run_seconds=None if sim_lock is not None else 21600),sim_token=sim_token,evaluator=evaluator,helper=helper,quota=quota if providers['dev'] is None else None,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step,
             agent_policy_version=agent_policy_version,validation=validation is not None,advisor_client_constructed=advisor is not None)
@@ -497,7 +534,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         return dict(state='failed',reason=reason,error=str(exc))
 
 
-def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factory=None, allow_private_hosts=(), public_gateway_mode=False, **unused):
+def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factory=None, allow_private_hosts=(), public_gateway_mode=False, sim_lock=None, **unused):
     from .dev_experiment import snapshot,verify_manifest
     from .dev_loop import process_identity,owner_alive
     from .core.dev_store import DevConflict
@@ -514,7 +551,7 @@ def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factor
         if current['cancelled'] or current['state'] in ('completed','needs_review','paused'):return exp
         current.update(owner=owner,state='running');store.put(db,'experiments',exp_id,current)
     key=manifest['cells'][0]['key']
-    try:run_agent_cell(store,exp,manifest,key,owner=owner,client=client,runner_factory=runner_factory,outer_deadline_epoch=unused.get('outer_deadline_epoch'),allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
+    try:run_agent_cell(store,exp,manifest,key,owner=owner,client=client,runner_factory=runner_factory,outer_deadline_epoch=unused.get('outer_deadline_epoch'),allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode,sim_lock=sim_lock)
     finally:
         cell=store.cell(key)
         with store.tx() as db:

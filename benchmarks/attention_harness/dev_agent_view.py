@@ -120,6 +120,12 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     wall=max(0,min(wall_limit,wall_limit-(run['deadline']-(end or now)) if run.get('deadline') else 0))
     if stopped and cell.get('agent_resources',{}).get('wall_remaining') is not None:
         wall=max(0,min(wall_limit,wall_limit-cell['agent_resources']['wall_remaining']))
+    if run.get('wall_unlimited'):
+        # Remote time-share: no time limit. Time shown is active time; waits for the robot and pauses are not in it.
+        from .dev_agent_ledger import AgentLedger
+        saved=cell.get('agent_resources',{}) if stopped else {}
+        wall=saved.get('active_seconds') if saved.get('active_seconds') is not None else AgentLedger._active_seconds(run,end or now)
+        wall_limit=None
     def error(source,value):
         if value not in (None,False,'',{},[]):errors.append(dict(source=source,error=clean(value)))
     error('controller',cell.get('error'))
@@ -217,6 +223,10 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         if any(j['resources'].get('moving_executions') for j in active):phase='waiting on execution'
         if any(j['kind']=='eval' for j in active):phase='Eval'
         if any(j['kind']=='help' for j in active):phase='help'
+    # Remote time-share: an execution that is waiting its turn for the robot, or holding it.
+    from .sim_timeshare import read_state as sim_state
+    robot=None if stopped else sim_state(private)
+    if robot and robot['state']=='waiting' and phase=='waiting on execution':phase='waiting for robot'
     # Advisor model: configured (10-29+), else the model recorded by the run's own Advisor calls,
     # else the advisor_proxy setting; runs before 10-29 used the fixed gpt-6-astra Advisor.
     recorded=[r.get('model') for r in (soft(private,str(p.relative_to(private))) for p in sorted((private/'help').glob('[ve]*/advisor.json')))
@@ -234,6 +244,10 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
         history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+    if run.get('wall_unlimited'):
+        result['agent'].update(wall_unlimited=True,sim_wait_seconds=round(run.get('sim_wait_seconds',0)),no_progress_seconds=7200,
+            robot=clean({k:robot[k] for k in ('state','ahead','waited_seconds') if k in robot}) if robot else None,
+            stop_detail=clean(cell.get('stop_detail')))
     if selection.get('agent_provider'):
         from .dev_agent_config import display_source
         result['agent']['model_source']=display_source(selection)

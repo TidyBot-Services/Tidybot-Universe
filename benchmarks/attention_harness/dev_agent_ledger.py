@@ -10,10 +10,16 @@ LIMITS = dict(formal_versions=10, moving_executions=40, read_only_probes=300,
               eval_runs=10, help=1)
 ALIASES = dict(versions='formal_versions', executions='moving_executions', probes='read_only_probes')
 EXECUTION_LIMITS = dict(sdk_calls=320, control_steps=9600, wall_seconds=1920)
+# Remote time-share runs have no wall limit. What every caller reads as "time left" is then this, so deadlines built
+# from it never bind; the run is bounded by its counts, quota, disk and NO_PROGRESS_SECONDS instead.
+UNLIMITED_REMAINING = 10 * 365 * 86400
+# Remote time-share: active seconds (waits for the robot and operator pauses excluded) with no new execution,
+# version or help request before the run stops with reason no_progress.
+NO_PROGRESS_SECONDS = 7200
 
 
 class AgentLedger:
-    def __init__(self, path, cell, *, help_limit=1, clock=time.time, validation=False, budget=None):
+    def __init__(self, path, cell, *, help_limit=1, clock=time.time, validation=False, budget=None, wall_unlimited=False):
         if type(help_limit) is not int or not 0 <= help_limit <= 10:
             raise ValueError('invalid_help_budget')
         self.path, self.cell, self.clock = Path(path), cell, clock
@@ -38,9 +44,12 @@ class AgentLedger:
             row = db.execute('SELECT payload FROM v2_agent_runs WHERE cell=?', (cell,)).fetchone()
             if row:
                 if json.loads(row[0])['limits'] != self.limits or json.loads(row[0])['wall_seconds']!=wall_seconds: raise ValueError('immutable_agent_budget')
+                if bool(json.loads(row[0]).get('wall_unlimited')) != bool(wall_unlimited): raise ValueError('immutable_agent_budget')
             else:
                 self._put_run(db, dict(limits=self.limits, deadline=None, started_at=None,
-                    paused_at=None, paused_seconds=0, wall_seconds=wall_seconds))
+                    paused_at=None, paused_seconds=0, wall_seconds=wall_seconds,
+                    **(dict(wall_unlimited=True, sim_wait_at=None, sim_wait_seconds=0, progress_active_seconds=0) if wall_unlimited else {})))
+        self.wall_unlimited = bool(wall_unlimited)
 
     @contextmanager
     def tx(self):
@@ -56,6 +65,10 @@ class AgentLedger:
 
     def _run(self, db):
         return json.loads(db.execute('SELECT payload FROM v2_agent_runs WHERE cell=?', (self.cell,)).fetchone()[0])
+
+    @staticmethod
+    def _wall_over(run, now):
+        return not run.get('wall_unlimited') and run['deadline'] is not None and now >= run['deadline']
 
     def _put_run(self, db, row):
         db.execute('INSERT OR REPLACE INTO v2_agent_runs VALUES (?,?)', (self.cell, json.dumps(row, sort_keys=True)))
@@ -78,7 +91,7 @@ class AgentLedger:
                 return old
             run = self._run(db)
             if run['paused_at'] is not None: raise ValueError('operator_paused')
-            if run['deadline'] is not None and self.clock() >= run['deadline']: raise ValueError('wall_stop')
+            if self._wall_over(run, self.clock()): raise ValueError('wall_stop')
             used = {k: sum(r['resources'].get(k,0) for r in rows if r['state']!='released') for k in self.limits}
             if any(used[k]+resources.get(k,0)>cap for k,cap in self.limits.items()): raise ValueError('budget_exhausted')
             if used['eval_runs']+resources.get('eval_runs',0)>used['formal_versions']+resources.get('formal_versions',0):
@@ -103,7 +116,7 @@ class AgentLedger:
                 raise ValueError('reopen_requires_unclaimed_help')
             run=self._run(db)
             if run['paused_at'] is not None:raise ValueError('operator_paused')
-            if run['deadline'] is not None and self.clock()>=run['deadline']:raise ValueError('wall_stop')
+            if self._wall_over(run,self.clock()):raise ValueError('wall_stop')
             used={k:sum(r['resources'].get(k,0) for r in rows if r['state']!='released') for k in self.limits}
             if any(used[k]+row['resources'].get(k,0)>cap for k,cap in self.limits.items()):
                 raise ValueError('budget_exhausted')
@@ -119,7 +132,7 @@ class AgentLedger:
             now = self.clock()
             if run['deadline'] is None:
                 run.update(started_at=now, deadline=now+run['wall_seconds']); self._put_run(db,run)
-            if now >= run['deadline']: raise ValueError('wall_stop')
+            if self._wall_over(run, now): raise ValueError('wall_stop')
             row.update(claimed_at=now)
             self._put_job(db,jid,'claimed',row)
 
@@ -191,6 +204,36 @@ class AgentLedger:
                 if run['deadline'] is not None: run['deadline']+=elapsed
                 run['paused_seconds']+=elapsed; run['paused_at']=None; self._put_run(db,run)
 
+    def sim_wait_begin(self):
+        """Waiting for the robot: like an operator pause for the clock, but requests are still accepted."""
+        with self.tx() as db:
+            run=self._run(db)
+            if run.get('wall_unlimited') and run.get('sim_wait_at') is None:
+                run['sim_wait_at']=self.clock(); self._put_run(db,run)
+
+    def sim_wait_end(self):
+        with self.tx() as db:
+            run=self._run(db)
+            if run.get('sim_wait_at') is not None:
+                elapsed=max(0,self.clock()-run['sim_wait_at'])
+                if run['deadline'] is not None: run['deadline']+=elapsed
+                run['sim_wait_seconds']=run.get('sim_wait_seconds',0)+elapsed; run['sim_wait_at']=None; self._put_run(db,run)
+
+    @staticmethod
+    def _active_seconds(run, now):
+        """Seconds this run has been active: from its first claim, minus operator pauses and waits for the robot."""
+        if run.get('started_at') is None:return 0
+        open_pause=max(0,now-run['paused_at']) if run.get('paused_at') is not None else 0
+        open_wait=max(0,now-run['sim_wait_at']) if run.get('sim_wait_at') is not None else 0
+        return max(0,now-run['started_at']-run['paused_seconds']-run.get('sim_wait_seconds',0)-open_pause-open_wait)
+
+    def mark_progress(self):
+        """A new execution, version or help request: the no-progress clock starts again."""
+        with self.tx() as db:
+            run=self._run(db)
+            if run.get('wall_unlimited'):
+                run['progress_active_seconds']=self._active_seconds(run,self.clock()); self._put_run(db,run)
+
     def snapshot(self):
         with self.tx() as db:
             run=self._run(db); rows=self._jobs(db)
@@ -198,7 +241,12 @@ class AgentLedger:
         held={k:sum(r['resources'].get(k,0) for r in rows if r['state']=='reserved') for k in self.limits}
         now=run['paused_at'] if run['paused_at'] is not None else self.clock()
         remaining=max(0,run['deadline']-now) if run['deadline'] is not None else run['wall_seconds']
-        return dict(run, used=used, held=held, remaining={k:self.limits[k]-used[k]-held[k] for k in self.limits}, wall_remaining=remaining,
+        extra={}
+        if run.get('wall_unlimited'):
+            active=self._active_seconds(run,self.clock())
+            remaining=UNLIMITED_REMAINING
+            extra=dict(active_seconds=active,idle_seconds=max(0,active-run.get('progress_active_seconds',0)),no_progress_seconds=NO_PROGRESS_SECONDS)
+        return dict(run, **extra, used=used, held=held, remaining={k:self.limits[k]-used[k]-held[k] for k in self.limits}, wall_remaining=remaining,
                     model_turns=sum(r['resources'].get('model_turns',0) for r in rows if r['state']!='released'),
                     attention=dict(help_count=used['help'],hint_human_seconds=sum(
                         (r.get('receipt') or {}).get('hint_human_seconds',0) for r in rows

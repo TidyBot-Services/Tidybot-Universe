@@ -20,12 +20,12 @@
   function ingest(snap) {
     state.snap = snap;
     state.cards = new Map();
-    const all = [snap.robot?.running, ...(snap.queue || []), ...(snap.recent || [])].filter(Boolean);
+    const all = [...(snap.robot?.open || []), snap.robot?.running, ...(snap.queue || []), ...(snap.recent || [])].filter(Boolean);
     for (const card of all) state.cards.set(card.experiment_id, card);
   }
   // Clocks that tick every second (waiting time, estimates) must not force a redraw of a form someone is typing in.
   const stable = c => c && {...c, help_waiting_seconds: null, eta_start_seconds: c.eta_start_seconds == null ? null : Math.round(c.eta_start_seconds / 60)};
-  const fingerprint = () => JSON.stringify([(state.snap?.queue || []).map(stable), (state.snap?.recent || []).map(stable), stable(state.snap?.robot?.running), state.snap?.counts,
+  const fingerprint = () => JSON.stringify([(state.snap?.queue || []).map(stable), (state.snap?.recent || []).map(stable), stable(state.snap?.robot?.running), (state.snap?.robot?.open || []).map(stable), state.snap?.counts,
     state.snap?.me, state.snap?.clock?.speed, state.snap?.events?.[0]?.id]);
 
   async function poll() {
@@ -96,7 +96,18 @@
   const open = c => `role="button" tabindex="0" data-lb-open="${esc(c.experiment_id)}"`;
   const row = (c, extra = '') => `<div class="lb-line${c.mine ? ' me' : ''}" ${open(c)}><span class="lb-n">${c.state === 'queued' ? c.queue_position : c.state === 'finished' ? (c.result === 'solved' ? '✓' : '✕') : '●'}</span><b>${c.mine ? 'You' : esc(c.nickname)}</b><span class="lb-sub">${extra}</span></div>`;
 
+  // Remote time-share: several runs are open at once and take turns on the one robot. Each says where it stands.
+  const shared = () => Array.isArray(state.snap?.robot?.open);
+  const robotWord = c => c.state === 'waiting_human' ? (c.mine ? 'Needs you' : 'Needs a person') : c.robot?.state === 'executing' ? 'On the robot'
+    : c.robot?.state === 'waiting' ? (c.robot.ahead > 0 ? `Waiting for robot · ${c.robot.ahead} ahead` : 'Waiting for robot') : 'Writing code';
+  const openLine = c => `<div class="lb-line lb-run${c.mine ? ' me' : ''}" ${open(c)} data-lb-robot="${esc(c.robot?.state || '')}"><span class="lb-pill${c.state === 'waiting_human' || c.robot?.state === 'waiting' ? ' wait' : ''}">${esc(robotWord(c))}</span><b>${c.mine ? 'You' : esc(c.nickname)}</b><span class="lb-sub">${c.attempt.current} / ${c.attempt.limit}</span></div>`;
+  function sharedPinned() {
+    const snap = state.snap, opened = snap.robot.open, queue = snap.queue || [];
+    const head = opened.length ? opened.map(openLine).join('') : '<p class="lb-idle">No run is open. The robot is free.</p>';
+    return `<section class="lb-pin" data-lobby-pin data-lobby-shared aria-label="The robot and the queue"><h3>One robot · ${opened.length} of ${esc(snap.robot.slots)} runs open</h3>${head}${queue.slice(0, 4).map(c => row(c, 'in line')).join('')}${queue.length > 4 ? `<p class="lb-more">+ ${queue.length - 4} more waiting</p>` : ''}</section>`;
+  }
   function pinned() {
+    if (shared()) return sharedPinned();
     const snap = state.snap, running = snap.robot?.running, queue = snap.queue || [];
     const head = running ? `<div class="lb-line lb-run${running.mine ? ' me' : ''}" ${open(running)}><span class="lb-pill${running.state === 'waiting_human' ? ' wait' : ''}">${running.state === 'waiting_human' ? (running.mine ? 'Needs you' : 'Needs a person') : 'Running'}</span><b>${running.mine ? 'You' : esc(running.nickname)}</b><span class="lb-sub">${running.attempt.current} / ${running.attempt.limit}</span></div>` : '<p class="lb-idle">The robot is free.</p>';
     return `<section class="lb-pin" data-lobby-pin aria-label="The robot and the queue"><h3>One robot · now &amp; next</h3>${head}${queue.slice(0, 4).map(c => row(c, minutes(c.eta_start_seconds))).join('')}${queue.length > 4 ? `<p class="lb-more">+ ${queue.length - 4} more waiting</p>` : ''}${clockHtml()}</section>`;
@@ -107,6 +118,12 @@
     return `<div class="lb-clock" data-lobby-clock><span class="lb-label">Demo speed</span>${seg('data-lb-speed', [1, 5, 20, 60].map(n => [String(n), `×${n}`]), String(state.snap.clock?.speed))}</div>`;
   }
   function queueView() {
+    if (shared()) {
+      const snap = state.snap, opened = snap.robot.open, queue = snap.queue || [], recent = snap.recent || [];
+      return `<section class="lb-queue" data-lobby-queue data-lobby-shared aria-label="Queue"><h3>Open · ${opened.length} of ${esc(snap.robot.slots)} · they take turns on the robot</h3>${opened.map(openLine).join('') || '<p class="lb-idle">Nobody. The robot is free.</p>'}
+      <h3>Waiting for a slot · first come, first served</h3>${queue.map(c => row(c, `#${c.queue_position}`)).join('') || '<p class="lb-idle">Nobody is waiting.</p>'}
+      <h3>Just finished</h3>${recent.slice(0, 8).map(c => row(c, `${RESULT[c.result] || 'Finished'} · ${c.attempt.current} / ${c.attempt.limit}`)).join('')}</section>`;
+    }
     const snap = state.snap, running = snap.robot?.running, queue = snap.queue || [], recent = snap.recent || [];
     return `<section class="lb-queue" data-lobby-queue aria-label="Queue"><h3>Running</h3>${running ? row(running, `${running.attempt.current} / ${running.attempt.limit}`) : '<p class="lb-idle">Nobody. The robot is free.</p>'}
       <h3>Waiting · first come, first served</h3>${queue.map(c => row(c, minutes(c.eta_start_seconds))).join('') || '<p class="lb-idle">Nobody is waiting.</p>'}
@@ -143,6 +160,10 @@
     if (c?.start_error && c.state === 'created') return `<div class="op-outcome failed" data-operator-outcome="start-failed" role="alert"><strong>✕ DID NOT START</strong><div><p>${c.mine ? 'Your run' : `${esc(c.nickname)}'s run`} reached the front of the line but could not start, so it left the line.</p><p>${esc(c.start_error)}</p></div></div>`;
     if (!c || !['queued', 'running', 'waiting_human'].includes(c.state) || (c.real && c.state !== 'queued')) return '';
     const k = c.attempt.current, n = c.attempt.limit, owner = c.mine ? 'You are' : `${esc(c.nickname)} is`;
+    if (c.state === 'queued' && shared()) {
+      const ahead = (state.snap.queue || []).filter(q => q.queue_position < c.queue_position).length, slots = state.snap.robot.slots;
+      return `<div class="op-outcome queued" data-operator-outcome="queued" role="status"><strong>▣ QUEUED</strong><div><p>${owner} #${c.queue_position} in line for a run slot.</p><p>Up to ${esc(slots)} runs are open at once and take turns on the robot.${c.mine ? ' Your place is saved; you can close this page.' : ''}</p></div></div>${tiles([[`#${c.queue_position}`, 'Place in line'], [`${state.snap.robot.open.length} / ${slots}`, 'Runs open'], [String(ahead), 'Ahead of you']])}`;
+    }
     if (c.state === 'queued') {
       const ahead = (state.snap.queue || []).filter(q => q.queue_position < c.queue_position).length + (state.snap.robot?.running ? 1 : 0);
       return `<div class="op-outcome queued" data-operator-outcome="queued" role="status"><strong>▣ QUEUED</strong><div><p>${owner} #${c.queue_position} in line · ${minutes(c.eta_start_seconds)} (estimate).</p><p>The robot runs one task at a time.${c.mine ? ' Your place is saved; you can close this page.' : ''}</p></div></div>${tiles([[`#${c.queue_position}`, 'Place in line'], [minutes(c.eta_start_seconds) || '—', 'Estimated start'], [state.snap.robot?.running?.nickname || '—', 'Running now'], [String(ahead), 'Ahead (running + waiting)']])}`;
@@ -225,7 +246,7 @@
   }
   // Which real recording a simulated run replays (shown in the run's detail, never in the sidebar list).
   const provenance = c => c.recording ? `<p class="lb-prov" data-lobby-prov><b>Simulated</b> · replays the recording of <code>${esc(String(c.recording.id).slice(0, 16))}…</code> (${esc(c.recording.attempts)} recorded attempts)${c.mine ? '. Your answers do not change what happens next.' : '.'}</p>` : '';
-  const mineCard = () => [state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
+  const mineCard = () => [...(state.snap?.robot?.open || []), state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
   function banner(snapshot) {
     const c = snapshot?.lobby;
     if (!c) return '';
@@ -254,7 +275,12 @@
     if (!state.enabled) return '';
     const snap = state.snap, waiting = (snap.queue || []).length, running = snap.robot?.running ? 1 : 0;
     const place = waiting + running + 1;
-    const mineBusy = [snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
+    const mineBusy = [...(snap.robot?.open || []), snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
+    if (shared()) {
+      const opened = snap.robot.open.length, slots = snap.robot.slots, free = opened < slots && !waiting;
+      return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun data-lobby-shared><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Up to ${esc(slots)} runs are open at once. They take turns on the one robot, one Try at a time.</small></div>
+      <p class="ab-run-hint" data-lobby-queue-note>${opened} of ${esc(slots)} runs open · ${waiting} waiting for a slot. ${mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? 'Your run would start right away.' : `Your run would be #${waiting + 1} in line.`} Waiting for the robot does not count toward a run's time; there is no time limit.</p></section>`;
+    }
     return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
       <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;
   }

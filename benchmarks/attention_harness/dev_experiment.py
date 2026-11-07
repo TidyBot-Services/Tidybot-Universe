@@ -771,12 +771,13 @@ def acquire(store,exp_id,owner):
         e['recovered_human_waits']=recovery  # Run-local handoff; no new allocation.
         return e
 
-def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None,allow_private_hosts=(),public_gateway_mode=False):
+def run(store,exp_id,*,max_cells,budget_file=None,client=None,runner_factory=None,max_slots=None,outer_deadline_epoch=None,min_start_wall_seconds=None,allow_private_hosts=(),public_gateway_mode=False,sim_lock=None):
     if snapshot(store,exp_id)['selection'].get('dev_mode')=='agent':
         from .dev_agent_loop import run_agent_experiment
         return run_agent_experiment(store,exp_id,max_cells=max_cells,client=client,runner_factory=runner_factory,
             outer_deadline_epoch=outer_deadline_epoch,max_slots=max_slots,
-            allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
+            allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode,sim_lock=sim_lock)
+    if sim_lock is not None:raise ValueError('time-share is for Agent runs only')
     from .dev_disk import require_start,experiment_root
     require_start(experiment_root(snapshot(store,exp_id)))
     from .dev_wait_recovery import reconcile_waits

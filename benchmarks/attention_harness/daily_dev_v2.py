@@ -127,7 +127,12 @@ def registered_scene_seeds():
     return sorted(set.intersection(*covered)) if covered else []
 
 class DailyDevV2:
-    def __init__(self,root,profiles,authorization=None,*,per_run_budget=False,memory=None):
+    def __init__(self,root,profiles,authorization=None,*,per_run_budget=False,memory=None,sim_lock=None,run_slots=None):
+        # Remote time-share (sim_lock set): up to run_slots Agent runs open at once, each execution waiting its turn for the
+        # host's one robot (sim_timeshare). Without it, the local behaviour: one run at a time, with its time limit.
+        if sim_lock is not None and (not per_run_budget or memory is not None or type(run_slots) is not int or run_slots<1):
+            raise ValueError('time-share needs per-run budgets, no Memory and a positive run_slots')
+        self.sim_lock=None if sim_lock is None else str(Path(sim_lock).resolve());self.run_slots=run_slots
         if memory is not None:
             from .dev_planner import configuration as planner_configuration
             planner_configuration({'memory':memory,'human_wait_seconds':0,'background_seconds':0,'approval_rule':'none'})
@@ -174,6 +179,11 @@ class DailyDevV2:
                 # The list is all the shared lobby reads, so it has to say when a run is waiting for a person.
                 wait=pending(Path(row['artifact_dir'])/'agent/private',cell=row['key']) if row.get('state')=='running' and row.get('artifact_dir') else None
                 if wait:row['human_wait']=wait
+                if getattr(self,'sim_lock',None) and row.get('state')=='running' and row.get('artifact_dir'):
+                    # Remote time-share: whether this run is on the robot or waiting for it, for the lobby.
+                    from .sim_timeshare import read_state
+                    robot=read_state(Path(row['artifact_dir'])/'agent/private')
+                    if robot:row['robot']=robot
             return clean(rows)
         return rows
     def create(self,body,*,keys=None):
@@ -313,7 +323,7 @@ class DailyDevV2:
             if e['state']=='paused':experiments.resume_paused(s,eid)
             else:experiments.withdraw_pause(s,eid)  # A worker lost while pausing leaves a stale request.
             with (directory/'scheduler.log').open('ab') as log:
-                argv=[sys.executable,'-B','-u','-m',__name__,'--worker',eid,'--root',str(self.root),'--budget',str(budget)]
+                argv=[sys.executable,'-B','-u','-m',__name__,'--worker',eid,'--root',str(self.root),'--budget',str(budget),*(['--sim-lock',getattr(self,'sim_lock',None)] if getattr(self,'sim_lock',None) else [])]
                 launch=subprocess.Popen
                 if run_keys is not None:
                     if keys and keys.allow_private_hosts:argv+=['--allow-private-provider-hosts',','.join(keys.allow_private_hosts)]
@@ -329,14 +339,18 @@ class DailyDevV2:
             return {'experiment_id':eid,'deduplicated':True}
         if e['state']=='completed':return {'experiment_id':eid,'deduplicated':True}
         if e['cancelled']:raise DevConflict('Cancelled experiment is read-only; create a new independent experiment')
-        for row in self.list():
+        if getattr(self,'sim_lock',None):
+            if e['selection'].get('dev_mode')!='agent':raise DevConflict('Only Agent runs share the robot')
+            live=self.live_runs()-{eid}
+            if len(live)>=self.run_slots:raise DevConflict(f'All {self.run_slots} run slots are in use; this run keeps its place')
+        for row in ([] if getattr(self,'sim_lock',None) else self.list()):
             if row['experiment_id']!=eid and row.get('owner') and owner_alive(row['owner']):raise DevConflict('Another daily experiment has a live external worker')
         for receipt in self.root.glob('devexp-*/scheduler-process-*.json'):
             identity=json.loads(receipt.read_bytes())
             if owner_alive(identity):
                 if receipt.parent.name==eid:return {'experiment_id':eid,'deduplicated':True}
-                raise DevConflict('Another daily scheduler process is active')
-        if any(p.poll() is None for p in self.workers.values()):raise DevConflict('Daily Dev v2 worker is serial; another experiment is active')
+                if not getattr(self,'sim_lock',None):raise DevConflict('Another daily scheduler process is active')
+        if not getattr(self,'sim_lock',None) and any(p.poll() is None for p in self.workers.values()):raise DevConflict('Daily Dev v2 worker is serial; another experiment is active')
         if any(c['state']=='needs_review' for c in e['cells']):raise DevConflict('Unresolved work requires review; no automatic retry')
         if sha(e['manifest']['uri'])!=e['manifest']['sha256']:raise DevConflict('manifest digest drift')
         manifest=json.loads(Path(e['manifest']['uri']).read_bytes());lockref=manifest['identity_lock']
@@ -344,6 +358,14 @@ class DailyDevV2:
         runtime=Path(json.loads(Path(lockref['path']).read_bytes())['source_root'])
         if not runtime.is_dir():raise DevConflict('frozen experiment runtime missing')
         return e,manifest,runtime
+    def live_runs(self):
+        """Experiments whose worker process is alive: the run slots in use."""
+        live={eid for eid,p in self.workers.items() if p.poll() is None}
+        for receipt in self.root.glob('devexp-*/scheduler-process-*.json'):
+            try:identity=json.loads(receipt.read_bytes())
+            except (OSError,ValueError):continue
+            if isinstance(identity,dict) and owner_alive(identity):live.add(receipt.parent.name)
+        return live
     def dispatch_budget(self,store,experiment,directory,creation_budget,*,validate_only=False):
         """Bind one finite deadline at first dispatch, never renew it on retry."""
         creation=json.loads(creation_budget.read_bytes())
@@ -362,7 +384,8 @@ class DailyDevV2:
             if goal.get('real_started_at') is not None:deadline=min(deadline,goal['real_started_at']+goal['wall_limit'])
             declaration={**creation,'deadline_epoch':deadline}
             if not validate_only:immutable(dispatch,declaration)
-        if declaration['deadline_epoch']+experiments.paused_seconds(store,experiment.get('goal_id'))<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
+        # Remote time-share runs have no time limit, so their recorded deadline never ends them.
+        if not getattr(self,'sim_lock',None) and declaration['deadline_epoch']+experiments.paused_seconds(store,experiment.get('goal_id'))<=time.time():raise DevBudgetExhausted('Run time budget exhausted; create a new run')
         if validate_only:
             goal=store.goal(experiment.get('goal_id'))
             if goal.get('authorized_until') not in (None,declaration['deadline_epoch']):raise DevConflict('existing run deadline cannot be extended')
@@ -490,8 +513,8 @@ class DailyDevV2:
         elif unknown or any(row.get('state')=='needs_review' for row in cells):blocked='A step stopped part-way and its result is unknown, so this run cannot continue by itself. Start a new run instead.'
         elif e.get('state')=='completed':blocked='This run has finished.'
         elif state=='running':blocked=None
-        elif g is not None and g['wall_remaining']<=0:blocked="This run's time budget is used up. Start a new run instead."
-        elif paused and any(row.get('owner') and owner_alive(row['owner']) for row in self.list() if row['experiment_id']!=eid):blocked='Another run is using the robot right now. Resume this one after it finishes.'
+        elif g is not None and g['wall_remaining']<=0 and not getattr(self,'sim_lock',None):blocked="This run's time budget is used up. Start a new run instead."
+        elif paused and not getattr(self,'sim_lock',None) and any(row.get('owner') and owner_alive(row['owner']) for row in self.list() if row['experiment_id']!=eid):blocked='Another run is using the robot right now. Resume this one after it finishes.'
         resumable=paused or (state=='idle' and any(row.get('versions') for row in cells))  # e.g. worker lost while pausing
         if resumable and e.get('pause_reason')=='disk_low':
             from .dev_disk import require_start,experiment_root
@@ -530,7 +553,8 @@ class DailyDevV2:
         return experiments.cancel(s,eid) if command=='cancel' else self.start(eid,keys=keys)
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--worker',required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--budget',type=Path,required=True);p.add_argument('--key-fd',type=int);p.add_argument('--allow-private-provider-hosts',default='');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--worker',required=True);p.add_argument('--root',type=Path,required=True);p.add_argument('--budget',type=Path,required=True);p.add_argument('--key-fd',type=int);p.add_argument('--allow-private-provider-hosts',default='')
+    p.add_argument('--sim-lock',type=Path,help='Remote time-share: the host lock each execution takes in turn. The run then has no time limit.');a=p.parse_args()
     if a.key_fd is not None:
         from .dev_agent_key_vault import harden_process,install_run_keys_from_fd
         harden_process();install_run_keys_from_fd(a.key_fd)
@@ -541,8 +565,9 @@ def main():
         while not done.wait(.2):
             if time.time()>=end:
                 experiments.cancel(s,a.worker);return
-    threading.Thread(target=deadline,daemon=True).start()
-    try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget,**({'allow_private_hosts':tuple(a.allow_private_provider_hosts.split(','))} if a.allow_private_provider_hosts else {}))
+    if a.sim_lock is None:threading.Thread(target=deadline,daemon=True).start()
+    try:experiments.run(s,a.worker,max_cells=len(experiments.snapshot(s,a.worker)['cells']),budget_file=a.budget,**({'allow_private_hosts':tuple(a.allow_private_provider_hosts.split(','))} if a.allow_private_provider_hosts else {}),
+                        **({'sim_lock':str(a.sim_lock)} if a.sim_lock is not None else {}))
     finally:
         done.set()
         # Opt-in (ATTENTION_MEMORY_AUTO_IMPORT_KEYS): detached importer for this

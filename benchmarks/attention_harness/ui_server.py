@@ -533,7 +533,7 @@ def create_server(
     dev_v2_per_run_budget: bool = False, dev_v2_memory: dict | None = None,
     memory_view: MemoryView | None = None,
     vault=None, allow_custom: bool | None = None, allow_private_hosts: tuple = (), lobby=None,
-    gateway_secret=None, gateway_clock=time.time,
+    gateway_secret=None, gateway_clock=time.time, sim_lock: Path | None = None, run_slots: int | None = None,
 ) -> ThreadingHTTPServer:
     # These adapters own different ledgers. Never silently replace an explicitly
     # injected shared-goal bridge with an independent daily experiment budget.
@@ -541,6 +541,9 @@ def create_server(
         raise ValueError('choose an existing goal bridge or --dev-v2-root')
     if dev_v2_root is None and (dev_v2_authorization is not None or dev_v2_per_run_budget or dev_v2_memory is not None):
         raise ValueError('Dev v2 authorization/budget options require --dev-v2-root')
+    # Remote time-share is for the public gateway's harness only; a local console keeps one run at a time.
+    if (sim_lock is None) != (run_slots is None) or (sim_lock is not None and (gateway_secret is None or dev_v2_root is None)):
+        raise ValueError('--sim-lock and --run-slots go together, on a --public-gateway-mode instance with --dev-v2-root')
     if store is not None:
         recover_lost_runs(store)
         # Live snapshots must not block executor evidence or stop acknowledgements.
@@ -602,7 +605,7 @@ def create_server(
         from .daily_dev_v2 import DailyDevV2
         authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
-                                  per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory)
+                                  per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory,sim_lock=sim_lock,run_slots=run_slots)
     if lobby is not None:
         from . import lobby_http
         lobby = lobby_http.prepare(lobby, dev_v2_bridge)
@@ -1500,6 +1503,9 @@ def main() -> None:
     parser.add_argument("--public-gateway-mode", action="store_true",
                         help="serve only requests signed by the public gateway; needs --gateway-secret-fd")
     parser.add_argument("--gateway-secret-fd", type=int, help="file descriptor holding the gateway secret")
+    parser.add_argument("--sim-lock", type=Path,
+                        help="public gateway only: this host's simulator lock. Several runs stay open; each execution takes it in turn, and runs have no time limit")
+    parser.add_argument("--run-slots", type=int, help="with --sim-lock: how many runs may be open at once")
     parser.add_argument("--dev-v2-authorization", type=Path,
                         help="explicit time-bounded daily run authorization")
     parser.add_argument("--dev-v2-per-run-budget", action="store_true",
@@ -1586,6 +1592,7 @@ def main() -> None:
                            dev_v2_authorization=args.dev_v2_authorization,
                            dev_v2_per_run_budget=args.dev_v2_per_run_budget,dev_v2_memory=daily_memory,
                            gateway_secret=read_gateway_secret(args.gateway_secret_fd) if args.public_gateway_mode else None,
+                           sim_lock=args.sim_lock, run_slots=args.run_slots,
                            lobby=json.loads(args.lobby_config.read_text()) if args.lobby_config else None)
     print(f"AttentionBench UI: http://{args.host}:{server.server_port}/ui/", flush=True)
     try:

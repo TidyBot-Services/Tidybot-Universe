@@ -416,7 +416,7 @@
   }
   function navigationRecords(){return allNavigationRecords().filter(r=>!r.history_deleted_at||recordIsActive(r));}
   function deletedNavigationRecords(){return allNavigationRecords().filter(r=>r.history_deleted_at&&!recordIsActive(r));}
-  function recordIsActive(item){if(item.lobby)return window.Lobby.isActive(item);if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
+  function recordIsActive(item){if(item.lobby)return window.Lobby.isActive(item);if(['completed','failed','cancelled','condition_invalid','needs_review','stopped','budget_exhausted','timed_out','not_started'].includes(item.status))return false;if(item.lifecycle)return ['model','advisor','approval','sdk','preparing','robot_wait'].includes(item.lifecycle.phase);return item.development?['ready','running','stopping'].includes(item.status):item.status==='running';}
   function recordStatus(item){
     if(item.lobby)return window.Lobby.statusWord(item);
     if(item.agent&&!recordIsActive(item))return item.agent_solved?'Solved':'Not solved';
@@ -424,7 +424,7 @@
     if(!DEBUG_VIEW&&item.development&&/infrastructure|dispatch unknown|outcome_unknown/i.test(String(item.reason||'')))return 'System problem';
     if(item.development&&['condition_invalid','needs_review','cancelled','failed','not_started'].includes(item.status))
       return ({condition_invalid:'Condition invalid',needs_review:'Needs review',cancelled:'Stopped',failed:'Failed',not_started:'Not started'})[item.status];
-    if(item.development&&item.lifecycle)return ({prepared:'Prepared / Not started',queued:'Queued / Next round',model:'Model working',advisor:'Waiting for Advisor',approval:'Needs human approval',sdk:'SDK running',preparing:'Preparing public work',review:'Needs review',terminal:'Ended'})[item.lifecycle.phase] || 'Unconfirmed';
+    if(item.development&&item.lifecycle)return ({prepared:'Prepared / Not started',queued:'Queued / Next round',model:'Model working',advisor:'Waiting for Advisor',approval:'Needs human approval',sdk:'SDK running',robot_wait:'Waiting for the robot',preparing:'Preparing public work',review:'Needs review',terminal:'Ended'})[item.lifecycle.phase] || 'Unconfirmed';
     if(!DEBUG_VIEW&&item.development&&item.status==='running')return 'Running';
     // Same words as the cover's task rail (shell.js outcome): a completed run says whether it solved the task.
     if(!DEBUG_VIEW&&item.development&&item.status==='completed')return ['eval_passed','native_success'].includes(item.reason)?'Solved':'Not solved';
@@ -440,6 +440,9 @@
     const reason=String(s.reason||'');
     if(reason==='eval_native_disagreement')return {title:'Ended · Eval passed twice but the task check did not confirm · Review required',short:'Eval disagreed',key:'eval_native_disagreement',review:true,
       explanation:'Eval judged two versions in a row as passed, but the task\'s own completion check did not confirm them. The run stopped so versions are not spent on a misleading verdict.'};
+    // Remote time-share: the run stopped itself. Not a person pressing Stop, so it never reads as one.
+    if(reason==='no_progress')return {title:'Ended · Stopped automatically · No new Try, version or help request for 2 hours',short:'No progress for 2 h',key:'no_progress',
+      explanation:'This run had no new execution, version or help request for 2 hours of active time (time spent waiting for the robot is not counted), so it stopped itself. Nobody cancelled it.'};
     const approval=/^motion approval (rejected|timed_out|cancelled|invalidated|authorization_exhausted)(; unresolved work retained)?$/.exec(reason);
     if(approval){
       const exhausted=approval[1]==='authorization_exhausted',review=!!approval[2]||s.state==='needs_review';
@@ -2715,7 +2718,7 @@
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.versionsRange}</small><input name="max_attempts" type="number" min="1" max="${limits.versions}" value="${limits.versions}" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
-            <label class="ab-launch-field">Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
+            <label class="ab-launch-field"${limits.noTimeLimit?' data-no-time-limit':''}>Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"${limits.noTimeLimit?' hidden':''}><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL||limits.noTimeLimit?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
             <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
             <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
@@ -2836,7 +2839,8 @@
         form.querySelector('[data-readonly-sdk-calls]').textContent=form.sdk_calls.value;
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
-        form.querySelector('[data-wall-description]').textContent=`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
+        // A Remote host with time-share has no time limit; the field keeps its nominal value and says so.
+        form.querySelector('[data-wall-description]').textContent=limits.noTimeLimit?'No time limit':`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
@@ -3901,6 +3905,8 @@
       preparing:['○ PREPARING PUBLIC WORK','Preparing public work','The scheduler is preparing public inputs or checking notes. No SDK execution is active.'],
       review:['⚠ NEEDS REVIEW','Needs review','Work or ownership is unresolved. Review the persistent records before continuing; no automatic retry is available.'],
       sdk:['● SDK RUNNING','SDK running','A claimed SDK execution has a live owner.'],
+      // Remote time-share: this Try is ready and waits its turn; the clock is stopped meanwhile.
+      robot_wait:['○ WAITING FOR THE ROBOT',l.robot_ahead>0?`Waiting for the robot · ${l.robot_ahead} ahead`:'Waiting for the robot',`This run's next Try is ready and waits its turn for the shared robot${l.robot_ahead>0?`: ${l.robot_ahead} ${l.robot_ahead===1?'execution is':'executions are'} ahead`:''}. Waiting time does not count toward this run.`],
       terminal:['○ ENDED','Ended','This run has ended. Recorded work and replies remain available.']
     };
     // A shared run that has just started has no recorded work yet: say so plainly instead of the 'prepared' wording.

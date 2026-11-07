@@ -107,7 +107,7 @@ class Browser:
 @pytest.fixture
 def world(tmp_path, loopback):
     harness = Harness()
-    config = Config(state_dir=tmp_path / 'state', upstream=harness.url, ui_dir=UI, listen_port=0, cookie_secure=True, limits=Limits(requests_per_second=1000, request_burst=1000, logins_per_hour=5))
+    config = Config(state_dir=tmp_path / 'state', upstream=harness.url, ui_dir=UI, listen_port=0, cookie_secure=True, limits=Limits(requests_per_second=1000, request_burst=1000, logins_per_hour=5, run_slots=1))  # One slot: the line tests below need a full host.
     config.state_dir.mkdir()
     now = [1000000.0]
     gateway = gateway_server.create_server(config, secret=SECRET, clock=lambda: now[0])
@@ -266,7 +266,7 @@ def test_a_run_is_created_from_named_fields_then_started(world):
     create = next(call for call in world.harness.calls if call[:2] == ('POST', '/api/dev-v2/experiments'))
     sent = json.loads(create[3])
     assert sent['start'] is False and sent['selection']['quota_stop_percent'] == 90 and 'execution_target' not in sent['selection']
-    assert sent['selection']['agent_limits'] == dict(versions=3, wall_seconds=3600) and sent['selection']['goal_key'].startswith('gw-u-')
+    assert sent['selection']['agent_limits'] == dict(versions=3, wall_seconds=21600) and sent['selection']['goal_key'].startswith('gw-u-')
     assert world.harness.paths()[-1] == f'/api/dev-v2/experiments/{made["experiment_id"]}/run'
     assert browser.send('GET', f'/api/dev-v2/experiments/{made["experiment_id"]}')[0] == 200
 
@@ -323,7 +323,7 @@ def test_lists_show_everyones_runs_and_nothing_else(world):
 
 def test_options_hide_fixed_profiles_and_carry_the_limits(world):
     value = world.person().json('GET', '/api/run-options')[1]
-    assert 'profiles' not in value and value['hosted']['limits']['wall'] == 3600 and value['dev_v2']['goal_key'] == 'set-by-host'
+    assert 'profiles' not in value and value['hosted']['limits']['noTimeLimit'] is True and value['dev_v2']['goal_key'] == 'set-by-host'
 
 
 def test_reads_are_public_and_keys_belong_to_the_person_logged_in(world):
@@ -483,7 +483,7 @@ def test_the_second_person_waits_in_line_and_starts_when_the_robot_is_free(world
     world.harness.rows.append(row(b, 'planned'))
     assert [p for p in world.harness.paths() if p.endswith('/run')] == [f'/api/dev-v2/experiments/{a}/run']
     board = second.json('GET', '/api/lobby')[1]
-    assert board['demo'] is False and board['robot']['running']['experiment_id'] == a and board['robot']['running']['mine'] is False
+    assert board['demo'] is False and [c['experiment_id'] for c in board['robot']['open']] == [a] and board['robot']['open'][0]['mine'] is False and board['robot']['slots'] == 1
     assert [c['experiment_id'] for c in board['queue']] == [b] and board['queue'][0]['queue_position'] == 1 and board['queue'][0]['mine'] is True
     world.gateway.gateway.dispatch();assert sum(p.endswith('/run') for p in world.harness.paths()) == 1
     world.harness.rows = [row(a, 'completed'), row(b, 'planned')];world.now[0] += 31
@@ -549,19 +549,16 @@ def test_nothing_starts_while_runs_are_paused_and_the_line_keeps_its_order(world
     assert world.gateway.gateway.dispatch() is None and len(world.gateway.gateway.store.queue()) == 1
 
 
-def test_the_robot_lock_is_held_for_the_run_and_a_busy_lock_means_wait(world, tmp_path):
+def test_the_gateway_never_holds_the_robot_lock_the_harness_takes_it_per_execution(world, tmp_path):
     import fcntl
     from dataclasses import replace
     gateway = world.gateway.gateway;lock = tmp_path/'sim.lock';gateway.config = replace(gateway.config, sim_lock=lock)
-    other = open(lock, 'a');fcntl.flock(other, fcntl.LOCK_EX)
+    other = open(lock, 'a');fcntl.flock(other, fcntl.LOCK_EX)  # An execution is on the robot right now.
     browser = world.person();start(browser, 'client-key-a')
-    assert not any(p.endswith('/run') for p in world.harness.paths()) and len(gateway.store.queue()) == 1
+    # The run still opens: Dev writes code while it waits, and only its executions wait for the robot.
+    assert any(p.endswith('/run') for p in world.harness.paths()) and gateway.store.queue() == []
     other.close()
-    made = gateway.dispatch();assert made[1] == 200
-    probe = open(lock, 'a')
-    with pytest.raises(OSError):fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    world.now[0] += 31;world.harness.rows = [];gateway.dispatch()
-    fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB);probe.close()
+    probe = open(lock, 'a');fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB);probe.close()
 
 
 def test_a_run_that_fails_to_start_from_the_line_tells_its_owner_why(world):
@@ -577,3 +574,49 @@ def test_a_run_that_fails_to_start_from_the_line_tells_its_owner_why(world):
     world.harness.start_status = 200;world.now[0] += 31
     second.json('POST', f'/api/dev-v2/experiments/{b}/run', {})
     assert world.gateway.gateway.store.start_failures() == {}
+
+
+def slots(world, n):
+    from dataclasses import replace
+    gateway = world.gateway.gateway;gateway.config = replace(gateway.config, limits=replace(gateway.config.limits, run_slots=n))
+    return gateway
+
+
+def test_runs_open_up_to_the_slots_at_once_and_the_next_waits_for_a_slot(world):
+    gateway = slots(world, 3);people = [world.person() for _ in range(4)];made = []
+    for n, browser in enumerate(people):
+        made.append(start(browser, f'client-key-{n}')[1]['experiment_id'])
+        world.harness.rows.append(row(made[-1], 'running' if n < 3 else 'planned'))
+    started = [p for p in world.harness.paths() if p.endswith('/run')]
+    assert started == [f'/api/dev-v2/experiments/{e}/run' for e in made[:3]], started
+    assert [r['experiment_id'] for r in gateway.store.queue()] == [made[3]]
+    world.harness.rows[0] = row(made[0], 'completed')
+    assert gateway.dispatch()[:2] == (made[3], 200) and gateway.store.queue() == []
+
+
+def test_a_run_started_moments_ago_holds_its_slot_before_the_host_lists_it(world):
+    gateway = slots(world, 2);people = [world.person() for _ in range(3)]
+    made = [start(browser, f'client-key-{n}')[1]['experiment_id'] for n, browser in enumerate(people)]
+    world.harness.rows = [row(e, 'planned') for e in made]  # The host has not listed the first two as running yet.
+    assert sum(p.endswith('/run') for p in world.harness.paths()) == 2 and [r['experiment_id'] for r in gateway.store.queue()] == [made[2]]
+    assert gateway.dispatch() is None
+    world.now[0] += 31  # Never listed as running: after 30 seconds the slots are free again.
+    assert gateway.dispatch()[:2] == (made[2], 200)
+
+
+def test_a_host_that_says_its_slots_are_full_keeps_the_place_in_line(world):
+    gateway = slots(world, 2);browser = world.person()
+    world.harness.start_status, world.harness.start_error = 409, 'All 2 run slots are in use; this run keeps its place'
+    made = start(browser, 'client-key-a')[1]['experiment_id']
+    assert [r['experiment_id'] for r in gateway.store.queue()] == [made] and gateway.store.start_failures() == {}
+    world.harness.start_status = 200
+    assert gateway.dispatch()[:2] == (made, 200) and gateway.store.queue() == []
+
+
+def test_the_lobby_lists_open_runs_with_their_robot_state(world):
+    slots(world, 3);first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id'];b = start(second, 'client-key-b')[1]['experiment_id']
+    world.harness.rows = [dict(row(a, 'running'), robot=dict(state='executing')), dict(row(b, 'running'), robot=dict(state='waiting', ahead=1))]
+    board = second.json('GET', '/api/lobby')[1]
+    assert [(c['experiment_id'], c['robot']) for c in board['robot']['open']] == [(a, dict(state='executing')), (b, dict(state='waiting', ahead=1))]
+    assert board['robot']['running']['experiment_id'] == a and board['counts']['running'] == 2

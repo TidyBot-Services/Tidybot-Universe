@@ -5,16 +5,22 @@ from pathlib import Path
 import stat
 
 LOOPBACK = ('127.0.0.1', '::1', 'localhost')
+# The value a Remote run records as its wall budget. The harness's time-share mode does not enforce it.
+NOMINAL_WALL_SECONDS = 21600
 
 
 @dataclass(frozen=True)
 class Limits:
     versions: int = 3
+    # No longer a limit: Remote runs have no time limit (2026-11-08). Kept so older gateway.json files still load.
     wall_seconds: int = 3600
     help_requests: int = 3
     human_reply_seconds: int = 120  # How long an interactive run waits for its owner before the Advisor answers.
     runs_per_day: int = 3
     active_runs: int = 1
+    # Runs open at once on the host (Dev writing code, waiting for a model or a person). The robot itself is one token,
+    # taken by the harness for one execution at a time. Set from measured GPU memory and disk; see the time-share plan.
+    run_slots: int = 3
     # Opening one run page makes dozens of calls (views, evidence, video ranges); 5 a second with a burst of 20 broke the page.
     requests_per_second: float = 10
     request_burst: int = 60
@@ -30,14 +36,14 @@ class Limits:
         if not 30 <= self.human_reply_seconds <= 600:raise ValueError('human_reply_seconds must be 30-600')
         if not 1 <= self.help_requests <= 10 or self.runs_per_day < 1 or self.active_runs < 1:
             raise ValueError('help_requests, runs_per_day and active_runs must be positive')
+        if type(self.run_slots) is not int or not 1 <= self.run_slots <= 16:raise ValueError('run_slots must be 1-16')
 
     def public(self):
-        """What New run shows; the same shape as the main UI's own limits."""
-        minutes, hours = self.wall_seconds // 60, self.wall_seconds / 3600
-        time = f'{minutes} minutes' if minutes < 60 or minutes % 60 else '1 hour' if hours == 1 else f'{int(hours)} hours'
-        return dict(versions=self.versions, wall=self.wall_seconds, help=self.help_requests, maxHelp=self.help_requests,
-                    versionsRange=f'1–{self.versions} · Remote limit', wallRange=(time if minutes <= 20 else f'20 minutes–{time}') + ' · Remote limit',
-                    note=f'Remote limit: {self.versions} versions · {time} · {self.help_requests} help requests, because everyone shares one robot. '
+        """What New run shows; the same shape as the main UI's own limits. There is no time limit, so the wall field is fixed."""
+        return dict(versions=self.versions, wall=NOMINAL_WALL_SECONDS, help=self.help_requests, maxHelp=self.help_requests, noTimeLimit=True,
+                    versionsRange=f'1–{self.versions} · Remote limit', wallRange='No time limit · stops after 2 hours without progress',
+                    note=f'Remote limit: {self.versions} versions · {self.help_requests} help requests · no time limit. Up to {self.run_slots} runs are open at once and take turns on the one robot; '
+                         'waiting for the robot does not count. A run with no new Try, version or help request for 2 hours stops itself. '
                          'Results are not comparable with the official 10-version runs.')
 
 
@@ -52,7 +58,9 @@ class Config:
     cookie_secure: bool = True
     session_hours: int = 24
     stop_files: tuple = ()
-    sim_lock: Path | None = None  # Held while a run uses the robot, so nothing else on the host starts one.
+    # Kept for the monitor, which shows who holds it. The gateway no longer takes it: the harness takes the run host's own
+    # lock for one execution at a time (benchmarks/attention_harness/sim_timeshare.py).
+    sim_lock: Path | None = None
     limits: Limits = field(default_factory=Limits)
 
     def __post_init__(self):
