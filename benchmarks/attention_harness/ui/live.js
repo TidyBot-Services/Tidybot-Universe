@@ -51,7 +51,7 @@
   let launchOptionsLoading = false;
   let selectedRun = initialSelection.get('run');
   let selectedRequest = null;
-  let lastRendered = '';
+  let lastRendered = '', lastDrawn = '';
   let orchestrator = null;
   const gatewayPage = root.dataset.gateway === '1';  // Served by the public gateway: signed in, this person's runs only.
   let orchestratorExpectedUnavailable = root.dataset.remote === '1' || gatewayPage;  // neither the lobby nor the gateway has an orchestrator
@@ -203,6 +203,17 @@
     frame.onload = frame.onerror = null;
     frame.removeAttribute('src'); frame.hidden = true;
   }
+  // The last frame this browser received for each run. Between tries the stage holds it instead of going blank.
+  const heldFrames=new Map();
+  function holdFrame(runId,blob,transform){
+    const old=heldFrames.get(runId);if(old?.url)URL.revokeObjectURL(old.url);
+    heldFrames.set(runId,{blob,transform});
+  }
+  function heldFrame(runId){
+    const held=heldFrames.get(runId);if(!held)return null;
+    held.url??=URL.createObjectURL(held.blob);
+    return held;
+  }
   function startPreviewFrames(frame, station, key) {
     if (previewTransfers.has(frame)) return;
     frame.hidden = !frame.naturalWidth;
@@ -252,6 +263,7 @@
             const candidate = new Image(); candidate.src = url; await candidate.decode();
             if (!current()) {URL.revokeObjectURL(url);return;}
             transfer.url = url; frame.src = url; frame.hidden = false;
+            holdFrame(currentSnapshot.run.run_id,blob,frame.style.transform);
           } catch (error) {URL.revokeObjectURL(url);throw error;}
           finally {if(previousUrl && transfer.url === url)URL.revokeObjectURL(previousUrl);}
           if (!current()) return;
@@ -3273,8 +3285,11 @@
     let selected = explicitView || 'live';
     if (selected !== 'live' && !attempts.some(a => a.attempt_id === selected)) selected = 'live';
     const latestRecorded = Object.values(snapshot.traces).find(t => t.attempt_id === latest?.attempt_id && (t.evidence || []).some(e => e.media_url && (e.mime_type?.startsWith('video/') || e.mime_type?.startsWith('image/') && ['camera_initial','recording_frame'].includes(e.kind))));
-    const currentReplay = !liveTry && run.suite === 'robocasa365' && selected === 'live' && (latest?.ended_at != null || latest?.execution_complete) && latestRecorded && (!snapshot.station.camera_attempt_id || snapshot.station.camera_attempt_id === latest.attempt_id);
-    const attempt = attempts.find(a => a.attempt_id === selected) || (currentReplay || (!liveTry && !DEBUG_VIEW && explicitView !== 'live' && (latest?.ended_at != null || latest?.execution_complete)) ? latest : null);
+    // Between tries the current view holds the last frame; a saved try is one click away on its tab.
+    const phase = snapshot.dev_v2?.lifecycle?.phase;
+    const holding = Boolean(snapshot.agent && !isTerminal(snapshot) && phase && phase !== 'sdk' && selected === 'live');
+    const currentReplay = !holding && !liveTry && run.suite === 'robocasa365' && selected === 'live' && (latest?.ended_at != null || latest?.execution_complete) && latestRecorded && (!snapshot.station.camera_attempt_id || snapshot.station.camera_attempt_id === latest.attempt_id);
+    const attempt = attempts.find(a => a.attempt_id === selected) || (currentReplay || (!holding && !liveTry && !DEBUG_VIEW && explicitView !== 'live' && (latest?.ended_at != null || latest?.execution_complete)) ? latest : null);
     const trace = currentReplay ? latestRecorded : Object.values(snapshot.traces).find(t => t.attempt_id === attempt?.attempt_id);
     const media = (trace?.evidence || []).filter(e => e.media_url);
     const allVideos=media.filter(e=>e.mime_type?.startsWith('video/'));
@@ -4076,6 +4091,22 @@
   function loadingOverlay(kind) {
     return `<div class="op-loading" data-op-loading role="status" aria-live="polite"><div class="op-loading-word" aria-hidden="true">LOADING</div><div class="op-loading-text" data-op-loading-text>${kind==='replay'?'Loading replay…':'Starting simulator…'}</div><i class="op-loading-bar" aria-hidden="true"></i></div>`;
   }
+  // Between tries an Agent run keeps its black stage: the last frame if there is one, and what the AI is doing over it.
+  function operatorHeldStage(snapshot,attempts,phase,copy) {
+    const latest=attempts.at(-1);
+    const saved=(Object.values(snapshot.traces).find(t=>t.attempt_id===latest?.attempt_id)?.evidence||[]).filter(e=>e.media_url);
+    const still=saved.find(e=>['camera_final','final_observation'].includes(e.kind));
+    // A page opened after the try ended has only the recording: its end is that same last frame.
+    const recording=saved.find(e=>e.kind==='advisor_replay')||saved.find(e=>e.mime_type?.startsWith('video/'));
+    const held=heldFrame(snapshot.run.run_id);
+    const src=held?.url||still?.media_url;
+    const flip=held?held.transform:snapshot.station.camera_image_transform==='flip_y'?'scaleY(-1)':'';
+    const frame=src?`<img data-held-frame decoding="sync" ${flip?`style="transform:${esc(flip)}"`:''} src="${esc(src)}" alt="Last camera frame">`
+      :recording?`<video data-held-video data-replay-key="${esc('held:'+recording.media_url)}" muted playsinline preload="metadata" src="${esc(recording.media_url)}" aria-label="Last camera frame"></video>`:'';
+    const title=phase==='model'?'The AI is writing its next step':phase==='eval'?'The Eval agent is reviewing the last try':copy?.short||'The AI is working on its next step';
+    const label=(src||recording)&&latest?`<span class="op-held-label">Last frame · ${esc(attemptName(latest))}</span>`:'';
+    return `<div class="op-stage" data-op-held data-lifecycle="${esc(phase)}">${frame}${label}<div class="op-held-note" role="status"><b>${esc(title)}</b><p>${esc(copy?.text||'The robot is not moving.')}</p></div></div>`;
+  }
   function operatorExecution(snapshot, data) {
     const {attempt,selected,currentReplay,startingStill,attempts,trace,recording,videos,images,recordingViews,viewOptions,chosenView,streaming,active,flipStaticRows,cameraSuite,cameraLabel}=data;
     const run=snapshot.run;
@@ -4100,7 +4131,8 @@
     const tryLive=Boolean(snapshot.agent&&station.camera_monitor_v2),tryBetween=Boolean(snapshot.agent&&!tryLive&&!isTerminal(snapshot));
     const strip=tryLive||tryBetween?`<div class="op-live-strip" data-state="${tryLive?'live':'prep'}"><i class="op-live-dot" aria-hidden="true"></i><b>${tryLive?'LIVE':'WORKING'}</b><span>${tryLive?'The robot is moving':'Between tries · the AI is working on its next step'}</span></div>`:`<div class="op-live-strip" data-state="${active?'live':prep?'prep':'idle'}"><i class="op-live-dot" aria-hidden="true"></i><b>${active?'LIVE':prep?'WORKING':'CURRENT VIEW'}</b><span>${active?`Attempt ${(last?.index??0)+1} · Now: <em data-op-now data-events="${nowEvent?1:0}">${esc(nowEvent?plainEvent(nowEvent):'Getting ready')}</em>`:prep?esc(prepText):'The robot is not running right now'}</span>${active&&epoch(last?.started_at)!=null?`<time data-op-since="${epoch(last.started_at)}"></time>`:''}</div>`;
     let live;
-    if (lifecycle && lifecycle.phase!=='sdk') live=`${strip}<div class="op-idle" data-lifecycle="${esc(lifecycle.phase)}"><b>${esc(lifecycleCopy?.short)}</b><p>${esc(lifecycleCopy?.text)}</p>${lifecycle.phase==='prepared'?'<p>No simulator or camera has been started.</p>':''}</div>`;
+    if (lifecycle && lifecycle.phase!=='sdk' && tryBetween) live=`${strip}${operatorHeldStage(snapshot,attempts,lifecycle.phase,lifecycleCopy)}`;
+    else if (lifecycle && lifecycle.phase!=='sdk') live=`${strip}<div class="op-idle" data-lifecycle="${esc(lifecycle.phase)}"><b>${esc(lifecycleCopy?.short)}</b><p>${esc(lifecycleCopy?.text)}</p>${lifecycle.phase==='prepared'?'<p>No simulator or camera has been started.</p>':''}</div>`;
     else if (station.camera_url) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-op-ended="${busy||tryLive?'false':'true'}" data-op-key="${esc(previewKey(snapshot))}" data-state="loading"><div class="ab-station-camera"><img id="ab-camera-frame" ${station.camera_image_transform==='flip_y'?'style="transform:scaleY(-1)"':''} ${streaming?`hidden data-live-stream-key="${esc(previewKey(snapshot))}" data-preview-url="${esc(station.camera_preview_url)}"`:`src="${esc(station.camera_url)}"`} alt="${esc(cameraSuite)} camera frame"><span>${esc(cameraLabel)}</span></div>${loadingOverlay('live')}</div>${streaming?'<span data-preview-freshness role="status">Connecting to live preview…</span>':''}`;
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
@@ -4334,6 +4366,13 @@
     if(points<0)return '';
     return `Codex quota used by this run: ${points<1?'less than 1 point':`about +${Math.round(points)} points`}`;
   }
+  // What this run can and cannot be compared with. It sits with Resources, so the title stays short and a phone still shows it.
+  function operatorRunNotes(snapshot) {
+    const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
+    const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
+    const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
+    return execution||sdk||scene ? `<div class="op-run-notes" data-run-notes>${execution}${sdk}${scene}</div>` : '';
+  }
   function operatorResources(snapshot) {
     {const shared=Lobby.resourcesHtml(snapshot);if(shared)return shared;}
     const resources=snapshot.resources,s=snapshot.dev_session;
@@ -4354,7 +4393,7 @@
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -4373,12 +4412,9 @@
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
-    const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
-    const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
-    const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}${scene}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
@@ -4729,8 +4765,25 @@
     }
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
-    view.innerHTML = workspaceHTML(snapshot,chosen);
-    {const banner=Lobby.banner(snapshot);if(banner)view.insertAdjacentHTML('afterbegin',banner);}
+    const html = workspaceHTML(snapshot,chosen), banner = Lobby.banner(snapshot) || '';
+    // An Agent run's poll often changes nothing on the page (a quota timestamp, say). Leave the page alone then.
+    // An empty lastRendered means an action asked for a redraw, to reset what it disabled.
+    const clock = /(<em data-count-to=")[\d.]+(" data-count-seconds="1">)([^<]*)(<\/em>)/g;
+    const drawn = html.replace(clock,'$1$2$4')+banner+JSON.stringify(snapshot.dev_v2?.planner||null);
+    if (snapshot.agent && lastRendered && previousRun === run.run_id && drawn === lastDrawn) {
+      const times=[...html.matchAll(clock)].map(row=>row[3]);
+      view.querySelectorAll('em[data-count-seconds="1"]').forEach((el,index)=>{if(times[index]!=null)el.textContent=times[index];});
+      refreshAttemptDag(snapshot);refreshFlowDetail(snapshot);refreshMoreDialog();
+      return;
+    }
+    lastDrawn = drawn;
+    const scrolled = [...view.querySelectorAll('[data-core-region] *')].filter(e=>e.scrollTop||e.scrollLeft).map(e=>[e.className,e.scrollTop,e.scrollLeft]);
+    const previousHeld = view.querySelector('img[data-held-frame]');
+    // Panels rise in when the page opens, not on every redraw.
+    if(previousRun)view.setAttribute('data-settled','');
+    view.innerHTML = html;
+    if(banner)view.insertAdjacentHTML('afterbegin',banner);
+    {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
     bindAttentionEfficiency(snapshot);
     if(snapshot.agent)bindAgentStory(snapshot);
     const requestRegion=view.querySelector('[data-core-region="request"]');
@@ -4828,6 +4881,7 @@
     bindAgentReply(snapshot);
     bindAgentHistory(snapshot);
     if(devDraftFocus){const input=view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');if(input){input.focus({preventScroll:true});input.setSelectionRange(...devDraftFocus);}}
+    if(previousRun===run.run_id)for(const [name,top,left] of scrolled){const box=[...view.querySelectorAll('[data-core-region] *')].find(e=>e.className===name);if(box){box.scrollTop=top;box.scrollLeft=left;}}
     refreshAttemptDag(snapshot);
     refreshFlowDetail(snapshot);
     refreshMoreDialog();
@@ -4853,6 +4907,11 @@
 
     bindHistorySelection(snapshot);
     Lobby.bindHelp(view,snapshot);Lobby.bindBanner(view);
+    view.querySelectorAll('video[data-held-video]').forEach(video => {
+      if(video.dataset.seeking)return;video.dataset.seeking='1';
+      const toEnd=()=>{video.currentTime=Math.max(0,video.duration-.05);};
+      if(video.readyState>=1)toEnd();else video.addEventListener('loadedmetadata',toEnd,{once:true});
+    });
     view.querySelectorAll('video[data-starting-video]').forEach(video => {
       const holdFirstFrame = () => { video.pause(); video.currentTime = 0; };
       video.addEventListener('loadedmetadata', holdFirstFrame, {once:true});
@@ -5126,6 +5185,7 @@
     view.querySelectorAll('video').forEach(v => v.pause());
     currentSnapshot = null; runNotice.hidden = true;devTag.hidden=true;updateWaitCountdown();
     const title = launch ? launch.state === 'failed' ? 'Launch failed' : 'Waiting for run registration' : 'No Attention runs';
+    lastDrawn = '';
     view.innerHTML = `${DEBUG_VIEW ? `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${launch ? 'launching' : 'empty'}" aria-label="Task Status & Progress"><div class="ab-status-panel-heading" aria-hidden="true">Task Status & Progress</div><div class="ab-status-head"><h2>${title}</h2>${!launch ? launchButton() : '<button data-dismiss-launch>View existing runs</button>'}${moreButton()}<button id="ab-cancel-run" type="button" disabled>Cancel run</button><button class="danger" id="ab-emergency-interrupt" disabled title="No executing run">■ Emergency stop</button></div><div class="ab-status-main"><div class="ab-action-needed" data-action-needed data-needed="no" role="status" data-connected-needed="no" data-connected-text="✓ No action required">✓ No action required</div></div><p>${launch ? `${esc(pendingLaunch)} · ${esc(launch.reason || 'Launch request accepted; waiting for the executor to create the run.')}` : 'Use New run to choose a robot, task and Dev iteration budgets.'}</p></section>
       <section class="panel" data-core-region="execution"><h3>Execution & History</h3><p class="minor">Waiting for a run and execution frames.</p></section>
       <section class="panel ab-current-request" data-core-region="request" data-state="idle"><div class="panel-title"><h3>Current Request & Reply</h3></div><p class="ab-idle-request">No action required</p></section>

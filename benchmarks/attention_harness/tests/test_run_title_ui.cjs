@@ -29,15 +29,21 @@ test('a running run keeps New run out of the title', () => {
   assert.doesNotMatch(title(false), /data-open-launch/);
 });
 
-test('r3 execution label is shown beside the run title', () => {
-  const html=vm.runInNewContext(block+'\noperatorTitle(snapshot)',{
-    esc,snapshot:{run:{seed:102},dev_session:{locked:{config:{execution_settings:{profile:'r3-20261025'}}}}},
-    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskTitle:()=>'Task',taskDisplayName:()=>'Task',policyTitle:()=>'',
-    relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
-    fixtureSceneNotice:()=>'',
+test('the title keeps to run, time, policy and seed; what a run cannot be compared with moves to Resources', () => {
+  const notesStart = source.indexOf('  function operatorRunNotes(snapshot) {');
+  const notes = source.slice(notesStart, source.indexOf('\n  }\n', notesStart) + 4);
+  const config = {execution_settings: {profile: 'r3-20261025'}, dev_sdk_description: 'base enabled', dev_sdk_sha256: 'b'.repeat(64), scene_verification: 'fixture_contract_only'};
+  const snapshot = {run: {seed: 101, policy_id: 'reactive_help'}, dev_session: {locked: {config}}};
+  const html = vm.runInNewContext(block + '\noperatorTitle(snapshot)', {
+    esc, snapshot, selectedDev: null, selectedRun: null, navigationRecords: () => [], taskTitle: () => 'Task', policyTitle: () => 'Reactive help', relativeTime: () => 'just now', isTerminal: () => false,
   });
-  assert.match(html,/Execution settings r3 · not comparable with earlier runs/);
-  assert.doesNotMatch(title(false),/Execution settings r3/);
+  assert.match(html, /<p>Run · just now · Reactive help · Scene seed 101<\/p>/);
+  assert.doesNotMatch(html, /SDK description|Scene verification|not compared|not comparable/);
+  const scene = () => '<span data-scene-verification>Scene verification: fixture rules only · scene positions not verified · interactive · not compared</span>';
+  const moved = vm.runInNewContext(notes + '\noperatorRunNotes(snapshot)', {esc, snapshot, fixtureSceneNotice: scene});
+  for (const text of [/Execution settings r3 · not comparable with earlier runs/, /SDK description: base enabled/, /title="b{64}"/, /scene positions not verified · interactive · not compared/]) assert.match(moved, text);
+  assert.equal(vm.runInNewContext(notes + '\noperatorRunNotes(snapshot)', {esc, snapshot: {run: {}}, fixtureSceneNotice: () => ''}), '');
+  assert.match(source, /<\/div>\$\{operatorRunNotes\(snapshot\)\}<div class="op-budget-foot">/);
 });
 
 test('host drift and differing hosts are visible on the run page', () => {
@@ -49,4 +55,34 @@ test('host drift and differing hosts are visible on the run page', () => {
   });
   assert.match(html,/host libs changed since lock built: \/lib\/libc.so.6: old -> new/);
   assert.match(html,/host differs/);
+});
+
+test('between tries an Agent run keeps its black stage with the last frame and what the AI is doing', () => {
+  const start = source.indexOf('  function operatorHeldStage(');
+  const held = source.slice(start, source.indexOf('\n  }\n', start) + 4);
+  const stage = (snapshot, frame = null, attempts = [{attempt_id: 'a', try_number: 2}]) => vm.runInNewContext(held + '\noperatorHeldStage(snapshot,attempts,"model",{short:"Model working",text:"The robot is not executing it."})', {
+    esc, snapshot, attempts, heldFrame: () => frame, attemptName: a => `Try ${a.try_number}`,
+  });
+  const base = {run: {run_id: 'r'}, station: {}, traces: {}};
+  const empty = stage(base, null, []);
+  assert.match(empty, /class="op-stage" data-op-held data-lifecycle="model"/);
+  assert.match(empty, /The AI is writing its next step/);
+  assert.doesNotMatch(empty, /<img|<video|Last frame/);
+  const live = stage(base, {url: 'blob:x', transform: ''});
+  assert.match(live, /<img data-held-frame[^>]*src="blob:x"/);
+  assert.match(live, /Last frame · Try 2/);
+  const reopened = stage({...base, traces: {t: {attempt_id: 'a', evidence: [{kind: 'advisor_replay', media_url: '/m.mp4', mime_type: 'video/mp4'}]}}});
+  assert.match(reopened, /<video data-held-video[^>]*src="\/m.mp4"/);
+  const review = vm.runInNewContext(held + '\noperatorHeldStage(snapshot,[],"eval",null)', {esc, snapshot: base, heldFrame: () => null, attemptName: String});
+  assert.match(review, /The Eval agent is reviewing the last try<\/b><p>The robot is not moving\.<\/p>/);
+});
+
+test('a redraw changes nothing the eye can catch', () => {
+  const css = fs.readFileSync(path.join(__dirname, '../ui/shell.css'), 'utf8');
+  assert.match(css, /\.view\[data-settled\]>\.panel\{animation:none\}/);
+  assert.match(source, /if\(previousRun\)view\.setAttribute\('data-settled',''\)/);
+  // The running clock is the one thing that may change without a redraw, and only an action's forced redraw skips the check.
+  assert.match(source, /snapshot\.agent && lastRendered && previousRun === run\.run_id && drawn === lastDrawn/);
+  const clock = /(<em data-count-to=")[\d.]+(" data-count-seconds="1">)([^<]*)(<\/em>)/g;
+  assert.equal('<em data-count-to="12.5" data-count-seconds="1">0:12</em>'.replace(clock, '$1$2$4'), '<em data-count-to="" data-count-seconds="1"></em>');
 });
