@@ -117,6 +117,9 @@ class Gateway:
             if busy or not line or self.paused() or not self.take_robot():return None
             head = line[0]
             status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
+            if policy.host_still_busy(status, value):  # The last run is still exiting, so this one keeps its place and the next pass retries.
+                self.free_robot()
+                return None
             self.store.dequeue(head['experiment_id'])
             if status == 200:self.starting_until = self.clock() + 30
             else:self.free_robot()
@@ -235,7 +238,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == 'GET':
             failed = parse_qs(parts.query).get('failed') == ['1']
             return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', 'That code is not valid.' if failed else '').encode(), 'text/html; charset=utf-8',
-                                   headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+                                   headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         if self.command != 'POST':raise UNOWNED
         address = self.client_address[0]
         if not self.gateway.rate.login_allowed(address):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)

@@ -34,7 +34,7 @@ FRAME_HEADERS = {'X-Frame-Sequence': '7', 'X-Frame-Version': 'v1', 'X-Frame-Sha2
 class Harness:
     """Answers like the harness and refuses what the harness would refuse."""
     def __init__(self):
-        self.calls = [];self.rows = [];self.credentials = [];self.made = 0;self.start_status = 200;self.down = False
+        self.calls = [];self.rows = [];self.credentials = [];self.made = 0;self.start_status = 200;self.start_error = 'cannot start at /home/someone/x';self.down = False
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -59,7 +59,7 @@ class Harness:
                 if path == '/api/dev-v2/experiments' and self.command == 'POST':
                     outer.made += 1
                     return self.answer(dict(experiment_id=OWN[:-1] + str(outer.made), cells=[dict(key=CELL, artifact_dir='/home/someone/run')], owner='operator'))
-                if path.endswith('/run'):return self.answer(dict(error='cannot start at /home/someone/x') if outer.start_status != 200 else dict(worker_started=True), outer.start_status)
+                if path.endswith('/run'):return self.answer(dict(error=outer.start_error) if outer.start_status != 200 else dict(worker_started=True), outer.start_status)
                 if path.split('?')[0].endswith('/live/frame'):return self.answer(b'jpeg', 200, 'image/jpeg', FRAME_HEADERS)
                 if path.endswith('/video.mp4'):
                     if self.headers.get('Range') == 'bytes=2-5':return self.answer(b'2345', 206, 'video/mp4', {'Content-Range': 'bytes 2-5/10', 'Accept-Ranges': 'bytes'})
@@ -487,6 +487,29 @@ def test_the_run_starts_under_its_owner_so_their_keys_are_used(world):
     browser = world.person();user = browser.json('GET', '/api/session')[1]['user']
     start(browser, 'client-key-a')
     assert next(call for call in world.harness.calls if call[1].endswith('/run'))[2] == user
+
+
+def line_up_behind_a_finished_run(world):
+    first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id']
+    world.harness.rows = [row(a, 'running')]
+    b = start(second, 'client-key-b')[1]['experiment_id']
+    world.harness.rows = [row(a, 'cancelled'), row(b, 'planned')];world.now[0] += 31
+    return b
+
+
+def test_a_place_in_line_survives_the_last_run_still_exiting(world):
+    b = line_up_behind_a_finished_run(world);gateway = world.gateway.gateway
+    world.harness.start_status, world.harness.start_error = 409, 'external scheduler process still active'
+    assert gateway.dispatch() is None and [row['experiment_id'] for row in gateway.store.queue()] == [b]
+    world.harness.start_status = 200
+    assert gateway.dispatch()[:2] == (b, 200) and gateway.store.queue() == []
+
+
+def test_a_run_the_host_truly_refuses_leaves_the_line(world):
+    b = line_up_behind_a_finished_run(world);gateway = world.gateway.gateway
+    world.harness.start_status, world.harness.start_error = 409, 'display evidence drift'
+    assert gateway.dispatch()[:2] == (b, 409) and gateway.store.queue() == []
 
 
 def test_leaving_the_line_cancels_the_run_and_the_turn_passes_on(world):

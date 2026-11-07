@@ -150,8 +150,10 @@ SCENE_VIEWS = {'overview': 'camera_initial.png', 'side': 'recording_views/side/0
 def scene_image(row, dev_root, view='overview'):
     """The newest recorded first frame of this run for one camera view, if it lies inside the Dev v2 root."""
     root = Path(dev_root).resolve()
-    frames = sorted(Path(row.get('artifact_dir') or '/nonexistent').glob(f'v*/executions/*/{SCENE_VIEWS[view]}'),
-                    key=lambda p: p.stat().st_mtime, reverse=True)
+    # An Agent run's row carries no paths, so its folder comes from its names. It keeps its tries under agent/private; a Dev run under each version.
+    base = Path(row.get('artifact_dir') or root/str(row.get('experiment_id'))/'artifacts'/str(row.get('experiment_id'))/'cells'/str(row.get('key')))
+    found = [*base.glob(f'v*/executions/*/{SCENE_VIEWS[view]}'), *base.glob(f'agent/private/executions/e*/*/{SCENE_VIEWS[view]}')]
+    frames = sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)
     for frame in frames:
         if frame.resolve().is_relative_to(root) and frame.is_file():
             return frame

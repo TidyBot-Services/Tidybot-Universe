@@ -119,3 +119,9 @@ def test_attempts_and_status_flags_match_the_main_ui():
     assert not home.all_attempts_failed({**failed, 'jobs': [{'kind': 'execute', 'receipt': {'execution_status': 'completed'}}]})
     assert not home.all_attempts_failed({'state': 'completed', 'jobs': []})
 
+
+
+def test_an_agent_run_gives_the_cover_its_scene(tmp_path):
+    frame = tmp_path/'devexp-a/artifacts/devexp-a/cells/c/agent/private/executions/e000001/openarm365-dev-x/camera_initial.png'
+    frame.parent.mkdir(parents=True);frame.write_bytes(b'png')
+    assert home.scene_image({'experiment_id': 'devexp-a', 'key': 'c'}, tmp_path) == frame.resolve()

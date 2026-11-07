@@ -1,0 +1,16 @@
+[Unit]
+Description=AttentionBench tunnel to the run host
+After=network-online.target
+Wants=network-online.target
+# Never gives up: while the run host is away the gateway says so, and pages come back when this does.
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+# __HOST__, __PORT__, __KEY__ are the run host's address, its SSH port and a key kept for this.
+ExecStart=/usr/bin/ssh -N -T -i __KEY__ -p __PORT__ -o IdentitiesOnly=yes -o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -L 127.0.0.1:8860:127.0.0.1:8860 __HOST__
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
