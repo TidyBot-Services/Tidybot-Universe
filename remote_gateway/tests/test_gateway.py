@@ -466,6 +466,15 @@ def start(browser, key):
 def row(experiment, state):return dict(experiment_id=experiment, state=state, experiment_state=state)
 
 
+
+def test_a_slow_start_does_not_hold_up_whoever_joins_the_line(world):
+    gateway = world.gateway.gateway
+    with gateway.dispatching:  # Someone else's start is waiting on the host.
+        status, made = start(world.person(), 'client-key-a')
+    assert status == 200 and [row['experiment_id'] for row in gateway.store.queue()] == [made['experiment_id']]
+    assert not any(p.endswith('/run') for p in world.harness.paths())
+    assert gateway.dispatch()[:2] == (made['experiment_id'], 200) and gateway.store.queue() == []
+
 def test_the_second_person_waits_in_line_and_starts_when_the_robot_is_free(world):
     first, second = world.person(), world.person()
     a = start(first, 'client-key-a')[1]['experiment_id']

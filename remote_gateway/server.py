@@ -110,26 +110,31 @@ class Gateway:
 
     def dispatch(self):
         """Start the next run in line if the robot is free. Returns what the host said about that run, or None if nothing started."""
-        with self.dispatching:
-            line = self.store.queue()
-            listing = self.listing()
-            busy = any(policy.running(row) for row in listing.get('dev_sessions', [])) or self.clock() < self.starting_until
-            if not busy:self.free_robot()
-            if busy or not line or self.paused() or not self.take_robot():return None
-            head = line[0]
-            status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
-            if status != 200:print('dispatch refused:', status, str(value.get('error') if isinstance(value, dict) else value)[:200], file=sys.stderr, flush=True)
-            # A stopped run is listed as ended before its processes are gone, so for a while a refusal keeps this one's place and the next pass retries.
-            if status == 409 and self.clock() < self.settling_until:
-                self.free_robot()
-                return None
-            self.store.dequeue(head['experiment_id'])
-            if status == 200:self.starting_until = self.clock() + 30
-            else:
-                self.free_robot()
-                # Whoever waited in line may be away; the reason stays on the run for them to read.
-                self.store.start_failed(head['experiment_id'], str(value.get('error') if isinstance(value, dict) and value.get('error') else f'The run host refused the start (HTTP {status}).')[:300])
-            return head['experiment_id'], status, value
+        # A start can hold the host for 20 seconds or more. Whoever joins the line meanwhile keeps their place and is answered at once; the loop starts them.
+        if not self.dispatching.acquire(blocking=False):return None
+        try:return self.start_next()
+        finally:self.dispatching.release()
+
+    def start_next(self):
+        line = self.store.queue()
+        listing = self.listing()
+        busy = any(policy.running(row) for row in listing.get('dev_sessions', [])) or self.clock() < self.starting_until
+        if not busy:self.free_robot()
+        if busy or not line or self.paused() or not self.take_robot():return None
+        head = line[0]
+        status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
+        if status != 200:print('dispatch refused:', status, str(value.get('error') if isinstance(value, dict) else value)[:200], file=sys.stderr, flush=True)
+        # A stopped run is listed as ended before its processes are gone, so for a while a refusal keeps this one's place and the next pass retries.
+        if status == 409 and self.clock() < self.settling_until:
+            self.free_robot()
+            return None
+        self.store.dequeue(head['experiment_id'])
+        if status == 200:self.starting_until = self.clock() + 30
+        else:
+            self.free_robot()
+            # Whoever waited in line may be away; the reason stays on the run for them to read.
+            self.store.start_failed(head['experiment_id'], str(value.get('error') if isinstance(value, dict) and value.get('error') else f'The run host refused the start (HTTP {status}).')[:300])
+        return head['experiment_id'], status, value
 
     def loop(self, stop):
         while not stop.wait(3):
