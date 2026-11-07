@@ -22,8 +22,7 @@ test('history records keep the frozen description; the sidebar cards no longer s
   assert.doesNotMatch(badges({development:false}),/SDK description/);
 });
 test('run detail labels use the same frozen description and digest',()=>{
-  const title=load('operatorTitle',{...common,taskTitle:()=> 'Open cabinet',taskDisplayName:()=> 'Open cabinet',navigationRecords:()=>[],
-    relativeTime:()=>'',policyTitle:String,isTerminal:()=>false});
+  const title=load('operatorRunNotes',common);
   for(const description of ['base enabled','base stationary',undefined]) {
     const result=title({run:{},dev_session:{locked:{config:{dev_sdk_description:description,dev_sdk_sha256:'b'.repeat(64)}}}});
     assert.match(result,new RegExp(`SDK description: ${description||'base stationary'}`));

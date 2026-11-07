@@ -4294,6 +4294,13 @@
     if(points<0)return '';
     return `Codex quota used by this run: ${points<1?'less than 1 point':`about +${Math.round(points)} points`}`;
   }
+  // What this run can and cannot be compared with. It sits with Resources, so the title stays short and a phone still shows it.
+  function operatorRunNotes(snapshot) {
+    const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
+    const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
+    const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
+    return execution||sdk||scene ? `<div class="op-run-notes" data-run-notes>${execution}${sdk}${scene}</div>` : '';
+  }
   function operatorResources(snapshot) {
     {const shared=Lobby.resourcesHtml(snapshot);if(shared)return shared;}
     const resources=snapshot.resources,s=snapshot.dev_session;
@@ -4314,7 +4321,7 @@
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div><div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -4333,12 +4340,9 @@
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
-    const execution = snapshot.dev_session?.locked?.config?.execution_settings?.profile === 'r3-20261025' ? '<span class="op-excluded">Execution settings r3 · not comparable with earlier runs</span>' : '';
-    const sdk = snapshot.dev_session ? `<span class="op-excluded" data-sdk-description title="${esc(snapshot.dev_session.locked?.config?.dev_sdk_sha256||'Unsealed legacy SDK description')}">SDK description: ${esc(snapshot.dev_session.locked?.config?.dev_sdk_description||'base stationary')}</span>` : '';
-    const scene = fixtureSceneNotice(snapshot.dev_session?.locked?.config);
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${execution}${sdk}${scene}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {

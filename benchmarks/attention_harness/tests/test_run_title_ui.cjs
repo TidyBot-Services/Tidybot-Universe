@@ -29,15 +29,21 @@ test('a running run keeps New run out of the title', () => {
   assert.doesNotMatch(title(false), /data-open-launch/);
 });
 
-test('r3 execution label is shown beside the run title', () => {
-  const html=vm.runInNewContext(block+'\noperatorTitle(snapshot)',{
-    esc,snapshot:{run:{seed:102},dev_session:{locked:{config:{execution_settings:{profile:'r3-20261025'}}}}},
-    selectedDev:null,selectedRun:null,navigationRecords:()=>[],taskTitle:()=>'Task',taskDisplayName:()=>'Task',policyTitle:()=>'',
-    relativeTime:()=>'',recordStatus:()=>'',outcomeKind:()=>'',isTerminal:()=>false,
-    fixtureSceneNotice:()=>'',
+test('the title keeps to run, time, policy and seed; what a run cannot be compared with moves to Resources', () => {
+  const notesStart = source.indexOf('  function operatorRunNotes(snapshot) {');
+  const notes = source.slice(notesStart, source.indexOf('\n  }\n', notesStart) + 4);
+  const config = {execution_settings: {profile: 'r3-20261025'}, dev_sdk_description: 'base enabled', dev_sdk_sha256: 'b'.repeat(64), scene_verification: 'fixture_contract_only'};
+  const snapshot = {run: {seed: 101, policy_id: 'reactive_help'}, dev_session: {locked: {config}}};
+  const html = vm.runInNewContext(block + '\noperatorTitle(snapshot)', {
+    esc, snapshot, selectedDev: null, selectedRun: null, navigationRecords: () => [], taskTitle: () => 'Task', policyTitle: () => 'Reactive help', relativeTime: () => 'just now', isTerminal: () => false,
   });
-  assert.match(html,/Execution settings r3 · not comparable with earlier runs/);
-  assert.doesNotMatch(title(false),/Execution settings r3/);
+  assert.match(html, /<p>Run · just now · Reactive help · Scene seed 101<\/p>/);
+  assert.doesNotMatch(html, /SDK description|Scene verification|not compared|not comparable/);
+  const scene = () => '<span data-scene-verification>Scene verification: fixture rules only · scene positions not verified · interactive · not compared</span>';
+  const moved = vm.runInNewContext(notes + '\noperatorRunNotes(snapshot)', {esc, snapshot, fixtureSceneNotice: scene});
+  for (const text of [/Execution settings r3 · not comparable with earlier runs/, /SDK description: base enabled/, /title="b{64}"/, /scene positions not verified · interactive · not compared/]) assert.match(moved, text);
+  assert.equal(vm.runInNewContext(notes + '\noperatorRunNotes(snapshot)', {esc, snapshot: {run: {}}, fixtureSceneNotice: () => ''}), '');
+  assert.match(source, /<\/div>\$\{operatorRunNotes\(snapshot\)\}<div class="op-budget-foot">/);
 });
 
 test('host drift and differing hosts are visible on the run page', () => {
