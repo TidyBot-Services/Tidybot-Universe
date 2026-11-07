@@ -3039,8 +3039,8 @@
           await refresh();
         } catch (error) {
           submitting = false;
-          if(startButton)startButton.textContent=startLabel;
           form.querySelector('#ab-launch-message').textContent = launchCreationError(error);
+          if(startButton)startButton.textContent=startLabel;
           updatePreview();
         }
       });
