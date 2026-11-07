@@ -235,7 +235,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.command == 'GET':
             failed = parse_qs(parts.query).get('failed') == ['1']
             return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', 'That code is not valid.' if failed else '').encode(), 'text/html; charset=utf-8',
-                                   headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+                                   headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         if self.command != 'POST':raise UNOWNED
         address = self.client_address[0]
         if not self.gateway.rate.login_allowed(address):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)
