@@ -36,14 +36,15 @@ class RateLimits:
         self.limits, self.clock, self.lock = limits, clock, threading.Lock()
         self.buckets, self.failures = {}, {}
 
-    def take(self, user):
+    def take(self, user, live=False):
+        rate, burst = (self.limits.live_requests_per_second, self.limits.live_request_burst) if live else (self.limits.requests_per_second, self.limits.request_burst)
         with self.lock:
-            now = self.clock();tokens, last = self.buckets.get(user, (self.limits.request_burst, now))
-            tokens = min(self.limits.request_burst, tokens + (now - last) * self.limits.requests_per_second)
+            now = self.clock();tokens, last = self.buckets.get((user, live), (burst, now))
+            tokens = min(burst, tokens + (now - last) * rate)
             if tokens < 1:
-                self.buckets[user] = (tokens, now)
+                self.buckets[(user, live)] = (tokens, now)
                 return False
-            self.buckets[user] = (tokens - 1, now)
+            self.buckets[(user, live)] = (tokens - 1, now)
             return True
 
     def login_allowed(self, address):
@@ -203,13 +204,18 @@ class Handler(BaseHTTPRequestHandler):
         if session is None and not self.open_to_all(path):raise policy.Refused('login_required', 'Please log in.', 401)
         self.user = session['user_id'] if session else None
         # The page's own files are cheap and never reach the harness; losing one would break the page.
-        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_address[0]):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
+        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_address[0], live=path.endswith(('/live', '/live/frame'))):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
         if session and self.command != 'GET' and not secrets.compare_digest(self.headers.get('X-Attention-Token', ''), session['csrf']):
             raise policy.Refused('csrf_token_required', 'Reload the page and try again.', 403)
         if path in ('/', '/ui'):return self.redirect('/ui/', 302)
         if path == '/ui/' and self.command == 'GET':return self.page(session)
+        if path in policy.UI_PAGES and self.command == 'GET':return self.page(session, policy.UI_PAGES[path])
         if path.startswith('/ui/') and self.command == 'GET':return self.asset(path[4:])
         if path == '/api/session':return self.session_route(session, token)
+        if path == '/api/home/status' and self.command == 'GET':
+            status, value = self.gateway.upstream.json(PUBLIC, 'GET', path)
+            return self.send_json(policy.filter_home(value) if status == 200 else policy.scrub(value), status)
+        if path == '/api/home/scene' and self.command == 'GET':return self.relay(policy.home_scene(parts.query))
         if path == '/api/lobby' and self.command == 'GET':return self.send_json(policy.scrub(self.gateway.board(self.user)))
         if path == '/api/run-options' and self.command == 'GET':return self.options()
         if path == '/api/runs' and self.command == 'GET':return self.runs()
@@ -223,7 +229,7 @@ class Handler(BaseHTTPRequestHandler):
     def open_to_all(self, path):
         """Anyone may watch: the page and everyone's runs. Everything that starts, changes or uses a key needs an invite."""
         if self.command != 'GET':return False
-        return path in ('/', '/ui', '/ui/', '/api/run-options', '/api/runs', '/api/lobby', '/api/notices') or path.startswith('/ui/') or policy.EXPERIMENT.fullmatch(path) is not None
+        return path in ('/', '/ui', '/ui/', '/api/run-options', '/api/runs', '/api/lobby', '/api/notices', '/api/home/status', '/api/home/scene') or path.startswith('/ui/') or policy.EXPERIMENT.fullmatch(path) is not None
 
     def login(self, parts):
         if self.command == 'GET':
@@ -243,11 +249,12 @@ class Handler(BaseHTTPRequestHandler):
         token, _ = self.gateway.store.new_session(user, hours=config.session_hours)
         self.redirect('/ui/', cookie=self.cookie(token, config.session_hours * 3600))
 
-    def page(self, session):
-        page = (self.gateway.config.ui_dir / 'index.html').read_text(encoding='utf-8')
+    def page(self, session, name='index.html'):
+        page = (self.gateway.config.ui_dir / name).read_text(encoding='utf-8')
         # The session's CSRF token stands where the operator page has its control token, so the page needs no second code path.
         marks = f'data-control-token="{session["csrf"]}"' if session else 'data-guest="1"'
         page = page.replace('data-mode="live"', f'data-mode="live" {marks} data-gateway="1" data-remote="1"', 1)
+        if name != 'index.html':page = page.replace('<body', f'<body data-gateway="1"{"" if session else " data-guest=" + chr(34) + "1" + chr(34)}', 1)
         page = page.replace(' media="print" onload="this.media=\'all\'"', '', 1)  # An inline handler would need a looser policy.
         inline = ' '.join("'sha256-%s'" % b64encode(sha256(script.encode()).digest()).decode() for script in SCRIPT.findall(page))
         self.send_bytes(page.encode(), 'text/html; charset=utf-8', headers={'Content-Security-Policy':

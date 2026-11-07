@@ -62,7 +62,7 @@ each run records the host it was created on. Nothing here reads the harness's di
 - **Login**: an invite code becomes a session cookie (HttpOnly, SameSite=Strict, Secure unless turned off). Writes also need the session's CSRF token.
 - **Watching**: anyone may open the page and read every run, signed in or not. Starting a run, stopping it, replying and keys need an invite; only a run's owner may act on it.
 - **Queue**: Start joins a first-come line, one place per person. The gateway starts the next run when no run is active, under its owner, and holds `sim_lock` while it runs.
-- **New run**: built from named fields, never copied. All three roles must be the lab's PARCC or a key this person saved, so nothing can reach the lab's Codex. Limits are clamped here, whatever the page sends.
+- **New run**: built from named fields, never copied. All three roles must be the lab's PARCC or a key this person saved (a preset provider, or a custom endpoint when the harness has `ATTENTION_ALLOW_CUSTOM_PROVIDER_URL=1`; it must be HTTPS on public addresses), so nothing can reach the lab's Codex. Limits are clamped here, whatever the page sends.
 - **Keys**: pass through to the harness's memory, scoped to the person by the signed owner. The gateway keeps no key, and logs no body.
 - **Answers**: lists are rebuilt from owned runs; JSON loses host paths and the harness's private fields. Video and frames stream unchanged, with Range.
 - **Replies**: an interactive run waits `human_reply_seconds` (120 by default) for its owner at each help request, then the Advisor answers and the record says who did. A frozen comparison run never waits.

@@ -199,12 +199,12 @@ def test_the_page_is_the_main_ui_without_any_harness_token(world):
     assert "script-src 'self' 'sha256-" in policy and "frame-ancestors 'none'" in policy and "'unsafe-inline' https" in policy
     assert response.getheader('X-Content-Type-Options') == 'nosniff' and response.getheader('Referrer-Policy') == 'no-referrer'
     assert browser.send('GET', '/ui/live.js')[0] == 200
-    for name in ('memory.html', 'home.html', 'fixed.html', 'index.html', 'remote'):assert browser.send('GET', '/ui/' + name)[0] == 404
+    for name in ('memory.js', 'memory.css', 'fixed.html', 'index.html', 'remote'):assert browser.send('GET', '/ui/' + name)[0] == 404
 
 
 @pytest.mark.parametrize('method,path', [
     ('GET', '/api/orchestrator/snapshot'), ('POST', '/api/orchestrator/dispatch'), ('POST', '/api/runs/start'), ('POST', '/api/fixed/start'), ('GET', '/api/fixed'), ('GET', '/api/traces/x'),
-    ('GET', '/api/codex-quota'), ('GET', '/api/home/status'), ('GET', '/api/home/scene'), ('GET', '/api/memories'), ('GET', '/api/dev-memories'), ('POST', '/api/history/delete'),
+    ('GET', '/api/codex-quota'), ('GET', '/api/home/scene'), ('GET', '/api/memories'), ('GET', '/api/dev-memories'), ('POST', '/api/history/delete'),
     ('GET', '/api/dev/sessions/x'), ('POST', '/api/dev/start'), ('GET', '/api/dev-v2/options'), ('GET', '/api/dev-v2/experiments'), ('GET', '/api/dev-v2/memory-monitor'),
     ('GET', '/api/dev-v2/automatic-checks'), ('GET', '/api/station/frame'), ('GET', '/api/runs/operator'), ('POST', '/api/requests/x/respond')])
 def test_operator_routes_do_not_exist_here(world, method, path):
@@ -343,7 +343,7 @@ def test_keys_pass_through_and_are_never_kept(world):
 
 def test_key_routes_are_only_the_ones_the_form_uses(world):
     browser = world.person()
-    assert browser.json('GET', '/api/provider/presets')[1] == [dict(id='openai')]
+    assert browser.json('GET', '/api/provider/presets')[1] == [dict(id='openai'), dict(id='openai-compatible')]
     assert browser.send('PUT', '/api/provider/credentials/lab', dict(provider='parcc', key='x'))[0] == 400
     assert browser.send('GET', '/api/provider/credentials?all=1')[0] == 404
     assert browser.send('POST', '/api/provider/credentials/x', {})[0] == 404
@@ -371,6 +371,22 @@ def test_a_camera_frame_keeps_the_identity_the_page_checks(world):
 def test_every_header_the_page_reads_gets_through():
     read = set(re.findall(r"'(X-(?:Frame|Episode|Preview)[A-Za-z0-9-]*)'", (UI / 'live.js').read_text()))
     assert {'X-Frame-Sequence', 'X-Frame-Sha256', 'X-Episode-Id'} <= read <= set(gateway_server.PASSED_HEADERS)
+
+
+def test_a_live_picture_has_its_own_allowance():
+    clock = [0.0];rate = gateway_server.RateLimits(Limits(), lambda: clock[0])
+    assert sum(rate.take('me') for _ in range(200)) == Limits().request_burst
+    assert sum(rate.take('me', live=True) for _ in range(200)) == Limits().live_request_burst
+    assert not rate.take('me')
+    clock[0] = 1.0
+    assert sum(rate.take('me', live=True) for _ in range(200)) == Limits().live_requests_per_second
+
+
+def test_anyone_gets_the_cover_and_the_memory_page(world):
+    browser = world.person()
+    for path, text in (('/ui/home.html', b'data-gateway="1"'), ('/ui/memory.html', b'Coming soon')):
+        status, content, response = browser.send('GET', path)
+        assert status == 200 and text in content and 'script-src' in response.getheader('Content-Security-Policy')
 
 
 def test_too_many_requests_are_slowed(world):

@@ -18,6 +18,9 @@ class Limits:
     # Opening one run page makes dozens of calls (views, evidence, video ranges); 5 a second with a burst of 20 broke the page.
     requests_per_second: float = 10
     request_burst: int = 60
+    # A live picture alone is about 12 calls a second (each frame reads its identity, then the frame), so it has its own allowance.
+    live_requests_per_second: float = 30
+    live_request_burst: int = 120
     logins_per_hour: int = 10
 
     def __post_init__(self):

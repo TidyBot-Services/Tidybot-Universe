@@ -158,3 +158,18 @@ def test_a_twenty_minute_limit_is_offered_in_minutes():
     limits = Limits(wall_seconds=1200).public()
     assert limits['wall'] == 1200 and limits['wallRange'].startswith('20 minutes') and '20 minutes' in limits['note']
     assert policy.rebuild(body(agent_limits=dict(versions=2, wall_seconds=1200)), user='u-1', options=OPTIONS, limits=Limits(wall_seconds=1200), credentials=MINE)['agent_limits']['wall_seconds'] == 1200
+
+
+def test_the_cover_leaves_out_this_machine():
+    value = policy.filter_home(dict(running=[], readiness=dict(codex=dict(state='ready'), disk=dict(value='160G'), glm=dict(state='ready'), qwen=dict(state='down')),
+                                    recent=[dict(experiment_id='e', planner_lock_sha256='a', deployment_kind='b', execution_profile='c', why='ok')]))
+    assert set(value['readiness']) == {'glm', 'qwen'} and value['recent'] == [dict(experiment_id='e', why='ok')]
+
+
+@pytest.mark.parametrize('query', ['run=x', 'run=devexp-' + 'a' * 24 + '&view=../x', 'run=devexp-' + 'a' * 24 + '&refresh=1', ''])
+def test_a_cover_picture_is_asked_for_by_name_only(query):
+    with pytest.raises(policy.Refused):policy.home_scene(query)
+    
+
+def test_a_cover_picture_keeps_only_its_run_and_view():
+    assert policy.home_scene('run=devexp-' + 'a' * 24 + '&view=top') == '/api/home/scene?run=devexp-' + 'a' * 24 + '&view=top'

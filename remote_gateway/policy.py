@@ -1,7 +1,7 @@
 """What the gateway lets through. Everything here is default-deny and free of I/O, so it can be read and tested alone."""
 import hashlib
 import re
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote
 
 EXPERIMENT = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})(?:/(.+))?')
 READABLE = re.compile(r'report|export\.json|cells/[a-f0-9]{64}/(?:view|agent/view|live|live/frame|agent/files/.+)')
@@ -12,7 +12,10 @@ CREDENTIAL = re.compile(r'/api/provider/credentials(?:/([a-z0-9-]{1,32})(/test|/
 SEGMENT = re.compile(r'[A-Za-z0-9_][A-Za-z0-9._-]*')
 QUERY = re.compile(r'[A-Za-z0-9_.=&-]{0,200}')
 UI_ASSETS = {'shell.css': 'text/css; charset=utf-8', 'shell.js': 'text/javascript; charset=utf-8', 'notices.js': 'text/javascript; charset=utf-8',
-             'human_reply.js': 'text/javascript; charset=utf-8', 'lobby.js': 'text/javascript; charset=utf-8', 'live.js': 'text/javascript; charset=utf-8'}
+             'human_reply.js': 'text/javascript; charset=utf-8', 'lobby.js': 'text/javascript; charset=utf-8', 'live.js': 'text/javascript; charset=utf-8',
+             'home.css': 'text/css; charset=utf-8', 'home.js': 'text/javascript; charset=utf-8', 'memory_soon.css': 'text/css; charset=utf-8'}
+# Memory runs on the lab's own data, so here it is a page about what is coming.
+UI_PAGES = {'/ui/home.html': 'home.html', '/ui/memory.html': 'memory_soon.html'}
 # Fields the harness keeps for itself: where things live on its disk, and who runs it.
 PRIVATE_FIELDS = {'manifest', 'owner', 'runtime_root', 'runtime', 'planner_deployment', 'identity_lock', 'codex_identity', 'source_root', 'authorization', 'worker', 'pid',
                   'host', 'memory_authority', 'memory_family', 'quota', 'budget_file'}
@@ -104,7 +107,22 @@ def filter_options(options, limits):
 
 
 def filter_presets(presets):
-    return [p for p in presets if isinstance(p, dict) and p.get('id') != 'openai-compatible']
+    return [p for p in presets if isinstance(p, dict)]
+
+
+def filter_home(value):
+    """The cover for anyone: runs and the lab models' health, without this machine's disk, Codex account or deployment."""
+    value = scrub(value)
+    readiness = value.get('readiness') or {}
+    recent = [{k: v for k, v in row.items() if k not in ('execution_profile', 'planner_lock_sha256', 'deployment_kind')} for row in value.get('recent') or []]
+    return {**value, 'readiness': {k: readiness[k] for k in ('glm', 'qwen') if k in readiness}, 'recent': recent}
+
+
+def home_scene(query):
+    values = parse_qs(query, keep_blank_values=True)
+    run, view = values.get('run', [''])[0], values.get('view', ['overview'])[0]
+    if set(values) - {'run', 'view'} or not re.fullmatch(r'devexp-[a-f0-9]{24}', run) or not re.fullmatch(r'[a-z_]{1,16}', view):raise Refused('not_found', 'Not found.', 404)
+    return f'/api/home/scene?run={run}&view={view}'
 
 
 def _integer(value, low, high, name):
@@ -113,7 +131,7 @@ def _integer(value, low, high, name):
 
 
 def _roles(value, credentials):
-    """All three roles, each on the lab's PARCC or on a key this person saved. Nothing can reach the lab's Codex."""
+    """All three roles, each on the lab's PARCC or on a key this person saved, custom endpoints included. Nothing can reach the lab's Codex."""
     roles = value.get('roles') if isinstance(value, dict) else None
     if not isinstance(roles, dict) or set(roles) != {'dev', 'eval', 'advisor'}:
         raise Refused('roles_required', 'Choose a source for Dev, Eval and Advisor.', 400)
@@ -126,7 +144,7 @@ def _roles(value, credentials):
         if name == 'lab':
             if desc.get('provider') != 'parcc':raise Refused('lab_source_not_offered', 'Only the lab PARCC models are offered here.', 400)
             result[role] = dict(credential='lab', provider='parcc', model=desc['model'])
-        elif name in known and desc.get('provider') == known[name]['provider'] and known[name]['provider'] != 'openai-compatible':
+        elif name in known and desc.get('provider') == known[name]['provider']:
             result[role] = dict(credential=name, provider=known[name]['provider'], model=desc['model'].strip())
             if desc.get('vision') is False:result[role]['vision'] = False  # Its own test found it reads text only. The harness refuses this on Dev.
         else:raise Refused('key_not_found', 'That key is not saved, or has expired.', 400)

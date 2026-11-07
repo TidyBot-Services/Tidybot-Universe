@@ -568,7 +568,8 @@ def create_server(
     vault = vault if vault is not None else ProviderKeyVault()
     if allow_custom is None:
         allow_custom = os.environ.get('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL', '').lower() in ('1', 'true', 'yes')
-    allow_custom = allow_custom and not public_gateway
+    # A public host can offer custom endpoints, but never one on its own network: they stay HTTPS on public addresses.
+    if public_gateway:allow_private_hosts = ()
     quota_cache = {'until': 0.0, 'value': {'available': False}}
     quota_lock = threading.Lock()
 

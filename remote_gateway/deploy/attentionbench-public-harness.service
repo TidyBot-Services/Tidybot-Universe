@@ -6,6 +6,8 @@ After=network-online.target
 WorkingDirectory=__SRC__
 Environment=PYTHONPATH=__SRC__
 Environment=PYTHONDONTWRITEBYTECODE=1
+# Custom endpoints must be HTTPS on public addresses; the harness refuses anything else.
+Environment=ATTENTION_ALLOW_CUSTOM_PROVIDER_URL=1
 ExecStart=/bin/bash -c 'exec __PY__ -B -u -m benchmarks.attention_harness.ui_server --store __DATA__/public/attention.sqlite3 --artifact-root __DATA__/public/artifacts --dev-v2-root __DATA__/public/runs --dev-v2-per-run-budget --port 8860 --public-gateway-mode --gateway-secret-fd 3 3< __DATA__/gateway-state/gateway.secret'
 Restart=on-failure
 

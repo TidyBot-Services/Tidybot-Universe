@@ -55,8 +55,10 @@
     const r = s.readiness, inst = $('inst');
     const planner = s.planner_seconds == null ? instrument('PLANNER', 'unknown', 'No data', 'No planner timing in recent runs.')
       : instrument('PLANNER', 'ready', `~${s.planner_seconds} s`, 'Per plan in recent runs · limit 180 s');
-    inst.replaceChildren(instrument('CODEX', r.codex.state, null, r.codex.detail), instrument('PARCC GLM', r.glm.state, null, r.glm.detail),
-      instrument('PARCC QWEN', r.qwen.state, null, r.qwen.detail), planner, instrument('DISK', r.disk.state, r.disk.value, r.disk.detail));
+    // The public gateway leaves out this machine's Codex account and disk.
+    const rows = [r.codex && instrument('CODEX', r.codex.state, null, r.codex.detail), instrument('PARCC GLM', r.glm.state, null, r.glm.detail),
+      instrument('PARCC QWEN', r.qwen.state, null, r.qwen.detail), planner, r.disk && instrument('DISK', r.disk.state, r.disk.value, r.disk.detail)].filter(Boolean);
+    inst.replaceChildren(...rows);inst.style.gridTemplateColumns = `repeat(${rows.length},1fr)`;
     if (firstPaint && !calm) {  // Staggered entrance once; later refreshes just update in place.
       [...inst.children].forEach((c, i) => c.style.setProperty('--i', i)); inst.classList.add('enter');
       setTimeout(() => inst.classList.remove('enter'), 1600);
@@ -92,7 +94,7 @@
     }
   }
 
-  function render() { if (!status) return; renderHero(status); renderInstruments(status); renderStats(status); renderSide(status); playScenes(status.scenes); firstPaint = false; }
+  function render() { if (!status) return; renderHero(status); if (document.body.dataset.guest === '1' && !status.running.length) $('go').href = '/login'; renderInstruments(status); renderStats(status); renderSide(status); playScenes(status.scenes); firstPaint = false; }
 
   function showError(text) { const e = $('error'); e.textContent = text; e.hidden = !text; }
 

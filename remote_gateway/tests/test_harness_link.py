@@ -114,6 +114,17 @@ def test_a_preset_cannot_be_redirected_or_replaced_in_gateway_mode(tmp_path, loo
     finally:link.close()
 
 
+@pytest.mark.parametrize('url,code', [('https://127.0.0.1/v1', 'base_url_private_host'), ('https://10.0.0.5/v1', 'base_url_private_host'),
+                                      ('https://169.254.169.254/v1', 'base_url_private_host'), ('http://8.8.8.8/v1', 'base_url_not_https')])
+def test_a_custom_endpoint_never_reaches_this_network(tmp_path, loopback, monkeypatch, url, code):
+    monkeypatch.setenv('ATTENTION_ALLOW_CUSTOM_PROVIDER_URL', '1')
+    link = Link(tmp_path)
+    try:
+        status, value = link.person().json('PUT', '/api/provider/credentials/mine', dict(provider='openai-compatible', key='sk-x', base_url=url))
+        assert status == 400 and value['error']['code'] == code
+    finally:link.close()
+
+
 def test_keys_belong_to_the_person_who_saved_them(link):
     alice, bob = link.person(), link.person()
     assert alice.send('PUT', '/api/provider/credentials/mine', dict(provider='deepseek', key='sk-' + secrets.token_urlsafe(32)))[0] == 200
