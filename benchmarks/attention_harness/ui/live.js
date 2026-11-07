@@ -2076,6 +2076,21 @@
   function agentOptionGate({channel,tier}) {
     return channel!=='dev_v2'||tier!=='dev'?'Agent runs need the modern dev tier. This server cannot start one.':'';
   }
+  // Remote opens what a newcomer came for: their own live run, else the run on the robot now, else the lobby.
+  // Someone else's finished run is history, never the first page.
+  // Remote keeps what a first-time visitor decides (task, help) in view and folds the rest under one heading.
+  function foldRemoteSettings(form) {
+    const body=form.querySelector('.ab-launch-body'),rest=['models','reviewer','limits','advanced'].map(k=>body?.querySelector(`[data-run-config-section="${k}"]`)).filter(Boolean);
+    if(!rest.length||body.querySelector('[data-more-settings]'))return;
+    const more=document.createElement('details');more.className='ab-more-settings';more.dataset.moreSettings='';
+    more.innerHTML='<summary>More settings <small>Models, reviewer, limits. The defaults work for a first run.</small></summary>';
+    rest[0].before(more);rest.forEach(section=>more.append(section));
+  }
+  function remoteLanding(devs) {
+    const ready=devs.filter(d=>resolvedTask(devNavigationRecord(d))&&d.lobby);
+    const live=d=>['queued','running','waiting_human'].includes(d.lobby.state);
+    return ready.find(d=>d.lobby.mine&&live(d))||ready.find(d=>['running','waiting_human'].includes(d.lobby.state))||null;
+  }
   function devPolicyChoices(options) {
     return (options?.agent_policies?.policies||[]).map(p=>p.policy_id);
   }
@@ -2099,6 +2114,7 @@
     const groups=[...POLICY_GROUPS,{key:'other',title:'Other',note:''}].map(group=>({...group,ids:ids.filter(id=>(POLICY_HELP[id]?.[0]||'other')===group.key)})).filter(group=>group.ids.length);
     return `<fieldset class="ab-launch-field wide ab-policy-field"><legend>Attention policy</legend>
       <select name="v2_policy" aria-label="Attention policy" hidden>${ids.map(id=>`<option value="${esc(id)}">${esc(policyTitle(id))}</option>`).join('')}</select>
+      ${root.dataset.remote==='1'?'<p class="ab-policy-human-note" data-policy-human-note>In an interactive run, every help request comes to you first. You get 2 minutes to answer; after that an AI advisor answers for you.</p>':''}
       <div class="ab-policy-columns">${groups.map(group=>`<div class="ab-policy-group" data-policy-group="${group.key}"><p><b>${esc(group.title)}</b>${group.note?`<small>${esc(group.note)}</small>`:''}</p>${group.ids.map(card).join('')}</div>`).join('')}</div></fieldset>`;
   }
   function syncPolicyCards(form) {
@@ -2694,7 +2710,9 @@
       if (!devProfiles.length) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
-      const source = linkedConfiguration?.run || currentSnapshot?.run;
+      // On Remote a run is copied only from your own: someone else's settings would look like yours.
+      const remoteForeign=root.dataset.remote==='1'&&!linkedConfiguration&&currentSnapshot?.lobby?.mine!==true;
+      const source = linkedConfiguration?.run || (remoteForeign?null:currentSnapshot?.run);
       const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
@@ -2878,6 +2896,11 @@
         form.classList.toggle('ab-v2-profile',profile?.channel==='dev_v2');
         showQuota();
         form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
+        // Remote is where people come to step in when the robot asks, so it starts interactive with help on.
+        if(root.dataset.remote==='1'){
+          if([...form.v2_mode.options].some(o=>o.value==='interactive'))form.v2_mode.value='interactive';
+          if([...form.v2_policy.options].some(o=>o.value==='reactive_help'))form.v2_policy.value='reactive_help';
+        }
         syncPolicyCards(form);
         // Every task starts from the official budget; later edits (a lowered budget) are the user's and stay until the task changes.
         form.max_attempts.value=limits.versions;form.wall_seconds.value=limits.wall;form.help_count.value=limits.help;
@@ -2977,6 +3000,10 @@
         if (submitting || !profile?.enabled || !form.reportValidity()) return;
         submitting = true;
         updatePreview();
+        // Creating a run checks the task, the scene and the models first, which can take several seconds.
+        const startButton=form.querySelector('[data-start-yes]'),startLabel=startButton?.textContent;
+        if(startButton)startButton.textContent='Starting…';
+        form.querySelector('#ab-launch-message').textContent='Starting your run. Checking the task, the scene and the models; this can take up to a minute.';
         try {
           if(!budget.valid)throw new Error(Object.values(budget.errors)[0]);
           let selection={request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:[form.v2_policy.value],mode:form.v2_mode.value,
@@ -3012,10 +3039,12 @@
           await refresh();
         } catch (error) {
           submitting = false;
+          if(startButton)startButton.textContent=startLabel;
           form.querySelector('#ab-launch-message').textContent = launchCreationError(error);
           updatePreview();
         }
       });
+      if(root.dataset.remote==='1')foldRemoteSettings(form);
       launchDialog.showModal();
     }));
   }
@@ -4794,7 +4823,8 @@
     const previousPreview = view.querySelector('#ab-camera-frame[data-live-stream-key]');
     currentSnapshot = snapshot;
     updateMemoryLink(snapshot);
-    devTag.hidden = !snapshot.dev_session || DEBUG_VIEW;
+    // The comparison caveat is for the lab; on Remote every run is a test run, so the tag says nothing a visitor can use.
+    devTag.hidden = !snapshot.dev_session || DEBUG_VIEW || root.dataset.remote==='1';
     renderSidebar();
     const run = snapshot.run;
     const savedRun=previousRun!==run.run_id?runViewState.get(run.run_id):null;
@@ -5910,7 +5940,7 @@
       const visibleRuns=runs.filter(r=>!r.history_deleted_at||recordIsActive(r));
       const visibleDevs=devSessions.filter(d=>!d.history_deleted_at||recordIsActive(devNavigationRecord(d)));
       if (!visibleRuns.length && !selectedDev) {
-        const latest=visibleDevs.find(d=>resolvedTask(devNavigationRecord(d)));
+        const latest=root.dataset.remote==='1'?remoteLanding(visibleDevs):visibleDevs.find(d=>resolvedTask(devNavigationRecord(d)));
         if(latest){navigateRecord(latest.session_id);return;}
       }
       if (!visibleRuns.length) {
