@@ -204,7 +204,9 @@ class Handler(BaseHTTPRequestHandler):
             identity = hashlib.sha256(f'{selection["request_key"]}'.encode()).hexdigest()
             experiment_id = 'devexp-' + identity[:24]
             run = world.runs.setdefault(experiment_id, Run(experiment_id, identity, owner, selection, time.time()))
-        self.answer(dict(experiment_id=run.experiment_id, cells=[dict(key=run.key)], worker_started=False))
+        # The real answer lists its fields in order, so the run's id comes after several hundred characters of hashes.
+        self.answer(dict(cancelled=False, created_at=run.created_at, dev_sdk_description='base enabled', dev_sdk_metadata_sha256=identity * 2, dev_sdk_prompt_sha256=identity * 2,
+                         experiment_id=run.experiment_id, cells=[dict(key=run.key)], worker_started=False))
 
     def run_route(self, owner, experiment_id, suffix, query, body):
         world = self.world;run = world.runs.get(experiment_id)

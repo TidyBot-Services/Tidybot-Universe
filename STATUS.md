@@ -1,9 +1,11 @@
 <!-- remote-crowd-20261107 -->
-## 11-07：Remote 多用户模拟测试（分支 `claude/bold-gates-c82b8e`；只离线，真实 run 未跑）
+## 11-07：Remote 多用户真实测试（分支 `claude/bold-gates-c82b8e`；部分完成，工程测试，非正式实验）
 
-- **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、真实模式安全线、清理工具。方案见其中的 `PLAN.md`，等用户确认。
-- **证据**：`remote_gateway/tests` 通过；基线 652ea13 上离线全量 52 项检查全过、0 错误；测出的 5 个产品问题已修（`PLAN.md` 第七节，未在真实 run 上观察）。
-- **下一步**：等中控台合并和放行。
+- **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、安全线（磁盘、Codex 额度）、测试结束时清理遗留 run。
+- **真实测试**：truares 上 9 人依次用了 8 个真实 run，求助的真人回复、跳过、超时转 Advisor 都在真实 run 上发生过，越权检查全被拒。run 之间按日志时间没有重叠。Dev、Eval、Advisor 全用 Codex（PARCC 从 truares 连不上，是否因 VPN 未证实）。回复由 Codex 生成，不算真人验证。
+- **未通过**：主测试判定“有错误”，其中 5 条来自磁盘安全线误叫停（已修，U7、U8 补跑通过），1 条是 U2 排队时 Stop 按钮显示为灰色（原因未查明）。PARCC 链路和 429 没有测到。
+- **证据**：报告 `~/桌面/AttentionBench-Workspace/docs/REPORT-remote-crowd-real-20261107.md`；监控页 8870、8877（只监听本机）；`remote_gateway/tests` 198 项通过；最新离线 52 项检查全过。
+- **下一步**：中控台合并本分支（其中 `af466a2` 是产品修复）；用户确认后清理约 21G 测试 run；PARCC 恢复后补测这条链路。
 <!-- /remote-crowd-20261107 -->
 
 <!-- general-setup-20261105 -->

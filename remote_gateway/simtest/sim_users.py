@@ -26,7 +26,9 @@ READ_PAGE = '''(id) => {
 FETCH = '''async ([method, path, body, csrf]) => {
   const token = csrf ? (document.getElementById('attentionbench-clear')?.dataset.controlToken || '') : '';
   const r = await fetch(path, {method, credentials: 'same-origin', headers: {...(body === null ? {} : {'Content-Type': 'application/json'}), ...(token ? {'X-Attention-Token': token} : {})}, body: body === null ? undefined : JSON.stringify(body)});
-  return {status: r.status, text: (await r.text()).slice(0, 300)};
+  const text = await r.text();let id = null;
+  try {id = JSON.parse(text).experiment_id || null;} catch (error) {}
+  return {status: r.status, text: text.slice(0, 300), experiment_id: id};
 }'''
 
 
@@ -415,10 +417,11 @@ class Person:
             answer = await self.call('POST', '/api/dev-v2/experiments', dict(selection=dict(request_key='second-run-attempt', tasks=[self.settings.task], seeds=[self.settings.seed], policies=['autonomous'], mode='interactive',
                                      help_budget=1, agent_provider=dict(roles=dict(dev=lab, eval=lab, advisor=lab))), start=True))
             self.check('放开后第二个 run 被接受', answer['status'] == 200, answer)
-            match = re.search(r'devexp-[a-f0-9]{24}', answer['text'])
-            if match:
-                stopped = await self.call('POST', f'/api/dev-v2/experiments/{match[0]}/cancel', {})
-                self.check('第二个 run 可以取消', stopped['status'] == 200, stopped)
+            if answer['status'] != 200:return
+            # Left in the line, this run would start on the robot after this person has gone.
+            if not answer.get('experiment_id'):raise RuntimeError(f'第二个 run 的编号读不到，无法取消：{answer["text"][:120]}')
+            stopped = await self.call('POST', f'/api/dev-v2/experiments/{answer["experiment_id"]}/cancel', {})
+            self.check('第二个 run 可以取消', stopped['status'] == 200, stopped)
 
     async def guest_tries(self):
         target = await self.someone_elses_run()

@@ -119,6 +119,7 @@ def offline(args):
         settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned')
         for at, value in args.fault:threading.Timer(at, send_fault, (args.fake_port, value)).start()
         asyncio.run(sim_users.run_all(settings, people, directory / 'events.jsonl', codes))
+        sweep(config, directory / 'events.jsonl', codes)
         outcome_checks(args.fake_port, directory / 'events.jsonl', cast, codes)
         with urllib.request.urlopen(f'http://127.0.0.1:{args.monitor_port}/api/state', timeout=5) as response:final = json.load(response)
         (directory / 'report.json').write_text(json.dumps(final, ensure_ascii=False, indent=1), encoding='utf-8')
@@ -130,6 +131,22 @@ def offline(args):
     finally:
         for process in reversed(processes):process.terminate()
         for process in processes:process.wait(timeout=10)
+
+
+def sweep(config, events, codes, *, settle_seconds=5):
+    """Once its people have gone, nothing of this test may wait in the line or use the robot: each such run is an error, and is stopped."""
+    from remote_gateway import policy
+    from remote_gateway.config import load
+    from remote_gateway.server import Gateway
+    gateway_cli(config, 'pause');time.sleep(settle_seconds)  # No start from here on; one already sent has time to show as running.
+    gateway = Gateway(load(config));owners = gateway.store.owners();log = sim_users.Log(events, codes)
+    left = [(row['experiment_id'], '在排队') for row in gateway.store.queue()]
+    left += [(row['experiment_id'], '在运行') for row in gateway.listing().get('dev_sessions', []) if policy.running(row) and row['experiment_id'] in owners]
+    for run, where in left:
+        gateway.store.dequeue(run)
+        status, _ = gateway.upstream.json(owners[run], 'POST', f'/api/dev-v2/experiments/{run}/cancel', {})
+        log.write(lane='-', kind='guard', name='收尾检查', source='遗留 run', message=f'测试结束时 run {run[-8:]} 还{where}，已取消（HTTP {status}）')
+    return left
 
 
 def host_run(prefix, command):
@@ -210,6 +227,7 @@ def real(args):
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
         asyncio.run(sim_users.run_all(settings, [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)], directory / 'events.jsonl', codes, shared))
         guard.done.set()
+        sweep(config, directory / 'events.jsonl', codes)
         print('结束后 df：', host_run(args.host_prefix, f'df -h {args.run_root}').splitlines()[-1], flush=True)
         print('结束后 Codex 额度：', guard.quota(), flush=True)
         with urllib.request.urlopen(f'http://127.0.0.1:{args.monitor_port}/api/state', timeout=5) as response:final = json.load(response)

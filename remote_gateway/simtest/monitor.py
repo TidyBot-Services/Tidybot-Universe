@@ -50,7 +50,7 @@ def fold(rows, now=None):
         if kind == 'end':
             ended = at;continue
         if kind == 'guard':
-            problems.append(dict(at=at, lane='-', name='安全线', source='测试叫停', message=row.get('message', ''), level='error'));continue
+            problems.append(dict(at=at, lane='-', name=row.get('name', '安全线'), source=row.get('source', '测试叫停'), message=row.get('message', ''), level='error'));continue
         lane = lanes.get(row.get('lane'))
         if lane is None:continue
         if kind == 'action':

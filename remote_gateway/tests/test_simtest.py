@@ -189,3 +189,23 @@ def test_cleanup_touches_only_this_tests_runs(tmp_path):
 def test_real_mode_needs_a_release(tmp_path, extra, words):
     done = subprocess.run([sys.executable, '-m', 'remote_gateway.simtest.run_sim', '--dir', str(tmp_path), '--real', *extra], capture_output=True, text=True)
     assert done.returncode != 0 and words in done.stderr
+
+
+def test_a_run_left_in_the_line_or_on_the_robot_at_the_end_is_an_error_and_is_stopped(fake, tmp_path):
+    from remote_gateway.config import load
+    from remote_gateway.server import Gateway
+    world, port = fake
+    config = run_sim.gateway_config(tmp_path, port=8899, upstream=f'http://127.0.0.1:{port}')
+    (tmp_path / 'gateway-state').mkdir(mode=0o700);secret = tmp_path / 'gateway-state/gateway.secret';secret.write_bytes(SECRET);secret.chmod(0o600)
+    store = Gateway(load(config)).store
+    waiting, running, gone = made(port, 'waiting'), made(port, 'running'), made(port, 'someone-elses')
+    for run in (waiting, running):store.record_run(run, 'u-1', 'local')
+    store.enqueue(waiting, 'u-1')
+    assert call(port, 'POST', f'/api/dev-v2/experiments/{running}/run', {})[0] == 200
+    left = run_sim.sweep(config, tmp_path / 'events.jsonl', [], settle_seconds=0)
+    assert sorted(left) == sorted([(waiting, '在排队'), (running, '在运行')]) and store.queue() == []
+    assert world.runs[running].state == 'cancelled' and world.runs[gone].state != 'cancelled'  # Only this test's own runs.
+    rows = [json.loads(line) for line in (tmp_path / 'events.jsonl').read_text(encoding='utf-8').splitlines()]
+    folded = monitor.fold([BEGIN, *rows, dict(kind='end', at=time.time())])
+    totals = monitor.verdict(folded)
+    assert totals['errors'] == 2 and totals['verdict'] == 'fail' and {p['source'] for p in folded['problems']} == {'遗留 run'}
