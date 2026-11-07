@@ -105,6 +105,12 @@ def test_the_test_gateway_puts_every_role_on_codex_under_the_stop_line_and_the_h
     assert policy.rebuild(body, user='u-1', options=options, limits=Limits(), credentials=[])['quota_stop_percent'] == 90  # The public gateway is untouched.
 
 
+def test_a_run_shown_as_prepared_for_a_moment_is_not_a_lost_start():
+    from remote_gateway.simtest.sim_users import START_GRACE_SECONDS, start_lost
+    assert not start_lost('PREPARED / NOT STARTED', 3)
+    assert start_lost('✕ DID NOT START', 0) and start_lost('PREPARED / NOT STARTED', START_GRACE_SECONDS)
+
+
 def sign(owner, method, target, body=b''):
     now = str(int(time.time()))
     mac = hmac.new(SECRET, '\n'.join((owner, now, method, target, hashlib.sha256(body).hexdigest())).encode(), hashlib.sha256).hexdigest()

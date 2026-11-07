@@ -42,6 +42,9 @@ class Log:
         self.stream.write(line + '\n')
 
 
+START_GRACE_SECONDS = 45
+
+
 @dataclass
 class Settings:
     base: str
@@ -57,6 +60,11 @@ class Settings:
     reply_command: tuple = ()  # Writes the reply from the robot's question. Empty means a fixed sentence.
     reply_source: str = 'fixed'
     headed: bool = False
+
+
+def start_lost(outcome, prepared_seconds):
+    """A real run shows as prepared for a moment after the host accepts it, so only a stated failure or a long wait means it did not start."""
+    return 'DID NOT START' in outcome or prepared_seconds >= START_GRACE_SECONDS
 
 
 class Person:
@@ -226,7 +234,15 @@ class Person:
 
     async def wait_robot(self, seconds=1200):
         async with self.step('排队等待'):
-            now = await self.until('轮到我，开始运行', lambda s:(s['card'] or {}).get('state') in ('running', 'waiting_human', 'finished', 'cancelled', 'created'), seconds)
+            prepared_since = []
+            def arrived(s):
+                state = (s['card'] or {}).get('state')
+                if state != 'created':
+                    prepared_since.clear()
+                    return state in ('running', 'waiting_human', 'finished', 'cancelled')
+                prepared_since[:] = prepared_since or [time.time()]
+                return start_lost(s['outcome'], time.time() - prepared_since[0])
+            now = await self.until('轮到我，开始运行', arrived, seconds)
             self.on_robot_at = time.time()
             if now['card']['state'] == 'created':
                 self.check('启动失败时页面写明原因', 'DID NOT START' in now['outcome'], now['outcome'][:160])

@@ -74,7 +74,7 @@ def outcome_checks(port, events, cast, codes):
     rows = [json.loads(line) for line in events.open(encoding='utf-8')]
     log = sim_users.Log(events, codes)
     for run_id, run in world['runs'].items():
-        if run['dev_model'] != 'gpt-6-astra' or run['quota_stop_percent'] != 77 or run['eval_provider'] != 'parcc':
+        if run['dev_model'] != 'gpt-6-astra' or run['quota_stop_percent'] != 77 or run['eval_provider'] != 'openai':
             log.write(lane='-', kind='guard', message=f'run {run_id[-8:]} 的配置不对：{run}')
     wanted = {'认真回复': 'human', '关页再回来': 'human', '断线重连': 'human', '跳过求助': 'skip', '不回复': 'advisor'}
     for lane, name, story in cast:
