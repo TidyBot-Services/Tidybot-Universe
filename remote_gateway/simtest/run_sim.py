@@ -149,6 +149,25 @@ def sweep(config, events, codes, *, settle_seconds=5):
     return left
 
 
+def help_checks(run_root, events, codes):
+    """Real runs: what each help request became on the host. The page only shows what reached it, so a request the robot made
+    that never reached the person or the Advisor is written here as an error, with the host's own reason."""
+    rows = [json.loads(line) for line in events.open(encoding='utf-8')]
+    runs = {row['run_id']: row.get('lane') for row in rows if row.get('run_id')}
+    log = sim_users.Log(events, codes);found = 0
+    for run_id, lane in runs.items():
+        for history in Path(run_root).glob(f'{run_id}/artifacts/{run_id}/cells/*/agent/ws/history/help.jsonl'):
+            for line in history.read_text(encoding='utf-8').splitlines():
+                row = json.loads(line) if line.strip() else {}
+                if (row.get('decision') or {}).get('action') != 'request' or row.get('delivered'):continue
+                error = history.parents[2] / 'private' / 'help' / str(row.get('execution_id')) / 'error.json'
+                why = json.loads(error.read_text(encoding='utf-8')).get('error') if error.is_file() else row.get('reason')
+                found += 1
+                log.write(lane=lane or '-', kind='problem', source='求助没送到', level='error',
+                          message=f'run {run_id[-8:]} 在 {row.get("execution_id")} 后求助，但没有送到人或 Advisor（{row.get("status")}）：{why}')
+    return found
+
+
 def host_run(prefix, command):
     """One read-only shell command on the run host: here, or through --host-prefix (for example an ssh command)."""
     return subprocess.run(f'{prefix} {command}' if prefix else command, shell=True, check=True, capture_output=True, text=True, timeout=120).stdout
@@ -228,6 +247,8 @@ def real(args):
         asyncio.run(sim_users.run_all(settings, [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)], directory / 'events.jsonl', codes, shared))
         guard.done.set()
         sweep(config, directory / 'events.jsonl', codes)
+        if args.host_prefix:log.write(lane='-', kind='problem', source='求助没送到', level='notice', message='run 在别的机器上，这里读不到求助记录，没有核对')
+        else:help_checks(args.run_root, directory / 'events.jsonl', codes)
         print('结束后 df：', host_run(args.host_prefix, f'df -h {args.run_root}').splitlines()[-1], flush=True)
         print('结束后 Codex 额度：', guard.quota(), flush=True)
         with urllib.request.urlopen(f'http://127.0.0.1:{args.monitor_port}/api/state', timeout=5) as response:final = json.load(response)

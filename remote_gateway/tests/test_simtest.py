@@ -210,3 +210,21 @@ def test_a_run_left_in_the_line_or_on_the_robot_at_the_end_is_an_error_and_is_st
     folded = monitor.fold([BEGIN, *rows, dict(kind='end', at=time.time())])
     totals = monitor.verdict(folded)
     assert totals['errors'] == 2 and totals['verdict'] == 'fail' and {p['source'] for p in folded['problems']} == {'遗留 run'}
+
+
+def test_a_help_request_that_never_reached_anyone_is_an_error_with_the_hosts_reason(tmp_path):
+    from remote_gateway.simtest import run_sim
+    run_id = 'devexp-' + 'c' * 24
+    agent = tmp_path / 'runs' / run_id / 'artifacts' / run_id / 'cells' / ('d' * 64) / 'agent'
+    (agent / 'ws' / 'history').mkdir(parents=True);(agent / 'private' / 'help' / 'e000002').mkdir(parents=True)
+    rows = [dict(execution_id='e000001', decision=dict(action='request'), delivered=True, status='completed'),
+            dict(execution_id='e000002', decision=dict(action='request'), delivered=False, status='unavailable', reason='public_view_unavailable'),
+            dict(execution_id='e000003', decision=dict(action='none'), delivered=False)]
+    (agent / 'ws' / 'history' / 'help.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+    (agent / 'private' / 'help' / 'e000002' / 'error.json').write_text(json.dumps(dict(error='evaluation-derived text rejected at Dev boundary')))
+    events = tmp_path / 'events.jsonl'
+    events.write_text(json.dumps(dict(lane='U7', kind='state', run_id=run_id)) + '\n')
+    assert run_sim.help_checks(tmp_path / 'runs', events, []) == 1
+    problem = json.loads(events.read_text().splitlines()[-1])
+    assert problem['lane'] == 'U7' and problem['level'] == 'error' and problem['source'] == '求助没送到'
+    assert 'e000002' in problem['message'] and 'Dev boundary' in problem['message']
