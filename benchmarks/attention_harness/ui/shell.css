@@ -108,6 +108,19 @@ html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty
 html #attentionbench-clear[data-operator-view="true"] .op-idle[data-camera-empty] button:hover{border-color:var(--sh-acc)}
 html #attentionbench-clear[data-operator-view="true"] .op-stage{background:var(--sh-ins);border:1px solid #ffffff1a;border-top:0}
 html #attentionbench-clear[data-operator-view="true"] .op-stage .ab-station-camera{background:var(--sh-ins)}
+html #attentionbench-clear[data-operator-view="true"] .view[data-settled]>.panel{animation:none}
+/* Live and between tries share one height, so panel 03 does not jump as a run alternates between them. */
+html #attentionbench-clear[data-operator-view="true"] .op-stage .ab-station-camera{aspect-ratio:16/9;min-height:0}
+html #attentionbench-clear[data-operator-view="true"] .op-stage[data-op-held]{aspect-ratio:16/9}
+/* The room the camera picker and frame status take while live, so the panels below stay put. */
+html #attentionbench-clear[data-operator-view="true"] .ab-execution-viewer:has([data-op-held]){padding-bottom:96px}
+@media(max-width:760px){html #attentionbench-clear[data-operator-view="true"] .ab-execution-viewer:has([data-op-held]){padding-bottom:138px}html #attentionbench-clear[data-operator-view="true"] .op-stage[data-op-held]{aspect-ratio:auto}}
+html #attentionbench-clear[data-operator-view="true"] .op-stage[data-op-held]{display:grid;place-items:center;color:var(--sh-insink)}
+html #attentionbench-clear[data-operator-view="true"] .op-stage[data-op-held]>:is(img,video){position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.55}
+html #attentionbench-clear[data-operator-view="true"] .op-held-label{position:absolute;left:12px;top:12px;padding:3px 9px;border-radius:6px;background:#000a;color:#e9e6de;font:500 11.5px var(--body)}
+html #attentionbench-clear[data-operator-view="true"] .op-held-note{position:relative;max-width:min(90%,520px);padding:12px 18px;border-radius:10px;background:#0b0d0bcc;text-align:center}
+html #attentionbench-clear[data-operator-view="true"] .op-held-note b{display:block;font:700 clamp(19px,2.4vw,26px)/1.1 "Barlow Condensed",sans-serif;letter-spacing:.08em;text-transform:uppercase}
+html #attentionbench-clear[data-operator-view="true"] .op-held-note p{margin:6px 0 0;color:var(--sh-insmut);font-size:13px;line-height:1.4}
 @keyframes sh-grid{to{background-position:56px 56px,56px 56px}}
 
 /* Task rail shared by the cover and the Memory monitor. */
