@@ -463,6 +463,7 @@ test('REMOTE-FIRST-RUN: a first run on Remote starts interactive with help, says
   const {form} = await dialog(t, {remote: ['pick_place_counter_to_sink']});
   assert.equal(await form.locator('select[name="v2_mode"]').inputValue(), 'interactive');
   assert.equal(await form.locator('select[name="v2_policy"]').inputValue(), 'reactive_help');
+  assert.equal(await form.locator('select[name="seed"]').inputValue(), '101', 'Remote starts on the seed every task was solved on');
   assert.match(await form.locator('[data-policy-human-note]').innerText(), /comes to you first.*2 minutes/s);
   const local = await dialog(t);
   assert.equal(await local.form.locator('[data-policy-human-note]').count(), 0);

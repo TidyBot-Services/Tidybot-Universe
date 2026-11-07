@@ -2905,7 +2905,9 @@
         // Every task starts from the official budget; later edits (a lowered budget) are the user's and stay until the task changes.
         form.max_attempts.value=limits.versions;form.wall_seconds.value=limits.wall;form.help_count.value=limits.help;
         syncSeedOptions();
-        if([...form.seed.options].some(o=>o.value==='102'))form.seed.value='102';
+        // Remote defaults to seed 101: every Remote task has a real run solved on it, while 102 failed its scene contract on the qifei host (11-08).
+        const firstSeed=root.dataset.remote==='1'?'101':'102';
+        if([...form.seed.options].some(o=>o.value===firstSeed))form.seed.value=firstSeed;
         form.attempt_wall_seconds.value = profile?.attempt_wall_seconds ?? '';
         form.querySelector('#ab-launch-message').textContent = '';
         updatePreview();
