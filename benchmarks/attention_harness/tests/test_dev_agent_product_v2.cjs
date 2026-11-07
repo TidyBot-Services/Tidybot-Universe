@@ -88,11 +88,17 @@ test('a waiting help request offers a reply form and a reply from a person is la
  assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human'},1).includes('Person replied'));
  assert.ok(!api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'advisor'},1).includes('Person replied'));
 });
+test('a few tries are counted on their card, many keep the most common failure as its name',async()=>{
+ const s=await snapshot(),api=apiFor(s),tries=n=>Array.from({length:n},(_,i)=>({execution_id:`e${i}`,number:i+1,submitted:false,ok:false,kind:'reach',why:'x'}));
+ s.agent.tries=tries(3);assert.ok(api.agentPolicyHelp(s).includes('<b>3 tries'));
+ s.agent.tries=tries(1);assert.ok(api.agentPolicyHelp(s).includes('<b>1 try'));
+ s.agent.tries=tries(9);assert.ok(api.agentPolicyHelp(s).includes("<b>Can't reach")||api.agentPolicyHelp(s).includes('<b>Can&#39;t reach'));
+});
 test('the history reads as chapters with plain names, never internal ids',async()=>{
  const s=await snapshot(),api=apiFor(s);
  s.agent.tries=[{execution_id:'e000001',number:1,submitted:false,ok:false,kind:'reach',why:'x'},{execution_id:'e000002',number:2,submitted:false,ok:false,kind:'reach',why:'x',help:{content:'y'}},{execution_id:'e000003',number:3,submitted:true,attempt:1,passed:false,ok:false,kind:'hold',why:'z'},{execution_id:'e000004',number:4,submitted:false,ok:false,kind:'hold',why:'z'}];
  const html=api.agentPolicyHelp(s);
- assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('Help 1')&&html.includes('After Try 2')&&html.includes('Attempt 1')&&html.includes('Not passed')&&html.includes('Can&#39;t reach'));
+ assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('2 tries')&&html.includes('Help 1')&&html.includes('After Try 2')&&html.includes('Attempt 1')&&html.includes('Not passed'));
  assert.equal((html.match(/data-story-part/g)||[]).length,4);
  assert.ok(!html.includes('Technical details')&&!html.includes('Help replies'));
  assert.ok(!html.slice(html.indexOf('data-agent-history'),html.indexOf('data-story-caption')).includes('e00000'));

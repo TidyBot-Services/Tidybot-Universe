@@ -5377,6 +5377,8 @@
     }
     return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
   }
+  // Few tries read better as sentences; many fit only as ticks.
+  function storyListed(tries) {return tries.length<=8;}
   function storyKind(kind) {return {reach:"Can't reach",hold:"Can't hold",other:'Other',done:'Ran without errors'}[kind];}
   function tryName(id) {
     const found=/^e0*(\d+)$/.exec(String(id||''));
@@ -5402,11 +5404,11 @@
       if(part.attempt){const t=part.attempt,result=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
         return `<button type="button" class="op-story-card op-story-attempt" data-story-part="${index}"><small>Try ${t.number}</small>Attempt ${t.attempt}<small>${result}</small></button>`;}
       const counts=storyCounts(part.tries),first=part.tries[0].number,last=part.tries.at(-1).number;
-      return `<button type="button" class="op-story-card" data-story-part="${index}" style="--weight:${Math.max(2,Math.sqrt(part.tries.length)).toFixed(2)}"><small>${first===last?`Try ${first}`:`Try ${first}–${last}`}</small><b>${esc(storyKind(counts[0][0]))}</b><span class="op-story-mini">${counts.map(([kind,n])=>`<i data-kind="${kind}" style="flex:${n}"></i>`).join('')}</span></button>`;
+      return `<button type="button" class="op-story-card" data-story-part="${index}" style="--weight:${Math.max(2,Math.sqrt(part.tries.length)).toFixed(2)}"><small>${first===last?`Try ${first}`:`Try ${first}–${last}`}</small><b>${storyListed(part.tries)?`${part.tries.length} ${part.tries.length===1?'try':'tries'}`:esc(storyKind(counts[0][0]))}</b><span class="op-story-mini">${counts.map(([kind,n])=>`<i data-kind="${kind}" style="flex:${n}"></i>`).join('')}</span></button>`;
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
-  let storyOpen=null,storyPinned=false;
+  let storyOpen=null,storyPinned=false,storyListRun=null;
   function bindAgentHistory(snapshot) {
     const root=view.querySelector('[data-agent-history]');if(!root)return;
     const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
@@ -5414,7 +5416,7 @@
     let timer=0,closing=0,frame=0,pointer=null,ticks=[],rest=[],now=[],aim=[];
     const say=t=>{caption.textContent='';if(!t)return;const name=document.createElement('b');name.textContent=t.submitted?`Attempt ${t.attempt} · Try ${t.number}`:`Try ${t.number}`;caption.append(name,document.createTextNode(t.why));
 };
-    const paint=()=>ticks.forEach((tick,i)=>{tick.style.height=20+34*now[i]+'px';tick.style.width=7+7*now[i]+'px';});
+    const paint=()=>drawer.classList.contains('list')||ticks.forEach((tick,i)=>{tick.style.height=20+34*now[i]+'px';tick.style.width=7+7*now[i]+'px';});
     const step=()=>{let moving=false;now.forEach((value,i)=>{const gap=aim[i]-value;if(Math.abs(gap)>.002){now[i]+=gap*.26;moving=true;}else now[i]=aim[i];});paint();frame=moving?requestAnimationFrame(step):0;};
     const wake=()=>{rest.forEach((x,i)=>{const far=pointer==null||calm?Infinity:(pointer-x)/52;aim[i]=Math.exp(-far*far);});if(!frame)frame=requestAnimationFrame(step);};
     const place=card=>{if(matchMedia('(max-width:640px)').matches)card.after(drawer);else row.after(drawer);};
@@ -5422,7 +5424,7 @@
       const card=row.querySelector(`[data-story-part="${index}"]`),part=parts[index];if(!card||!part)return;
       if(storyOpen===index&&drawer.classList.contains('open'))return;
       storyOpen=index;row.querySelectorAll('.op-story-card').forEach(c=>c.classList.toggle('open',c===card));place(card);
-      drawer.textContent='';delete drawer.dataset.pick;ticks=[];rest=[];now=[];aim=[];pointer=null;
+      drawer.textContent='';drawer.classList.remove('list');delete drawer.dataset.pick;ticks=[];rest=[];now=[];aim=[];pointer=null;
       const col=(cols,title,text)=>{if(!text)return;const box=document.createElement('div'),head=document.createElement('b'),body=document.createElement('p');head.textContent=title;body.textContent=text;box.append(head,body);cols.append(box);};
       if(part.help){const h=part.help.help,cols=document.createElement('div');cols.className='op-story-cols';col(cols,'Why it asked',h.why);col(cols,h.provider==='human'?'Your reply':'The advisor said',h.content);drawer.append(cols);drawer.classList.add('open','note');say(null);return;}
       if(part.attempt){const t=part.attempt,verdict=document.createElement('span');verdict.className='op-story-verdict'+(t.passed===true?' ok':'');verdict.textContent=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
@@ -5433,9 +5435,9 @@
       storyCounts(part.tries).forEach(([kind,count])=>{const chip=document.createElement('button');chip.type='button';chip.innerHTML=`<i data-kind="${kind}"></i>${esc(storyKind(kind))} <b>${count}</b>`;
         chip.addEventListener('mouseenter',()=>{drawer.dataset.pick=kind;});chip.addEventListener('mouseleave',()=>{if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});
         chip.addEventListener('click',()=>{pinned=pinned===kind?null:kind;summary.querySelectorAll('button').forEach(b=>b.classList.toggle('pin',b===chip&&pinned===kind));if(pinned)drawer.dataset.pick=pinned;else delete drawer.dataset.pick;});summary.append(chip);});
-      const line=document.createElement('div');line.className='op-story-ticks';
-      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);const shown=t.submitted?currentSnapshot.attempts.find(a=>a.index===t.attempt-1):currentSnapshot.try_attempts?.find(a=>a.try_number===t.number);if(shown){stored(`attention.history:${snapshot.run.run_id}`,shown.attempt_id);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});}});line.append(tick);return tick;});
-      drawer.append(summary,line);drawer.classList.add('open');now=ticks.map(()=>0);aim=ticks.map(()=>0);
+      const listed=storyListed(part.tries),line=document.createElement('div');line.className=listed?'op-story-list':'op-story-ticks';
+      ticks=part.tries.map(t=>{const tick=document.createElement('button');tick.type='button';tick.dataset.kind=t.kind;if(listed)tick.innerHTML=`<b>Try ${t.number}</b><i data-kind="${esc(t.kind)}"></i><span>${esc(t.why)}</span>`;if(t.help)tick.classList.add('help');tick.setAttribute('aria-label',`Try ${t.number}: ${t.why}`);tick.addEventListener('mouseenter',()=>say(t));tick.addEventListener('focus',()=>say(t));tick.addEventListener('click',()=>{ticks.forEach(k=>k.classList.toggle('on',k===tick));say(t);const shown=t.submitted?currentSnapshot.attempts.find(a=>a.index===t.attempt-1):currentSnapshot.try_attempts?.find(a=>a.try_number===t.number);if(shown){stored(`attention.history:${snapshot.run.run_id}`,shown.attempt_id);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});}});line.append(tick);return tick;});
+      drawer.append(...(listed?[line]:[summary,line]));drawer.classList.add('open');drawer.classList.toggle('list',listed);now=ticks.map(()=>0);aim=ticks.map(()=>0);
       const box=drawer.getBoundingClientRect();rest=ticks.map(k=>{const r=k.getBoundingClientRect();return r.left-box.left+r.width/2;});
     }
     function close(){storyOpen=null;drawer.classList.remove('open','note');row.querySelectorAll('.op-story-card').forEach(c=>c.classList.remove('open'));}
@@ -5448,6 +5450,7 @@
     drawer.addEventListener('mouseleave',()=>{pointer=null;wake();later();});
     drawer.addEventListener('pointermove',event=>{pointer=event.clientX-drawer.getBoundingClientRect().left;wake();});
     if(storyOpen!=null){const last=storyOpen;storyOpen=null;open(last);}
+    else if(storyListRun!==snapshot.run.run_id&&parts.at(-1)?.tries&&storyListed(parts.at(-1).tries)){storyListRun=snapshot.run.run_id;storyPinned=true;open(parts.length-1);}
   }
   function agentReplyForm(wait) {
     const draft=stored('attention.agent-reply:'+wait.execution_id)||'';
