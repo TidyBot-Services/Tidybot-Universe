@@ -9,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 
 import pytest
 
@@ -283,3 +284,30 @@ def test_a_help_request_that_never_reached_anyone_is_an_error_with_the_hosts_rea
     problem = json.loads(events.read_text().splitlines()[-1])
     assert problem['lane'] == 'U7' and problem['level'] == 'error' and problem['source'] == '求助没送到'
     assert 'e000002' in problem['message'] and 'Dev boundary' in problem['message']
+
+
+def test_a_holder_killed_on_the_robot_is_taken_over_and_the_others_go_on(fake):
+    world, port = fake;world.tries = 2;world.try_seconds = 30;world.think_seconds = .5;world.fault = dict(kill_holder='u-0')
+    runs = [made(port, f'client-key-{n}', f'u-{n}') for n in range(2)]
+    for n, r in enumerate(runs):assert call(port, 'POST', f'/api/dev-v2/experiments/{r}/run', {}, owner=f'u-{n}')[0] == 200
+    assert wait_for(lambda:all(world.runs[r].state != 'running' for r in runs), 20)
+    summary = world.summary()
+    assert (world.runs[runs[0]].state, world.runs[runs[0]].reason) == ('failed', 'worker_lost')
+    assert world.runs[runs[1]].reason == 'agent_idle' and len(world.runs[runs[1]].tries) == 2
+    assert [t for t in summary['turns'] if t.get('reclaimed')] and summary['violations'] == []
+
+
+def test_a_run_that_takes_the_robot_twice_while_another_waits_is_a_violation(fake):
+    world, port = fake
+    a, b = (fake_harness.Run(f'devexp-{n * 24}', n, f'u-{n}', dict(SELECTION, request_key=n), 0) for n in 'ab')
+    for run in (a, b):run.state = 'running';world.runs[run.experiment_id] = run
+    assert world.take_robot(a);world.line.append(b);world.give_robot(a);world.line.remove(b)  # b was waiting when a gave it back.
+    assert world.take_robot(a)
+    assert world.summary()['violations'][-1]['rule'] == 'took the robot twice in a row while others waited'
+
+
+def test_a_story_sets_its_own_run_pace_on_the_fake_host(fake):
+    world, port = fake;run = made(port, 'client-key-1')
+    request = urllib.request.Request(f'http://127.0.0.1:{port}/sim/pace', data=json.dumps({run: {'think': 0}}).encode(), method='POST')
+    with urllib.request.urlopen(request, timeout=5) as response:assert json.load(response) == {run: {'think': 0}}
+    assert world.pace[run] == {'think': 0}

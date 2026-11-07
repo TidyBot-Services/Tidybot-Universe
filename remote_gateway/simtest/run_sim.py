@@ -25,10 +25,23 @@ from . import sim_users
 ROOT = Path(__file__).resolve().parents[2]
 CAST = [('U1', '阿青', '认真回复'), ('U2', '小白', '排队时取消'), ('U3', '老周', '跳过求助'), ('U4', '小林', '不回复'), ('U5', '大海', '中途取消'),
         ('U6', '阿杰', '断线重连'), ('U7', '小雨', '关页再回来'), ('U8', '黑客', '越权尝试'), ('G1', '路人', '访客')]
+# The time-share test (TESTPLAN-remote-sim-timeshare-20261108): three slots, one robot, six people.
+TIMESHARE_CAST = [('U1', '阿青', '正常跑完'), ('U2', '小白', '写代码慢'), ('U3', '老周', '连续提交'), ('U4', '小林', '排队时取消'), ('U5', '大海', '无进展'), ('U6', '阿杰', '第N+1个')]
+TIMESHARE_REAL_CAST = [('R1', '阿青', '共用机器人'), ('R2', '小白', '共用机器人'), ('R3', '老周', '共用机器人'), ('R4', '小林', '等运行名额'), ('G1', '路人', '访客')]
 # Everything a limit can open, at what the harness can honour. One run on the robot and the disk lines are not limits here: see PLAN.md.
 NO_NEW_RUNS = Path.home() / '.config/disk-hygiene/no-new-runs'
 OPEN_LIMITS = dict(versions=10, help_requests=10, runs_per_day=100000, wall_seconds=21600, active_runs=1000, requests_per_second=100000, request_burst=1000000,
                    live_requests_per_second=100000, live_request_burst=1000000, logins_per_hour=100000)
+
+
+def read_quota(url):
+    """Codex weekly quota: from a harness URL, or with 'local' straight from this machine's Codex session logs, as the harness's QuotaMonitor reads it."""
+    if url == 'local':
+        from benchmarks.attention_harness.dev_agent_quota import read_weekly_quota
+        value = read_weekly_quota()
+        if value is None:raise OSError('Codex quota unreadable from ~/.codex/sessions')
+        return dict(value, source='local ~/.codex/sessions')
+    with urllib.request.urlopen(url, timeout=8) as response:return json.load(response)
 
 
 def wait_up(url, seconds=20):
@@ -89,9 +102,47 @@ def outcome_checks(port, events, cast, codes):
               detail=f'峰值 {world.get("peak_open")} 个，名额 {world["slots"]}')
     waited = {run_id[-8:]:run['waited_seconds'] for run_id, run in world['runs'].items() if run.get('waited_seconds')}
     log.write(lane='-', kind='check', check='有 Try 排过机器人（等待不计入 run 时间）', ok=bool(waited), detail=f'等过的 run 与秒数：{waited}')
+    if any(story in sim_users.TIMESHARE_STORIES for _, _, story in cast):timeshare_checks(world, rows, cast, log)
     log.write(lane='-', kind='check-end')
     # The verdict is read after these lines are in, so a wrong outcome cannot pass.
     time.sleep(1.5)
+
+
+def timeshare_checks(world, rows, cast, log):
+    """What the fake host saw of the robot, story by story. Violations (overlap, more open than slots, two turns in a row) are alarms already."""
+    lanes = {}
+    for row in rows:
+        if row.get('run_id') and row.get('lane') not in lanes and row.get('lane') != '-':lanes[row['lane']] = row['run_id']
+    runs, turns = world['runs'], world.get('turns', [])
+    def check(lane, name, ok, detail):log.write(lane=lane, name=dict((c[0], c[1]) for c in cast).get(lane, lane), kind='check', check=name, ok=bool(ok), detail=detail)
+    spans = sorted((t for t in turns if t.get('released')), key=lambda t:t['granted'])
+    check('-', '机器人上同一时间只有一个 Try（按时间线核对）', all(a['released'] <= b['granted'] + 1e-3 for a, b in zip(spans, spans[1:])), f'{len(spans)} 次执行')
+    check('-', '没有违反分时规则', not world.get('violations'), world.get('violations'))
+    check('-', f'同时开着的 run 达到名额 {world["slots"]}', world.get('peak_open') == world['slots'], f'峰值 {world.get("peak_open")}')
+    for lane, name, story in cast:
+        run = runs.get(lanes.get(lane));mine = [t for t in turns if t['run'] == lanes.get(lane)]
+        if run is None:
+            check(lane, f'{story}：后端有这个 run', False, '没有找到');continue
+        if story == '正常跑完':
+            check(lane, '拿到机器人、执行、交回，每次都交回了', run['tries'] == world.get('tries', 3) and all(t.get('released') for t in mine) and run['reason'] == 'agent_idle', f'{run["tries"]} 次 Try，结束原因 {run["reason"]}')
+        if story == '写代码慢':
+            between = [t for t in turns if mine and t['run'] != run and mine[0]['released'] and mine[0]['released'] <= t['granted'] <= (mine[1]['granted'] if len(mine) > 1 else 1e18)]
+            check(lane, '它写代码时别人在用机器人', between, f'两次 Try 之间别人执行了 {len(between)} 次')
+            check(lane, '没有因为别人占机器人被判无进展', run['reason'] == 'agent_idle', f'结束原因 {run["reason"]}')
+        if story == '连续提交':
+            check(lane, '排过机器人（等待不计入时长）', run['waited_seconds'] > 0, f'等了 {run["waited_seconds"]} 秒')
+        if story == '排队时取消':
+            check(lane, '离开队列，从没拿过机器人', run['reason'] == 'operator_cancel' and not mine, f'{run["reason"]}，拿过 {len(mine)} 次')
+        if story == '无进展':
+            check(lane, '被“无进展”停下，不是取消', run['reason'] == 'no_progress' and bool(run.get('stop_detail')), f'{run["reason"]}：{run.get("stop_detail")}')
+        if story == '第N+1个':
+            began = run.get('started_at') or 0
+            freed = [r for r in runs.values() if r.get('ended_at') and r['ended_at'] <= began + 5 and r is not run]
+            check(lane, '有人结束后自动补上', run['tries'] > 0 and freed, f'开始于有 {len(freed)} 个 run 结束之后，执行了 {run["tries"]} 次')
+    if 'kill_holder' in json.dumps(world.get('fault_log', [])) or any(t.get('reclaimed') for t in turns):
+        dead = [t for t in turns if t.get('reclaimed')]
+        later = [t for t in turns if dead and t['granted'] > dead[0]['released']]
+        check('-', '持有者被杀后机器人被回收，别人接着执行', dead and later, f'回收 {len(dead)} 次，之后执行 {len(later)} 次')
 
 
 def port_free(*ports):
@@ -109,20 +160,23 @@ def offline(args):
     shutil.rmtree(directory / 'shots', ignore_errors=True)
     config = gateway_config(directory, port=args.gateway_port, upstream=f'http://127.0.0.1:{args.fake_port}', slots=args.slots)
     state = directory / 'gateway-state'
-    for name in ('gateway.sqlite3', 'audit.jsonl', 'gateway.secret'):(state / name).unlink(missing_ok=True)
+    # A pause left by the last run in this folder (the sweep pauses the gateway) would refuse every new run.
+    for name in ('gateway.sqlite3', 'audit.jsonl', 'gateway.secret', 'public-pause'):(state / name).unlink(missing_ok=True)
     gateway_cli(config, 'secret')
-    processes = [spawn(['-m', 'remote_gateway.simtest.fake_harness', '--port', str(args.fake_port), '--secret-file', str(state / 'gateway.secret'), '--speed', str(args.speed), '--try-seconds', str(args.try_seconds), '--think-seconds', str(args.think_seconds), '--slots', str(args.slots)], directory / 'fake.log')]
+    processes = [spawn(['-m', 'remote_gateway.simtest.fake_harness', '--port', str(args.fake_port), '--secret-file', str(state / 'gateway.secret'), '--speed', str(args.speed), '--try-seconds', str(args.try_seconds), '--think-seconds', str(args.think_seconds), '--slots', str(args.slots), '--no-progress-seconds', str(args.no_progress_seconds)], directory / 'fake.log')]
     try:
         wait_up(f'http://127.0.0.1:{args.fake_port}/sim/state')
         processes.append(spawn(['-m', 'remote_gateway.simtest.codex_gateway', '--config', str(config)], directory / 'gateway.log'))
         wait_up(f'http://127.0.0.1:{args.gateway_port}/login')
         processes.append(spawn(['-m', 'remote_gateway.simtest.monitor', '--port', str(args.monitor_port), '--dir', str(directory), '--gateway', f'http://127.0.0.1:{args.gateway_port}', '--fake', f'http://127.0.0.1:{args.fake_port}', '--mode', 'offline'], directory / 'monitor.log'))
         wait_up(f'http://127.0.0.1:{args.monitor_port}/api/state')
-        cast = [c for c in CAST if c[0] in args.only] if args.only else CAST
+        whole = TIMESHARE_CAST if args.cast == 'timeshare' else CAST
+        cast = [c for c in whole if c[0] in args.only] if args.only else whole
         codes = invites(config, len(cast), directory / 'invites.json')
         people = [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)]
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
-        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned')
+        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned',
+                                      fake=f'http://127.0.0.1:{args.fake_port}')
         for at, value in args.fault:threading.Timer(at, send_fault, (args.fake_port, value)).start()
         asyncio.run(sim_users.run_all(settings, people, directory / 'events.jsonl', codes))
         sweep(config, directory / 'events.jsonl', codes)
@@ -197,7 +251,7 @@ class DiskGuard(threading.Thread):
         self.done = threading.Event();self.start_free, self.start_used = host_disk(args.host_prefix, args.run_root);self.run_used, self.current = self.start_used, None
 
     def quota(self):
-        with urllib.request.urlopen(self.args.quota_url, timeout=8) as response:return json.load(response)['used_percent']
+        return read_quota(self.args.quota_url)['used_percent']
 
     def stop(self, reason):
         if self.shared.get('abort'):return
@@ -238,14 +292,15 @@ def real(args):
     wait_up(f'http://127.0.0.1:{args.gateway_port}/login')
     port_free(args.monitor_port)
     print('开始前 df：', host_run(args.host_prefix, f'df -h {args.run_root}').splitlines()[-1], flush=True)
-    with urllib.request.urlopen(args.quota_url, timeout=8) as response:quota = json.load(response)
+    quota = read_quota(args.quota_url)
     print('开始前 Codex 额度：', quota, flush=True)
     if quota['used_percent'] >= args.quota_stop_percent:raise SystemExit(f'Codex 额度 {quota["used_percent"]}%，到了停线，不开始')
     monitor = spawn(['-m', 'remote_gateway.simtest.monitor', '--port', str(args.monitor_port), '--dir', str(directory), '--gateway', f'http://127.0.0.1:{args.gateway_port}', '--mode', 'real',
                      *(['--sim-lock', value['sim_lock']] if value.get('sim_lock') else []), '--disk-floor-gb', str(args.disk_floor_gb)], directory / 'monitor.log')
     try:
         wait_up(f'http://127.0.0.1:{args.monitor_port}/api/state')
-        cast = [c for c in CAST if c[0] in args.only] if args.only else CAST
+        whole = TIMESHARE_REAL_CAST if args.cast == 'timeshare' else CAST
+        cast = [c for c in whole if c[0] in args.only] if args.only else whole
         codes = invites(config, len(cast), directory / 'invites.json')
         shared = {};log = sim_users.Log(directory / 'events.jsonl', codes)
         guard = DiskGuard(args, config, shared, log);guard.start()
@@ -278,6 +333,8 @@ def main():
     parser.add_argument('--try-seconds', type=float, default=64)
     parser.add_argument('--think-seconds', type=float, default=8)
     parser.add_argument('--slots', type=int, default=3, help='run slots: runs open at once, on the gateway and the fake host')
+    parser.add_argument('--cast', choices=('crowd', 'timeshare'), default='crowd', help='crowd: the nine-person story; timeshare: the six-person time-share story')
+    parser.add_argument('--no-progress-seconds', type=float, default=7200, help='offline: fake seconds without a Try before the fake host stops a run')
     parser.add_argument('--scale', type=float, default=1)
     parser.add_argument('--drop-seconds', type=float, default=5)
     parser.add_argument('--fault', nargs=2, action='append', default=[], metavar=('SECONDS', 'JSON'), type=str, help='at this second, set this fault on the fake host')
@@ -291,7 +348,7 @@ def main():
     parser.add_argument('--test-budget-gb', type=float, default=25)
     parser.add_argument('--run-budget-gb', type=float, default=20)
     parser.add_argument('--run-cap-seconds', type=float)
-    parser.add_argument('--quota-url', default='http://127.0.0.1:8769/api/codex-quota')
+    parser.add_argument('--quota-url', default='http://127.0.0.1:8769/api/codex-quota', help="or 'local' to read this machine's Codex session logs")
     parser.add_argument('--quota-stop-percent', type=float, default=77)
     parser.add_argument('--seed', type=int, default=101)
     args = parser.parse_args();args.fault = [(float(at), value) for at, value in args.fault]

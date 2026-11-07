@@ -7,7 +7,12 @@ whoever waits. More open runs than slots, or two Tries on the robot at once, is 
 shows it. Time waiting for the robot is not counted in a run's time. The stall fault makes a run stop progressing, and
 after --no-progress-seconds it ends itself with reason no_progress, as the real harness does.
 
-GET /sim/state and POST /sim/fault answer without a signature, on loopback only, for the monitor and for fault tests.
+A run that used all its Tries ends as agent_idle: there is no time limit. The kill_holder fault kills the run holding the
+robot before it gives it back; the next in line takes the robot over, as the real token drops a dead owner.
+Taking the robot twice in a row while someone else waited is a violation too.
+
+GET /sim/state, POST /sim/fault and POST /sim/pace (per-run think seconds or a stall, {experiment_id: {"think": s}})
+answer without a signature, on loopback only, for the monitor, for fault tests and for a person's story.
 """
 import argparse
 import copy
@@ -49,7 +54,7 @@ class Run:
         self.experiment_id, self.key, self.owner, self.selection, self.created_at = experiment_id, key, owner, selection, created_at
         self.state, self.reason = 'planned', None
         self.started_at = None;self.tries = [];self.executing = None;self.wait = None;self.sequence = 0
-        self.helped = [];self.phase = 'not started';self.waited = 0.;self.asked_at = None;self.robot_since = None;self.stop_detail = None
+        self.helped = [];self.phase = 'not started';self.waited = 0.;self.asked_at = None;self.robot_since = None;self.stop_detail = None;self.ended_at = None
 
 
 class World:
@@ -58,6 +63,8 @@ class World:
         self.slots, self.no_progress_seconds = slots, no_progress_seconds
         self.lock = threading.RLock();self.runs = {};self.random = random.Random(seed);self.violations = [];self.fault = {};self.calls = 0;self.frames = 0;self.credentials = {}
         self.line = [];self.holder = None;self.grants = [];self.peak_open = 0
+        # pace: per-run think seconds or a stall, set by a person's story. turns: every Try's ask, grant and give-back time.
+        self.pace = {};self.turns = [];self.last_release = None
 
     # The clock
     def open_runs(self):
@@ -93,8 +100,15 @@ class World:
             while True:
                 with self.lock:
                     if run.state != 'running':return False
+                    if self.holder is not None and self.holder.state != 'running':
+                        # The holder died without giving the robot back: the real token drops a dead owner's ticket and its flock goes with the process.
+                        self.turns[-1].update(released=time.time(), reclaimed=True);self.holder = None
                     if self.line[0] is run and self.holder is None:
+                        last = self.last_release
+                        if last and last['run'] == run.experiment_id and [e for e in last['waiting'] if e != run.experiment_id and self.runs[e].state == 'running']:
+                            self.violations.append(dict(at=time.time(), started=run.experiment_id, while_running=last['waiting'], rule='took the robot twice in a row while others waited'))
                         self.holder = run;run.robot_since = time.time();self.grants.append(run.experiment_id)
+                        self.turns.append(dict(run=run.experiment_id, owner=run.owner, asked=asked, granted=time.time(), released=None))
                         return True
                 run.phase = 'waiting for robot'
                 time.sleep(.02)
@@ -105,7 +119,9 @@ class World:
 
     def give_robot(self, run):
         with self.lock:
-            if self.holder is run:self.holder = None
+            if self.holder is run:
+                self.holder = None;self.turns[-1]['released'] = time.time()
+                self.last_release = dict(run=run.experiment_id, waiting=[r.experiment_id for r in self.line])
             run.robot_since = None
 
     def robot(self, run):
@@ -121,7 +137,7 @@ class World:
         if not self.pause(run, self.no_progress_seconds):return
         with self.lock:
             if run.state == 'running':
-                run.state, run.reason, run.phase = 'failed', 'no_progress', 'stopped'
+                run.state, run.reason, run.phase, run.ended_at = 'failed', 'no_progress', 'stopped', time.time()
                 run.stop_detail = 'Stopped automatically: no new execution, version or help request for 2 hours of active time (waits for the robot not counted).'
 
     def live(self, run):
@@ -129,8 +145,8 @@ class World:
         for number in range(1, self.tries + 1):
             eid = 'e%06d' % number
             run.phase = 'turn running'
-            if not self.pause(run, self.think_seconds):return
-            if self.fault.get('stall') in (True, run.owner):return self.stall(run)
+            if not self.pause(run, self.pace.get(run.experiment_id, {}).get('think', self.think_seconds)):return
+            if self.fault.get('stall') in (True, run.owner) or self.pace.get(run.experiment_id, {}).get('stall'):return self.stall(run)
             if not self.take_robot(run):return
             with self.lock:
                 # Checked apart from the line above: whatever grants the robot, two Tries must never overlap.
@@ -138,13 +154,18 @@ class World:
                 if busy:self.violations.append(dict(at=time.time(), started=run.experiment_id, while_running=busy, rule='two Tries on the robot'))
                 run.phase, run.executing = 'waiting on execution', dict(execution_id=eid, number=number, submitted=False, started_at=time.time())
             ran = self.pause(run, self.try_seconds)
+            if self.fault.get('kill_holder') in (True, run.owner) and ran:
+                # The worker holding the robot is killed mid-Try: it never gives the robot back.
+                with self.lock:run.state, run.reason, run.phase, run.executing, run.ended_at = 'failed', 'worker_lost', 'stopped', None, time.time()
+                self.fault = {k: v for k, v in self.fault.items() if k != 'kill_holder'}
+                return
             run.executing = None;self.give_robot(run)
             if not ran:return
             run.tries.append(dict(execution_id=eid, number=number, submitted=False, ok=False, kind='hold', why='The gripper closed but did not hold the object'))
             if help_wanted and number == 1:
                 if not self.ask(run, eid):return
         with self.lock:
-            if run.state == 'running':run.state, run.reason, run.phase = 'failed', 'wall_stop', 'stopped'
+            if run.state == 'running':run.state, run.reason, run.phase, run.ended_at = 'failed', 'agent_idle', 'stopped', time.time()
 
     def ask(self, run, eid):
         seconds = run.selection['human_reply_seconds'];shown = seconds / self.speed
@@ -210,10 +231,10 @@ class World:
 
     def summary(self):
         with self.lock:
-            return dict(on_robot=[r.experiment_id for r in self.on_robot()], open=[r.experiment_id for r in self.open_runs()], robot_line=[r.experiment_id for r in self.line], slots=self.slots, peak_open=self.peak_open,
-                        grants=self.grants[-50:], violations=self.violations[-20:], calls=self.calls, frames=self.frames, fault=self.fault,
+            return dict(tries=self.tries, on_robot=[r.experiment_id for r in self.on_robot()], open=[r.experiment_id for r in self.open_runs()], robot_line=[r.experiment_id for r in self.line], slots=self.slots, peak_open=self.peak_open,
+                        grants=self.grants[-50:], turns=self.turns[-200:], violations=self.violations[-20:], calls=self.calls, frames=self.frames, fault=self.fault,
                         runs={r.experiment_id: dict(state=r.state, reason=r.reason, owner=r.owner, phase=r.phase, tries=len(r.tries), helped=r.helped, waiting=bool(r.wait), dev_model=r.selection.get('dev_model'),
-                                            waited_seconds=round(r.waited, 2), stop_detail=r.stop_detail,
+                                            waited_seconds=round(r.waited, 2), stop_detail=r.stop_detail, started_at=r.started_at, ended_at=r.ended_at,
                                                                      quota_stop_percent=r.selection.get('quota_stop_percent'), eval_provider=r.selection['agent_provider']['roles']['eval']['provider'],
                                                                      advisor_provider=r.selection['agent_provider']['roles']['advisor']['provider'], dev_reasoning_effort=r.selection.get('dev_reasoning_effort')) for r in self.runs.values()})
 
@@ -242,6 +263,10 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(int(self.headers.get('Content-Length', 0) or 0));world = self.world
         parts = urlsplit(self.path);path = parts.path
         if path == '/sim/state':return self.answer(world.summary())
+        if path == '/sim/pace' and self.command == 'POST':
+            with world.lock:
+                for experiment_id, pace in json.loads(body or b'{}').items():world.pace.setdefault(experiment_id, {}).update(pace)
+            return self.answer(world.pace)
         if path == '/sim/fault' and self.command == 'POST':
             world.fault = json.loads(body or b'{}')
             return self.answer(world.fault)
@@ -301,7 +326,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.answer(dict(worker_started=True))
         if suffix == 'cancel':
             with world.lock:
-                if run.state in ('running', 'planned'):run.state, run.reason, run.phase, run.executing, run.wait = 'cancelled', 'operator_cancel', 'stopped', None, None
+                if run.state in ('running', 'planned'):run.state, run.reason, run.phase, run.executing, run.wait, run.ended_at = 'cancelled', 'operator_cancel', 'stopped', None, None, time.time()
             return self.answer(dict(ok=True))
         if suffix == 'pause':return self.answer(dict(ok=True))
         if suffix == 'help-reply':
