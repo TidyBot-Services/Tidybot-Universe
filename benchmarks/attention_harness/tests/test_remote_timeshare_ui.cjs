@@ -73,3 +73,12 @@ test('02 says a Try is waiting for the robot and how many are ahead',()=>{
   assert.match(live,/Waiting time does not count toward this run\./);
   assert.match(live,/\['model','advisor','approval','sdk','preparing','robot_wait'\]\.includes\(item\.lifecycle\.phase\)/);
 });
+
+test('the ended panel says a no-progress stop stopped itself, not a system problem or a cancel',()=>{
+  const devEndSummary=vm.runInNewContext(`(${extract('devEndSummary','mountPolicyController').trim()})`);
+  const operatorEndReason=vm.runInNewContext(`(()=>{const devEndSummary=${extract('devEndSummary','mountPolicyController').trim()};return ${extract('operatorEndReason','modelCallReview').trim()}})()`);
+  const said=operatorEndReason({dev_session:{reason:'no_progress',state:'failed'},run:{status:'failed'},attempts:[]},10);
+  assert.match(said,/stopped itself/);
+  assert.doesNotMatch(said,/system problem \(not|someone stopped it/);
+  assert.ok(devEndSummary);
+});

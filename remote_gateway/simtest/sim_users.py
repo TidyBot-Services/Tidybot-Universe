@@ -61,6 +61,9 @@ class Settings:
     run_cap_seconds: float | None = None  # Real runs only: the owner stops the run this long after it starts, so one person cannot use the whole test.
     reply_command: tuple = ()  # Writes the reply from the robot's question. Empty means a fixed sentence.
     reply_source: str = 'fixed'
+    fake: str | None = None
+    executions: int = 2  # Real time-share: an owner stops the run after this many executions.
+    slow_think: float = 400  # Fake seconds the slow writer thinks before each Try.  # Offline only: the fake host's URL, for a story that sets its own pace there.
     headed: bool = False
 
 
@@ -328,6 +331,31 @@ class Person:
                 await asyncio.sleep(.5)
             raise TimeoutError(f'等了 {seconds * self.settings.scale:.0f} 秒，运行名额一直没有占满（{opened} / {slots}）')
 
+    async def pace(self, **value):
+        """Offline time-share stories: tell the fake host how this run behaves (think seconds, or a stall)."""
+        if not self.settings.fake:raise RuntimeError('pace needs the fake host; it has no meaning on a real run')
+        import urllib.request
+        request = urllib.request.Request(self.settings.fake + '/sim/pace', data=json.dumps({self.run_id: value}).encode(), method='POST')
+        await asyncio.to_thread(lambda:urllib.request.urlopen(request, timeout=5).close())
+        self.emit('action', action=f'假后端节奏 {value}', phase='pace')
+
+    async def page_says(self, name, words, seconds, *, stop_when_ended=True):
+        """Wait until the page text has all these words; a check either way."""
+        deadline = time.time() + seconds * self.settings.scale;text = ''
+        while time.time() < deadline:
+            text = await self.page.evaluate('() => document.body.innerText')  # Headings are upper-cased by CSS, so case is ignored.
+            if all(w.lower() in text.lower() for w in words):return self.check(name, True, next((l for l in text.splitlines() if words[0].lower() in l.lower()), '')[:160])
+            if stop_when_ended and ((await self.read())['card'] or {}).get('state') in ('finished', 'cancelled'):break
+            await asyncio.sleep(.3)
+        self.check(name, False, f'页面没有出现 {words}')
+
+    async def after(self, lane, seconds=600):
+        """Start only once that person has made their run, so the line has a known order."""
+        deadline = time.time() + seconds * self.settings.scale
+        while lane not in self.shared.get('runs', {}):
+            if time.time() > deadline:raise TimeoutError(f'{lane} 一直没有开 run')
+            await asyncio.sleep(.5)
+
     async def leave_line(self):
         """Leave the queue from the page. If the page offers no way, that is written down, then the same request is sent so the line can be tested."""
         await self.until('页面显示排队', lambda s:(s['card'] or {}).get('state') == 'queued', 30)
@@ -487,6 +515,71 @@ async def returns_later(p):
 async def overstepper(p):
     await p.overstep();await p.new_run(policy='autonomous');await p.second_run();await p.wait_robot();await p.finish()
 
+# Time-share (TESTPLAN-remote-sim-timeshare-20261108, offline section): six people, three run slots, one robot.
+async def plain(p):
+    await p.new_run();await p.wait_robot();await p.watch_live();await p.finish()
+
+async def slow_writer(p):
+    await p.new_run();await p.pace(think=p.settings.slow_think);await p.wait_robot();await p.finish()
+
+async def eager(p):
+    await p.new_run();await p.pace(think=0);await p.wait_robot()
+    await p.page_says('等机器人时 02 写“前面还有 k 个”', ('Waiting for the robot', 'ahead'), 600)
+    await p.finish()
+
+async def stalls(p):
+    await p.slots_full();await p.new_run();await p.pace(stall=True);await p.wait_robot()
+    await p.finish(seconds=3600)
+    await p.page_says('无进展停止时页面写明是自己停下的', ('stopped itself',), 30, stop_when_ended=False)
+
+async def one_too_many(p):
+    await p.slots_full();await p.after('U5');await p.new_run()
+    now = await p.until('排运行名额', lambda s:(s['card'] or {}).get('state') in ('queued', 'running'), 30)
+    p.check('名额满时新 run 先排队，不直接开', now['card']['state'] == 'queued', now['card'])
+    await p.wait_robot(seconds=3600);await p.finish()
+
+# Time-share on real runs: each owner answers help from the page (Codex writes the words) and stops the run once it has
+# executed `executions` times, so three runs share the robot and a fourth waits for a slot.
+async def executions(p):
+    """How many Tries and formal versions this run has finished, from its own run page's data."""
+    exp = await p.page.evaluate("async (id) => (await (await fetch('/api/dev-v2/experiments/' + id, {credentials: 'same-origin'})).json())", p.run_id)
+    key = ((exp.get('cells') or [{}])[0]).get('key')
+    if not key:return 0, {}
+    view = await p.page.evaluate("async ([id, key]) => (await (await fetch(`/api/dev-v2/experiments/${id}/cells/${key}/view`, {credentials: 'same-origin'})).json())", [p.run_id, key])
+    agent = view.get('agent') or {}
+    return len(agent.get('tries') or []), dict(wall_seconds=agent.get('wall_seconds'), sim_wait_seconds=agent.get('sim_wait_seconds'), wall_unlimited=agent.get('wall_unlimited'))
+
+async def until_executed(p, wanted):
+    saw_wait = False;answered = set()
+    async with p.step(f'跑到执行 {wanted} 次'):
+        while True:
+            if p.shared.get('abort'):raise RuntimeError(f'测试被安全线叫停：{p.shared["abort"]}')
+            now = await p.read()
+            if (now['card'] or {}).get('state') in ('finished', 'cancelled'):
+                count, clock = await executions(p);p.emit('state', executions=count, clock=clock)
+                p.problem('run 自己结束了', f'执行了 {count} 次就结束：{now["card"]}', 'notice');return False
+            if now['reply'] and now['question'] not in answered:
+                answered.add(now['question']);await p.answer('reply')
+            if not saw_wait and 'waiting for the robot' in (await p.page.evaluate('() => document.body.innerText')).lower():
+                saw_wait = True;p.check('等机器人时 02 写明在等', True)
+            count, clock = await executions(p)
+            p.emit('state', executions=count, clock=clock)
+            if count >= wanted:return True
+            await asyncio.sleep(10)
+
+async def shares_robot(p):
+    await p.new_run();await p.wait_robot(seconds=86400)
+    if await until_executed(p, p.settings.executions):await p.stop_run()
+
+async def waits_for_slot(p):
+    await p.slots_full(seconds=3600);await p.new_run()
+    now = await p.until('排运行名额', lambda s:(s['card'] or {}).get('state') in ('queued', 'running'), 60)
+    p.check('名额满时新 run 先排队，不直接开', now['card']['state'] == 'queued', now['card'])
+    await p.wait_robot(seconds=86400)
+    if await until_executed(p, p.settings.executions):await p.stop_run()
+
+TIMESHARE_STORIES = {'共用机器人': shares_robot, '等运行名额': waits_for_slot, '正常跑完': plain, '写代码慢': slow_writer, '连续提交': eager, '无进展': stalls, '第N+1个': one_too_many}
+
 STORIES = {'认真回复': careful, '跳过求助': skipper, '不回复': silent, '中途取消': quitter, '排队时取消': leaves_line, '断线重连': flaky, '关页再回来': returns_later, '越权尝试': overstepper}
 
 
@@ -499,7 +592,7 @@ async def live_one(person, story, delay):
             await person.lobby();await person.guest_tries();await person.follow_robot()
         else:
             if story == '越权尝试':await person.wrong_code()
-            await person.login();await person.lobby();await STORIES[story](person)
+            await person.login();await person.lobby();await {**STORIES, **TIMESHARE_STORIES}[story](person)
         person.emit('done', ok=True)
     except Exception as error:
         person.emit('done', ok=False, error=f'{type(error).__name__}: {str(error)[:300]}')
