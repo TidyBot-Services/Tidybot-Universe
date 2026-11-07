@@ -11,7 +11,7 @@ from pathlib import Path
 from .core.dev_store import DevConflict
 from .dev_help import public_screen
 
-MIN_SECONDS, MAX_SECONDS, MAX_REPLY = 30, 600, 2000
+MIN_SECONDS, MAX_SECONDS, DEFAULT_SECONDS, MAX_REPLY = 30, 600, 120, 2000
 EXECUTION = re.compile(r'e\d{6}')
 WAIT, OUTCOME = 'human-wait.json', 'human-outcome.json'
 

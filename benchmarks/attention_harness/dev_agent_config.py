@@ -1,6 +1,7 @@
 """Creation-only options for the single-cell native-agent condition."""
 import math
 
+NO_HELP_POLICIES={'autonomous','demo_first'}
 FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds'}
 # The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
 DEFAULT_VERSIONS=10
@@ -151,6 +152,11 @@ def normalize(selection, *, validation_origin=None):
         # A person's words change the run, so a frozen comparison stays Advisor only.
         if selection.get('mode','experiment')!='interactive' or version!='agent-policy-v2':raise ValueError('human_reply_needs_interactive_policy_v2')
         result['human_reply_seconds']=seconds
+    elif (origin is None and selection.get('mode')=='interactive' and version=='agent-policy-v2'
+          and any(policy not in NO_HELP_POLICIES for policy in selection.get('policies',()))):
+        # Interactive means a person is there: help goes to them first, on any entry to the same harness.
+        from .dev_agent_human_reply import DEFAULT_SECONDS
+        result['human_reply_seconds']=DEFAULT_SECONDS
     quota=result['quota_stop_percent']
     if type(quota) not in (int,float) or not math.isfinite(quota) or not 0<quota<=100:raise ValueError('invalid_quota_stop_percent')
     return result

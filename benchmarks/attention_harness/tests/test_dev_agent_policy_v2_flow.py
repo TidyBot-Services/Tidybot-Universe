@@ -830,3 +830,11 @@ def test_only_an_interactive_run_may_ask_a_person(seconds,mode,version,ok):
     if ok:assert normalize(selection)['human_reply_seconds']==seconds
     else:
         with pytest.raises(ValueError):normalize(selection)
+
+
+@pytest.mark.parametrize('mode,policy,wait', [('interactive', 'reactive_help', 120), ('interactive', 'trace_aware_hint_only', 120),
+                                              ('interactive', 'autonomous', None), ('interactive', 'demo_first', None), ('experiment', 'reactive_help', None)])
+def test_interactive_help_goes_to_a_person_first_on_any_entry(mode, policy, wait):
+    from benchmarks.attention_harness.dev_agent_config import normalize
+    selection=dict(dev_mode='agent',budget_tier='dev',tasks=['t'],seeds=[1],policies=[policy],mode=mode,agent_policy_version='agent-policy-v2')
+    assert normalize(selection).get('human_reply_seconds')==wait

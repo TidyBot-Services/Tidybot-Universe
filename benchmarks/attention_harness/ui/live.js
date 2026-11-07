@@ -1552,6 +1552,37 @@
   requestAlert.setAttribute('aria-atomic', 'true');
   requestAlert.innerHTML = '<div class="ab-alert-pulse" aria-hidden="true"></div><div class="ab-alert-scan" aria-hidden="true"></div><div class="ab-alert-message"><strong>HUMAN INPUT REQUIRED</strong><p></p></div>';
   root.appendChild(requestAlert);
+  // The page-wide call for a person's reply: a jolt, then a lock onto panel 04, then a thin frame until the wait ends.
+  // Only the form decides, so a viewer who cannot reply never sees it. Every pixel stays click-through.
+  const helpAlert = document.createElement('aside');
+  helpAlert.id = 'ab-help-alert'; helpAlert.hidden = true;
+  helpAlert.setAttribute('popover', 'manual'); helpAlert.setAttribute('role', 'alert');
+  helpAlert.innerHTML = '<div class="ab-help-scan" aria-hidden="true"></div><i class="ab-help-lock" aria-hidden="true"></i><p class="ab-help-words" data-t="HUMAN\nATTENTION\nREQUIRED">HUMAN\nATTENTION\nREQUIRED</p>';
+  root.appendChild(helpAlert);
+  let helpAlertKey = null, helpAlertTimers = [];
+  function stopHelpAlert() {
+    helpAlertTimers.forEach(clearTimeout); helpAlertTimers = [];
+    if (typeof helpAlert.hidePopover === 'function' && helpAlert.matches(':popover-open')) helpAlert.hidePopover();
+    helpAlert.hidden = true; helpAlertKey = null; delete helpAlert.dataset.stage;
+  }
+  function lockHelpAlert() {
+    const panel = view.querySelector('[data-agent-reply]')?.closest('.ab-current-request');
+    if (!panel) { helpAlert.dataset.stage = 'rest'; return; }
+    panel.scrollIntoView({block:'center'});
+    const box = panel.getBoundingClientRect(), edge = 12;
+    Object.entries({x:box.left-edge,y:box.top-edge,w:box.width+2*edge,h:box.height+2*edge,cx:box.left+box.width/2,cy:box.top+box.height/2})
+      .forEach(([key,value]) => helpAlert.style.setProperty('--'+key, value+'px'));
+    helpAlert.dataset.stage = 'lock';
+  }
+  function syncHelpAlert() {
+    const key = view.querySelector('[data-agent-reply]')?.dataset.executionId;
+    if (!key) { if (helpAlertKey) stopHelpAlert(); return; }
+    if (key === helpAlertKey) return;
+    stopHelpAlert(); helpAlertKey = key;
+    helpAlert.dataset.stage = 'jolt'; helpAlert.hidden = false;
+    if (typeof helpAlert.showPopover === 'function') helpAlert.showPopover();
+    helpAlertTimers = [setTimeout(lockHelpAlert, 4000), setTimeout(() => { helpAlert.dataset.stage = 'rest'; }, 10000)];
+  }
   const seenRequestAlerts = new Set();
   const reducedAlertMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let requestAlertKey = null, requestAlertTimer = null;
@@ -4880,6 +4911,7 @@
     bindDevGuidance(snapshot);
     bindAgentReply(snapshot);
     bindAgentHistory(snapshot);
+    syncHelpAlert();
     if(devDraftFocus){const input=view.querySelector('[data-dev-guidance] textarea,[data-agent-reply] textarea');if(input){input.focus({preventScroll:true});input.setSelectionRange(...devDraftFocus);}}
     if(previousRun===run.run_id)for(const [name,top,left] of scrolled){const box=[...view.querySelectorAll('[data-core-region] *')].find(e=>e.className===name);if(box){box.scrollTop=top;box.scrollLeft=left;}}
     refreshAttemptDag(snapshot);
