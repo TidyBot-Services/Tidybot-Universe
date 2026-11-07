@@ -154,7 +154,7 @@ test('NEW-RUN-BUDGET: a lowered budget survives repaints and a new task starts f
   assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['10', '21600']);
   await versions.fill('3');
   await wall.fill('7200');
-  await form.locator('select[name="v2_policy"]').selectOption({index: 1});
+  await form.locator('[data-policy-card]').nth(1).check();
   await page.waitForTimeout(150);
   assert.deepEqual([await versions.inputValue(), await wall.inputValue()], ['3', '7200']);
   assert.match(await form.locator('[data-agent-reason]').innerText(), /^3 formal versions .* 2 hours/);
@@ -333,6 +333,19 @@ test('MODEL-SOURCE-CODEX-SUBMIT: a Codex run sends no provider routing', async t
   const sent = await submitted(page, form);
   assert.equal('agent_provider' in sent, false);
   assert.equal(sent.dev_model, 'gpt-6.1-sol');
+});
+
+test('NEW-RUN-POLICY: three groups say who starts help, and a card sets the value the run is created with', async t => {
+  const {form} = await dialog(t);
+  const select = form.locator('select[name="v2_policy"]');
+  assert.deepEqual(await form.locator('[data-policy-group] > p b').allInnerTexts(), ['No help during the run', 'Dev asks', 'System steps in']);
+  assert.equal(await select.isVisible(), false);
+  assert.equal(await form.locator('[data-policy-card]:checked').getAttribute('value'), await select.inputValue());
+  const card = form.locator('.ab-policy-card', {hasText: 'Reactive help'});
+  assert.match(await card.innerText(), /must ask for help after every failed Eval/);
+  await card.click();
+  assert.equal(await select.inputValue(), 'reactive_help');
+  assert.equal(await form.locator('[data-policy-card]:checked').count(), 1);
 });
 
 // The same trap anywhere else in the dialog: a control the form repaints on input must still hold what the user chose.

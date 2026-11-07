@@ -423,7 +423,7 @@
   // Colour of a status word, the same as the cover's task rail (shell.js outcome): ok, bad, run, or '' (amber).
   function outcomeKind(word){return word==='Solved'?'ok':['Not solved','Failed','System problem','Condition invalid'].includes(word)?'bad':['Running','Waiting'].includes(word)?'run':'';}
   // End task navigation projection.
-  function policyTitle(id){return ({autonomous:'Autonomous',reactive_help:'Reactive help',trace_aware_hint_only:'Trace aware Hint',full_trace_aware_attention_planner:'Full trace aware planner',retry_k_then_ask:'Retry K then ask'})[id]||label(id);}
+  function policyTitle(id){return ({agent_initiated_help:'Agent initiated help',demo_first:'Demonstration first',autonomous:'Autonomous',reactive_help:'Reactive help',trace_aware_hint_only:'Trace aware Hint',full_trace_aware_attention_planner:'Full trace aware planner',retry_k_then_ask:'Retry K then ask'})[id]||label(id);}
   function devEndSummary(s){
     const reason=String(s.reason||'');
     if(reason==='eval_native_disagreement')return {title:'Ended · Eval passed twice but the task check did not confirm · Review required',short:'Eval disagreed',key:'eval_native_disagreement',review:true,
@@ -2033,6 +2033,31 @@
   function devPolicyChoices(options) {
     return (options?.agent_policies?.policies||[]).map(p=>p.policy_id);
   }
+  // What each policy does, in the words a person choosing one needs. Groups answer "who starts help".
+  const POLICY_GROUPS=[
+    {key:'none',title:'No help during the run',note:'Dev gets nothing once the run starts.'},
+    {key:'dev',title:'Dev asks',note:'Help happens when Dev asks for it.'},
+    {key:'system',title:'System steps in',note:'Dev cannot ask. The system decides when to send a hint.'}];
+  const POLICY_HELP={
+    autonomous:['none','Dev works alone. No help of any kind during the run.'],
+    demo_first:['none','Dev gets one fixed demonstration before its first version, then works alone.'],
+    reactive_help:['dev','Dev must ask for help after every failed Eval.'],
+    retry_k_then_ask:['dev','Dev retries on its own, then must ask after 2 failed Evals in a row.'],
+    agent_initiated_help:['dev','Dev decides. It may ask after any finished Try or Attempt, or never ask.'],
+    budget_matched_random_escalation:['system','A hint arrives at a failure picked at random in advance. A control for testing whether timing matters.'],
+    trace_aware_hint_only:['system','The system reads the run and sends a hint when Dev is stuck or repeats a failure.'],
+    full_trace_aware_attention_planner:['system','Like Trace aware Hint, but it checks saved Memory first, so a known problem may need no new hint.']};
+  // The select stays the form's value; these cards only show and set it, so a policy the server adds later is still offered.
+  function policyPicker(ids) {
+    const card=id=>`<label class="ab-policy-card"><input type="radio" name="v2_policy_card" value="${esc(id)}" data-policy-card><b>${esc(policyTitle(id))}</b>${POLICY_HELP[id]?`<small>${esc(POLICY_HELP[id][1])}</small>`:''}</label>`;
+    const groups=[...POLICY_GROUPS,{key:'other',title:'Other',note:''}].map(group=>({...group,ids:ids.filter(id=>(POLICY_HELP[id]?.[0]||'other')===group.key)})).filter(group=>group.ids.length);
+    return `<fieldset class="ab-launch-field wide ab-policy-field"><legend>Attention policy</legend>
+      <select name="v2_policy" aria-label="Attention policy" hidden>${ids.map(id=>`<option value="${esc(id)}">${esc(policyTitle(id))}</option>`).join('')}</select>
+      <div class="ab-policy-columns">${groups.map(group=>`<div class="ab-policy-group" data-policy-group="${group.key}"><p><b>${esc(group.title)}</b>${group.note?`<small>${esc(group.note)}</small>`:''}</p>${group.ids.map(card).join('')}</div>`).join('')}</div></fieldset>`;
+  }
+  function syncPolicyCards(form) {
+    form.querySelectorAll('[data-policy-card]').forEach(input=>{input.checked=input.value===form.v2_policy.value;});
+  }
   // The Agent envelope: versions 1-10 and 20 minutes to 6 hours. A run may lower both; the server refuses anything larger.
   const AGENT_DEFAULT_VERSIONS=10,AGENT_DEFAULT_WALL=21600,AGENT_MIN_WALL=1200;
   // What New run shows and checks. Remote replaces it with the shared host's limits (Lobby.newRunLimits).
@@ -2638,7 +2663,7 @@
             <label class="ab-launch-field">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
           </div></section>
           <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid">
-            <label class="ab-launch-field">Attention policy<select name="v2_policy">${devPolicyChoices(options?.dev_v2).map(p=>`<option value="${esc(p)}">${esc(policyTitle(p))}</option>`).join('')}</select></label>
+            ${policyPicker(devPolicyChoices(options?.dev_v2))}
             <label class="ab-launch-field">Help requests per task<input name="help_count" type="number" min="1" max="${limits.maxHelp}" value="${limits.help}"></label>
           </div></section>
           ${keysSectionHtml()}
@@ -2806,6 +2831,7 @@
         form.classList.toggle('ab-v2-profile',profile?.channel==='dev_v2');
         showQuota();
         form.v2_policy.value=options.dev_v2.bridge_schema?'full_trace_aware_attention_planner':'autonomous';
+        syncPolicyCards(form);
         // Every task starts from the official budget; later edits (a lowered budget) are the user's and stay until the task changes.
         form.max_attempts.value=limits.versions;form.wall_seconds.value=limits.wall;form.help_count.value=limits.help;
         syncSeedOptions();
@@ -2864,6 +2890,12 @@
       form.task_id.addEventListener('change',syncTask);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',syncProfile);
+      syncPolicyCards(form);
+      form.addEventListener('change',event=>{
+        if(!event.target.matches('[data-policy-card]'))return;
+        form.v2_policy.value=event.target.value;
+        form.v2_policy.dispatchEvent(new Event('change',{bubbles:true}));
+      });
       form.addEventListener('input',updatePreview);
       form.addEventListener('change',updatePreview);
       form.model_source.addEventListener('change',showQuota);
