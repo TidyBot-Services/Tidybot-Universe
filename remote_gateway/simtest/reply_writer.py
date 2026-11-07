@@ -16,7 +16,7 @@ PROMPT = ('You are a person watching a robot arm try a household task. It has fa
 def codex(question, model, timeout):
     with tempfile.TemporaryDirectory(prefix='sim-reply-') as folder:
         answer = Path(folder) / 'answer.txt'
-        subprocess.run(['codex', 'exec', '--ephemeral', '--skip-git-repo-check', '-s', 'read-only', '-m', model, '-c', 'model_reasoning_effort=low', '-o', str(answer), '-'],
+        subprocess.run(['codex', 'exec', '--ephemeral', '--skip-git-repo-check', '-s', 'read-only', '-m', model, '-c', 'model_reasoning_effort=high', '-o', str(answer), '-'],
                        input=(PROMPT + question).encode(), cwd=folder, timeout=timeout, check=True, capture_output=True)
         return answer.read_text(encoding='utf-8').strip()
 
@@ -24,8 +24,8 @@ def codex(question, model, timeout):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--canned', action='store_true')
-    parser.add_argument('--model', default='gpt-6-astra')
-    parser.add_argument('--timeout', type=float, default=70)
+    parser.add_argument('--model', default='gpt-6.1-sol')
+    parser.add_argument('--timeout', type=float, default=100)
     args = parser.parse_args()
     question = sys.stdin.read().strip()
     text = f'Canned reply to: {question[:60]}' if args.canned else codex(question, args.model, args.timeout)

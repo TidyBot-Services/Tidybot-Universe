@@ -90,19 +90,20 @@ def test_no_limit_lives_in_the_test_instance_and_nowhere_else(tmp_path):
     assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=3, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
 
 
-def test_the_test_gateway_puts_every_role_on_codex_under_the_stop_line_and_the_harness_accepts_it():
+def test_the_test_gateway_puts_dev_on_codex_high_and_eval_advisor_on_parcc_glm_and_the_harness_accepts_it():
     from benchmarks.attention_harness.dev_agent_config import configuration, provider_roles
     from remote_gateway import policy
-    from remote_gateway.simtest.codex_gateway import with_codex_roles
+    from remote_gateway.simtest.codex_gateway import with_test_roles
     options = dict(dev_v2=dict(profiles=[dict(task_id='open_cabinet', enabled=True)], agent_policies=dict(policies=[dict(policy_id='reactive_help')])))
     body = dict(selection=dict(SELECTION, help_budget=1))
-    made = with_codex_roles(policy.rebuild)(body, user='u-1', options=options, limits=Limits(), credentials=[])
-    assert made['dev_model'] == made['eval_model'] == made['advisor_model'] == 'gpt-6-astra' and made['quota_stop_percent'] == 77
+    made = with_test_roles(policy.rebuild)(body, user='u-1', options=options, limits=Limits(), credentials=[])
+    assert made['dev_model'] == 'gpt-6.1-sol' and made['dev_reasoning_effort'] == 'high' and made['quota_stop_percent'] == 77
+    assert made['eval_model'] == made['advisor_model'] == 'parcc/GLM'
     roles = provider_roles(made['agent_provider'])['roles']
-    assert {roles[role]['provider'] for role in ('dev', 'eval', 'advisor')} == {'openai'}
+    assert [roles[role]['provider'] for role in ('dev', 'eval', 'advisor')] == ['openai', 'parcc', 'parcc']
     final = configuration(made)
-    assert final['quota_stop_percent'] == 77 and final['eval_agent']['model'] == final['advisor_proxy']['model'] == 'gpt-6-astra'
-    assert final['eval_agent']['model_source'] == final['advisor_proxy']['model_source'] == 'codex'
+    assert final['quota_stop_percent'] == 77 and final['dev_model'] == 'gpt-6.1-sol' and final['dev_reasoning_effort'] == 'high'
+    assert final['eval_agent']['model'] == final['advisor_proxy']['model'] == 'parcc/GLM'
     assert policy.rebuild(body, user='u-1', options=options, limits=Limits(), credentials=[])['quota_stop_percent'] == 90  # The public gateway is untouched.
 
 
