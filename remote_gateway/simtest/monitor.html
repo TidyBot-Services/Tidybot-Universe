@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>多用户模拟监控</title><link rel="icon" href="data:,">
+<style>
+:root{color-scheme:light dark;--bg:#f7f6f2;--panel:#fff;--ink:#1b1b19;--muted:#6b6a63;--line:#e1e0d9;--axis:#c3c2b7;--crit:#d03b3b;--good:#0ca30c;--warn:#fab219;--critbg:#fdecec;
+--s-waiting:#d9d8cf;--s-login:#b6b4a7;--s-lobby:#8fa8c8;--s-watching:#8fa8c8;--s-queued:#fab219;--s-running:#2a78d6;--s-reply:#a64fc4;--s-offline:#ec835a;--s-finished:#0ca30c;--s-cancelled:#7d7c72;--s-failed:#d03b3b}
+@media(prefers-color-scheme:dark){:root{--bg:#141413;--panel:#1a1a19;--ink:#eeede6;--muted:#a3a199;--line:#2c2c2a;--axis:#383835;--critbg:#3a1d1d;--s-waiting:#3c3c38;--s-login:#5c5b54;--s-lobby:#5f7da3}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,"Noto Sans CJK SC",sans-serif}
+main{max-width:1560px;margin:auto;padding:16px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 8px}small,.muted{color:var(--muted)}
+header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:baseline;margin-bottom:12px}
+.tag{font:600 12px system-ui;padding:2px 8px;border-radius:999px;background:var(--line)}
+#alarm{display:none;background:var(--crit);color:#fff;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-weight:600}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}.tile b{display:block;font-size:20px;line-height:1.3;overflow-wrap:anywhere}.tile.bad{border-color:var(--crit);background:var(--critbg)}
+#errorbox{background:var(--critbg);border:1px solid var(--crit);border-radius:8px;padding:8px 12px;margin-bottom:12px;max-height:190px;overflow:auto;display:none}
+#errorbox h2{margin:0 0 4px;color:var(--crit)}#errorbox p{margin:2px 0;overflow-wrap:anywhere}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px;color:var(--muted);font-size:12px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.lanes{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lane{display:grid;grid-template-columns:230px minmax(0,1fr) 190px 150px;gap:12px;padding:9px 12px;border-top:1px solid var(--line);align-items:center}.lane:first-child{border-top:0}.lane.bad{box-shadow:inset 4px 0 0 var(--crit)}
+.who b{font-size:15px}.pill{display:inline-block;padding:1px 8px;border-radius:999px;color:#fff;font:600 12px system-ui;margin-left:6px}.pill.queued,.pill.waiting{color:#0b0b0b}
+.track{position:relative;height:24px;background:var(--bg);border-radius:4px;overflow:hidden}.track span{position:absolute;top:0;bottom:0;border-right:2px solid var(--panel)}
+.now{margin-top:4px;font-size:13px;overflow-wrap:anywhere}.err{color:var(--crit);font-size:12px;overflow-wrap:anywhere;margin-top:2px}
+.facts{font-size:12px;color:var(--muted)}.facts b{color:var(--ink)}
+.shot{width:150px;height:94px;object-fit:cover;object-position:top left;border:1px solid var(--line);border-radius:4px;cursor:zoom-in;display:block;background:var(--bg)}
+table{border-collapse:collapse;width:100%;background:var(--panel);font-size:13px}th,td{text-align:left;padding:5px 8px;border-top:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{color:var(--muted);font-weight:600}td:first-child,td:nth-child(2):not(:last-child){white-space:nowrap}td.n{font-variant-numeric:tabular-nums;text-align:right}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}.scroll{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+.ok{color:var(--good)}.no{color:var(--crit);font-weight:600}
+#tip{position:fixed;display:none;z-index:5;background:var(--ink);color:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px;pointer-events:none}
+dialog{border:0;padding:0;background:transparent;max-width:96vw}dialog img{max-width:96vw;max-height:92vh;display:block;border-radius:6px}dialog::backdrop{background:rgba(0,0,0,.7)}
+@media(max-width:1000px){.lane{grid-template-columns:1fr}.shot{width:100%;height:auto;max-height:220px}.two{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><h1>多用户模拟监控</h1><span class="tag" id="mode">…</span><span class="tag" id="verdict">…</span><small id="clock"></small></header>
+<div id="alarm" role="alert"></div>
+<section class="tiles" id="tiles"></section>
+<section id="errorbox" role="alert"><h2 id="errortitle"></h2><div id="errorlines"></div></section>
+<div class="legend" id="legend"></div>
+<section class="lanes" id="lanes" aria-label="每个用户一条泳道"></section>
+<div class="two"><div><h2>全部错误</h2><div class="scroll"><table id="errors"></table></div></div><div><h2>检查项</h2><div class="scroll"><table id="checks"></table></div></div></div>
+<div class="two"><div><h2>最近动作</h2><div class="scroll"><table id="actions"></table></div></div><div><h2>网关路由（来自 audit.jsonl）</h2><p class="muted" id="statuses"></p><div class="scroll"><table id="routes"></table></div></div></div>
+</main><div id="tip"></div><dialog id="big"><img alt="用户页面截图"></dialog>
+<script>
+'use strict';
+const STATES=[['waiting','未开始'],['login','登录中'],['lobby','在大厅'],['watching','观看中'],['queued','排队中'],['running','运行中'],['reply','等回复'],['offline','断线'],['finished','已结束'],['cancelled','已取消'],['failed','出错停止']];
+const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const time=t=>t?new Date(t*1000).toLocaleTimeString('zh-CN',{hour12:false}):'—',span=s=>s<90?`${Math.round(s)} 秒`:`${Math.floor(s/60)} 分 ${Math.round(s%60)} 秒`;
+$('legend').innerHTML=STATES.map(([k,n])=>`<span><i style="background:var(--s-${k})"></i>${n}</span>`).join('');
+let lastOk=0,failure='';
+function tile(name,value,note,bad){return `<div class="tile${bad?' bad':''}"><small>${esc(name)}</small><b>${esc(value)}</b><small>${esc(note||'')}</small></div>`;}
+function lane(l,s,start,end){
+  const width=Math.max(1,end-start),bad=l.problems.some(p=>p.level==='error')||l.done===false;
+  const bars=l.segments.map(g=>{const a=g.at,b=g.to||end,left=(a-start)/width*100,w=Math.max(.3,(b-a)/width*100);return `<span style="left:${left}%;width:${w}%;background:var(--s-${g.status})" data-tip="${esc(g.label)} · ${esc(time(a))} · ${esc(span(b-a))}"></span>`;}).join('');
+  const last=l.problems.filter(p=>p.level==='error').at(-1),errors=l.problems.filter(p=>p.level==='error').length;
+  const held=l.action_since&&l.done===null?` · ${span(s.now-l.action_since)}`:'';
+  const place=l.status==='queued'?`第 ${l.position??'?'} 位`:'—';
+  return `<article class="lane${bad?' bad':''}" data-lane="${esc(l.lane)}"><div class="who"><b>${esc(l.name)}</b><span class="pill ${esc(l.status)}" style="background:var(--s-${esc(l.status)})">${esc(l.label)}</span><br><small>${esc(l.lane)} · ${esc(l.story)}${l.nickname?` · ${esc(l.nickname)}`:''}</small></div>
+  <div><div class="track">${bars}</div><div class="now">${esc(l.action||'等待开始')}${esc(held)}${l.countdown&&l.status==='reply'?` · 倒计时 ${esc(l.countdown)}`:''}</div>${last?`<div class="err">✕ ${esc(last.source)}：${esc(last.message)}</div>`:''}</div>
+  <div class="facts">排队位置 <b>${esc(place)}</b><br>实时画面 <b>${l.live?'有':'无'}</b><br>run <b>${esc(l.run_id?l.run_id.slice(-8):'—')}</b><br>错误 <b>${errors}</b> · 预期拒绝 ${l.expected} · 帧竞争 ${l.notices}</div>
+  <div>${s.shots[l.lane]?`<img class="shot" alt="${esc(l.name)} 的页面" src="/shots/${esc(l.lane)}.jpg?t=${s.shots[l.lane]}">`:'<small>还没有截图</small>'}</div></article>`;
+}
+function render(s){
+  const t=s.totals,robot=s.lobby?.robot?.running,start=s.began||s.now,end=s.ended||s.now,errors=s.problems.filter(p=>p.level==='error');
+  $('mode').textContent=s.mode==='offline'?'离线 · 假后端':'真实 run';
+  const v=$('verdict');v.textContent={pass:'✓ 全部通过',fail:'✕ 有错误',running:'进行中'}[t.verdict];v.style.background=t.verdict==='fail'?'var(--crit)':t.verdict==='pass'?'var(--good)':'';v.style.color=t.verdict==='running'?'':'#fff';
+  $('clock').textContent=`开始 ${time(s.began)} · 已过 ${span(end-start)}`;
+  const stale=s.ended?0:s.last_event?s.now-s.last_event:0,fails=Object.entries(s.source_failures||{});
+  const alarms=[...fails.map(([k,f])=>`${k} 读取失败：${f.message}`),...(stale>30?[`已经 ${Math.round(stale)} 秒没有新事件，模拟脚本可能卡住或已退出`]:[]),...(s.fake?.violations?.length?[`违反“同一时间一个仿真”：${s.fake.violations.length} 次`]:[])];
+  failure=alarms.join('；');
+  const disk=s.disk,low=disk&&disk.free_gb<disk.floor_gb;
+  $('tiles').innerHTML=[tile('机器人上',robot?`${robot.nickname}`:'空闲',s.fake?`假后端 ${s.fake.on_robot.length} 个 run`:''),tile('排队',`${s.lobby?.queue?.length??'未知'} 人`,(s.lobby?.queue||[]).slice(0,3).map(q=>q.nickname).join('、')),
+    tile('用户',`${t.people_done} / ${t.people}`,'已结束 / 总数'),tile('错误',t.errors,`预期拒绝 ${t.expected_refusals}`,t.errors>0),tile('检查项',`${t.checks-t.checks_failed} / ${t.checks}`,t.checks_failed?`${t.checks_failed} 项未过`:'全部通过',t.checks_failed>0),
+    tile('sim.lock',s.lock?.state??'未知',s.lock?.pid?`pid ${s.lock.pid}`:''),tile('根盘剩余',disk?`${disk.free_gb} G`:'未知',disk?`已用 ${disk.used_percent}% · 底线 ${disk.floor_gb} G`:'',low)].join('');
+  $('errorbox').style.display=errors.length?'block':'none';$('errortitle').textContent=`错误 ${errors.length} 条（最新在上）`;
+  $('errorlines').innerHTML=errors.slice(-8).reverse().map(p=>`<p>${esc(time(p.at))} <b>${esc(p.name)}</b> ${esc(p.source)}：${esc(p.message)}</p>`).join('');
+  $('lanes').innerHTML=s.lanes.map(l=>lane(l,s,start,end)).join('')||'<p style="padding:12px">还没有用户开始。</p>';
+  $('errors').innerHTML='<tr><th>时间</th><th>用户</th><th>来源</th><th>内容</th></tr>'+(errors.slice().reverse().map(p=>`<tr><td>${esc(time(p.at))}</td><td>${esc(p.name)}</td><td>${esc(p.source)}</td><td>${esc(p.message)}</td></tr>`).join('')||'<tr><td colspan="4">没有错误</td></tr>');
+  $('checks').innerHTML='<tr><th>用户</th><th>检查</th><th>结果</th></tr>'+s.checks.slice().reverse().map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.check)}<br><small>${esc(c.detail)}</small></td><td class="${c.ok?'ok':'no'}">${c.ok?'✓ 通过':'✕ 未过'}</td></tr>`).join('');
+  $('actions').innerHTML='<tr><th>时间</th><th>用户</th><th>动作</th><th>结果</th></tr>'+s.actions.slice().reverse().map(a=>`<tr><td>${esc(time(a.at))}</td><td>${esc(a.name)}</td><td>${esc(a.action)}</td><td class="${a.phase==='failed'?'no':''}">${{start:'开始',done:`完成 ${a.seconds??''} 秒`,failed:'失败'}[a.phase]}</td></tr>`).join('');
+  const a=s.audit;$('statuses').textContent=a?`共 ${a.total} 次请求；状态码 ${Object.entries(a.statuses).sort().map(([k,n])=>`${k}×${n}`).join('  ')}`:'audit.jsonl 还没有内容';
+  $('routes').innerHTML='<tr><th>路由</th><th>次数</th><th>p50 毫秒</th><th>p95 毫秒</th><th>最慢</th></tr>'+(a?.routes||[]).map(r=>`<tr><td>${esc(r.route)}</td><td class="n">${r.count}</td><td class="n">${r.p50}</td><td class="n">${r.p95}</td><td class="n">${r.worst}</td></tr>`).join('');
+}
+function alarm(){const a=$('alarm'),gone=lastOk&&Date.now()-lastOk>5000,text=[gone?`监控页已 ${Math.round((Date.now()-lastOk)/1000)} 秒收不到数据，下面是旧画面`:'',failure].filter(Boolean).join('；');a.textContent=text;a.style.display=text?'block':'none';}
+async function tick(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);render(await r.json());lastOk=Date.now();}catch(e){if(!lastOk){failure='监控数据读取失败：'+e.message;}}alarm();setTimeout(tick,1000);}
+tick();
+document.addEventListener('mousemove',e=>{const t=e.target.closest?.('[data-tip]'),tip=$('tip');if(!t){tip.style.display='none';return;}tip.textContent=t.dataset.tip;tip.style.display='block';tip.style.left=Math.min(innerWidth-220,e.clientX+12)+'px';tip.style.top=e.clientY+14+'px';});
+document.addEventListener('click',e=>{const d=$('big');if(e.target.matches('.shot')){d.querySelector('img').src=e.target.src;d.showModal();}else if(d.open)d.close();});
+</script></body></html>

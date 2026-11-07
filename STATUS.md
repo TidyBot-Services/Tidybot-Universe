@@ -1,3 +1,11 @@
+<!-- remote-crowd-20261107 -->
+## 11-07：Remote 多用户模拟测试（分支 `claude/bold-gates-c82b8e`；只离线，真实 run 未跑）
+
+- **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、真实模式安全线、清理工具。方案见其中的 `PLAN.md`，等用户确认。
+- **证据**：`remote_gateway/tests` 通过；离线全量 37 项检查全过，判定“有错误”是因为测出 4 个产品问题（`PLAN.md` 第八节，未修，未在真实 run 上观察）。
+- **下一步**：等中控台放行和基线 commit，以及用户对 `no-new-runs`、真人回复路径和 qifei 磁盘底线的决定。
+<!-- /remote-crowd-20261107 -->
+
 <!-- general-setup-20261105 -->
 ## 11-05：setup 改成只要求 Ubuntu 22.04/24.04（分支 `general-setup-20261105`；工程改动，非正式实验）
 

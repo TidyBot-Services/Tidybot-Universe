@@ -1,0 +1,2397 @@
+{
+"view": {
+"key": "81efbeeba145b5c83ce0b25d67141c4c8fc02186bfcf3bb191141a57bb7f2e10",
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"state": "failed",
+"reason": "wall_stop",
+"error": null,
+"task_id": "pick_place_counter_to_sink",
+"seed": 101,
+"policy_id": "agent_initiated_help",
+"mode": "interactive",
+"budget": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"used": {
+"advisor_calls": 0,
+"control_steps": 0,
+"dev_calls": 0,
+"eval_calls": 0,
+"execution_seconds": 0,
+"executions": 0,
+"help_count": 0,
+"help_credits": 0,
+"help_wait_seconds": 0,
+"hint_human_seconds": 0,
+"input_tokens": 0,
+"model_seconds": 0,
+"output_tokens": 0,
+"provider_tokens": 0,
+"sdk_calls": 0
+},
+"versions": [],
+"jobs": [],
+"dev_mode": "agent",
+"agent": {
+"phase": "stopped",
+"reason": "wall_stop",
+"fatal_cause": null,
+"errors": [],
+"counts": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 5,
+"read_only_probes": 48
+},
+"held": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 0,
+"read_only_probes": 0
+},
+"limits": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 40,
+"read_only_probes": 300
+},
+"remaining": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 35,
+"read_only_probes": 252
+},
+"wall_seconds": 1200,
+"wall_limit": 1200,
+"dev_model": "parcc/GLM",
+"eval_model": "parcc/GLM",
+"advisor_model": "parcc/GLM",
+"quota_stop_percent": 90,
+"timeline": [],
+"versions": [],
+"history": [],
+"state_basis": "reset_scene",
+"model_source": "parcc",
+"agent_provider": {
+"roles": {
+"advisor": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"dev": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"eval": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+}
+}
+},
+"text_only_roles": [
+"eval",
+"advisor"
+],
+"reduced_budget": {
+"versions": 2,
+"wall_seconds": 1200,
+"default_versions": 10,
+"default_wall_seconds": 21600
+},
+"agent_policy_version": "agent-policy-v2",
+"pending_ask": null,
+"active_help": null,
+"human_wait": null,
+"tries": [],
+"executing": null,
+"forced_fallback": null,
+"ask_required": [],
+"failure_errors": [],
+"details": []
+},
+"dev_v2_compat": {
+"key": "81efbeeba145b5c83ce0b25d67141c4c8fc02186bfcf3bb191141a57bb7f2e10",
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"state": "failed",
+"reason": "wall_stop",
+"task_id": "pick_place_counter_to_sink",
+"seed": 101,
+"policy_id": "agent_initiated_help",
+"mode": "interactive",
+"reduced_budget": {
+"versions": 2,
+"wall_seconds": 1200,
+"default_versions": 10,
+"default_wall_seconds": 21600
+},
+"dev_mode": "agent",
+"agent_policy_version": "agent-policy-v2",
+"artifact_dir": "agent-view",
+"versions": [],
+"help_intervals": [],
+"trailing_activity": {
+"checks": 5,
+"previews": 43,
+"trials": [],
+"exploration": [],
+"version_id": null
+},
+"jobs": [],
+"budget": {
+"executions": 40,
+"dev_calls": null,
+"eval_calls": 2,
+"help_count": 3,
+"provider_tokens": null
+},
+"used": {
+"executions": 5,
+"dev_calls": 0,
+"eval_calls": 0,
+"help_count": 0,
+"provider_tokens": null
+},
+"ledger": {
+"goal": {
+"wall_used": 1200,
+"wall_limit": 1200,
+"wall_remaining": 0,
+"limits": {
+"executions": 40,
+"dev_calls": null,
+"eval_calls": 2,
+"help_count": 3,
+"provider_tokens": null
+},
+"used": {
+"executions": 5,
+"dev_calls": 0,
+"eval_calls": 0,
+"help_count": 0,
+"provider_tokens": null
+},
+"reserved": {
+"executions": 0,
+"dev_calls": 0,
+"eval_calls": 0,
+"help_count": 0
+}
+}
+},
+"lifecycle": null,
+"run_controls": {
+"state": "ended",
+"can_pause": false,
+"can_resume": false,
+"can_keep_running": false,
+"resume_blocked_reason": "This run has finished.",
+"current_step": null,
+"paused_since": null,
+"paused_seconds_total": 0,
+"interrupted_by_stop": null
+},
+"quota_usage": null
+}
+},
+"experiment": {
+"cancelled": false,
+"created_at": 1794014843.9822927,
+"dev_sdk_description": "base enabled",
+"dev_sdk_metadata_sha256": "b497349b4b0e79054f97c60d2c415260228b0c7d5df751202f948ff220117d3b",
+"dev_sdk_prompt_sha256": "24201fef03ebe0c3b66fc4b22c2f5fd90483bfcc5a581eab797321794f655e74",
+"dev_sdk_sha256": "e5ff20f8581267af6541ff29c95d9d935e7ab5ce527dcb741412c9cb91962221",
+"disk_root": "[host path]",
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"formal_eligible": false,
+"goal_id": "f0b535640a80b1d14e3def154dcf21b1",
+"reason": "wall_stop",
+"selection": {
+"advisor_model": "parcc/GLM",
+"advisor_proxy": {
+"answer_latency_seconds": 0,
+"attempt_timeout_seconds": 55,
+"cache_version": "advisor-text-cache-v1",
+"enabled": false,
+"max_attempts": 1,
+"max_selected_frames": 4,
+"mode": "text_only",
+"model": "parcc/GLM",
+"model_source": "parcc",
+"prompt_sha256": "eb3d2c6710ca3dd7553f880a4c043e871ec8363c1d363d0f636c63868ce25ca9",
+"prompt_version": "advisor-hint-text-v2",
+"reading_seconds": 30,
+"reasoning_effort": "high"
+},
+"agent_limits": {
+"versions": 2,
+"wall_seconds": 1200
+},
+"agent_policy_version": "agent-policy-v2",
+"agent_provider": {
+"roles": {
+"advisor": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"dev": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"eval": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+}
+}
+},
+"attempt_wall_seconds": 1920,
+"budget_tier": "dev",
+"cell_budget": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"coverage": "budget_limited",
+"dev_mode": "agent",
+"dev_model": "parcc/GLM",
+"dev_reasoning_effort": "high",
+"eval_agent": {
+"attempt_timeout_seconds": 55,
+"cache_namespace": "eval",
+"cache_version": "eval-agent-image-cache-v1",
+"enabled": false,
+"max_attempts": 2,
+"model": "parcc/GLM",
+"model_source": "parcc",
+"prompt_sha256": "2dd17ccd24234131a6f05eaf2bba1d3d831502b202b1a6c7de9f2a3dcf80cc2c",
+"prompt_version": "eval-agent-vision-v3",
+"reasoning_effort": "high",
+"session_namespace": "eval-vision"
+},
+"eval_model": "parcc/GLM",
+"goal_key": "gw-u-992736809a061294-88453b5884b1f57f44ff03813a1f6a07",
+"goal_limits": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"help_budget": 3,
+"human_reply_seconds": 120,
+"max_input_bytes_per_request": 150000,
+"max_versions": 10,
+"mode": "interactive",
+"model_reserve_seconds": 360,
+"model_source": "parcc",
+"name_suffix": "run-host-a2",
+"policies": [
+"agent_initiated_help"
+],
+"policy_parameters": {
+"agent_initiated_help": {
+"min_new_executions": 1
+}
+},
+"public_failure_rule": {
+"completion_signal": "none_registered",
+"execution_statuses": [
+"failed",
+"timeout",
+"timed_out"
+],
+"no_declared_completion_is_failure": true,
+"public_errors": true,
+"schema": "attentionbench.public-failure.v1",
+"validation_failure": true
+},
+"quota_stop_percent": 90,
+"reproducible_reset": true,
+"request_key": "gw-u-992736809a061294-88453b5884b1f57f44ff03813a1f6a07",
+"run_notes": true,
+"scene_contract": {
+"sha256": "bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
+},
+"seeds": [
+101
+],
+"startup_cleanup_seconds": 60,
+"target_depth": 10,
+"target_valid_executions": 10,
+"tasks": [
+"pick_place_counter_to_sink"
+],
+"trace_visible": true,
+"wall_limit": 21600
+},
+"state": "completed",
+"cells": [
+{
+"agent_policy_version": "agent-policy-v2",
+"agent_resources": {
+"attention": {
+"help_count": 0,
+"hint_human_seconds": 0
+},
+"deadline": 1794016050.4651816,
+"held": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 0,
+"read_only_probes": 0
+},
+"limits": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 40,
+"read_only_probes": 300
+},
+"model_turns": 1,
+"paused_at": null,
+"paused_seconds": 0,
+"remaining": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 35,
+"read_only_probes": 252
+},
+"started_at": 1794014850.4651816,
+"used": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 5,
+"read_only_probes": 48
+},
+"wall_remaining": 0,
+"wall_seconds": 1200
+},
+"budget": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"created_at": null,
+"dev_mode": "agent",
+"experiment_eligible": false,
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"formal_eligible": false,
+"key": "81efbeeba145b5c83ce0b25d67141c4c8fc02186bfcf3bb191141a57bb7f2e10",
+"mixed_policy": false,
+"mode": "interactive",
+"policy_id": "agent_initiated_help",
+"policy_segments": [
+"agent_initiated_help"
+],
+"reason": "wall_stop",
+"run_notes": true,
+"seed": 101,
+"state": "failed",
+"task_id": "pick_place_counter_to_sink",
+"updated_at": 1794016050.8907545,
+"used": {
+"advisor_calls": 0,
+"control_steps": 0,
+"dev_calls": 0,
+"eval_calls": 0,
+"execution_seconds": 0,
+"executions": 0,
+"help_count": 0,
+"help_credits": 0,
+"help_wait_seconds": 0,
+"hint_human_seconds": 0,
+"input_tokens": 0,
+"model_seconds": 0,
+"output_tokens": 0,
+"provider_tokens": 0,
+"sdk_calls": 0
+},
+"jobs": [],
+"versions": []
+}
+],
+"resources": {
+"authorized_until": 1794036445.8632522,
+"budget_tier": "dev",
+"limits": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"opening": [],
+"real_started_at": null,
+"used": {
+"advisor_calls": 0,
+"control_steps": 0,
+"dev_calls": 0,
+"eval_calls": 0,
+"execution_seconds": 0,
+"executions": 0,
+"help_count": 0,
+"help_credits": 0,
+"help_wait_seconds": 0,
+"hint_human_seconds": 0,
+"input_tokens": 0,
+"model_seconds": 0,
+"output_tokens": 0,
+"provider_tokens": 0,
+"sdk_calls": 0
+},
+"wall_limit": 21600,
+"reserved": {
+"dev_calls": 0,
+"advisor_calls": 0,
+"eval_calls": 0,
+"provider_tokens": 0,
+"input_tokens": 0,
+"output_tokens": 0,
+"executions": 0,
+"sdk_calls": 0,
+"control_steps": 0,
+"help_credits": 0,
+"help_count": 0,
+"help_wait_seconds": 0,
+"model_seconds": 0,
+"execution_seconds": 0,
+"hint_human_seconds": 0
+},
+"remaining": {
+"dev_calls": 10,
+"advisor_calls": 3,
+"eval_calls": 0,
+"provider_tokens": 2034992,
+"input_tokens": 1950000,
+"output_tokens": 84992,
+"executions": 10,
+"sdk_calls": 3200,
+"control_steps": 96000,
+"help_credits": 3,
+"help_count": 3,
+"help_wait_seconds": 360,
+"model_seconds": 3960,
+"execution_seconds": 19800,
+"hint_human_seconds": 0
+},
+"paused_seconds_total": 0,
+"wall_used": 0,
+"wall_remaining": 16233.782117128372
+}
+},
+"row": {
+"agent_policy_version": "agent-policy-v2",
+"agent_resources": {
+"attention": {
+"help_count": 0,
+"hint_human_seconds": 0
+},
+"deadline": 1794016050.4651816,
+"held": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 0,
+"read_only_probes": 0
+},
+"limits": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 40,
+"read_only_probes": 300
+},
+"model_turns": 1,
+"paused_at": null,
+"paused_seconds": 0,
+"remaining": {
+"eval_runs": 2,
+"formal_versions": 2,
+"help": 3,
+"moving_executions": 35,
+"read_only_probes": 252
+},
+"started_at": 1794014850.4651816,
+"used": {
+"eval_runs": 0,
+"formal_versions": 0,
+"help": 0,
+"moving_executions": 5,
+"read_only_probes": 48
+},
+"wall_remaining": 0,
+"wall_seconds": 1200
+},
+"budget": {
+"advisor_calls": 3,
+"control_steps": 96000,
+"dev_calls": 10,
+"eval_calls": 0,
+"execution_seconds": 19800,
+"executions": 10,
+"help_count": 3,
+"help_credits": 3,
+"help_wait_seconds": 360,
+"hint_human_seconds": 0,
+"input_tokens": 1950000,
+"model_seconds": 3960,
+"output_tokens": 84992,
+"provider_tokens": 2034992,
+"sdk_calls": 3200
+},
+"created_at": 1794014843.9822927,
+"dev_mode": "agent",
+"experiment_eligible": false,
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"formal_eligible": false,
+"key": "81efbeeba145b5c83ce0b25d67141c4c8fc02186bfcf3bb191141a57bb7f2e10",
+"mixed_policy": false,
+"mode": "interactive",
+"policy_id": "agent_initiated_help",
+"policy_segments": [
+"agent_initiated_help"
+],
+"reason": "wall_stop",
+"run_notes": true,
+"seed": 101,
+"state": "failed",
+"task_id": "pick_place_counter_to_sink",
+"updated_at": 1794016050.8907545,
+"used": {
+"advisor_calls": 0,
+"control_steps": 0,
+"dev_calls": 0,
+"eval_calls": 0,
+"execution_seconds": 0,
+"executions": 0,
+"help_count": 0,
+"help_credits": 0,
+"help_wait_seconds": 0,
+"hint_human_seconds": 0,
+"input_tokens": 0,
+"model_seconds": 0,
+"output_tokens": 0,
+"provider_tokens": 0,
+"sdk_calls": 0
+},
+"jobs": [],
+"versions": [],
+"execution_profile": "r4-20261027",
+"planner_lock_sha256": "884b8ec4a27842ce54f2af4a34e8062148130f444dbfc4ec6261eae910ed5218",
+"deployment_kind": "dev-local",
+"dev_sdk_sha256": "e5ff20f8581267af6541ff29c95d9d935e7ab5ce527dcb741412c9cb91962221",
+"dev_sdk_prompt_sha256": "24201fef03ebe0c3b66fc4b22c2f5fd90483bfcc5a581eab797321794f655e74",
+"dev_sdk_metadata_sha256": "b497349b4b0e79054f97c60d2c415260228b0c7d5df751202f948ff220117d3b",
+"dev_sdk_description": "base enabled",
+"channel": "dev_v2",
+"session_id": "v2-81efbeeba145b5c83ce0b25d67141c4c8fc02186bfcf3bb191141a57bb7f2e10",
+"locked": {
+"config": {
+"advisor_proxy": {
+"answer_latency_seconds": 0,
+"attempt_timeout_seconds": 55,
+"cache_version": "advisor-text-cache-v1",
+"enabled": false,
+"max_attempts": 1,
+"max_selected_frames": 4,
+"mode": "text_only",
+"model": "parcc/GLM",
+"model_source": "parcc",
+"prompt_sha256": "eb3d2c6710ca3dd7553f880a4c043e871ec8363c1d363d0f636c63868ce25ca9",
+"prompt_version": "advisor-hint-text-v2",
+"reading_seconds": 30,
+"reasoning_effort": "high"
+},
+"agent_policy_version": "agent-policy-v2",
+"agent_provider": {
+"roles": {
+"advisor": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"dev": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+},
+"eval": {
+"base_url_host": "litellm.parcc.upenn.edu",
+"credential": "lab",
+"key_source": "lab",
+"model": "parcc/GLM",
+"provider": "parcc"
+}
+}
+},
+"asset_manifest_sha256": "0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+"attempt_wall_seconds": 1920,
+"base_mode": "commanded_motion",
+"budget_tier": "dev",
+"camera_height": 128,
+"camera_names": [
+"robot0_agentview_left",
+"gripper0_right_eye_in_hand"
+],
+"camera_width": 128,
+"contact_exempt_objects": "movable_objects",
+"control_freq": 20,
+"controller": "BASIC",
+"dev_lock": {
+"path": "[host path]",
+"sha256": "78cd160632719fad41276c2602086c516249afec8de674586c80c03330c6d12f"
+},
+"dev_mode": "agent",
+"dev_sdk_description": "base enabled",
+"dev_sdk_metadata_sha256": "b497349b4b0e79054f97c60d2c415260228b0c7d5df751202f948ff220117d3b",
+"dev_sdk_prompt_sha256": "24201fef03ebe0c3b66fc4b22c2f5fd90483bfcc5a581eab797321794f655e74",
+"dev_sdk_sha256": "e5ff20f8581267af6541ff29c95d9d935e7ab5ce527dcb741412c9cb91962221",
+"dev_version_history": true,
+"eval_agent": {
+"attempt_timeout_seconds": 55,
+"cache_namespace": "eval",
+"cache_version": "eval-agent-image-cache-v1",
+"enabled": false,
+"max_attempts": 2,
+"model": "parcc/GLM",
+"model_source": "parcc",
+"prompt_sha256": "2dd17ccd24234131a6f05eaf2bba1d3d831502b202b1a6c7de9f2a3dcf80cc2c",
+"prompt_version": "eval-agent-vision-v3",
+"reasoning_effort": "high",
+"session_namespace": "eval-vision"
+},
+"execution_arm": "both",
+"execution_controller_input": "absolute",
+"execution_settings": {
+"attach_after_grasp": true,
+"base_hold_drift_m": 0.003,
+"base_hold_drift_rad": 0.003,
+"base_path_clearance_m": 0.01,
+"base_start_clearance_m": 0.002,
+"carried_proxy_support_departure": "monotone",
+"goal_joint_margin_rad": 0.02,
+"grasp_heading_search": [
+0.1,
+-0.1,
+0.2,
+-0.2,
+0.3,
+-0.3,
+0.5,
+-0.5
+],
+"held_envelope_m": 0.01,
+"held_envelope_rad": 0.1,
+"profile": "r4-20261027",
+"support_departure": "monotone"
+},
+"formal_eligible": false,
+"generative_textures": null,
+"global_random_seed": 101,
+"gripper_command_endpoints_m": [
+0.001,
+0.043
+],
+"held_reference_mode": "fixed",
+"horizon": 9600,
+"ik_candidates": 8,
+"ik_max_joint_jump": 1.0,
+"initial_joint_targets": {
+"left": [
+-0.4,
+-0.8,
+0.0,
+0.8,
+0.0,
+0.0,
+0.0
+],
+"left_gripper": 0.02,
+"right": [
+0.4,
+0.8,
+0.0,
+0.8,
+0.0,
+0.0,
+0.0
+],
+"right_gripper": 0.02
+},
+"layout_id": 11,
+"model_source": "parcc",
+"obj_instance_split": "pretrain",
+"object_set_id": "robocasa365:pretrain:0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+"official_env": "PickPlaceCounterToSink",
+"perception_mode": "sim_gt",
+"planner_mode": "ik_path",
+"planner_source": {
+"kind": "dev-local"
+},
+"randomize_cameras": false,
+"reset_controller_input": "delta",
+"robocasa_commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
+"robosuite_commit": "5ce6643f3092639d08f7b0f90ed1c6a84f50552c",
+"robot": "OpenArm365",
+"runner_boundary": "dev_loop",
+"safety_limits": {
+"max_arm_delta_m": 0.05,
+"max_arm_rotation_rad": 0.5,
+"max_normalized_command": 1.0,
+"max_observed_base_step_m": 0.1,
+"max_observed_eef_step_m": 0.25
+},
+"scene_contract": {
+"sha256": "bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
+},
+"scene_id": "robocasa365:layout11:style34",
+"scene_reset_seed": 101,
+"schema_version": "attentionbench.openarm365-dual-dev-config.v2",
+"sdk_call_limit": 320,
+"seed": 101,
+"split": null,
+"style_id": 34,
+"suite": "robocasa365",
+"task_id": "pick_place_counter_to_sink",
+"task_prompt": "Pick the object from the counter and place it in the sink.",
+"whole_case_wall_seconds": 7200
+}
+},
+"model": "parcc/GLM",
+"experiment_state": "completed",
+"name_suffix": "run-host-a2",
+"lobby": {
+"run_id": "devexp-de41406d9e1816bac282cbfc",
+"experiment_id": "devexp-de41406d9e1816bac282cbfc",
+"nickname": "Fox-1",
+"task_key": "pick_place_counter_to_sink",
+"task_title": "pick_place_counter_to_sink",
+"state": "finished",
+"result": "failed",
+"mine": false,
+"real": true,
+"started_at": 1794014843.9822927,
+"ended_at": null,
+"attempt": {
+"current": 0,
+"limit": 2
+},
+"queue_position": null,
+"eta_start_seconds": null,
+"help_waiting_seconds": null,
+"waiting": null,
+"recording": null
+}
+},
+"options": {
+"dev_v2": {
+"enabled": true,
+"budget_tier": "dev",
+"tasks": [
+{
+"task_id": "pick_place_counter_to_sink",
+"official_env": "PickPlaceCounterToSink",
+"task_prompt": "Pick the object from the counter and place it in the sink.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103,
+104,
+105,
+106,
+107,
+108,
+109,
+110,
+111,
+112,
+113,
+114,
+115,
+116,
+117,
+118,
+119,
+120,
+121,
+122,
+123,
+124,
+125
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+}
+},
+{
+"task_id": "open_cabinet",
+"official_env": "OpenCabinet",
+"task_prompt": "Open the cabinet door.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103,
+104,
+105,
+106,
+107,
+108,
+109,
+110,
+111,
+112,
+113,
+114,
+115,
+116,
+117,
+118,
+119,
+120,
+121,
+122,
+123,
+124,
+125
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+}
+}
+],
+"fixture_tasks": [
+{
+"task_id": "open_cabinet",
+"official_env": "OpenCabinet",
+"task_prompt": "Open the cabinet door.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+102
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": false,
+"task_id": "open_cabinet",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "open_cabinet",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"task_id": "close_blender_lid",
+"official_env": "CloseBlenderLid",
+"task_prompt": "Place the blender lid securely on the blender.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"task_id": "open_drawer",
+"official_env": "OpenDrawer",
+"task_prompt": "Open the drawer.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": true,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"task_id": "turn_on_microwave",
+"official_env": "TurnOnMicrowave",
+"task_prompt": "Press the start button on the microwave.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"task_id": "turn_off_stove",
+"official_env": "TurnOffStove",
+"task_prompt": "Turn off the active burner of the stove.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"task_id": "open_stand_mixer_head",
+"official_env": "OpenStandMixerHead",
+"task_prompt": "Unlock and open the stand mixer head.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": true,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"task_id": "coffee_setup_mug",
+"official_env": "CoffeeSetupMug",
+"task_prompt": "Place the mug under the coffee machine dispenser.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+103
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 104,
+"enabled": false,
+"task_id": "coffee_setup_mug",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"task_id": "prepare_coffee",
+"official_env": "PrepareCoffee",
+"task_prompt": "Take a mug from the cabinet, place it under the coffee machine dispenser, and start the machine.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+102,
+103,
+104
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 104,
+"enabled": true
+}
+]
+},
+{
+"task_id": "kettle_boiling",
+"official_env": "KettleBoiling",
+"task_prompt": "Place the kettle on a stove burner and turn that burner on.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "kettle_boiling",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"task_id": "heat_kebab_sandwich",
+"official_env": "HeatKebabSandwich",
+"task_prompt": "Place the kebab and bread in the toaster oven, close the door, and set the timer.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+103,
+105,
+106
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "C",
+"family_label": "Place and start",
+"held_out": true,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+},
+{
+"seed": 106,
+"enabled": true
+}
+]
+},
+{
+"task_id": "pick_place_counter_to_cabinet",
+"official_env": "PickPlaceCounterToCabinet",
+"task_prompt": "Pick the object from the counter and place it in the cabinet.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102,
+107
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 107,
+"enabled": true
+}
+]
+},
+{
+"task_id": "categorize_condiments",
+"official_env": "CategorizeCondiments",
+"task_prompt": "Place each condiment in the cabinet beside condiments of the same category.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+102,
+103,
+105
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+}
+]
+},
+{
+"task_id": "weigh_ingredients",
+"official_env": "WeighIngredients",
+"task_prompt": "Take the food from the cabinet, place it on the scale, and close the cabinet doors.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+101,
+102
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "weigh_ingredients",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"task_id": "arrange_tea",
+"official_env": "ArrangeTea",
+"task_prompt": "Place the kettle and a cup from the cabinet on the tray, then close the cabinet doors.",
+"robot": "OpenArm365",
+"execution_arm": "both",
+"seeds": [
+104,
+105,
+106
+],
+"sdk": {
+"groups": [
+"sensors",
+"left_arm",
+"right_arm",
+"left_gripper",
+"right_gripper",
+"bimanual"
+],
+"frame": "world",
+"sdk_calls": 320,
+"attempt_seconds": 1920,
+"control_steps": 9600
+},
+"rules_profile": "r5-fixture-20261031",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": true,
+"explicit_only": true,
+"rules_label": "fixture rules (R5)",
+"seed_options": [
+{
+"seed": 104,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+},
+{
+"seed": 106,
+"enabled": true
+}
+]
+}
+],
+"agent_policies": {
+"agent_policy_version": "agent-policy-v2",
+"policies": [
+{
+"policy_id": "autonomous",
+"parameters": {},
+"memory_exposed": true
+},
+{
+"policy_id": "demo_first",
+"parameters": {},
+"memory_exposed": true
+},
+{
+"policy_id": "reactive_help",
+"parameters": {},
+"memory_exposed": true
+},
+{
+"policy_id": "retry_k_then_ask",
+"parameters": {
+"k": 2
+},
+"memory_exposed": true
+},
+{
+"policy_id": "budget_matched_random_escalation",
+"parameters": {
+"target_request_count": 1,
+"total_failure_slots": 10,
+"seed": 101
+},
+"memory_exposed": true
+},
+{
+"policy_id": "trace_aware_hint_only",
+"parameters": {
+"m": 3,
+"n": 2
+},
+"memory_exposed": false
+},
+{
+"policy_id": "full_trace_aware_attention_planner",
+"parameters": {
+"m": 3,
+"n": 2
+},
+"memory_exposed": true
+},
+{
+"policy_id": "agent_initiated_help",
+"parameters": {
+"min_new_executions": 1
+},
+"memory_exposed": true
+}
+]
+},
+"registered_scene_seeds": [
+101,
+102,
+103
+],
+"default_cell_budget": {
+"dev_calls": 5,
+"advisor_calls": 5,
+"eval_calls": 5,
+"provider_tokens": 1000000,
+"input_tokens": 850000,
+"output_tokens": 150000,
+"executions": 5,
+"sdk_calls": 1600,
+"control_steps": 48000,
+"help_credits": 5,
+"help_count": 5,
+"help_wait_seconds": 2100,
+"hint_human_seconds": 7200,
+"model_seconds": 1800,
+"execution_seconds": 10800
+},
+"default_max_iterations": 5,
+"profiles": [
+{
+"id": "dev-v2-pick_place_counter_to_sink",
+"suite": "robocasa365",
+"task_id": "pick_place_counter_to_sink",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "stationary"
+},
+{
+"id": "dev-v2-open_cabinet",
+"suite": "robocasa365",
+"task_id": "open_cabinet",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "stationary"
+},
+{
+"id": "dev-v2-r5-open_cabinet",
+"suite": "robocasa365",
+"task_id": "open_cabinet",
+"seed": 102,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": false,
+"seeds": [
+102
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": false,
+"task_id": "open_cabinet",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "open_cabinet",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"id": "dev-v2-r5-close_blender_lid",
+"suite": "robocasa365",
+"task_id": "close_blender_lid",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": false,
+"seeds": [
+101,
+102,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-open_drawer",
+"suite": "robocasa365",
+"task_id": "open_drawer",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "A",
+"family_label": "Open and close fixtures",
+"held_out": true,
+"seeds": [
+101,
+102,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-turn_on_microwave",
+"suite": "robocasa365",
+"task_id": "turn_on_microwave",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": false,
+"seeds": [
+101,
+102,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-turn_off_stove",
+"suite": "robocasa365",
+"task_id": "turn_off_stove",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": false,
+"seeds": [
+101,
+102,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-open_stand_mixer_head",
+"suite": "robocasa365",
+"task_id": "open_stand_mixer_head",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "B",
+"family_label": "Buttons and knobs",
+"held_out": true,
+"seeds": [
+101,
+102,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-coffee_setup_mug",
+"suite": "robocasa365",
+"task_id": "coffee_setup_mug",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"seeds": [
+101,
+103
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 104,
+"enabled": false,
+"task_id": "coffee_setup_mug",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"id": "dev-v2-r5-prepare_coffee",
+"suite": "robocasa365",
+"task_id": "prepare_coffee",
+"seed": 102,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"seeds": [
+102,
+103,
+104
+],
+"seed_options": [
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 104,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-kettle_boiling",
+"suite": "robocasa365",
+"task_id": "kettle_boiling",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "C",
+"family_label": "Place and start",
+"held_out": false,
+"seeds": [
+101,
+102
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "kettle_boiling",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"id": "dev-v2-r5-heat_kebab_sandwich",
+"suite": "robocasa365",
+"task_id": "heat_kebab_sandwich",
+"seed": 103,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "C",
+"family_label": "Place and start",
+"held_out": true,
+"seeds": [
+103,
+105,
+106
+],
+"seed_options": [
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+},
+{
+"seed": 106,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-pick_place_counter_to_cabinet",
+"suite": "robocasa365",
+"task_id": "pick_place_counter_to_cabinet",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"seeds": [
+101,
+102,
+107
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 107,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-categorize_condiments",
+"suite": "robocasa365",
+"task_id": "categorize_condiments",
+"seed": 102,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"seeds": [
+102,
+103,
+105
+],
+"seed_options": [
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+}
+]
+},
+{
+"id": "dev-v2-r5-weigh_ingredients",
+"suite": "robocasa365",
+"task_id": "weigh_ingredients",
+"seed": 101,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": false,
+"seeds": [
+101,
+102
+],
+"seed_options": [
+{
+"seed": 101,
+"enabled": true
+},
+{
+"seed": 102,
+"enabled": true
+},
+{
+"seed": 103,
+"enabled": false,
+"task_id": "weigh_ingredients",
+"reason": "start_state_collision",
+"evidence_paths": [
+"wt-fixture-p1/phase2d-start-1031-0138",
+"wt-fixture-p1/phase2d-start-1031-rest"
+]
+}
+]
+},
+{
+"id": "dev-v2-r5-arrange_tea",
+"suite": "robocasa365",
+"task_id": "arrange_tea",
+"seed": 104,
+"robot": "OpenArm365",
+"execution_arm": "both",
+"channel": "dev_v2",
+"enabled": true,
+"execution_target": "robocasa365_sim",
+"attempt_wall_seconds": 1920,
+"sdk_call_limit": 320,
+"control_step_limit": 9600,
+"startup_cleanup_seconds": 240,
+"wall_seconds": 21600,
+"layout_id": 11,
+"style_id": 34,
+"base_mode": "commanded_motion",
+"rules_profile": "r5-fixture-20261031",
+"rules_label": "fixture rules (R5)",
+"family": "D",
+"family_label": "Cabinet pick and place",
+"held_out": true,
+"seeds": [
+104,
+105,
+106
+],
+"seed_options": [
+{
+"seed": 104,
+"enabled": true
+},
+{
+"seed": 105,
+"enabled": true
+},
+{
+"seed": 106,
+"enabled": true
+}
+]
+}
+],
+"goal_key": "set-by-host"
+}
+}
+}
