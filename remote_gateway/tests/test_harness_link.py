@@ -208,3 +208,20 @@ def test_a_host_that_cannot_reach_the_provider_refuses_the_start_and_the_run_is_
     monkeypatch.setattr(provider, 'open_request', fake_probe_transport())
     assert browser.send('POST', f'/api/dev-v2/experiments/{runs[0]["experiment_id"]}/run', {})[0] == 200
     assert len(launched) == 1
+
+
+def test_the_run_list_says_when_a_run_waits_for_a_person(tmp_path):
+    from benchmarks.attention_harness import dev_agent_human_reply as human
+    from benchmarks.attention_harness.daily_dev_v2 import DailyDevV2
+    manifest = tmp_path / 'manifest.json'
+    manifest.write_text(json.dumps(dict(dev_mode='agent', model=dict(model='m'), configs={'t:1': {}})))
+    cell = dict(key='c' * 64, task_id='t', seed=1, state='running', artifact_dir=str(tmp_path / 'cell'))
+    experiment = dict(manifest=dict(uri=str(manifest)), created_at=1, state='running', selection={}, cells=[cell])
+    private = tmp_path / 'cell/agent/private'
+    bridge = object.__new__(DailyDevV2)
+    assert 'human_wait' not in bridge.sessions(experiment)[0]
+    folder = private / 'help/e000001';folder.mkdir(parents=True)
+    (folder / human.WAIT).write_text(json.dumps(dict(execution_id='e000001', question='What next?', deadline_at=time.time() + 60, seconds=120)))
+    assert bridge.sessions(experiment)[0]['human_wait']['question'] == 'What next?'
+    (folder / human.OUTCOME).write_text('{}')
+    assert 'human_wait' not in bridge.sessions(experiment)[0]

@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CAST = [('U1', '阿青', '认真回复'), ('U2', '小白', '排队时取消'), ('U3', '老周', '跳过求助'), ('U4', '小林', '不回复'), ('U5', '大海', '中途取消'),
         ('U6', '阿杰', '断线重连'), ('U7', '小雨', '关页再回来'), ('U8', '黑客', '越权尝试'), ('G1', '路人', '访客')]
 # Everything a limit can open, at what the harness can honour. One run on the robot and the disk lines are not limits here: see PLAN.md.
+NO_NEW_RUNS = Path.home() / '.config/disk-hygiene/no-new-runs'
 OPEN_LIMITS = dict(versions=10, help_requests=10, runs_per_day=100000, wall_seconds=21600, active_runs=1000, requests_per_second=100000, request_burst=1000000,
                    live_requests_per_second=100000, live_request_burst=1000000, logins_per_hour=100000)
 
@@ -186,6 +187,7 @@ def real(args):
     value = json.loads(config.read_text(encoding='utf-8'))
     blocked = [path for path in value.get('stop_files', []) if Path(path).exists()]
     if blocked:raise SystemExit(f'停止标志还在，不开始：{blocked}')
+    if NO_NEW_RUNS.exists():print(f'注意：{NO_NEW_RUNS} 存在，测试实例按用户决定不读它；磁盘底线 {args.disk_floor_gb:g}G 由本脚本把守。报告要写明。', flush=True)
     free, _ = host_disk(args.host_prefix, args.run_root)
     if free < args.disk_floor_gb * 2**30:raise SystemExit(f'磁盘剩余 {free / 2**30:.1f}G，低于底线 {args.disk_floor_gb:g}G，不开始')
     wait_up(f'http://127.0.0.1:{args.gateway_port}/login')

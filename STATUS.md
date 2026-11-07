@@ -2,8 +2,8 @@
 ## 11-07：Remote 多用户模拟测试（分支 `claude/bold-gates-c82b8e`；只离线，真实 run 未跑）
 
 - **已有**：`remote_gateway/simtest/`：8 个模拟用户加 1 个访客（真实 Chrome 点真实页面）、假后端、泳道监控页、真实模式安全线、清理工具。方案见其中的 `PLAN.md`，等用户确认。
-- **证据**：`remote_gateway/tests` 通过；基线 652ea13 上离线全量 48 项检查全过，判定“有错误”是因为测出的产品问题（`PLAN.md` 第七节，未修，未在真实 run 上观察）。
-- **下一步**：等中控台放行；放行时要说明 `no-new-runs` 和 PARCC key 来源。
+- **证据**：`remote_gateway/tests` 通过；基线 652ea13 上离线全量 52 项检查全过、0 错误；测出的 5 个产品问题已修（`PLAN.md` 第七节，未在真实 run 上观察）。
+- **下一步**：等中控台合并和放行。
 <!-- /remote-crowd-20261107 -->
 
 <!-- general-setup-20261105 -->

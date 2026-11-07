@@ -553,3 +553,18 @@ def test_the_robot_lock_is_held_for_the_run_and_a_busy_lock_means_wait(world, tm
     with pytest.raises(OSError):fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
     world.now[0] += 31;world.harness.rows = [];gateway.dispatch()
     fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB);probe.close()
+
+
+def test_a_run_that_fails_to_start_from_the_line_tells_its_owner_why(world):
+    first, second = world.person(), world.person()
+    a = start(first, 'client-key-a')[1]['experiment_id']
+    world.harness.rows = [row(a, 'running')]
+    b = start(second, 'client-key-b')[1]['experiment_id']
+    world.harness.rows = [row(a, 'completed'), row(b, 'planned')];world.now[0] += 31
+    world.harness.start_status = 500
+    assert world.gateway.gateway.dispatch()[:2] == (b, 500)
+    card = next(c for c in second.json('GET', '/api/lobby')[1]['recent'] if c['experiment_id'] == b)
+    assert card['state'] == 'created' and 'cannot start' in card['start_error'] and '/home' not in card['start_error']
+    world.harness.start_status = 200;world.now[0] += 31
+    second.json('POST', f'/api/dev-v2/experiments/{b}/run', {})
+    assert world.gateway.gateway.store.start_failures() == {}

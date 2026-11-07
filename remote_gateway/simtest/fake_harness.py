@@ -106,6 +106,7 @@ class World:
         row = copy.deepcopy(TEMPLATES['row'])
         row.update(experiment_id=run.experiment_id, key=run.key, session_id='v2-' + run.key, state=run.state, experiment_state=run.state, reason=run.reason, created_at=run.created_at,
                    policy_id=run.selection['policies'][0], seed=run.selection['seeds'][0], task_id=run.selection['tasks'][0], mode=run.selection['mode'], owner=run.owner)
+        if run.state == 'running' and run.wait:row['human_wait'] = copy.deepcopy(run.wait)
         return row
 
     def view(self, run):

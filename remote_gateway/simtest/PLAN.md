@@ -66,7 +66,7 @@
 | 请求频率（普通、实时） | 10/秒、30/秒 | 100000/秒 |
 | 登录失败 | 10/小时 | 100000/小时 |
 
-不属于“上限”、继续生效的：同一时间一个仿真（`sim.lock`）、磁盘底线和预算、Codex 77% 停线、`no-new-runs`、单 run 30 分钟的测试时长。放开限流后，这次测试不再能观察 429。
+不属于“上限”、继续生效的：同一时间一个仿真（`sim.lock`）、磁盘底线和预算、Codex 77% 停线、单 run 30 分钟的测试时长。放开限流后，这次测试不再能观察 429。
 
 ## 五、真实测试放在哪
 
@@ -74,13 +74,13 @@
 
 - 新开实例 `rr-sim/real`：自己的 harness（端口 8874，自己的 store 和 run 目录，不碰 rr-1107）、测试网关 8871、监控 8870。
 - 网关用 `simtest/codex_gateway.py` 启动：只在这个测试入口把 Dev 换成 Codex，并把 `quota_stop_percent` 设为 77。公开网关照旧拒绝 Codex，测试里有这一条检查。页面不用改，模拟用户照常选 Lab models。
-- `stop_files` 保留 `no-new-runs`，`sim_lock` 用共用的 `/tmp/claude-1000/shared/sim.lock`。
+- `stop_files` 为空（原因见下），`sim_lock` 用共用的 `/tmp/claude-1000/shared/sim.lock`。
 - 用 `reactive_help` 策略，让求助和 120 秒等待有机会触发。Codex 也可能在 30 分钟内不提交，这种情况会如实报“未触发”。
 
-放行时需要明确的两点：
+中控台转达的决定：
 
-1. **`no-new-runs` 标志还在。** 脚本看到它就拒绝开始。把它从 `stop_files` 去掉等于放松检查，要用户亲口决定或由中控台明确说明。
-2. **Eval 和 Advisor 的 PARCC key。** harness 会自己读 `~/.litellm-key`，现有的 8860 也是这样，key 不经过对话；但这不是用户在 UI 或 getpass 输入的。
+1. **`no-new-runs`：** 用户原话“测试里完美放开”“我将放行所有的run”。标志文件不删不改，只是测试实例的 `stop_files` 不含它。`df` 可用低于 130G 时，脚本不开新 run。报告要写明这一点。
+2. **PARCC key：** Eval 和 Advisor 沿用 8860 的方式，由 harness 读 `~/.litellm-key`，key 不进对话、不打印、不写日志。用户反对就改 Codex。
 
 额度：跑前跑后打印 `/api/codex-quota`，到 77% 叫停。这个接口的读数可能不是最新；harness 里的 `QuotaMonitor` 用实时读数，同样按 77% 停。
 
@@ -98,18 +98,17 @@
 - 安全线每 30 秒检查一次。超限时，暂停新 run，所有用户取消自己的 run，页面显示原因。这个流程已用假后端验证。
 - 清理：`python -m remote_gateway.simtest.cleanup` 只列出本次测试数据库里的 run，加 `--delete` 才删除。删除前我会把清单给用户。
 
-## 七、离线测出的产品问题
+## 七、离线测出的产品问题（已修）
 
-都是真实页面和网关的行为，用假后端复现，还没有在真实 run 上观察过。这次没有修。
+都用假后端复现，修复也只在假后端和自动测试上验证过，还没有在真实 run 上观察。
 
-| # | 问题 | 位置 |
+| # | 问题 | 修法 |
 |---|---|---|
-| 1 | 排队时 Stop run 是灰的，用户无法从页面离开队列；网关的 cancel 本身正常 | `live.js` 的 `canStop`，`dev_agent_view.py` 的 `can_stop=False` |
-| 2 | 在 Remote 点“跳过”会多发一个 `POST /api/lobby/runs/{run}/reply`，返回 404，并抛脚本异常。跳过本身送达了 | `lobby.js` 的 `bindHelp` 给真实 run 也绑了 `[data-hr-skip]` |
-| 3 | 别人的 run 在等回复时，非主人和访客也看到回复框和全屏警示；提交会被网关拒绝 | `live.js` 的 `agentPolicyHelp` 没判断主人，`syncHelpAlert` 只看回复框 |
-| 4 | 排队的 run 轮到时启动失败，会被静默移出队列，页面只显示“PREPARED / NOT STARTED”，没有错误 | `server.py` 的 `dispatch` 和 `loop` 丢弃了结果 |
-
-另有一点只来自读代码，未实测：`policy._card` 不会给真实 run 产生 `waiting_human`，所以大厅不显示“Needs you”。
+| 1 | 排队时 Stop run 是灰的，用户无法从页面离开队列 | `live.js`：自己排队中的 run 可以 Stop |
+| 2 | 在 Remote 点“跳过”多发一个 404 请求并抛脚本异常 | `lobby.js`：`bindHelp` 不再绑定真实 run |
+| 3 | 非主人和访客看到回复框和全屏警示 | `live.js`：Remote 上只有主人才有回复框，全屏警示跟着回复框走 |
+| 4 | 排队的 run 启动失败被静默移出队列 | 网关记下原因，大厅卡片带 `start_error`，页面 02 显示 “DID NOT START” |
+| 5 | `policy._card` 从不产生 `waiting_human`，大厅不显示 “Needs you”（读代码后确认属实） | `daily_dev_v2.sessions` 的列表带上 `human_wait`，`_card` 据此给状态和等待秒数 |
 
 ## 怎么运行
 

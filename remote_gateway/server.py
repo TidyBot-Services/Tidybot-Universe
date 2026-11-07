@@ -92,7 +92,7 @@ class Gateway:
 
     def board(self, viewer, listing=None):
         listing = listing if listing is not None else self.listing()
-        return policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits)
+        return policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits, now=self.clock(), start_errors=self.store.start_failures())
 
     def take_robot(self):
         if self.lock_file or not self.config.sim_lock:return True
@@ -125,7 +125,10 @@ class Gateway:
                 return None
             self.store.dequeue(head['experiment_id'])
             if status == 200:self.starting_until = self.clock() + 30
-            else:self.free_robot()
+            else:
+                self.free_robot()
+                # Whoever waited in line may be away; the reason stays on the run for them to read.
+                self.store.start_failed(head['experiment_id'], str(value.get('error') if isinstance(value, dict) and value.get('error') else f'The run host refused the start (HTTP {status}).')[:300])
             return head['experiment_id'], status, value
 
     def loop(self, stop):
@@ -337,6 +340,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def join_queue(self, experiment_id):
         """Into the line, and straight onto the robot if it is free. A host that refuses the start says so to the person who asked."""
+        self.gateway.store.start_retried(experiment_id)
         self.gateway.store.enqueue(experiment_id, self.user)
         started = self.gateway.dispatch()
         if started and started[0] == experiment_id and started[1] != 200:return started[1], started[2]

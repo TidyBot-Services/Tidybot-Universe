@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, user_id TEXT NO
 CREATE TABLE IF NOT EXISTS runs(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, host_id TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS runs_user ON runs(user_id);
 CREATE TABLE IF NOT EXISTS queue(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, queued_at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS start_failures(experiment_id TEXT PRIMARY KEY, message TEXT NOT NULL, failed_at REAL NOT NULL);
 '''
 
 
@@ -118,6 +119,16 @@ class Store:
     def queue(self):
         """First come, first served."""
         with self.tx() as db:return [dict(r) for r in db.execute('SELECT experiment_id,user_id FROM queue ORDER BY queued_at,rowid')]
+
+    def start_failed(self, experiment_id, message):
+        """A run left the line because the host would not start it. Kept so its owner can read why, whenever they look."""
+        with self.tx() as db:db.execute('INSERT OR REPLACE INTO start_failures VALUES(?,?,?)', (experiment_id, message, self.clock()))
+
+    def start_retried(self, experiment_id):
+        with self.tx() as db:db.execute('DELETE FROM start_failures WHERE experiment_id=?', (experiment_id,))
+
+    def start_failures(self):
+        with self.tx() as db:return {r['experiment_id']: r['message'] for r in db.execute('SELECT experiment_id,message FROM start_failures')}
 
     def runs_today(self, user_id):
         with self.tx() as db:

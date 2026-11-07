@@ -50,3 +50,20 @@ test('Queue comes after main\'s six sections, with no sharing switch, and live.j
   assert.match(live,/window\.Lobby\.shapeNewRun\(form\);/);
   assert.doesNotMatch(live,/ab-lobby-hide/);
 });
+
+test('on Remote only the owner is asked, and a run in line can be left',()=>{
+  assert.match(live,/const wait=root\.dataset\.remote==='1'&&snapshot\.lobby\?\.mine!==true\?null:agent\.human_wait/);
+  assert.match(live,/snapshot\.lobby\?\.mine && snapshot\.lobby\.state === 'queued' \? true/);
+});
+test('a real run keeps its own help panel: the lobby binds nothing there',async()=>{
+  const Lobby=await loadLobby(['x']);
+  let bound=0;
+  Lobby.bindHelp({querySelector:()=>{bound++;return null;}},{lobby:{real:true,state:'waiting_human'}},()=>{});
+  assert.equal(bound,0);
+});
+test('a run that could not start says so in 02',async()=>{
+  const Lobby=await loadLobby(['x']);
+  const html=Lobby.outcomeHtml({lobby:{real:true,state:'created',mine:true,start_error:'no <GPU>'}});
+  assert.match(html,/data-operator-outcome="start-failed"/);
+  assert.match(html,/no &lt;GPU&gt;/);
+});

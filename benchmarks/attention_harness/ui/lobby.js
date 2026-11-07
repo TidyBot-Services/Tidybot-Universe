@@ -56,6 +56,7 @@
     if (!card.mine || !before || before.state === card.state) return;
     if (card.state === 'waiting_human') state.hooks.toast?.('The robot is asking you for help — answer in 04.', 'info');
     else if (card.state === 'running' && before.state === 'queued') state.hooks.toast?.('Your run is starting now.', 'info');
+    else if (card.start_error && before.state === 'queued') state.hooks.toast?.('Your run could not start. See 02.', 'error');
   }
 
   const card = experimentId => (state.enabled && experimentId ? state.cards.get(experimentId) : null) || null;
@@ -130,6 +131,7 @@
   const tiles = items => `<div class="lb-tiles">${items.map(([big, name]) => `<div><b>${esc(big)}</b>${esc(name)}</div>`).join('')}</div>`;
   function outcomeHtml(snapshot) {
     const c = snapshot.lobby;
+    if (c?.start_error && c.state === 'created') return `<div class="op-outcome failed" data-operator-outcome="start-failed" role="alert"><strong>✕ DID NOT START</strong><div><p>${c.mine ? 'Your run' : `${esc(c.nickname)}'s run`} reached the front of the line but could not start, so it left the line.</p><p>${esc(c.start_error)}</p></div></div>`;
     if (!c || !['queued', 'running', 'waiting_human'].includes(c.state) || (c.real && c.state !== 'queued')) return '';
     const k = c.attempt.current, n = c.attempt.limit, owner = c.mine ? 'You are' : `${esc(c.nickname)} is`;
     if (c.state === 'queued') {
@@ -187,7 +189,7 @@
   }
   function bindHelp(view, snapshot, rerender) {
     const c = snapshot.lobby;
-    if (!c) return;
+    if (!c || c.real) return;  // A real run answers from its own panel, with its own skip button.
     const typing = view.querySelector('[data-lb-text]');
     if (typing && state.focus) { typing.focus({preventScroll: true}); typing.setSelectionRange(...state.focus); state.focus = null; }
     view.querySelector('[data-lb-text]')?.addEventListener('input', e => { state.draft = e.target.value; });
@@ -277,7 +279,7 @@
   global.Lobby = {
     get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
     newRunHtml, newRunNotice, newRunLimits, shapeNewRun, syncJoin, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
-    fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting] : null),
+    fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting, card(experimentId).start_error] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; poll(); } },
   };
 })(window);

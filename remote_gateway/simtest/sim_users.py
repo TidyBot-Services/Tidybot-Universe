@@ -226,9 +226,11 @@ class Person:
 
     async def wait_robot(self, seconds=1200):
         async with self.step('排队等待'):
-            now = await self.until('轮到我，开始运行', lambda s:(s['card'] or {}).get('state') in ('running', 'finished', 'cancelled', 'created'), seconds)
+            now = await self.until('轮到我，开始运行', lambda s:(s['card'] or {}).get('state') in ('running', 'waiting_human', 'finished', 'cancelled', 'created'), seconds)
             self.on_robot_at = time.time()
-            if now['card']['state'] == 'created':raise RuntimeError(f'run 被移出队列但没有启动，页面只写着：{now["outcome"][:90]}')
+            if now['card']['state'] == 'created':
+                self.check('启动失败时页面写明原因', 'DID NOT START' in now['outcome'], now['outcome'][:160])
+                raise RuntimeError(f'run 被移出队列但没有启动，页面写着：{now["outcome"][:160]}')
 
     async def watch_live(self, seconds=60):
         async with self.step('看实时画面'):
@@ -245,7 +247,9 @@ class Person:
                 self.emit('state', no_help=True);self.problem('未触发求助', 'run 结束前机器人没有求助', 'notice')
                 return
             await asyncio.sleep(1)
-            self.check('全屏警示出现', (await self.read())['alert'])
+            shown = await self.read()
+            self.check('全屏警示出现', shown['alert'])
+            self.check('大厅知道在等我回复', (shown['card'] or {}).get('state') == 'waiting_human', shown['card'])
             form = self.page.locator('[data-agent-reply]')
             if how == 'reply':
                 text = await self.write_reply(now['question'])
@@ -289,7 +293,7 @@ class Person:
         if cap:
             async with self.step(f'看到 run 开始后第 {cap:.0f} 秒为止'):
                 await self.until('run 结束或到时间上限', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled') or self.past_cap(), 86400)
-            if ((await self.read())['card'] or {}).get('state') == 'running':await self.stop_run()
+            if ((await self.read())['card'] or {}).get('state') in ('running', 'waiting_human'):await self.stop_run()
         async with self.step('等 run 结束'):
             now = await self.until('run 结束', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled'), seconds)
             self.emit('state', run_id=self.run_id, page=dict(now, frame=None, live=False), finished=(now['card'] or {}).get('result') or (now['card'] or {}).get('state'))
@@ -302,7 +306,8 @@ class Person:
             if await button.is_disabled(timeout=10000):raise RuntimeError('排队时 Stop run 是灰的，用户无法从页面离开队列')
             await button.click(timeout=10000)
             await self.page.locator('[data-end-run-dialog] button[value=end]').click(timeout=5000)
-            await self.until('已离开队列', lambda s:(s['card'] or {}).get('state') == 'cancelled', 30)
+            now = await self.until('已离开队列', lambda s:(s['card'] or {}).get('state') == 'cancelled', 30)
+            self.emit('state', run_id=self.run_id, page=dict(now, frame=None, live=False))
             return
         async with self.step('直接请求离开队列'):
             answer = await self.call('POST', f'/api/dev-v2/experiments/{self.run_id}/cancel', {})
@@ -413,7 +418,7 @@ class Person:
         if not self.own_run or not self.page or self.page.is_closed():return
         try:
             state = ((await self.read())['card'] or {}).get('state')
-            if state in ('queued', 'running'):
+            if state in ('queued', 'running', 'waiting_human'):
                 answer = await self.call('POST', f'/api/dev-v2/experiments/{self.own_run}/cancel', {})
                 self.emit('action', action=f'中断后取消自己的 run（HTTP {answer["status"]}）', phase='done')
         except Exception as error:

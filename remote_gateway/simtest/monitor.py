@@ -30,6 +30,7 @@ def status_of(lane):
     if lane['offline']:return 'offline'
     if lane['story'] == '访客':return 'finished' if lane['done'] else 'watching' if page.get('lobby') else 'login' if lane['action'] else 'waiting'
     if page.get('reply') and page.get('viewing') == lane['run_id']:return 'reply'
+    if card.get('state') == 'waiting_human':return 'running'  # Only a reply form on my own run counts as waiting on me.
     if card.get('state') in ('queued', 'running', 'finished', 'cancelled'):return card['state']
     if lane['done'] is True:return 'finished'
     if page.get('lobby'):return 'lobby'

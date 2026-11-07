@@ -173,3 +173,28 @@ def test_a_cover_picture_is_asked_for_by_name_only(query):
 
 def test_a_cover_picture_keeps_only_its_run_and_view():
     assert policy.home_scene('run=devexp-' + 'a' * 24 + '&view=top') == '/api/home/scene?run=devexp-' + 'a' * 24 + '&view=top'
+
+
+def _board(row, **options):
+    return policy.board(dict(dev_sessions=[row]), owners={row['experiment_id']: 'u-1'}, nicknames={'u-1': 'Fox-1'}, queue=[], limits=Limits(), **{'viewer': 'u-1', **options})
+
+
+def test_a_run_waiting_for_its_owner_says_so_in_the_lobby():
+    wait = dict(deadline_at=1100, seconds=120, question='What next?', execution_id='e000001')
+    row = dict(experiment_id='devexp-' + 'a' * 24, state='running', experiment_state='running', human_wait=wait)
+    board = _board(row, now=1040)
+    card = board['robot']['running']
+    assert card['state'] == 'waiting_human' and card['help_waiting_seconds'] == 60 and card['waiting'] == dict(question='What next?')
+    assert board['counts']['needs_you'] == 1
+    assert _board(row, now=1040, viewer='u-2')['counts']['needs_you'] == 0  # Everyone sees the state; it needs only its owner.
+
+
+def test_a_finished_run_is_not_waiting_whatever_the_row_still_says():
+    row = dict(experiment_id='devexp-' + 'a' * 24, state='failed', experiment_state='failed', human_wait=dict(deadline_at=1, seconds=1))
+    assert _board(row)['recent'][0]['state'] == 'finished'
+
+
+def test_a_run_that_could_not_start_carries_the_reason():
+    eid = 'devexp-' + 'a' * 24
+    card = _board(dict(experiment_id=eid, state='planned', experiment_state='planned'), start_errors={eid: 'no GPU'})['recent'][0]
+    assert card['state'] == 'created' and card['start_error'] == 'no GPU'
