@@ -89,7 +89,8 @@ def robot_state(row):
 
 def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None):
     state = _state(row);versions = row.get('versions') or [];wait = row.get('human_wait') if running(row) else None
-    solved = any(v.get('native_success') is True for v in versions if isinstance(v, dict))
+    # A legacy run lists its versions; an Agent run's listing carries only the cell's own end reason.
+    solved = row.get('reason') == 'native_success' or any(v.get('native_success') is True for v in versions if isinstance(v, dict))
     shown = 'queued' if position else 'waiting_human' if wait else 'running' if running(row) else 'cancelled' if state == 'cancelled' else 'created' if state in IDLE_STATES else 'finished'
     return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
                 state=shown, result=None if shown != 'finished' else 'solved' if solved else 'failed', mine=mine, real=True, started_at=row.get('created_at'), ended_at=None,

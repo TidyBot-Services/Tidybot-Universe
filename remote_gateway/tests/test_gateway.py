@@ -620,3 +620,14 @@ def test_the_lobby_lists_open_runs_with_their_robot_state(world):
     board = second.json('GET', '/api/lobby')[1]
     assert [(c['experiment_id'], c['robot']) for c in board['robot']['open']] == [(a, dict(state='executing')), (b, dict(state='waiting', ahead=1))]
     assert board['robot']['running']['experiment_id'] == a and board['counts']['running'] == 2
+
+
+def test_a_finished_agent_run_that_succeeded_reads_solved_in_the_lobby():
+    """An Agent run lists no versions, only the cell's end reason; native_success there is a solved run, not a failed one."""
+    from remote_gateway import policy
+    from remote_gateway.config import Limits
+    row = dict(experiment_id='devexp-' + 'a' * 24, task_id='t', state='completed', reason='native_success', created_at=1)
+    card = policy._card(row, nickname='Fox-11', mine=False, position=None, eta=None, limits=Limits())
+    assert (card['state'], card['result']) == ('finished', 'solved')
+    card = policy._card(dict(row, reason='budget_exhausted'), nickname='Fox-11', mine=False, position=None, eta=None, limits=Limits())
+    assert (card['state'], card['result']) == ('finished', 'failed')
