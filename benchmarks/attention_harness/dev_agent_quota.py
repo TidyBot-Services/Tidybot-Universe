@@ -50,13 +50,22 @@ def read_weekly_quota(home=None, *, now=None):
 class QuotaUnavailable(RuntimeError): pass
 
 
+# User 11-08: one run may use at most this many points of the weekly Codex quota, counted from the first reading
+# this run sees in the same weekly window. Runs open at the same time share the one weekly counter, so each sees the
+# others' use too: the cap then stops runs earlier, never later.
+RUN_CAP_POINTS = 5
+
+
 class QuotaMonitor:
-    def __init__(self, private, ledger, *, stop_percent=90, reader=None, clock=time.time):
+    def __init__(self, private, ledger, *, stop_percent=90, reader=None, clock=time.time, run_cap_points=RUN_CAP_POINTS):
         if type(stop_percent) not in (int,float) or not math.isfinite(stop_percent) or not 0<stop_percent<=100:
             raise ValueError('invalid_quota_stop_percent')
         self.private,self.ledger,self.stop_percent=private,ledger,stop_percent
         self.reader=reader or read_weekly_quota
         self.clock=clock; self.latest=None; self.stopped=False; self.failure=None
+        self.run_cap_points=run_cap_points; self.capped=False
+        base=self.private/'quota-baseline.json'
+        self.baseline=json.loads(base.read_bytes()) if base.exists() else None
         self.lock=threading.RLock()
         prior=self.private/'quota-event.json'
         if prior.exists():self.latest=json.loads(prior.read_bytes())
@@ -101,10 +110,18 @@ class QuotaMonitor:
                 window=latest_quota_readings([r for r in candidates if r['resets_at']>=reset-RESET_JITTER_SECONDS])
                 used=max(r['used_percent'] for r in window)
                 observed=max(r['observed_at'] for r in window)
-                self.stopped=self.stopped or used>=self.stop_percent
+                if self.baseline is None or abs(self.baseline['resets_at']-reset)>RESET_JITTER_SECONDS:
+                    # A new weekly window starts the count again.
+                    self.baseline=dict(used_percent=used,resets_at=reset,at=now)
+                    from .dev_agent_workspace import atomic_write,encode
+                    atomic_write(self.private,'quota-baseline.json',encode(self.baseline))
+                run_points=used-self.baseline['used_percent']
+                self.capped=self.capped or (self.run_cap_points is not None and run_points>=self.run_cap_points)
+                self.stopped=self.stopped or used>=self.stop_percent or self.capped
                 # Usage only moves when Codex runs, and every local Codex turn writes a fresh
                 # reading; an old reading (e.g. during a long execution) is used but flagged.
                 sample=dict(at=now,reason=reason,used_percent=used,resets_at=reset,stop_percent=self.stop_percent,
+                            run_points=run_points,run_cap_points=self.run_cap_points,run_cap_reached=self.capped,
                             stopped=self.stopped,observed_at=observed,stale=now-observed>WEEKLY_READING_MAX_AGE)
             else:
                 self.failure=error or 'quota_stale_or_unavailable'
