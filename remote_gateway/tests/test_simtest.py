@@ -17,7 +17,8 @@ from remote_gateway.upstream import control_token
 
 SECRET = b's' * 48
 BEGIN = dict(kind='begin', at=1, people=[dict(lane='U1', name='甲', story='认真回复'), dict(lane='G1', name='乙', story='访客')])
-SELECTION = dict(request_key='client-key-1', policies=['reactive_help'], seeds=[101], tasks=['open_cabinet'], mode='interactive', human_reply_seconds=30)
+LAB = dict(credential='lab', provider='parcc', model='parcc/GLM')
+SELECTION = dict(request_key='client-key-1', policies=['reactive_help'], seeds=[101], tasks=['open_cabinet'], mode='interactive', human_reply_seconds=30, agent_provider=dict(roles=dict(dev=LAB, eval=LAB, advisor=LAB)))
 
 
 def state(card, **extra):
@@ -81,11 +82,25 @@ def test_invite_codes_never_reach_the_log(tmp_path):
 
 
 def test_no_limit_lives_in_the_test_instance_and_nowhere_else(tmp_path):
-    path = run_sim.gateway_config(tmp_path, port=8871, upstream='http://127.0.0.1:8872', wall_seconds=1200)
+    path = run_sim.gateway_config(tmp_path, port=8871, upstream='http://127.0.0.1:8872')
     limits = load(path).limits
-    assert (limits.runs_per_day, limits.versions, limits.help_requests) == (100000, 10, 10)
-    assert (limits.requests_per_second, limits.active_runs, limits.logins_per_hour) == (Limits().requests_per_second, 1, Limits().logins_per_hour)
-    assert (Limits().runs_per_day, Limits().versions, Limits().help_requests) == (3, 3, 3)
+    assert (limits.runs_per_day, limits.versions, limits.help_requests, limits.wall_seconds, limits.active_runs) == (100000, 10, 10, 21600, 1000)
+    assert limits.requests_per_second >= 100000 and limits.live_requests_per_second >= 100000 and limits.logins_per_hour >= 100000
+    assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=3, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
+
+
+def test_the_test_gateway_puts_dev_on_codex_under_the_stop_line_and_the_harness_accepts_it():
+    from benchmarks.attention_harness.dev_agent_config import configuration, provider_roles
+    from remote_gateway import policy
+    from remote_gateway.simtest.codex_gateway import with_codex_dev
+    options = dict(dev_v2=dict(profiles=[dict(task_id='open_cabinet', enabled=True)], agent_policies=dict(policies=[dict(policy_id='reactive_help')])))
+    body = dict(selection=dict(SELECTION, help_budget=1))
+    made = with_codex_dev(policy.rebuild)(body, user='u-1', options=options, limits=Limits(), credentials=[])
+    assert made['dev_model'] == 'gpt-6-astra' and made['quota_stop_percent'] == 77
+    roles = provider_roles(made['agent_provider'])['roles']
+    assert roles['dev']['provider'] == 'openai' and roles['eval']['provider'] == 'parcc' and roles['advisor']['provider'] == 'parcc'
+    assert configuration(made)['quota_stop_percent'] == 77
+    assert policy.rebuild(body, user='u-1', options=options, limits=Limits(), credentials=[])['quota_stop_percent'] == 90  # The public gateway is untouched.
 
 
 def sign(owner, method, target, body=b''):

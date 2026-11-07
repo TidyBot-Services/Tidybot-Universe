@@ -1,14 +1,14 @@
 # 方案：Remote 多用户模拟测试
 
-2026-11-07，分支 `claude/bold-gates-c82b8e`，基于 a503112。这份方案等用户确认。真实测试要等中控台放行，并告知基线 commit。
+2026-11-07，分支 `claude/bold-gates-c82b8e`，基于 main 652ea13。已按用户经中控台转达的决定修订：测试实例所有上限放开；Dev 用 Codex，跑在 truares；回复由 Codex 生成。真实测试等中控台放行。
 
 ## 现在到哪一步
 
 | 层级 | 状态 |
 |---|---|
 | 脚本和监控页 | 已写好，在 `remote_gateway/simtest/` |
-| 自动测试 | `remote_gateway/tests` 全部通过，其中新增 `test_simtest.py` 18 项 |
-| 离线全流程 | 跑通：真实 Chrome + 真实网关 + 真实页面 + 假后端，9 个用户，37 项检查全过。页面判定“有错误”，因为测出了下面 4 个产品问题 |
+| 自动测试 | `remote_gateway/tests` 全部通过，其中新增 `test_simtest.py` |
+| 离线全流程 | 跑通：真实 Chrome + 真实网关 + 真实页面 + 假后端，9 个用户，48 项检查全过，包含全屏警示。页面判定“有错误”，因为测出了下面的产品问题 |
 | 真实 run | 没有跑。本任务没有开 run，没有占 `sim.lock`，没有重启服务 |
 
 ## 一、模拟用户
@@ -34,10 +34,12 @@
 | 阶段 | 假后端 | 真实 run |
 |---|---|---|
 | 用途 | 全部剧情、并发、故障注入，可反复跑 | 证明真实链路在多人下也成立 |
-| 规模 | 9 人全剧情，时钟 8 倍，一轮约 6 分钟 | 同样 9 人跑 1 轮：6 个真实 run，每个最多看 10 分钟；U2 不上机器人；U5 看到画面就停 |
-| 占用 | 不用 GPU 和模型，磁盘小于 2M | 预计 70–90 分钟，单仿真串行 |
+| 规模 | 9 人全剧情，时钟 8 倍，一轮约 6 分钟 | 同样 9 人跑 1 轮：6 个真实 run，每个从开始起最多 30 分钟；U2 不上机器人；U5 看到画面就停 |
+| 占用 | 不用 GPU 和模型，磁盘小于 3M | 最长约 3 小时，单仿真串行 |
 
-假后端校验网关签名，并记录“同一时间两个 run”。真实测试只用 PARCC GLM，不用 Codex，所以不消耗 Codex 额度。
+假后端校验网关签名，并记录“同一时间两个 run”。真实测试的 Dev 用 Codex（gpt-6-astra），Eval 和 Advisor 用 PARCC。
+
+**回复是模拟的：** U1、U6、U7 的回复由 `reply_writer.py` 调 Codex 写出，再由模拟用户在页面回复框发送，走完整的页面和网关路径。这不算真人验证，报告里会写明。写回复失败时不发送，监控页报错，由 Advisor 接手。
 
 ## 三、监控网页
 
@@ -50,58 +52,53 @@
 - 预期拒绝（比如 U8 的 404）单独计数，不算错误，但仍然可见。
 - `sim.lock` 只读 `/proc/locks`，不去试锁，所以监控不会占锁。
 
-## 四、“PARCC 无上限”放开什么
+## 四、测试实例放开什么
 
-代码核查结果：网关和 harness 都没有 PARCC 的 token 或调用次数上限。真正卡使用量的是网关的次数限制。
+用户决定：测试里所有上限都放开，包括请求频率。只写进测试实例的 `gateway.json`；`config.py` 默认值和 `deploy/` 模板不改，`test_no_limit_lives_in_the_test_instance_and_nowhere_else` 会检查这一点。
 
-| 项 | 默认 | 测试实例 | 说明 |
-|---|---|---|---|
-| `runs_per_day` | 3 | 100000 | 放开 |
-| `versions` | 3 | 10 | 放开到 harness 硬上限 |
-| `help_requests` | 3 | 10 | 放开到 harness 硬上限 |
-| `wall_seconds` | 3600 | 1200 | 不放开：它管 GPU 和磁盘，不管模型用量 |
-| `active_runs` | 1 | 1 | 不放开：这是要测的规则 |
-| 请求限流、登录限流 | 10/秒，实时 30/秒 | 不变 | 要测真实限流；此前真实 run 出现过 14 次 429 |
+| 项 | 默认 | 测试实例 |
+|---|---|---|
+| `runs_per_day` | 3 | 100000 |
+| `versions` | 3 | 10（harness 硬上限） |
+| `help_requests` | 3 | 10（harness 硬上限） |
+| `wall_seconds` | 3600 | 21600（harness 硬上限） |
+| `active_runs` | 1 | 1000 |
+| 请求频率（普通、实时） | 10/秒、30/秒 | 100000/秒 |
+| 登录失败 | 10/小时 | 100000/小时 |
 
-这些值只写进 `rr-sim/real/gateway.json`。`config.py` 的默认值和 `deploy/` 模板不改，`test_no_limit_lives_in_the_test_instance_and_nowhere_else` 会检查这一点。
+不属于“上限”、继续生效的：同一时间一个仿真（`sim.lock`）、磁盘底线和预算、Codex 77% 停线、`no-new-runs`、单 run 30 分钟的测试时长。放开限流后，这次测试不再能观察 429。
 
 ## 五、真实测试放在哪
 
-建议放在 qifei（RTX 5090），网关在本机：
+按用户决定跑在 truares，只走本机：
 
-- 本机根盘不用承担 run 数据。
-- 新开实例 `rr-sim/real`，网关端口 8871，经现有隧道 8862 连 qifei，和 8863 共用 `qifei-sim.lock`。
-- 只走本机和 SSH 隧道，不开放公网端口。
-- seed 用 101。seed 102 在 qifei 过不了场景校验。
+- 新开实例 `rr-sim/real`：自己的 harness（端口 8874，自己的 store 和 run 目录，不碰 rr-1107）、测试网关 8871、监控 8870。
+- 网关用 `simtest/codex_gateway.py` 启动：只在这个测试入口把 Dev 换成 Codex，并把 `quota_stop_percent` 设为 77。公开网关照旧拒绝 Codex，测试里有这一条检查。页面不用改，模拟用户照常选 Lab models。
+- `stop_files` 保留 `no-new-runs`，`sim_lock` 用共用的 `/tmp/claude-1000/shared/sim.lock`。
+- 用 `reactive_help` 策略，让求助和 120 秒等待有机会触发。Codex 也可能在 30 分钟内不提交，这种情况会如实报“未触发”。
 
-放行后要做的准备：
+放行时需要明确的两点：
 
-1. 把 qifei 的 harness 更新到基线 commit。这一步要重启 qifei 上的 harness，我会先向中控台确认。
-2. PARCC key：qifei 的 `~/.litellm-key` 被拒（401），需要用户用 getpass 输入，key 不经过对话。
+1. **`no-new-runs` 标志还在。** 脚本看到它就拒绝开始。把它从 `stop_files` 去掉等于放松检查，要用户亲口决定或由中控台明确说明。
+2. **Eval 和 Advisor 的 PARCC key。** harness 会自己读 `~/.litellm-key`，现有的 8860 也是这样，key 不经过对话；但这不是用户在 UI 或 getpass 输入的。
+
+额度：跑前跑后打印 `/api/codex-quota`，到 77% 叫停。这个接口的读数可能不是最新；harness 里的 `QuotaMonitor` 用实时读数，同样按 77% 停。
 
 ## 六、磁盘预算和清理
 
 | 项 | 值 |
 |---|---|
-| 现状 | truares 剩约 200G（用了 78%）；qifei 剩 177G（用了 95%） |
+| 现状 | truares 剩约 200G（用了 78%） |
 | 已知 run 大小 | 20 分钟 2.0G，36 分钟 2.7G，75 分钟 7.6G |
 | 单 run 预算 | 预计不超过 3G，硬上限 20G |
 | 整次测试预算 | 预计约 16G，硬上限 25G |
-| 底线 | 运行主机剩余不低于 130G，否则不开始或叫停（qifei 上是沿用 truares 的数字，请确认）；新实跑底线 60G 同时满足 |
+| 底线 | truares 剩余不低于 130G，否则不开始或叫停；新实跑底线 60G 同时满足 |
 
 - 跑前跑后都打印 `df`，监控页也实时显示。
 - 安全线每 30 秒检查一次。超限时，暂停新 run，所有用户取消自己的 run，页面显示原因。这个流程已用假后端验证。
 - 清理：`python -m remote_gateway.simtest.cleanup` 只列出本次测试数据库里的 run，加 `--delete` 才删除。删除前我会把清单给用户。
 
-## 七、需要用户决定
-
-1. **`no-new-runs` 标志**：这个标志还在，写于 10-31，当时用了 76%。truares 网关的 `stop_files` 包含它；qifei 网关不包含，所以技术上挡不住 qifei。qifei 上的真实测试是否受它约束？
-2. **真人回复路径**：GLM 很少提交版本或求助，临时提示词在 qifei 上也没触发。
-   - 方案 A（建议）：真实 run 全用 GLM + `reactive_help`，未触发就如实报“未触发”。
-   - 方案 B：另加 1 次 Dev 用 Codex 的 run。此前这样触发过，额度从 0% 到 1%，但要临时放开网关对 Codex 的限制，并守 77% 停线。当前额度未核实。
-3. **qifei 的磁盘底线**：沿用 130G 是否合适。
-
-## 八、离线测出的产品问题
+## 七、离线测出的产品问题
 
 都是真实页面和网关的行为，用假后端复现，还没有在真实 run 上观察过。这次没有修。
 
@@ -109,15 +106,10 @@
 |---|---|---|
 | 1 | 排队时 Stop run 是灰的，用户无法从页面离开队列；网关的 cancel 本身正常 | `live.js` 的 `canStop`，`dev_agent_view.py` 的 `can_stop=False` |
 | 2 | 在 Remote 点“跳过”会多发一个 `POST /api/lobby/runs/{run}/reply`，返回 404，并抛脚本异常。跳过本身送达了 | `lobby.js` 的 `bindHelp` 给真实 run 也绑了 `[data-hr-skip]` |
-| 3 | 别人的 run 在等回复时，非主人和访客也看到回复框；提交会被网关拒绝 | `live.js` 的 `agentPolicyHelp` 没判断主人 |
+| 3 | 别人的 run 在等回复时，非主人和访客也看到回复框和全屏警示；提交会被网关拒绝 | `live.js` 的 `agentPolicyHelp` 没判断主人，`syncHelpAlert` 只看回复框 |
 | 4 | 排队的 run 轮到时启动失败，会被静默移出队列，页面只显示“PREPARED / NOT STARTED”，没有错误 | `server.py` 的 `dispatch` 和 `loop` 丢弃了结果 |
 
 另有一点只来自读代码，未实测：`policy._card` 不会给真实 run 产生 `waiting_human`，所以大厅不显示“Needs you”。
-
-## 九、基线合并后要补
-
-- “等待回复时全屏警示 E→F”不在 a503112 里，基线合并后要加进 U1 的检查。
-- 用基线 commit 重跑一遍离线全流程，再开真实测试。
 
 ## 怎么运行
 
@@ -133,4 +125,10 @@
 ~/桌面/AttentionBench-Workspace/development/rr-sim/venv/bin/python -B -m remote_gateway.simtest.run_sim --dir /tmp/sim-fault --only U1 U3 --scale 0.2 --fault 18 '{"down": true}' --fault 30 '{"start_fails": true}'
 ```
 
-真实模式要带 `--real --release-commit <中控台给的 commit> --run-root <run 目录>`。commit 不符、停止标志还在或磁盘低于底线时，脚本都会拒绝开始。
+真实模式：
+
+```bash
+python -m remote_gateway.simtest.run_sim --dir rr-sim/real --real --release-commit <中控台给的 commit> --run-root rr-sim/real/public/runs --run-cap-seconds 1800 --scale 12
+```
+
+commit 不符、停止标志还在、磁盘低于底线或额度到线时，脚本都会拒绝开始。

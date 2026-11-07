@@ -19,7 +19,7 @@ READ_PAGE = '''(id) => {
   const frame = q('#ab-camera-frame');
   return {lobby: !!(L && L.enabled), robot: snap?.robot?.running?.nickname || null, queue_length: (snap?.queue || []).length, nickname: snap?.me?.nickname || null,
     card: card ? {state: card.state, position: card.queue_position, result: card.result} : null, frame: frame && !frame.hidden ? frame.src : null,
-    reply: !!(q('[data-agent-reply]')?.offsetParent), viewing: (location.hash.match(/exp=(devexp-[a-f0-9]{24})/) || [])[1] || null, countdown: text('[data-agent-reply-countdown]'), message: text('#ab-live-message'), launch_message: text('#ab-launch-message'),
+    reply: !!(q('[data-agent-reply]')?.offsetParent), alert: !!(q('#ab-help-alert') && !q('#ab-help-alert').hidden), question: text('.op-reply-bubble').replace(/^Robot/, '').trim(), reply_message: text('[data-agent-reply-message]'), viewing: (location.hash.match(/exp=(devexp-[a-f0-9]{24})/) || [])[1] || null, countdown: text('[data-agent-reply-countdown]'), message: text('#ab-live-message'), launch_message: text('#ab-launch-message'),
     readonly: !!q('[data-lobby-readonly]'), outcome: text('[data-operator-outcome]').slice(0, 120), stop_shown: !!(q('#ab-emergency-interrupt,#ab-cancel-run') && q('#ab-emergency-interrupt,#ab-cancel-run').offsetParent),
     picture: text('[data-picture-warning]')};
 }'''
@@ -53,14 +53,16 @@ class Settings:
     versions: int = 2
     shot_seconds: float = 4
     drop_seconds: float = 15
-    run_cap_seconds: float | None = None  # Real runs only: the owner stops the run after this long, so one person cannot use the whole test.
+    run_cap_seconds: float | None = None  # Real runs only: the owner stops the run this long after it starts, so one person cannot use the whole test.
+    reply_command: tuple = ()  # Writes the reply from the robot's question. Empty means a fixed sentence.
+    reply_source: str = 'fixed'
     headed: bool = False
 
 
 class Person:
     def __init__(self, lane, name, role, code, browser, settings, log, shared):
         self.lane, self.name, self.role, self.code, self.browser, self.settings, self.log, self.shared = lane, name, role, code, browser, settings, log, shared
-        self.context = self.page = None;self.run_id = None;self.expected = [];self.last = {};self.frames = set();self.polling = None;self.offline = False;self.stopped = False;self.warned = set();self.own_run = None
+        self.context = self.page = None;self.run_id = None;self.expected = [];self.last = {};self.frames = set();self.polling = None;self.offline = False;self.stopped = False;self.warned = set();self.own_run = None;self.on_robot_at = None
 
     # Writing it down
     def emit(self, kind, **row):
@@ -118,6 +120,7 @@ class Person:
         try:
             value = await response.json()
             if response.ok and value.get('experiment_id'):
+                if self.own_run:return  # A second run is an extra; this person follows their first.
                 self.run_id = self.own_run = value['experiment_id'];self.emit('state', run_id=self.run_id)
         except Exception as error:
             self.problem('读创建结果', error)
@@ -147,10 +150,13 @@ class Person:
                 now = await self.page.evaluate(READ_PAGE, self.run_id)
             except Exception:continue
             if now['frame']:self.frames.add(now['frame'])
+            if now['alert'] and now['viewing'] != self.own_run and ('alert', now['viewing']) not in self.warned:
+                self.warned.add(('alert', now['viewing']))
+                self.problem('别人的求助', f'我不是 run {now["viewing"][-8:] if now["viewing"] else "?"} 的主人，页面却弹了全屏警示')
             if now['reply'] and now['viewing'] != self.own_run and now['viewing'] not in self.warned:
                 self.warned.add(now['viewing'])  # Whoever is asked must be the owner: anyone else who answers only gets a refusal.
                 self.problem('别人的求助', f'我不是 run {now["viewing"][-8:] if now["viewing"] else "?"} 的主人，页面却给了回复框')
-            seen = {k: v for k, v in now.items() if k not in ('frame', 'countdown')}
+            seen = {k: v for k, v in now.items() if k not in ('frame', 'countdown', 'question')}
             seen['live'] = bool(now['frame'])
             if seen != self.last:
                 self.emit('state', run_id=self.run_id, page=seen)
@@ -210,7 +216,7 @@ class Person:
             await form.locator('select[name=task_id]').wait_for(timeout=10000)
             await form.locator('select[name=seed]').select_option(str(self.settings.seed))
             await form.locator('select[name=v2_mode]').select_option(mode)
-            await form.locator('select[name=v2_policy]').select_option(policy)
+            await form.locator(f'label:has([data-policy-card][value={policy}])').click()
             async with self.page.expect_response(lambda r:urlsplit(r.url).path == '/api/dev-v2/experiments' and r.request.method == 'POST', timeout=30000) as made:
                 await form.locator('[data-start-yes]').click()
             response = await made.value
@@ -221,6 +227,7 @@ class Person:
     async def wait_robot(self, seconds=1200):
         async with self.step('排队等待'):
             now = await self.until('轮到我，开始运行', lambda s:(s['card'] or {}).get('state') in ('running', 'finished', 'cancelled', 'created'), seconds)
+            self.on_robot_at = time.time()
             if now['card']['state'] == 'created':raise RuntimeError(f'run 被移出队列但没有启动，页面只写着：{now["outcome"][:90]}')
 
     async def watch_live(self, seconds=60):
@@ -233,17 +240,39 @@ class Person:
     async def answer(self, how, seconds=300):
         """A real help request, answered as this person answers: a reply, a skip, or nothing."""
         async with self.step({'reply': '回复求助', 'skip': '跳过求助', 'ignore': '不理求助'}[how]):
-            now = await self.until('机器人求助，或 run 已结束', lambda s:s['reply'] or (s['card'] or {}).get('state') in ('finished', 'cancelled'), seconds)
+            now = await self.until('机器人求助，或 run 已结束，或到了时间上限', lambda s:s['reply'] or (s['card'] or {}).get('state') in ('finished', 'cancelled') or self.past_cap(), seconds if not self.settings.run_cap_seconds else 86400)
             if not now['reply']:  # A model may simply never ask. Said plainly, not counted as an answer.
                 self.emit('state', no_help=True);self.problem('未触发求助', 'run 结束前机器人没有求助', 'notice')
                 return
+            await asyncio.sleep(1)
+            self.check('全屏警示出现', (await self.read())['alert'])
             form = self.page.locator('[data-agent-reply]')
             if how == 'reply':
-                await form.locator('textarea').fill(REPLY)
-                await form.locator('button[type=submit]').click()
+                text = await self.write_reply(now['question'])
+                if text is not None:
+                    await form.locator('textarea').fill(text)
+                    await form.locator('button[type=submit]').click()
+                    self.emit('state', reply_source=self.settings.reply_source, reply_text=text[:300])
             elif how == 'skip':
                 await form.locator('[data-hr-skip]').click()
-            await self.until('求助结束', lambda s:not s['reply'], 150)
+            after = await self.until('求助结束', lambda s:not s['reply'] or s['reply_message'], 150)
+            if after['reply_message']:raise RuntimeError(f'页面没有收下回复：{after["reply_message"]}')
+            await asyncio.sleep(1)
+            self.check('回答后全屏警示消失', not (await self.read())['alert'])
+
+    def past_cap(self):
+        cap = self.settings.run_cap_seconds
+        return bool(cap and self.on_robot_at and time.time() - self.on_robot_at >= cap)
+
+    async def write_reply(self, question):
+        """The reply, or None if it could not be written: then nothing is sent and the Advisor answers, with the failure shown."""
+        if not self.settings.reply_command:return REPLY
+        process = await asyncio.create_subprocess_exec(*self.settings.reply_command, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        out, err = await process.communicate(question.encode())
+        if process.returncode:
+            self.problem('写回复失败', err.decode(errors='replace')[-300:])
+            return None
+        return out.decode().strip()
 
     async def stop_run(self):
         async with self.step('Cancel run'):
@@ -258,11 +287,9 @@ class Person:
     async def finish(self, seconds=900):
         cap = self.settings.run_cap_seconds
         if cap:
-            try:
-                async with self.step(f'最多再看 {cap:.0f} 秒', required=False):
-                    await self.until('run 结束', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled'), cap / self.settings.scale)
-            finally:
-                if ((await self.read())['card'] or {}).get('state') == 'running':await self.stop_run()
+            async with self.step(f'看到 run 开始后第 {cap:.0f} 秒为止'):
+                await self.until('run 结束或到时间上限', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled') or self.past_cap(), 86400)
+            if ((await self.read())['card'] or {}).get('state') == 'running':await self.stop_run()
         async with self.step('等 run 结束'):
             now = await self.until('run 结束', lambda s:(s['card'] or {}).get('state') in ('finished', 'cancelled'), seconds)
             self.emit('state', run_id=self.run_id, page=dict(now, frame=None, live=False), finished=(now['card'] or {}).get('result') or (now['card'] or {}).get('state'))
@@ -360,6 +387,18 @@ class Person:
             self.check('别人的 run 没有 Stop', not now['stop_shown'], now['stop_shown'])
             self.run_id = keep
 
+    async def second_run(self):
+        """This instance has no per-person limit, so a second run must be taken into the line; it leaves at once to keep the test short."""
+        async with self.step('开第二个 run 再取消'):
+            lab = dict(credential='lab', provider='parcc', model='parcc/GLM')
+            answer = await self.call('POST', '/api/dev-v2/experiments', dict(selection=dict(request_key='second-run-attempt', tasks=[self.settings.task], seeds=[self.settings.seed], policies=['autonomous'], mode='interactive',
+                                     help_budget=1, agent_provider=dict(roles=dict(dev=lab, eval=lab, advisor=lab))), start=True))
+            self.check('放开后第二个 run 被接受', answer['status'] == 200, answer)
+            match = re.search(r'devexp-[a-f0-9]{24}', answer['text'])
+            if match:
+                stopped = await self.call('POST', f'/api/dev-v2/experiments/{match[0]}/cancel', {})
+                self.check('第二个 run 可以取消', stopped['status'] == 200, stopped)
+
     async def guest_tries(self):
         target = await self.someone_elses_run()
         async with self.step('访客尝试写操作'):
@@ -410,10 +449,7 @@ async def returns_later(p):
     await p.new_run();await p.reopen();await p.wait_robot();await p.answer('reply');await p.finish()
 
 async def overstepper(p):
-    await p.overstep();await p.new_run(policy='autonomous');await p.refused('一人只能有一个进行中的 run', 'POST', '/api/dev-v2/experiments',
-        dict(selection=dict(request_key='second-run-attempt', tasks=[p.settings.task], seeds=[p.settings.seed], policies=['autonomous'], mode='interactive', help_budget=1,
-                            agent_provider=dict(roles={r: dict(credential='lab', provider='parcc', model='parcc/GLM') for r in ('dev', 'eval', 'advisor')})), start=True), 409)
-    await p.wait_robot();await p.finish()
+    await p.overstep();await p.new_run(policy='autonomous');await p.second_run();await p.wait_robot();await p.finish()
 
 STORIES = {'认真回复': careful, '跳过求助': skipper, '不回复': silent, '中途取消': quitter, '排队时取消': leaves_line, '断线重连': flaky, '关页再回来': returns_later, '越权尝试': overstepper}
 

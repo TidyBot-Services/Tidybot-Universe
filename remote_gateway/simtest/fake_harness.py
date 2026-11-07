@@ -148,7 +148,8 @@ class World:
     def summary(self):
         with self.lock:
             return dict(on_robot=[r.experiment_id for r in self.on_robot()], violations=self.violations[-20:], calls=self.calls, frames=self.frames, fault=self.fault,
-                        runs={r.experiment_id: dict(state=r.state, reason=r.reason, owner=r.owner, phase=r.phase, tries=len(r.tries), helped=r.helped, waiting=bool(r.wait)) for r in self.runs.values()})
+                        runs={r.experiment_id: dict(state=r.state, reason=r.reason, owner=r.owner, phase=r.phase, tries=len(r.tries), helped=r.helped, waiting=bool(r.wait), dev_model=r.selection.get('dev_model'),
+                                                                     quota_stop_percent=r.selection.get('quota_stop_percent'), eval_provider=r.selection['agent_provider']['roles']['eval']['provider']) for r in self.runs.values()})
 
 
 class Handler(BaseHTTPRequestHandler):

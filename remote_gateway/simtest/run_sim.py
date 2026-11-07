@@ -25,8 +25,9 @@ from . import sim_users
 ROOT = Path(__file__).resolve().parents[2]
 CAST = [('U1', '阿青', '认真回复'), ('U2', '小白', '排队时取消'), ('U3', '老周', '跳过求助'), ('U4', '小林', '不回复'), ('U5', '大海', '中途取消'),
         ('U6', '阿杰', '断线重连'), ('U7', '小雨', '关页再回来'), ('U8', '黑客', '越权尝试'), ('G1', '路人', '访客')]
-# "No limit on the lab models": nothing here counts model use. What stays is what protects the machine: see PLAN.md.
-OPEN_LIMITS = dict(versions=10, help_requests=10, runs_per_day=100000)
+# Everything a limit can open, at what the harness can honour. One run on the robot and the disk lines are not limits here: see PLAN.md.
+OPEN_LIMITS = dict(versions=10, help_requests=10, runs_per_day=100000, wall_seconds=21600, active_runs=1000, requests_per_second=100000, request_burst=1000000,
+                   live_requests_per_second=100000, live_request_burst=1000000, logins_per_hour=100000)
 
 
 def wait_up(url, seconds=20):
@@ -38,9 +39,9 @@ def wait_up(url, seconds=20):
     raise SystemExit(f'没有起来：{url}')
 
 
-def gateway_config(directory, *, port, upstream, wall_seconds, sim_lock=None, stop_files=()):
+def gateway_config(directory, *, port, upstream, sim_lock=None, stop_files=()):
     value = dict(state_dir=str(directory / 'gateway-state'), upstream=upstream, ui_dir=str(ROOT / 'benchmarks/attention_harness/ui'), listen_port=port, cookie_secure=False, stop_files=list(stop_files),
-                 limits=dict(OPEN_LIMITS, wall_seconds=wall_seconds), sim_lock=str(sim_lock) if sim_lock else None)
+                 limits=OPEN_LIMITS, sim_lock=str(sim_lock) if sim_lock else None)
     path = directory / 'gateway.json';path.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding='utf-8')
     return path
 
@@ -71,6 +72,9 @@ def outcome_checks(port, events, cast, codes):
     with urllib.request.urlopen(f'http://127.0.0.1:{port}/sim/state', timeout=5) as response:world = json.load(response)
     rows = [json.loads(line) for line in events.open(encoding='utf-8')]
     log = sim_users.Log(events, codes)
+    for run_id, run in world['runs'].items():
+        if run['dev_model'] != 'gpt-6-astra' or run['quota_stop_percent'] != 77 or run['eval_provider'] != 'parcc':
+            log.write(lane='-', kind='guard', message=f'run {run_id[-8:]} 的配置不对：{run}')
     wanted = {'认真回复': 'human', '关页再回来': 'human', '断线重连': 'human', '跳过求助': 'skip', '不回复': 'advisor'}
     for lane, name, story in cast:
         run_id = next((row['run_id'] for row in reversed(rows) if row.get('lane') == lane and row.get('run_id') and story != '访客'), None)
@@ -96,14 +100,14 @@ def offline(args):
     (directory / 'gateway-state').mkdir(exist_ok=True, mode=0o700)
     for name in ('events.jsonl', 'report.json'):(directory / name).unlink(missing_ok=True)
     shutil.rmtree(directory / 'shots', ignore_errors=True)
-    config = gateway_config(directory, port=args.gateway_port, upstream=f'http://127.0.0.1:{args.fake_port}', wall_seconds=1200)
+    config = gateway_config(directory, port=args.gateway_port, upstream=f'http://127.0.0.1:{args.fake_port}')
     state = directory / 'gateway-state'
     for name in ('gateway.sqlite3', 'audit.jsonl', 'gateway.secret'):(state / name).unlink(missing_ok=True)
     gateway_cli(config, 'secret')
     processes = [spawn(['-m', 'remote_gateway.simtest.fake_harness', '--port', str(args.fake_port), '--secret-file', str(state / 'gateway.secret'), '--speed', str(args.speed), '--try-seconds', str(args.try_seconds), '--think-seconds', str(args.think_seconds)], directory / 'fake.log')]
     try:
         wait_up(f'http://127.0.0.1:{args.fake_port}/sim/state')
-        processes.append(spawn(['-m', 'remote_gateway', '--config', str(config), 'serve'], directory / 'gateway.log'))
+        processes.append(spawn(['-m', 'remote_gateway.simtest.codex_gateway', '--config', str(config)], directory / 'gateway.log'))
         wait_up(f'http://127.0.0.1:{args.gateway_port}/login')
         processes.append(spawn(['-m', 'remote_gateway.simtest.monitor', '--port', str(args.monitor_port), '--dir', str(directory), '--gateway', f'http://127.0.0.1:{args.gateway_port}', '--fake', f'http://127.0.0.1:{args.fake_port}', '--mode', 'offline'], directory / 'monitor.log'))
         wait_up(f'http://127.0.0.1:{args.monitor_port}/api/state')
@@ -111,7 +115,7 @@ def offline(args):
         codes = invites(config, len(cast), directory / 'invites.json')
         people = [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)]
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
-        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds)
+        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned')
         for at, value in args.fault:threading.Timer(at, send_fault, (args.fake_port, value)).start()
         asyncio.run(sim_users.run_all(settings, people, directory / 'events.jsonl', codes))
         outcome_checks(args.fake_port, directory / 'events.jsonl', cast, codes)
@@ -146,6 +150,9 @@ class DiskGuard(threading.Thread):
         self.args, self.config, self.shared, self.log = args, config, shared, log
         self.done = threading.Event();self.start_free, self.start_used = host_disk(args.host_prefix, args.run_root);self.run_used, self.current = self.start_used, None
 
+    def quota(self):
+        with urllib.request.urlopen(self.args.quota_url, timeout=8) as response:return json.load(response)['used_percent']
+
     def stop(self, reason):
         if self.shared.get('abort'):return
         self.shared['abort'] = reason
@@ -157,7 +164,9 @@ class DiskGuard(threading.Thread):
         with urllib.request.urlopen(f'http://127.0.0.1:{args.gateway_port}/api/lobby', timeout=5) as response:
             running = (json.load(response)['robot']['running'] or {}).get('experiment_id')
         if running != self.current:self.current, self.run_used = running, used
-        if free < args.disk_floor_gb * gib:self.stop(f'磁盘剩余 {free / gib:.1f}G，低于底线 {args.disk_floor_gb:g}G')
+        used_quota = self.quota()
+        if used_quota >= args.quota_stop_percent:self.stop(f'Codex 额度 {used_quota:g}%，到了停线 {args.quota_stop_percent:g}%')
+        elif free < args.disk_floor_gb * gib:self.stop(f'磁盘剩余 {free / gib:.1f}G，低于底线 {args.disk_floor_gb:g}G')
         elif used - self.start_used > args.test_budget_gb * gib:self.stop(f'本次测试已写入 {(used - self.start_used) / gib:.1f}G，超过总预算 {args.test_budget_gb:g}G')
         elif running and used - self.run_used > args.run_budget_gb * gib:self.stop(f'run {running[-8:]} 已写入 {(used - self.run_used) / gib:.1f}G，超过单 run 预算 {args.run_budget_gb:g}G')
 
@@ -182,6 +191,9 @@ def real(args):
     wait_up(f'http://127.0.0.1:{args.gateway_port}/login')
     port_free(args.monitor_port)
     print('开始前 df：', host_run(args.host_prefix, f'df -h {args.run_root}').splitlines()[-1], flush=True)
+    with urllib.request.urlopen(args.quota_url, timeout=8) as response:quota = json.load(response)
+    print('开始前 Codex 额度：', quota, flush=True)
+    if quota['used_percent'] >= args.quota_stop_percent:raise SystemExit(f'Codex 额度 {quota["used_percent"]}%，到了停线，不开始')
     monitor = spawn(['-m', 'remote_gateway.simtest.monitor', '--port', str(args.monitor_port), '--dir', str(directory), '--gateway', f'http://127.0.0.1:{args.gateway_port}', '--mode', 'real',
                      *(['--sim-lock', value['sim_lock']] if value.get('sim_lock') else []), '--disk-floor-gb', str(args.disk_floor_gb)], directory / 'monitor.log')
     try:
@@ -190,11 +202,13 @@ def real(args):
         codes = invites(config, len(cast), directory / 'invites.json')
         shared = {};log = sim_users.Log(directory / 'events.jsonl', codes)
         guard = DiskGuard(args, config, shared, log);guard.start()
-        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, seed=args.seed, run_cap_seconds=args.run_cap_seconds)
+        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, seed=args.seed, run_cap_seconds=args.run_cap_seconds,
+                                      reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer'), reply_source='codex')
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
         asyncio.run(sim_users.run_all(settings, [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)], directory / 'events.jsonl', codes, shared))
         guard.done.set()
         print('结束后 df：', host_run(args.host_prefix, f'df -h {args.run_root}').splitlines()[-1], flush=True)
+        print('结束后 Codex 额度：', guard.quota(), flush=True)
         with urllib.request.urlopen(f'http://127.0.0.1:{args.monitor_port}/api/state', timeout=5) as response:final = json.load(response)
         (directory / 'report.json').write_text(json.dumps(final, ensure_ascii=False, indent=1), encoding='utf-8')
         print(json.dumps(final['totals'], ensure_ascii=False), flush=True)
@@ -226,6 +240,8 @@ def main():
     parser.add_argument('--test-budget-gb', type=float, default=25)
     parser.add_argument('--run-budget-gb', type=float, default=20)
     parser.add_argument('--run-cap-seconds', type=float)
+    parser.add_argument('--quota-url', default='http://127.0.0.1:8769/api/codex-quota')
+    parser.add_argument('--quota-stop-percent', type=float, default=77)
     parser.add_argument('--seed', type=int, default=101)
     args = parser.parse_args();args.fault = [(float(at), value) for at, value in args.fault]
     raise SystemExit(real(args) if args.real else offline(args))
