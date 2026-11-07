@@ -117,6 +117,9 @@ class Gateway:
             if busy or not line or self.paused() or not self.take_robot():return None
             head = line[0]
             status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
+            if policy.host_still_busy(status, value):  # The last run is still exiting, so this one keeps its place and the next pass retries.
+                self.free_robot()
+                return None
             self.store.dequeue(head['experiment_id'])
             if status == 200:self.starting_until = self.clock() + 30
             else:self.free_robot()
