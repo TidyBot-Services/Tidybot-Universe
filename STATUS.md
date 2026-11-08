@@ -1,3 +1,9 @@
+<!-- remote-campus-s0-20261108 -->
+## 11-08：Remote 校园网 S0（分支 `claude/priceless-tesla-972721`，基于 `dcc1bfd`；工程测试，未部署，未开放网络，非正式实验）
+- **已做**：登录限流可按代理传来的真实地址（`trusted_proxy`），并加按邀请码、全局的失败计数；同一人的第二个 run 显示 `昵称 · run 2`；自定义端点在建连时再查一次地址（防 DNS 重绑定）；磁盘低于 `min_free_gb` 时拒绝新 run；`prune` 命令默认只列清单不删；`lab_codex` 开关让每个角色在 PARCC 和 Lab Codex 之间选，每日 Codex run 有上限，到 77% 停；校园部署模板 `remote_gateway/deploy/campus/`（网关 + harness 单元，harness 端口默认 8870、数据目录独立，PARCC key 只能来自 stdin 或 systemd 凭据；nginx 配置、ufw 脚本，都只写没装）。
+- **证据**：truares `remote_gateway/tests` 298 通过（基线 215）；新增 `test_campus.py` 96 项、`test_dev_agent_provider_connect.py`、`test_campus_key_isolation.py`。改到的 harness 文件相关的 27 个测试文件有 12 项失败，把这几个 harness 文件换回 `dcc1bfd` 版本后同样失败（共 13 项），没有新增失败。qifei 在单独目录 `~/ab-campus-s0-test-20261108`（没碰 8860 的工作区）跑网关和安全测试：350 通过，2 失败；失败的是 `test_real_mode_needs_a_release`，原因是复制过去的代码不是 git 仓库，`git rev-parse` 报错，属于环境问题。
+- **没做 / 未核实**：nginx 配置语法没验证（两台机器都没装 nginx）；专用用户、swap、core、ufw、证书都要 sudo，属于 S1，要当面问用户；harness 和网关是同一个账号，harness 进程仍能读 gateway-state，只有 agent 沙箱被挡住；部署、合并 main、真实 run 由中控台做。方案：`~/桌面/AttentionBench-Workspace/docs/PLAN-remote-penn-campus-20261108.md` 第 9 节。
+<!-- /remote-campus-s0-20261108 -->
 <!-- remote-timeshare-test-20261108 -->
 ## 11-08：Remote 分时调度测试（分支 `claude/timeshare-test`，基于被测 `0ff5e84`；工程测试，非正式实验）
 
