@@ -288,8 +288,6 @@
     if (!state.enabled) return;
     const join = form.querySelector('[data-start-yes]');
     if (state.snap?.demo) join.insertAdjacentHTML('beforebegin', '<button type="button" class="ab-button-quiet" data-remote-start disabled title="Real runs are not connected yet">Start run</button>');
-    form.goal_id.readOnly = true;
-    form.goal_id.closest('label').insertAdjacentHTML('beforeend', '<small>Set by the shared host.</small>');
   }
   // Any task can be configured; only the demo join needs a recording of it.
   function syncJoin(form, profile) {

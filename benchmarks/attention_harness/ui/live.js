@@ -2176,6 +2176,13 @@
   // the normal seed list. Other tasks stay registered; they just are not offered for a new run.
   const TASK_PRESETS={turn_on_microwave:101,pick_place_counter_to_cabinet:101};
   const NEW_RUN_TASKS=['pick_place_counter_to_sink',...Object.keys(TASK_PRESETS)];
+  // Remote (11-08, user): two seeds per task. Microwave 101 is the verified one; 102 is fully observable but unrun.
+  // Counter→Cabinet has no verified seed, so 101 (the preset) and 102. The main UI keeps every seed.
+  const REMOTE_SEEDS={pick_place_counter_to_sink:[101,102],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
+  function remoteSeeds(profile,available) {
+    const wanted=root.dataset.remote==='1'?REMOTE_SEEDS[profile?.task_id]:null;
+    return wanted?wanted.filter(seed=>available.includes(seed)):null;
+  }
   // A copied run keeps its own task selectable, so an older task still opens without an error.
   function newRunProfiles(profiles,source=null) {
     const keep=p=>p.channel!=='dev_v2'||NEW_RUN_TASKS.includes(p.task_id)||(source!==null&&fixtureTaskKey(p)===fixtureTaskKey(source));
@@ -2751,9 +2758,9 @@
             <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
           </div><p class="ab-run-hint" data-official-budget hidden>${limits.note}</p>
           <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
-          <details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
+          ${root.dataset.remote==='1'?`<input type="hidden" name="goal_id" value="${esc(options?.dev_v2?.goal_key||'set-by-host')}">`:`<details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
-          </div></details>
+          </div></details>`}
           ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
@@ -2838,6 +2845,16 @@
       function syncSeedOptions() {
         const profile=selectedProfile(),v2=profile?.channel==='dev_v2';
         const registered=profile?.rules_profile?profile.seeds:options?.dev_v2?.registered_scene_seeds||[];
+        const remote=remoteSeeds(profile,profile?.rules_profile?(profile.seed_options||[]).filter(row=>row.enabled).map(row=>row.seed)
+          :v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||[]):[]);
+        if(remote?.length){
+          const previous=Number(form.seed.value);
+          form.seed.disabled=false;
+          form.seed.innerHTML=remote.map(seed=>`<option value="${seed}">Seed ${seed}</option>`).join('');
+          form.seed.value=String(remote.includes(previous)?previous:remote[0]);
+          form.querySelector('[data-seed-note]').textContent=profile.rules_profile?'fixture rules (R5) · interactive · not compared (scene positions not verified)':v2?runConfigSeedNote(Number(form.seed.value),registered,form.v2_mode.value,!!options?.dev_v2?.memory):'';
+          return;
+        }
         const fixedSeed=presetSeed(profile);
         form.seed.disabled=fixedSeed!==null;
         if(fixedSeed!==null){
