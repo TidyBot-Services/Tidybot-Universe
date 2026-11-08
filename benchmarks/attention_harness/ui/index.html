@@ -3678,8 +3678,9 @@ html[data-theme="dark"] .op-reply-live{--r-fill:#d9542c;--r-fill2:#7c2f18;--r-ac
 /* Panel 04 history: the run as chapters; a card opens a drawer below it and the row itself never moves. */
 .op-story{--s-card:#fff;--s-sunk:#ebe8df;--s-line:#d3d4c6;--s-ink:#242822;--s-mut:#686e64;--s-acc:#d94d27;--s-reach:#a4a896;--s-hold:#e0875f;--s-done:#8d97a3;--s-ok:#2f7a4b;--s-other:#7d7f76;text-align:left;margin-bottom:14px;color:var(--s-ink)}
 html[data-theme="dark"] .op-story{--s-card:#23272c;--s-sunk:#2a2e33;--s-line:#33383d;--s-ink:#ecebe6;--s-mut:#a3a199;--s-acc:#ec6a43;--s-reach:#5f655f;--s-hold:#d9734a;--s-done:#7b8591;--s-ok:#5cc489;--s-other:#8b8d86}
-#attentionbench-clear[data-operator-view="true"] .op-story-row{display:flex;gap:8px;align-items:stretch}
-#attentionbench-clear[data-operator-view="true"] .op-story-card{position:relative;flex:var(--weight,2) 1 0;min-width:0;min-height:0;margin:0;padding:12px 14px;border:0!important;box-shadow:none!important;border-radius:12px;background:var(--s-sunk)!important;color:var(--s-ink)!important;text-align:left;font:inherit;cursor:pointer}
+#attentionbench-clear[data-operator-view="true"] .op-story-row{display:flex;gap:8px;align-items:stretch;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:4px 4px 8px;scrollbar-width:thin}
+#attentionbench-clear[data-operator-view="true"] .op-story-row>*{scroll-snap-align:end}
+#attentionbench-clear[data-operator-view="true"] .op-story-card{position:relative;flex:var(--weight,2) 1 0;min-width:150px!important;min-height:0;margin:0;padding:12px 14px;border:0!important;box-shadow:none!important;border-radius:12px;background:var(--s-sunk)!important;color:var(--s-ink)!important;text-align:left;font:inherit;cursor:pointer}
 #attentionbench-clear[data-operator-view="true"] .op-story-card:hover{background:color-mix(in srgb,var(--s-ink) 9%,var(--s-sunk))!important}
 #attentionbench-clear[data-operator-view="true"] .op-story-card.open{background:var(--s-card)!important;box-shadow:inset 0 0 0 1px var(--s-line)!important}
 #attentionbench-clear[data-operator-view="true"] .op-story-card small{display:block;color:var(--s-mut);font-size:12px;white-space:nowrap}

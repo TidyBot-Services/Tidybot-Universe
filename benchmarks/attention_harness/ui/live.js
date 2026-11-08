@@ -3923,6 +3923,8 @@
     const retry = config.retry_k ?? config.policy_config?.retry_k ?? config.policy_parameters?.retry_k ?? snapshot.task_plan?.retry_k;
     return ({autonomous:'Never asks for help',demo_first:'Starts from a worked example',reactive_help:'Ask for help after each failed attempt',retry_k_then_ask:retry == null ? 'Ask for help after repeated failures' : `Ask for help after ${retry} failures in a row`,budget_matched_random_escalation:'Asks for help at random moments (test control)',trace_aware_hint_only:'Asks for help using what the robot just did',full_trace_aware_attention_planner:'Plans help using the full action history'})[id] || 'Recorded help strategy';
   }
+  // Work in progress keeps the moving bar every running status shows; a wait for a person or the robot keeps the waiting tone.
+  const LIFECYCLE_TONE={model:'running',advisor:'running',sdk:'running',preparing:'running',approval:'waiting',robot_wait:'waiting'};
   function operatorLifecycleCopy(snapshot) {
     const l=snapshot.dev_v2?.lifecycle;
     if(!l)return null;
@@ -4074,7 +4076,7 @@
     }
     const lifecycle=snapshot.dev_v2?.lifecycle,copyState=operatorLifecycleCopy(snapshot);
     const end=snapshot.dev_session&&devEndSummary(snapshot.dev_session),permissionStopped=end?.key==='action_approval';
-    if(copyState && !['sdk','terminal'].includes(lifecycle.phase))return `<div class="op-outcome" data-operator-outcome="${esc(lifecycle.phase)}" role="status"><strong>${copyState.title}</strong><div>${permissionStopped?`<p>Action permission closed · ${esc(end.explanation)}. This action was not executed.</p>`:''}<p>${esc(copyState.text)}</p></div></div>`;
+    if(copyState && !['sdk','terminal'].includes(lifecycle.phase))return `<div class="op-outcome${LIFECYCLE_TONE[lifecycle.phase]?' '+LIFECYCLE_TONE[lifecycle.phase]:''}" data-operator-outcome="${esc(lifecycle.phase)}" role="status"><strong>${copyState.title}</strong><div>${permissionStopped?`<p>Action permission closed · ${esc(end.explanation)}. This action was not executed.</p>`:''}<p>${esc(copyState.text)}</p></div></div>`;
     const last = operatorLast(snapshot), trace = Object.values(snapshot.traces || {}).find(t=>t.attempt_id === last?.attempt_id);
     const k = last ? last.index + 1 : 0;
     const maximum = snapshot.agent?.limits?.formal_versions ?? snapshot.dev_session?.budget?.executions ?? snapshot.task_plan?.max_attempts ?? launches.find(l=>l.run_id === snapshot.run.run_id)?.locked?.max_attempts ?? snapshot.attempts.length;
@@ -4193,7 +4195,7 @@
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
     const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}</div>`:'';
     const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
-    const stills=images.filter(e=>!['camera_initial','initial_observation','camera_final','final_observation'].includes(e.kind)).map(e=>`<figure><img data-history-image loading="lazy" ${flipStaticRows?'style="transform:scaleY(-1)"':''} src="${esc(e.media_url)}" alt="Saved attempt frame"><figcaption>Saved static frame · not a video</figcaption></figure>`).join('');
+    const stills=images.filter(e=>!['camera_initial','initial_observation','camera_final','final_observation'].includes(e.kind)).map(e=>`<figure><img data-history-image loading="lazy" ${flipStaticRows?'style="transform:scaleY(-1)"':''} src="${esc(e.media_url)}" alt="" onerror="this.closest('figure').remove()"></figure>`).join('');
     const station=cameraStation(snapshot);
     const devJobs=(!isTerminal(snapshot) && snapshot.dev_session?.jobs) || [];
     const lifecycle=snapshot.dev_v2?.lifecycle, lifecycleCopy=operatorLifecycleCopy(snapshot);
@@ -5543,10 +5545,16 @@
     }).join('');
     return `<div class="op-story" data-agent-history><div class="op-story-row">${cards}</div><div class="op-story-drawer" data-story-drawer></div><div class="op-story-caption" data-story-caption role="status"></div></div>`;
   }
-  let storyOpen=null,storyPinned=false,storyListRun=null;
+  let storyOpen=null,storyPinned=false,storyListRun=null,storyScroll=null;
   function bindAgentHistory(snapshot) {
     const root=view.querySelector('[data-agent-history]');if(!root)return;
     const parts=storyParts(snapshot.agent.tries),row=root.querySelector('.op-story-row'),drawer=root.querySelector('[data-story-drawer]'),caption=root.querySelector('[data-story-caption]');
+    // The story row scrolls sideways once it is full: it follows the newest card unless the person scrolled back to read.
+    if(row){
+      const pinned=storyScroll&&storyScroll.run===snapshot.run.run_id&&!storyScroll.atEnd;
+      row.scrollLeft=pinned?storyScroll.left:row.scrollWidth;
+      row.addEventListener('scroll',()=>{storyScroll={run:snapshot.run.run_id,left:row.scrollLeft,atEnd:row.scrollLeft+row.clientWidth>=row.scrollWidth-4};},{passive:true});
+    }
     const calm=matchMedia('(prefers-reduced-motion:reduce)').matches;
     let timer=0,closing=0,frame=0,pointer=null,ticks=[],rest=[],now=[],aim=[];
     const say=t=>{caption.textContent='';if(!t)return;const name=document.createElement('b');name.textContent=t.submitted?`Attempt ${t.attempt} · Try ${t.number}`:`Try ${t.number}`;caption.append(name,document.createTextNode(t.why));
