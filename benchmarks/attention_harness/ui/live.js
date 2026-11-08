@@ -2203,6 +2203,7 @@
     const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
     const presets=Object.keys(TASK_PRESETS).map(id=>unique.find(p=>p.task_id===id&&presetSeed(p)!==null)).filter(Boolean);
     const presetGroup=presets.length?`<optgroup label="Presets · seed ${esc([...new Set(presets.map(presetSeed))].join('/'))} · fixture rules (R5)">${presets.map(option).join('')}</optgroup>`:'';
+    if(root.dataset.remote==='1')return [...unique.filter(p=>!p.rules_profile),...presets].map(option).join('');
     return unique.filter(p=>!p.rules_profile).map(option).join('')+presetGroup+['A','B','C','D'].map(family=>{
       const rows=unique.filter(p=>p.family===family&&!presets.includes(p));
       return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
@@ -2758,10 +2759,10 @@
           </section>
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.versionsRange}</small><input name="max_attempts" type="number" min="1" max="${limits.versions}" value="${limits.versions}" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
-            <label class="ab-launch-field"${limits.noTimeLimit?' data-no-time-limit':''}>Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small><span class="ab-launch-unit"${limits.noTimeLimit?' hidden':''}><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL||limits.noTimeLimit?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
+            <label class="ab-launch-field"${limits.noTimeLimit?' data-no-time-limit':''}>Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small>${limits.noTimeLimit?'<output data-no-time-limit-box>No time limit</output>':''}<span class="ab-launch-unit"${limits.noTimeLimit?' hidden':''}><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL||limits.noTimeLimit?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
             <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
             <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
-            <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model</small><output data-tokens-unlimited>Not limited · free models</output><small>Usage is still recorded.</small></label>
+            <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model · usage is recorded</small><output data-tokens-unlimited>Not limited · free models</output></label>
           </div><p class="ab-run-hint" data-official-budget hidden>${limits.note}</p>
           <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
           ${root.dataset.remote==='1'?`<input type="hidden" name="goal_id" value="${esc(options?.dev_v2?.goal_key||'set-by-host')}">`:`<details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
@@ -2900,7 +2901,7 @@
         form.querySelector('[data-robot-time]').textContent=profile?`${Math.round(Number(profile.attempt_wall_seconds)/60)} min`:'';
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
         // A Remote host with time-share has no time limit; the field keeps its nominal value and says so.
-        form.querySelector('[data-wall-description]').textContent=limits.noTimeLimit?'No time limit':`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
+        form.querySelector('[data-wall-description]').textContent=limits.noTimeLimit?'':`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
