@@ -2203,7 +2203,7 @@
     const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
     const presets=Object.keys(TASK_PRESETS).map(id=>unique.find(p=>p.task_id===id&&presetSeed(p)!==null)).filter(Boolean);
     const presetGroup=presets.length?`<optgroup label="Presets · seed ${esc([...new Set(presets.map(presetSeed))].join('/'))} · fixture rules (R5)">${presets.map(option).join('')}</optgroup>`:'';
-    if(root.dataset.remote==='1')return [...unique.filter(p=>!p.rules_profile),...presets].map(option).join('');
+    if(typeof root!=='undefined'&&root.dataset?.remote==='1')return [...unique.filter(p=>!p.rules_profile),...presets].map(option).join('');  // tests load this function alone
     return unique.filter(p=>!p.rules_profile).map(option).join('')+presetGroup+['A','B','C','D'].map(family=>{
       const rows=unique.filter(p=>p.family===family&&!presets.includes(p));
       return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
