@@ -1670,6 +1670,17 @@
   const flowKey = snapshot => `attention.flow:${snapshot.run.run_id}`;
   const skillKey = (snapshot, attemptId) => `attention.skill:${snapshot.run.run_id}:${attemptId}`;
   function taskName(value) {return taskTitles[value]||label(value);}
+  // 11-09: a stopped run says in plain words what happened and what to do; the internal code stays at the end for the lab.
+  function fatalStopMessage(snapshot) {
+    const cause=snapshot.agent?.fatal_cause;
+    let raw='';try{raw=JSON.stringify([snapshot.agent?.errors,snapshot.agent?.reason,snapshot.dev_session?.reason,snapshot.dev_session?.error,snapshot.eval?.stopped_reason]);}catch(_){raw='';}
+    if(/scene_contract_mismatch/i.test(raw)){
+      const seed=snapshot.run?.seed??snapshot.dev_session?.seed;
+      return `Could not start: this scene${seed!=null?` (seed ${seed})`:''} does not load correctly on the robot computer, so the robot never moved. Start a new run with another seed.${cause?` (error code: ${cause})`:''}`;
+    }
+    if(cause)return `Stopped: the run hit an internal error and cannot continue on its own. This was not caused by anything you did; start a new run, and tell the lab if it happens again. (error code: ${cause})`;
+    return 'Stopped: the run stopped unexpectedly and cannot continue on its own. Start a new run, and tell the lab if it happens again.';
+  }
   function attemptCopy(attempt) {
     return {running:'Running',failed:'Unsuccessful',succeeded:'Succeeded',cancelled:'Stopped',timed_out:'Timed out',unknown:'Unconfirmed'}[attempt.status] || 'Unconfirmed';
   }
@@ -4111,7 +4122,7 @@
       const detail=status==='condition_invalid' ? /scene_contract_mismatch/i.test(reason) ? 'Invalid run: the scene did not match the registered scene.'
         : /eval_vision_unavailable|unparseable_answer/i.test(reason) ? 'Invalid run: the automatic reviewer could not read the recording.'
         : 'Invalid run: the required execution conditions could not be verified.'
-        : status==='needs_review' ? (snapshot.agent?.fatal_cause ? `Needs review: the agent run stopped on a fatal error (${snapshot.agent.fatal_cause}) and cannot continue automatically.` : 'Needs review: the worker stopped unexpectedly and the run cannot continue automatically.')
+        : status==='needs_review' ? fatalStopMessage(snapshot)
           : status==='not_started'?'Not started: this task ended before any execution began.'
           : status==='cancelled'?'Stopped: this run was cancelled.':'Stopped: this run was stopped.';
       const title={condition_invalid:'⚠ CONDITION INVALID',needs_review:'⚠ NEEDS REVIEW',cancelled:'○ CANCELLED',stopped:'○ STOPPED',not_started:'○ NOT STARTED'}[status];

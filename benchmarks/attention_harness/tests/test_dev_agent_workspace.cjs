@@ -56,7 +56,7 @@ test('agent keeps five regions and selected-attempt evidence without duplicate a
   const html=api.workspaceHTML(snapshot,null);
   for(let n=1;n<=5;n++)assert.equal((html.match(new RegExp(`class="op-number">0${n}<`,'g'))||[]).length,1);
   for(const selector of ['data-agent-story-open','data-agent-story','data-agent-help-refusal','data-history-replay'])assert.ok(html.includes(selector),selector);
-  for(const text of ['stopped on a fatal error (broker_invariant)','Try a smaller offset.'])assert.ok(html.includes(text),text);
+  for(const text of ['hit an internal error and cannot continue on its own','(error code: broker_invariant)','Try a smaller offset.'])assert.ok(html.includes(text),text);
   // 10-30: no settings/counter line in 01 and no model subtitle in 02; 05 keeps the counters.
   assert.doesNotMatch(html,/data-agent-settings|quota stop|Codex subscription/);
   assert.doesNotMatch(html,/data-agent-version=|data-agent-secondary|data-agent-errors|v3 · Execution instruments/);
