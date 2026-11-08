@@ -13,11 +13,14 @@ import subprocess
 import time
 from pathlib import Path
 
+from benchmarks.attention_harness.ffmpeg_hold import final_hold
+
 WIDTH, HEIGHT = 960, 540
 QUALITY = 88
 FRAME_LIMIT = 5000
 LIVE_KEEP = 3
 SCHEMA = 'attentionbench.camera-views.v1'
+ERROR_CHARS = 1200  # ffmpeg stderr kept in an error, like the original recording
 EXTERNAL = dict(label='Overview', name='robot0_agentview_left', width=1920, height=1080)
 # Order is the order of the picker. Free cameras are defined relative to the task's target (sink / fixture), so
 # they need no scene or model change; the wrist cameras already exist in the scene.
@@ -166,11 +169,18 @@ def _encode(frames, times, target):
         temporary = target.with_name(target.stem + '.encoding.mp4')
         command = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error', '-f', 'image2', '-ts_from_file', '2',
                    '-framerate', '25', '-i', str(scratch / '%06d.jpg'), '-vsync', 'vfr', '-c:v', 'libx264',
-                   '-pix_fmt', 'yuv420p', '-enc_time_base', '1:1000', '-video_track_timescale', '1000', '-r', '25',
-                   '-movflags', '+faststart', str(temporary)]
+                   '-pix_fmt', 'yuv420p', '-enc_time_base', '1:1000', '-video_track_timescale', '1000',
+                   # ffmpeg 6.1 refuses -r next to -vsync vfr; final_hold picks what this ffmpeg offers.
+                   *final_hold(.04), '-movflags', '+faststart', str(temporary)]
         process = subprocess.run(command, capture_output=True, timeout=30)
         if process.returncode:
-            raise RuntimeError('video encoding failed: ' + process.stderr.decode(errors='replace')[-300:])
+            raise RuntimeError('video encoding failed: ' + process.stderr.decode(errors='replace')[-ERROR_CHARS:])
+        probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'frame=best_effort_timestamp_time',
+                                '-of', 'json', str(temporary)], capture_output=True, timeout=10, check=True)
+        pts = [float(row['best_effort_timestamp_time']) for row in json.loads(probe.stdout)['frames']]
+        if len(pts) != len(frames) + 1 or any(abs(a - b) > .002 for a, b in zip(pts, offsets)):
+            temporary.unlink(missing_ok=True)
+            raise ValueError('encoded video lost a frame or differs from the recording timeline')
         temporary.replace(target)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
@@ -215,7 +225,7 @@ def finalize_extra_views(episode):
                 _encode([folder / r['file'] for r in rows], times, episode / VIDEO_NAMES[key])
                 entry.update(video=VIDEO_NAMES[key], status='saved')
             except Exception as exc:
-                entry.update(status='failed', error=f'{type(exc).__name__}: {exc}'[:300])
+                entry.update(status='failed', error=f'{type(exc).__name__}: {exc}'[-ERROR_CHARS - 100:])
         errors = episode / 'recording_views' / 'error.json'
         if errors.is_file():
             try: manifest['capture_errors'] = json.loads(errors.read_text()).get('errors', {})

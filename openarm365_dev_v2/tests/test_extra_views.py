@@ -90,6 +90,39 @@ def test_finalize_encodes_each_view_on_the_main_recording_timeline(tmp_path):
         assert frame_count(ev/entry['video'])==7                              # 6 control steps + the terminal hold, like the original
     assert not list(ev.glob('*.encoding*'))                                   # scratch copies are removed
 
+def test_finalize_keeps_irregular_control_step_times_on_every_ffmpeg(tmp_path):
+    """One frame per control step at the original trace times (ffmpeg 4.4 and 6.1 give the same PTS)."""
+    env,views,ev=make(tmp_path)
+    for seq in range(5):views.capture(seq)
+    times=[10.0,10.05,10.11,10.2,10.21]
+    d=ev/'recording_frames';d.mkdir()
+    (d/'frames.jsonl').write_text(''.join(json.dumps(dict(physical_sequence=i,trace_seconds=t))+'\n' for i,t in enumerate(times)))
+    (ev/'advisor_replay.mp4').write_bytes(b'main video')
+    manifest=xv.finalize_extra_views(ev)['views']
+    for key in xv.VIEWS:
+        assert manifest[key]['status']=='saved',manifest[key]
+        out=subprocess.run(['ffprobe','-v','error','-show_entries','frame=best_effort_timestamp_time','-of','json',
+                            str(ev/manifest[key]['video'])],capture_output=True,check=True)
+        pts=[float(f['best_effort_timestamp_time']) for f in json.loads(out.stdout)['frames']]
+        assert pts==pytest.approx([t-10 for t in times]+[.25],abs=.002)        # + the 40 ms terminal hold
+
+def test_encoder_uses_the_portable_final_hold_and_keeps_the_ffmpeg_error(tmp_path,monkeypatch):
+    """ffmpeg 6.1 refuses -r beside -vsync vfr; the command takes final_hold's options and a failure keeps its tail."""
+    env,views,ev=make(tmp_path)
+    for seq in range(3):views.capture(seq)
+    main_recording(ev,3)
+    monkeypatch.setattr(xv,'final_hold',lambda s:['-bf','0','-bsf:v',f'setts=duration={s:.9f}/TB'])
+    commands=[];stderr=('x'*2000+' Error opening output file /a/very/long/path/advisor_replay_side.encoding.mp4.'
+                         ' Error opening output files: Invalid argument').encode()
+    def run(command,**kw):
+        commands.append(command);return subprocess.CompletedProcess(command,1,stdout=b'',stderr=stderr)
+    monkeypatch.setattr(xv.subprocess,'run',run)
+    manifest=xv.finalize_extra_views(ev)['views']
+    command=commands[0]
+    assert '-r' not in command and 'setts=duration=0.040000000/TB' in command and command[command.index('-vsync')+1]=='vfr'
+    error=manifest['side']['error']
+    assert manifest['side']['status']=='failed' and error.endswith('Invalid argument') and len(error)>=1200
+
 def test_finalize_reports_missing_corrupt_and_unaligned_views_without_raising(tmp_path):
     env,views,ev=make(tmp_path)
     for seq in range(4):views.capture(seq)
