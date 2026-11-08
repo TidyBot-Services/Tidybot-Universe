@@ -65,6 +65,7 @@ class Settings:
     executions: int = 2  # Real time-share: an owner stops the run after this many executions.
     slow_think: float = 400  # Fake seconds the slow writer thinks before each Try.  # Offline only: the fake host's URL, for a story that sets its own pace there.
     headed: bool = False
+    model_source: str = 'codex'  # What each person picks in 03 Model source: 'codex' (Lab Codex · gpt-6.1-sol on the test gateway) or 'parcc'.
 
 
 def start_lost(outcome, prepared_seconds):
@@ -230,6 +231,7 @@ class Person:
             await form.locator('select[name=seed]').select_option(str(self.settings.seed))
             await form.locator('select[name=v2_mode]').select_option(mode)
             await form.locator(f'label:has([data-policy-card][value={policy}])').click()
+            await form.locator('[data-keys-source]').select_option(self.settings.model_source)
             async with self.page.expect_response(lambda r:urlsplit(r.url).path == '/api/dev-v2/experiments' and r.request.method == 'POST', timeout=30000) as made:
                 await form.locator('[data-start-yes]').click()
             response = await made.value

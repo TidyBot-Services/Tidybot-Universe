@@ -91,21 +91,72 @@ def test_no_limit_lives_in_the_test_instance_and_nowhere_else(tmp_path):
     assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=3, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
 
 
-def test_the_test_gateway_puts_dev_on_codex_high_and_eval_advisor_on_parcc_glm_and_the_harness_accepts_it():
-    from benchmarks.attention_harness.dev_agent_config import configuration, provider_roles
+CODEX = dict(credential='lab', provider='openai', model='gpt-6.1-sol')
+GATEWAY_OPTIONS = dict(dev_v2=dict(profiles=[dict(task_id='open_cabinet', enabled=True)], agent_policies=dict(policies=[dict(policy_id='reactive_help')])))
+
+
+def test_gateway_run(monkeypatch, **roles):
+    """A run as the test gateway builds it from the form's roles."""
     from remote_gateway import policy
-    from remote_gateway.simtest.codex_gateway import with_test_roles
-    options = dict(dev_v2=dict(profiles=[dict(task_id='open_cabinet', enabled=True)], agent_policies=dict(policies=[dict(policy_id='reactive_help')])))
-    body = dict(selection=dict(SELECTION, help_budget=1))
-    made = with_test_roles(policy.rebuild)(body, user='u-1', options=options, limits=Limits(), credentials=[])
-    assert made['dev_model'] == 'gpt-6.1-sol' and made['dev_reasoning_effort'] == 'high' and made['quota_stop_percent'] == 77
-    assert made['eval_model'] == made['advisor_model'] == 'parcc/GLM'
-    roles = provider_roles(made['agent_provider'])['roles']
-    assert [roles[role]['provider'] for role in ('dev', 'eval', 'advisor')] == ['openai', 'parcc', 'parcc']
+    from remote_gateway.simtest.codex_gateway import with_lab_codex_roles, with_test_roles
+    monkeypatch.setattr(policy, '_roles', with_lab_codex_roles(policy._roles))
+    body = dict(selection=dict(SELECTION, help_budget=1, agent_provider=dict(roles=dict(dict(dev=LAB, eval=LAB, advisor=LAB), **roles))))
+    return with_test_roles(policy.rebuild)(body, user='u-1', options=GATEWAY_OPTIONS, limits=Limits(), credentials=[])
+test_gateway_run.__test__ = False
+
+
+def test_the_test_gateway_runs_parcc_when_the_person_picks_parcc(monkeypatch):
+    from benchmarks.attention_harness.dev_agent_config import configuration
+    made = test_gateway_run(monkeypatch)
+    assert made['agent_provider']['roles'] == dict(dev=LAB, eval=LAB, advisor=LAB)
+    assert made['dev_model'] == made['eval_model'] == made['advisor_model'] == 'parcc/GLM' and made['quota_stop_percent'] == 77
+    final = configuration(made)
+    assert final['dev_model'] == 'parcc/GLM' and final['eval_agent']['model'] == final['advisor_proxy']['model'] == 'parcc/GLM'
+
+
+def test_the_test_gateway_runs_gpt_6_1_sol_high_when_the_person_picks_lab_codex(monkeypatch):
+    from benchmarks.attention_harness.dev_agent_config import configuration, provider_roles
+    made = test_gateway_run(monkeypatch, dev=CODEX, eval=CODEX, advisor=CODEX)
+    assert made['dev_model'] == made['eval_model'] == made['advisor_model'] == 'gpt-6.1-sol'
+    assert made['dev_reasoning_effort'] == 'high' and made['quota_stop_percent'] == 77
+    assert [provider_roles(made['agent_provider'])['roles'][r]['provider'] for r in ('dev', 'eval', 'advisor')] == ['openai'] * 3
     final = configuration(made)
     assert final['quota_stop_percent'] == 77 and final['dev_model'] == 'gpt-6.1-sol' and final['dev_reasoning_effort'] == 'high'
-    assert final['eval_agent']['model'] == final['advisor_proxy']['model'] == 'parcc/GLM'
-    assert policy.rebuild(body, user='u-1', options=options, limits=Limits(), credentials=[])['quota_stop_percent'] == 90  # The public gateway is untouched.
+    assert final['eval_agent']['model'] == final['advisor_proxy']['model'] == 'gpt-6.1-sol'
+
+
+def test_the_test_gateway_keeps_each_role_where_the_person_put_it(monkeypatch):
+    made = test_gateway_run(monkeypatch, dev=CODEX)
+    assert made['agent_provider']['roles'] == dict(dev=CODEX, eval=LAB, advisor=LAB) and (made['dev_model'], made['eval_model']) == ('gpt-6.1-sol', 'parcc/GLM')
+    made = test_gateway_run(monkeypatch, eval=CODEX)
+    assert made['agent_provider']['roles'] == dict(dev=LAB, eval=CODEX, advisor=LAB)
+    made = test_gateway_run(monkeypatch, advisor=dict(CODEX))
+    assert made['agent_provider']['roles'] == dict(dev=LAB, eval=LAB, advisor=CODEX)
+
+
+def test_the_test_gateway_offers_only_its_one_codex_model(monkeypatch):
+    from remote_gateway.policy import Refused
+    with pytest.raises(Refused, match='gpt-6.1-sol only'):test_gateway_run(monkeypatch, dev=dict(CODEX, model='gpt-6-astra'))
+    with pytest.raises(Refused):test_gateway_run(monkeypatch, eval=dict(CODEX, credential='someone-else'))
+
+
+def test_the_test_gateway_tells_the_page_and_the_public_gateway_still_refuses_codex():
+    from remote_gateway import policy
+    from remote_gateway.simtest.codex_gateway import with_test_options
+    offered = with_test_options(policy.filter_options)(GATEWAY_OPTIONS, Limits())
+    assert offered['hosted']['lab_codex'] == dict(model='gpt-6.1-sol', reasoning_effort='high', quota_stop_percent=77, run_cap_points=5)
+    assert 'limits' in offered['hosted']
+    assert 'lab_codex' not in policy.filter_options(GATEWAY_OPTIONS, Limits())['hosted']  # The public page lists no Codex.
+    body = dict(selection=dict(SELECTION, help_budget=1, agent_provider=dict(roles=dict(dev=CODEX, eval=LAB, advisor=LAB))))
+    with pytest.raises(policy.Refused, match='Only the lab PARCC'):policy.rebuild(body, user='u-1', options=GATEWAY_OPTIONS, limits=Limits(), credentials=[])
+    body = dict(selection=dict(SELECTION, help_budget=1))
+    assert policy.rebuild(body, user='u-1', options=GATEWAY_OPTIONS, limits=Limits(), credentials=[])['quota_stop_percent'] == 90  # The public gateway is untouched.
+
+
+def test_the_harness_caps_a_run_at_the_points_the_page_quotes():
+    from benchmarks.attention_harness.dev_agent_quota import RUN_CAP_POINTS
+    from remote_gateway.simtest import codex_gateway
+    assert codex_gateway.RUN_CAP_POINTS == RUN_CAP_POINTS == 5
 
 
 def test_a_run_shown_as_prepared_for_a_moment_is_not_a_lost_start():

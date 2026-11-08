@@ -37,7 +37,7 @@
 | 规模 | 9 人全剧情，时钟 8 倍，一轮约 6 分钟 | 同样 9 人跑 1 轮：6 个真实 run，每个从开始起最多 30 分钟；U2 不上机器人；U5 看到画面就停 |
 | 占用 | 不用 GPU 和模型，磁盘小于 3M | 最长约 3 小时，单仿真串行 |
 
-假后端校验网关签名，并记录“同一时间两个 run”。真实测试的 Dev 用 Codex gpt-6.1-sol（reasoning high），Eval 和 Advisor 用 PARCC GLM（Qwen 被 403 拒绝）。第一轮 PARCC 连不上，三者都用了 Codex gpt-6-astra。真实模式结束时会读每个 run 的求助记录，求助了但没送到人或 Advisor 的记为错误。
+假后端校验网关签名，并记录“同一时间两个 run”。测试网关不替换模型：New run 的 03 里除 PARCC 外多一个 “Lab Codex · gpt-6.1-sol”（reasoning high），Dev、Eval、Advisor 都按人选的跑，可以每个角色分开选（PARCC 的 Qwen 被 403 拒绝）。模拟用户用 `run_sim --model-source codex|parcc` 选，默认 codex。第一轮 PARCC 连不上，三者都用了 Codex gpt-6-astra。真实模式结束时会读每个 run 的求助记录，求助了但没送到人或 Advisor 的记为错误。
 
 **回复是模拟的：** U1、U6、U7 的回复由 `reply_writer.py` 调 Codex（gpt-6.1-sol high）写出，再由模拟用户在页面回复框发送，走完整的页面和网关路径。这不算真人验证，报告里会写明。写回复失败时不发送，监控页报错，由 Advisor 接手。
 
@@ -73,7 +73,7 @@
 按用户决定跑在 truares，只走本机：
 
 - 新开实例 `rr-sim/real`：自己的 harness（端口 8874，自己的 store 和 run 目录，不碰 rr-1107）、测试网关 8871、监控 8870。
-- 网关用 `simtest/codex_gateway.py` 启动：只在这个测试入口把 Dev 换成 Codex，并把 `quota_stop_percent` 设为 77。公开网关照旧拒绝 Codex，测试里有这一条检查。页面不用改，模拟用户照常选 Lab models。
+- 网关用 `simtest/codex_gateway.py` 启动：只在这个测试入口多给页面一个 Lab Codex 来源，按表单的选择建 run，并把 `quota_stop_percent` 设为 77；每 run 5 个百分点的上限由 harness 的 `RUN_CAP_POINTS` 执行。旧的 `--reviewers` 参数还接受，但不再起作用。公开网关照旧拒绝 Codex，测试里有这一条检查。页面不用改，模拟用户照常选 Lab models。
 - `stop_files` 为空（原因见下），`sim_lock` 用共用的 `/tmp/claude-1000/shared/sim.lock`。
 - 用 `reactive_help` 策略，让求助和 120 秒等待有机会触发。Codex 也可能在 30 分钟内不提交，这种情况会如实报“未触发”。
 

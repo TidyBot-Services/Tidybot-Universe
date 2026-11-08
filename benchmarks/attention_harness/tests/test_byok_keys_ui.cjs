@@ -264,7 +264,7 @@ test('the real footer writer shows the BYOK Dev model/name, lab fallback and two
   const f=keyFixture();await f.flush();await f.mode('all');await saveKey(f,'deepseek','my-ds');
   Object.assign(f.form,{seed:{value:'102'},dev_model:{value:'gpt-6.1-sol'},eval_model:{value:'gpt-6-astra'},
     max_attempts:{value:'10'},help_count:{value:'5'},model_source:{value:'codex'}});
-  Object.assign(f.context,{form:f.form,keys:f.binding,budget:{reduced:false},armNames:{both:'Both arms'},selectedProfile:()=>({channel:'dev_v2',enabled:true,robot:'OpenArm365',execution_arm:'both',layout_id:11,style_id:34})});
+  Object.assign(f.context,{labCodex:null,form:f.form,keys:f.binding,budget:{reduced:false},armNames:{both:'Both arms'},selectedProfile:()=>({channel:'dev_v2',enabled:true,robot:'OpenArm365',execution_arm:'both',layout_id:11,style_id:34})});
   const writer=source.slice(source.indexOf('      function updateSummary()'),source.indexOf('      function syncProfile()'));
   const baseWriter=source.slice(source.indexOf('  function runConfigSummary('),source.indexOf('  function launchSourceProfile('));
   vm.runInContext(baseWriter+writer+'\nthis.refreshSummary=updateSummary;',f.context);

@@ -2260,10 +2260,11 @@
   }
   function keysSelection(state,allRoles=BYOK_ALL_ROLES,now=Date.now()/1000) {
     if(state.mode!=='lab'&&state.saving)throw new Error('Wait for the key to finish saving and testing.');
-    const roles={};
+    const roles={},lab=state.labModels||LAB_MODELS;
     for(const [role,{choice,model}] of Object.entries(keyRoleAssignments(state,allRoles))) {
-      if(choice==='codex')continue;
-      if(choice==='parcc'){roles[role]={credential:'lab',provider:'parcc',model:state.labModel?.[role]||LAB_MODELS.parcc[role][0]};continue;}
+      // A test host that offers the lab's Codex needs every role named, Codex ones included.
+      if(choice==='codex'){if(state.explicitCodex)roles[role]={credential:'lab',provider:'openai',model:state.labModel?.[role]||lab.codex[role][0]};continue;}
+      if(choice==='parcc'){roles[role]={credential:'lab',provider:'parcc',model:state.labModel?.[role]||lab.parcc[role][0]};continue;}
       const row=state.creds.find(c=>`key:${c.credential_id}`===choice);
       const title=KEY_ROLES.find(([id])=>id===role)[1];
       if(!row||Number(row.expires_at)<=now)throw new Error(`The ${title} key is missing or has expired. Save a key or choose Lab models.`);
@@ -2274,7 +2275,7 @@
     }
     if(!Object.keys(roles).length)return null;
     // The server routes every role from Dev, so a Dev left on lab Codex is named as the lab role it is.
-    if(!roles.dev)roles.dev={credential:'lab',provider:'openai',model:state.labModel?.dev||LAB_MODELS.codex.dev[0]};
+    if(!roles.dev)roles.dev={credential:'lab',provider:'openai',model:state.labModel?.dev||lab.codex.dev[0]};
     return {roles};
   }
   // A text input with a menu of the provider's models; typing a name always works.
@@ -2328,8 +2329,10 @@
     if(typeof error==='string')return error;
     return `${error.message||error.code||'Request failed'}${error.redacted?' (the part that looked like a key is hidden)':''}`;
   }
-  // lab: the lab source every role starts on. Remote passes 'parcc' and then offers no Codex at all.
-  function bindKeys(form,lab='codex') {
+  // lab: the lab source every role starts on. Remote passes 'parcc' and then offers no Codex at all, unless its host
+  // offers one lab Codex model (labCodex, a test host only: {model, label}); every role then names its source.
+  function bindKeys(form,lab='codex',labCodex=null) {
+    const labModels=labCodex?{...LAB_MODELS,codex:{dev:[labCodex.model],eval:[labCodex.model],advisor:[labCodex.model]}}:LAB_MODELS;
     const box=form.querySelector('[data-keys]');
     const rolesBox=box.querySelector('[data-keys-roles]'),listBox=box.querySelector('[data-keys-list]'),note=box.querySelector('[data-keys-note]');
     const nameInput=box.querySelector('[data-key-name]'),providerSelect=box.querySelector('[data-key-provider]');
@@ -2339,7 +2342,8 @@
     const customBox=box.querySelector('[data-keys-custom]'),sharedBox=box.querySelector('[data-keys-shared]');
     const tokens=form.querySelector('[data-tokens-unlimited]'),labTokens=tokens.textContent;
     const state={mode:'lab',labSource:lab,shared:{credential:'',model:''},presets:[],creds:[],available:false,saving:false,
-      choice:{dev:lab,eval:lab,advisor:lab},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:''};
+      choice:{dev:lab,eval:lab,advisor:lab},model:{dev:'',eval:'',advisor:''},test:{},models:{},keyError:{},keyModel:{},sharedNew:false,menu:'',
+      labModels,explicitCodex:!!labCodex};
     function say(text,bad=false) { note.textContent=text; note.classList.toggle('ab-keys-bad',bad); }
     async function call(method,path,body) {
       const response=await controlFetch(path.startsWith('/api/')?path:KEYS_API+path,{method,cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},...(body?{body:JSON.stringify(body)}:{})});
@@ -2354,7 +2358,7 @@
       const later=!BYOK_ALL_ROLES&&role!=='dev';
       const mine=state.creds.map(c=>`<option value="key:${esc(c.credential_id)}" ${later?'disabled':''}>My key · ${esc(c.credential_id)} (${esc(preset(c.provider)?.label||c.provider)}${preset(c.provider)?.thinking?` · thinking ${esc(preset(c.provider).thinking)}`:''})${later?' · coming in phase 2':''}</option>`).join('');
       const missing=choice.startsWith('key:')&&!cred(choice.slice(4));
-      return `${lab==='parcc'?'':'<option value="codex">Lab models · Codex</option>'}<option value="parcc">Lab models · PARCC</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
+      return `${lab==='parcc'&&!labCodex?'':`<option value="codex">${labCodex?esc(labCodex.label):'Lab models · Codex'}</option>`}<option value="parcc">Lab models · PARCC</option>${mine}${later&&!state.creds.length?'<option disabled>My key · coming in phase 2</option>':''}${missing?`<option value="${esc(choice)}" disabled>Save a key · missing or expired</option>`:''}`;
     }
     function checksHtml(result) {
       if(!result)return '';
@@ -2414,8 +2418,8 @@
       const select=form[`${role}_model`];
       if(!select?.dataset||(select.dataset.labSource||'codex')===source)return;
       labPicks[select.dataset.labSource||'codex'][role]=select.value;
-      select.innerHTML=LAB_MODELS[source][role].map(model=>`<option>${esc(model)}</option>`).join('');
-      select.value=labPicks[source][role]||LAB_MODELS[source][role][0];
+      select.innerHTML=labModels[source][role].map(model=>`<option>${esc(model)}</option>`).join('');
+      select.value=labModels[source][role].includes(labPicks[source][role])?labPicks[source][role]:labModels[source][role][0];
       select.dataset.labSource=source;
     }
     function drawRoles() {
@@ -2753,8 +2757,15 @@
           ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
-      const keys = bindKeys(form,hosted?'parcc':'codex');
-      if(hosted)for(const select of [form.model_source,form.querySelector('[data-keys-source]')])select.querySelector('option[value="codex"]').remove();
+      // A test host may offer one lab Codex model next to PARCC; the public host never does, and then Codex is not listed.
+      const labCodex=hosted&&typeof options?.hosted?.lab_codex?.model==='string'?{...options.hosted.lab_codex,label:`Lab Codex · ${options.hosted.lab_codex.model}`}:null;
+      const keys = bindKeys(form,hosted?'parcc':'codex',labCodex);
+      if(hosted)for(const select of [form.model_source,form.querySelector('[data-keys-source]')]){
+        const codex=select.querySelector('option[value="codex"]');
+        if(labCodex)codex.textContent=labCodex.label;else codex.remove();
+      }
+      if(labCodex)form.model_source.value='parcc'; // Offered, never preselected: a person picks Lab Codex on purpose.
+      if(labCodex&&Number.isFinite(labCodex.quota_stop_percent))form.quota_stop_percent.value=String(labCodex.quota_stop_percent);
       form.addEventListener('ab-keys-change',updateSummary);
       window.Lobby.shapeNewRun(form);
       const quotaLine=form.querySelector('[data-codex-quota]');
@@ -2763,7 +2774,7 @@
       // hidden key-mode radios that bindKeys owns. Choosing here sets them; their own events paint this row back.
       const keyMode=()=>form.querySelector('[data-keys-mode]:checked')?.value||'lab';
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab';
+        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab'||hosted; // A shared host does not read this machine's quota.
         if(!quotaLine.hidden){
           const message=codexQuotaText(dialogQuota);
           quotaLine.textContent=message.text;
@@ -2787,7 +2798,10 @@
         const usable=typeof used==='number'&&Number.isFinite(used)&&used>=0&&used<=100;
         meter.hidden=!(select.value==='codex'&&usable);
         if(!meter.hidden){meter.querySelector('i').style.width=`${used}%`;meter.querySelector('b').style.left=`${stop}%`;}
-        if(select.value==='codex'){
+        if(select.value==='codex'&&labCodex){
+          help.textContent=`Dev, Eval and Advisor run on ${labCodex.model}, reasoning ${labCodex.reasoning_effort||'high'}. Results are not comparable with PARCC results.`;
+          name.textContent=labCodex.label;note.innerHTML=`Uses the lab's Codex quota. The run stops at <span data-quota-stop-label>${stop}</span>% of the weekly quota${labCodex.run_cap_points?`, or once it has used ${labCodex.run_cap_points} points of it`:''}.`;
+        }else if(select.value==='codex'){
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
         }else if(select.value==='parcc'){
@@ -2800,7 +2814,7 @@
         }else{
           help.textContent='Choose each agent\'s source in Agent models below.';
           name.textContent='Set per agent';
-          note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:'lab'}`).join(' · ');
+          note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:labCodex?form[`${role}_model`]?.value||'lab':'lab'}`).join(' · ');
         }
       }
       if(!hosted)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
@@ -2890,10 +2904,10 @@
         const profile=selectedProfile(),preview=form.querySelector('[data-launch-preview]');
         if(!profile){preview.textContent='';return;}
         const mine=keys.summary();
-        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''}${mine[role].textOnly?' · no images':''})`:lab;
+        const label=(role,lab)=>mine[role]?`${mine[role].model} (your key ${mine[role].keyName}${mine[role].thinking?` · thinking ${mine[role].thinking}`:''}${mine[role].textOnly?' · no images':''})`:labCodex&&lab===labCodex.model?`${lab} (Lab Codex · reasoning ${labCodex.reasoning_effort||'high'})`:lab;
         const base=runConfigSummary({robot:profile.robot,arm:'both arms',seed:form.seed.value,layout:profile.layout_id??11,
           style:profile.style_id??34,versions:form.max_attempts.value,help:form.help_count.value});
-        preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor?` · Advisor ${label('advisor','')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of ${limits.versions} versions · ${Number(form.wall_seconds.value)/3600} of ${hoursText(limits.wall)} · not directly comparable with the official 10-version results`:''}`;
+        preview.textContent=base.replace(' · up to ','\nUp to ')+` · Agent · Dev ${label('dev',form.dev_model.value)} · Eval ${label('eval',form.eval_model.value)}${mine.advisor||labCodex?` · Advisor ${label('advisor',form.advisor_model?.value||'')}`:''}${budget.reduced?`\nREDUCED BUDGET · ${form.max_attempts.value} of ${limits.versions} versions · ${Number(form.wall_seconds.value)/3600} of ${hoursText(limits.wall)} · not directly comparable with the official 10-version results`:''}`;
       }
       function syncProfile() {
         const profile = selectedProfile();
