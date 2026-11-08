@@ -2184,7 +2184,8 @@
   const NEW_RUN_TASKS=['pick_place_counter_to_sink',...Object.keys(TASK_PRESETS)];
   // Remote (11-08, user): two seeds per task. Microwave 101 is the verified one; 102 is fully observable but unrun.
   // Counter→Cabinet has no verified seed, so 101 (the preset) and 102. The main UI keeps every seed.
-  const REMOTE_SEEDS={pick_place_counter_to_sink:[101,102],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
+  // Counter→Sink 102 fails on the run host qifei with scene_contract_mismatch (11-09 Panda-12 run 2), so only 101.
+  const REMOTE_SEEDS={pick_place_counter_to_sink:[101],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
   function remoteSeeds(profile,available) {
     const wanted=root.dataset.remote==='1'?REMOTE_SEEDS[profile?.task_id]:null;
     return wanted?wanted.filter(seed=>available.includes(seed)):null;
