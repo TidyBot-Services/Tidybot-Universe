@@ -2,6 +2,7 @@
 from dataclasses import replace
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -16,6 +17,7 @@ from remote_gateway import __main__ as cli, policy, server
 from remote_gateway.config import Config, Limits, load
 from remote_gateway.prune import directory, prune
 from remote_gateway.store import Store
+from remote_gateway.deploy import run_host_harness as launcher
 
 DEPLOY = Path(__file__).resolve().parents[1] / 'deploy/campus'
 CODEX = dict(model='gpt-6.1-sol', effort='high', runs_per_day=2, stop_percent=77)
@@ -227,6 +229,24 @@ def test_lab_codex_off_keeps_existing_refusal(app):
     response = request(app, 'POST', '/api/dev-v2/experiments', codex_body(), headers=headers)
     assert response.status == 400 and response.value['code'] == 'lab_source_not_offered'
     assert not any(call[1:3] == ('POST', '/api/dev-v2/experiments') for call in app.calls)
+
+
+def test_test_gateway_codex_still_works_without_campus_lab_codex(app, monkeypatch):
+    from remote_gateway.simtest import codex_gateway
+    # install() wraps global policy functions; restore all three even on failure.
+    for name in ('_roles', 'rebuild', 'filter_options'):
+        monkeypatch.setattr(policy, name, getattr(policy, name))
+    codex_gateway.install()
+    assert app.gateway.config.lab_codex is None
+    headers, _ = person(app)
+    response = request(app, 'POST', '/api/dev-v2/experiments', codex_body(), headers=headers)
+    assert response.status == 200
+    eid = response.value['experiment_id']
+    selected = next(call[3]['selection'] for call in app.calls if call[1:3] == ('POST', '/api/dev-v2/experiments'))
+    assert selected['agent_provider']['roles']['dev'] == LAB_CODEX
+    assert next(row for row in app.rows if row['experiment_id'] == eid)['state'] == 'running'
+    assert app.gateway.store.codex_run(eid) is False
+    assert app.gateway.store.codex_today() == 0
 
 
 @pytest.mark.parametrize('model', ['gpt-6.1-sol', 'gpt-6-astra'])
@@ -491,7 +511,8 @@ def test_campus_example_loads_with_frozen_limits():
     config = load(DEPLOY / 'gateway.json.example')
     assert config.cookie_secure and config.trusted_proxy and config.listen_host == '127.0.0.1'
     assert (config.limits.versions, config.limits.runs_per_day, config.limits.help_requests, config.limits.run_slots, config.limits.logins_per_hour) == (3, 3, 3, 3, 10)
-    assert config.disk_path == Path('__DATA__') and config.min_free_gb == 150 and config.retention_days == 7
+    assert config.upstream == 'http://127.0.0.1:__HARNESS_PORT__'
+    assert config.disk_path == Path('__HARNESS_DATA__') and config.min_free_gb == 150 and config.retention_days == 7
     assert config.lab_codex == dict(CODEX, runs_per_day=6)
     assert len(config.stop_files) == 1 and 'no-new-runs' not in config.stop_files[0]
 
@@ -528,3 +549,117 @@ def test_ufw_apply_refuses_without_root(monkeypatch):
     def forbidden(*args, **kwargs):raise AssertionError('must not execute ufw')
     monkeypatch.setattr(subprocess, 'run', forbidden)
     with pytest.raises(SystemExit, match='requires root'):exec(compile(script, 'ufw-rules.sh', 'exec'), {})
+
+
+@pytest.fixture
+def launcher_home(tmp_path, monkeypatch):
+    home = tmp_path / 'home';home.mkdir()
+    (home / '.litellm-key').write_text('decoy-home-key')
+    monkeypatch.setenv('HOME', str(home))
+    for name in ('PARCC_API_KEY', 'LITELLM_KEY', 'ATTENTION_NO_HOME_LAB_KEY', 'CREDENTIALS_DIRECTORY'):
+        monkeypatch.delenv(name, raising=False)
+    # Use the actual installed-workspace environment builder, without an install.
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[2] / 'scripts/attentionbench'))
+    return home
+
+
+@pytest.mark.parametrize('source', ['stdin', 'credential', 'none'])
+@pytest.mark.parametrize('present', [False, True])
+def test_launcher_explicit_key_sources_never_read_home(launcher_home, tmp_path, monkeypatch, source, present):
+    credentials = tmp_path / 'credentials';credentials.mkdir()
+    (credentials / 'parcc-key').write_text('credential-key\n' if present else '')
+    monkeypatch.setenv('CREDENTIALS_DIRECTORY', str(credentials))
+    monkeypatch.setattr(sys, 'stdin', io.StringIO('stdin-key\nignored-second-line\n' if present else ''))
+    monkeypatch.setenv('PARCC_API_KEY', 'inherited-parcc-decoy')
+    monkeypatch.setenv('LITELLM_KEY', 'inherited-litellm-decoy')
+    hidden = os.pathsep.join([str(tmp_path / 'gateway-state'), str(credentials / 'parcc-key')])
+    monkeypatch.setenv('ATTENTION_PREFLIGHT_HIDDEN_PATHS', hidden)
+    original = Path.read_text
+    def read(path, *args, **kwargs):
+        assert path != launcher_home / '.litellm-key', 'must not read the home key'
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'read_text', read)
+    env = launcher.build_env(tmp_path, key_source=source)
+    assert env['ATTENTION_NO_HOME_LAB_KEY'] == '1'
+    assert env['ATTENTION_PREFLIGHT_HIDDEN_PATHS'] == hidden
+    assert 'LITELLM_KEY' not in env
+    expected = source + '-key' if present and source != 'none' else None
+    assert env.get('PARCC_API_KEY') == expected
+    assert os.environ['PARCC_API_KEY'] == 'inherited-parcc-decoy'
+    assert all(value != 'decoy-home-key' for value in env.values())
+
+
+@pytest.mark.parametrize('directory', [None, ''])
+def test_launcher_credential_requires_systemd_directory(launcher_home, tmp_path, monkeypatch, directory):
+    if directory is not None:monkeypatch.setenv('CREDENTIALS_DIRECTORY', directory)
+    with pytest.raises(SystemExit, match='requires CREDENTIALS_DIRECTORY'):
+        launcher.build_env(tmp_path, key_source='credential')
+
+
+def test_launcher_missing_credential_does_not_fall_back(launcher_home, tmp_path, monkeypatch):
+    monkeypatch.setenv('CREDENTIALS_DIRECTORY', str(tmp_path))
+    with pytest.raises(FileNotFoundError):launcher.build_env(tmp_path, key_source='credential')
+
+
+@pytest.mark.parametrize('source', [None, 'home'])
+def test_launcher_legacy_and_explicit_home_source(launcher_home, tmp_path, source):
+    # As before this change: the launcher reads no key file; the harness may still fall back to ~/.litellm-key itself.
+    env = launcher.build_env(tmp_path, key_source=source)
+    assert 'PARCC_API_KEY' not in env
+    assert 'ATTENTION_NO_HOME_LAB_KEY' not in env
+
+
+def test_launcher_legacy_environment_key_precedes_home(launcher_home, tmp_path, monkeypatch):
+    monkeypatch.setenv('PARCC_API_KEY', 'environment-key')
+    assert launcher.build_env(tmp_path)['PARCC_API_KEY'] == 'environment-key'
+
+
+@pytest.mark.parametrize('explicit_secret', [False, True])
+def test_launcher_cli_secret_fd_and_separate_harness_data(launcher_home, tmp_path, monkeypatch, capsys, explicit_secret):
+    data = tmp_path / 'harness-data';data.mkdir()
+    state = tmp_path / 'gateway-state';state.mkdir(mode=0o700)
+    secret = (state if explicit_secret else data) / 'gateway.secret'
+    secret.write_text('gateway-secret-canary');secret.chmod(0o600)
+    workspace = tmp_path / 'workspace'
+    calls, child = [], {}
+    monkeypatch.setattr(sys, 'stdin', io.StringIO('stdin-key-canary\nnot-a-key\n'))
+    def execute(python, argv, env):child.update(python=python, argv=argv, env=env)
+    monkeypatch.setattr(launcher, 'os', SimpleNamespace(
+        environ=os.environ, O_RDONLY=os.O_RDONLY,
+        open=lambda path, mode:(calls.append(('open', path, mode)), 9)[1],
+        dup2=lambda *args:calls.append(('dup2', *args)), close=lambda fd:calls.append(('close', fd)),
+        set_inheritable=lambda *args:calls.append(('inheritable', *args)),
+        chdir=lambda path:calls.append(('chdir', path)), execve=execute))
+    argv = [str(workspace), str(data), '--key-stdin']
+    if explicit_secret:argv = [str(workspace), str(data), '8870', '--secret', str(secret), '--key-source', 'stdin']
+    launcher.cli(argv)
+    assert ('open', secret, os.O_RDONLY) in calls
+    assert ('dup2', 9, 3) in calls and ('close', 9) in calls and ('inheritable', 3, True) in calls
+    options = child['argv']
+    for flag, expected in [('--store', data / 'attention.sqlite3'), ('--artifact-root', data / 'artifacts'),
+                           ('--dev-v2-root', data / 'runs'), ('--sim-lock', data / 'sim.lock'),
+                           ('--gateway-secret-fd', '3'), ('--port', '8870' if explicit_secret else '8860')]:
+        assert options[options.index(flag) + 1] == str(expected)
+    assert child['env']['PARCC_API_KEY'] == 'stdin-key-canary'
+    assert child['env']['ATTENTION_NO_HOME_LAB_KEY'] == '1'
+    assert 'stdin-key-canary' not in repr(options) + repr(os.environ) + repr(capsys.readouterr())
+    assert 'gateway-secret-canary' not in repr(child)
+    assert list(data.iterdir()) == ([] if explicit_secret else [secret])
+
+
+@pytest.mark.parametrize('mode', [0o640, 0o604])
+def test_launcher_secret_must_remain_owner_only(launcher_home, tmp_path, mode):
+    secret = tmp_path / 'gateway.secret';secret.write_text('secret');secret.chmod(mode)
+    with pytest.raises(SystemExit, match='owner only'):
+        launcher.main(tmp_path, tmp_path / 'harness-data', secret=secret, key_source='none')
+
+
+def test_campus_unit_wires_separate_data_credentials_and_hidden_paths():
+    import shlex
+    unit = (DEPLOY / 'attentionbench-public-harness.service').read_text()
+    command = shlex.split(next(line.split('=', 1)[1] for line in unit.splitlines() if line.startswith('ExecStart=')))
+    assert command[command.index('__WORKSPACE__') + 1:command.index('__WORKSPACE__') + 3] == ['__HARNESS_DATA__', '__PORT__']
+    assert command[command.index('--secret') + 1] == '__DATA__/gateway-state/gateway.secret'
+    assert command[command.index('--key-source') + 1] == 'credential'
+    assert 'LoadCredential=parcc-key:__KEY_FILE__' in unit
+    assert 'ATTENTION_PREFLIGHT_HIDDEN_PATHS=__DATA__/gateway-state:__DATA__/gateway-state/gateway.secret:%d/parcc-key' in unit

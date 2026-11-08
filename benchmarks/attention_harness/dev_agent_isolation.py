@@ -115,6 +115,9 @@ def verify_runtime(workspace, private_dir, *, planner_port=None, run=subprocess.
     unexpected file visibility, missing receipt or process error refuses launch.
     planner_port is required from the trusted frozen run config, never guessed.
     """
+    hidden_paths = [p for p in os.environ.get('ATTENTION_PREFLIGHT_HIDDEN_PATHS', '').split(os.pathsep) if p]
+    if any(not Path(p).is_absolute() for p in hidden_paths):
+        raise IsolationUnavailable('preflight_hidden_path_must_be_absolute')
     ws, private = Path(workspace).resolve(strict=True), Path(private_dir).resolve(strict=True)
     if private == ws or private.is_relative_to(ws): raise IsolationUnavailable('private_inside_workspace')
     if not shutil.which('bwrap'): raise IsolationUnavailable('bubblewrap_missing')
@@ -140,7 +143,7 @@ def verify_runtime(workspace, private_dir, *, planner_port=None, run=subprocess.
         paths = [str(sibling / 'outside.txt'), str(sibling / 'reference-policies/answer.py'),
                  str(native), str(repo / 'benchmarks/attention_harness/dev_tasks.py'),
                  str(codex_home() / 'auth.json'), str(link),
-                 str(ws / '..' / sibling.name / 'outside.txt')]
+                 str(ws / '..' / sibling.name / 'outside.txt'), *hidden_paths]
         script = '''import json,os,pathlib,socket
 paths=__PATHS__
 checks={"outside_hidden":all(not os.path.exists(p) for p in paths)}

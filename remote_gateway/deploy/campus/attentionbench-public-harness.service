@@ -5,11 +5,14 @@ After=network-online.target
 [Service]
 WorkingDirectory=__SRC__
 Environment=PYTHONDONTWRITEBYTECODE=1
+Environment="ATTENTION_PREFLIGHT_HIDDEN_PATHS=__DATA__/gateway-state:__DATA__/gateway-state/gateway.secret:%d/parcc-key"
 # The launcher uses the installed workspace's clean environment and loopback harness.
-# Its DATA is gateway-state, where the shared secret lives; runs are in gateway-state/runs.
-# __SIM_LOCK__ must be the run host's shared simulator lock, not a new private lock.
-# The lab key, if PARCC is offered, is read by the launcher from this account's home.
-ExecStart=__PY__ -B -u __SRC__/remote_gateway/deploy/run_host_harness.py __WORKSPACE__ __DATA__/gateway-state 8860 --sim-lock __SIM_LOCK__ --run-slots 3
+# __HARNESS_DATA__ is separate from gateway-state; its runs/ is the prune root.
+# __PORT__ defaults to 8870, beside the existing public harness on 8860.
+# __SIM_LOCK__ must be the host's shared lock, outside gateway-state; its queue lives beside it.
+# Optional PARCC credential: omit LoadCredential and use --key-source none without a key.
+LoadCredential=parcc-key:__KEY_FILE__
+ExecStart=__PY__ -B -u __SRC__/remote_gateway/deploy/run_host_harness.py __WORKSPACE__ __HARNESS_DATA__ __PORT__ --secret __DATA__/gateway-state/gateway.secret --key-source credential --sim-lock __SIM_LOCK__ --run-slots 3
 UMask=0077
 LimitCORE=0
 Restart=on-failure

@@ -53,9 +53,9 @@ def failed_tool_streak(items):
 
 def parcc_key():
     key = os.getenv('PARCC_API_KEY') or os.getenv('LITELLM_KEY')
-    path = Path.home() / '.litellm-key'
-    if not key and path.is_file():
-        key = path.read_text().strip()
+    if not key and os.getenv('ATTENTION_NO_HOME_LAB_KEY') != '1':
+        path = Path.home() / '.litellm-key'
+        if path.is_file():key = path.read_text().strip()
     if not key: raise BridgeError('parcc_key_missing')
     return key
 

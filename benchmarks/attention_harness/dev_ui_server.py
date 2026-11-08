@@ -69,7 +69,7 @@ def provider_defaults(*,public_gateway_mode=False,home=None,getenv=None):
     home=Path.home() if home is None else Path(home)
     getenv=os.getenv if getenv is None else getenv
     path=home/'.litellm-key'
-    lab=bool(getenv('PARCC_API_KEY') or getenv('LITELLM_KEY')) or (path.is_file() and path.stat().st_size>0)
+    lab=bool(getenv('PARCC_API_KEY') or getenv('LITELLM_KEY')) or (getenv('ATTENTION_NO_HOME_LAB_KEY')!='1' and path.is_file() and path.stat().st_size>0)
     codex=(home/'.codex/auth.json').is_file()
     sol=dict(provider='sol',model='gpt-6.1-sol',source='codex',available=codex,
              reason='' if codex else 'no Codex login on this machine; add your own key')

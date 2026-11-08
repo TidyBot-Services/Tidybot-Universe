@@ -60,7 +60,29 @@ That prints an invite id and the code. The code is shown once and stored only as
 
 `deploy/` holds systemd user unit templates, so the gateway and harness can outlive a shell. Replace `__SRC__` (the checkout), `__PY__` (its Python) and `__DATA__` (the data folder). Restarting the harness ends a run in progress. Nothing in this repository installs or enables a unit automatically.
 
-`deploy/campus/` is the S0 package for a gateway and harness on the same run host. It includes a loadable config example (Secure cookies, trusted loopback nginx, 3 versions/run, 3 runs/person/day, 3 help requests, 3 open slots, 10 login failures/address/hour, 150 GiB disk floor, 7-day retention, 6 Codex starts/UTC day and a 77% stop line), two user units with `LimitCORE=0` and `Restart=on-failure`, and nginx/ufw templates. Replace every placeholder before review. The harness unit uses the installed `__WORKSPACE__` launcher; its data and shared secret are in `__DATA__/gateway-state`, its runs in `__DATA__/gateway-state/runs`. `__SRC__` must be that workspace's checkout. Use the host's shared `__SIM_LOCK__`.
+`deploy/campus/` is the S0 package for a gateway and harness on the same run host. It includes a config example (Secure cookies, trusted loopback nginx, 3 versions/run, 3 runs/person/day, 3 help requests, 3 open slots, 10 login failures/address/hour, 150 GiB disk floor, 7-day retention, 6 Codex starts/UTC day and a 77% stop line), two user units with `LimitCORE=0` and `Restart=on-failure`, and nginx/ufw templates. Replace every placeholder before review. `__SRC__` must be the installed `__WORKSPACE__`'s checkout. Use the host's shared `__SIM_LOCK__`.
+
+For a separate campus harness, replace the unit's `__PORT__` and the gateway example's `__HARNESS_PORT__` with **8870**, so it can run beside the existing public harness on 8860. For example, the gateway value is:
+
+```json
+{"upstream": "http://127.0.0.1:8870"}
+```
+
+For the first trial, the coordinator instead points upstream at the existing `http://127.0.0.1:8860` harness. Do not start another harness on that port. The generic launcher retains its legacy 8860 default; the campus unit always passes its explicit port.
+
+Keep `__DATA__/gateway-state` mode **0700**, for the gateway database, secret and audit log. Harness data belongs in a separate `__HARNESS_DATA__`, for example `/home/qifei/ab-campus-data` (`~/ab-campus-data`), also mode 0700: `attention.sqlite3`, `artifacts/`, `runs/`, and the simulator lock queue. The queue lives beside `__SIM_LOCK__`: for example, `~/ab-campus-data/sim.lock.queue.sqlite3` beside `~/ab-campus-data/sim.lock`. Use the same lock path as every other simulator caller on the host, outside gateway-state. Set `disk_path` to that harness data directory, since that is what fills. The prune root is **`~/ab-campus-data/runs`**, never gateway-state. The launcher takes `--secret __DATA__/gateway-state/gateway.secret`; without `--secret`, existing callers still use `DATA/gateway.secret`. The secret must retain owner-only permissions and reaches the harness only through fd 3.
+
+Campus launches must select a key source explicitly. `--key-source stdin` reads only the first stdin line; `credential` reads only `$CREDENTIALS_DIRECTORY/parcc-key` and refuses if `CREDENTIALS_DIRECTORY` is unset; `none` starts without a PARCC key. These modes set `ATTENTION_NO_HOME_LAB_KEY=1`, clear inherited PARCC/LiteLLM keys, and never consult `~/.litellm-key`. The selected key is put only in the child's `PARCC_API_KEY` environment, never in logs, argv or a launcher-created file. With no key, provider defaults report PARCC unavailable with a reason; the harness still starts. `--key-source home` permits the legacy home-file behavior. Omitting the option preserves existing callers, including `--key-stdin` as an alias for stdin.
+
+The campus unit uses `--key-source credential` with `LoadCredential=parcc-key:__KEY_FILE__`. This is optional: to run without PARCC, remove `LoadCredential` and change the source to `none`. When using credentials, replace `__KEY_FILE__` with an existing protected key source managed by the operator; systemd supplies the runtime credential, and `%d/parcc-key` in the hidden-path list names it. Do not copy a key into the harness data directory.
+
+The first trial uses **`--key-source stdin`**, fed from the operator's machine over ssh as today. An illustrative command, run on the operator's machine after replacing paths (not a deployment step performed by S0):
+
+```bash
+ssh RUN_HOST 'ATTENTION_PREFLIGHT_HIDDEN_PATHS=/path/to/gateway-state:/path/to/gateway-state/gateway.secret /path/to/python /path/to/src/remote_gateway/deploy/run_host_harness.py /path/to/workspace /home/qifei/ab-campus-data 8870 --secret /path/to/gateway-state/gateway.secret --key-source stdin --sim-lock /path/to/shared/sim.lock --run-slots 3' < /path/on/operator-machine/parcc-key
+```
+
+For a manual stdin launch, set `ATTENTION_PREFLIGHT_HIDDEN_PATHS` on the run host to the absolute gateway-state and secret paths, separated by `:`, as above. The credential unit includes those paths and `%d/parcc-key` automatically. Preflight checks these paths with stat only and refuses launch if any is visible inside the agent sandbox; empty entries are ignored and relative paths are refused. Until the dedicated user from C9 exists (requires sudo), the harness itself runs as the same account as the gateway and **can still read gateway-state**. Only the agent sandbox is kept out; this is not account-level separation.
 
 From that checkout, `sh remote_gateway/deploy/campus/pause.sh CONFIG` pauses admission. `off.sh CONFIG MAINTENANCE_FILE [UNIT]` pauses, creates nginx's maintenance file, then stops the gateway; `on.sh` starts it, resumes admission, then removes maintenance. Paths are arguments; `PYTHON` can name the environment's Python. These scripts affect only the gateway unit; existing harness runs continue. The maintenance file and its parent directories must be readable/searchable by nginx, with its containing directory writable only by the operator. Its configured path must match the scripts' argument.
 
@@ -72,6 +94,8 @@ The nginx template explicitly lists the gateway's routes, overwrites `X-Real-IP`
 python -m remote_gateway --config gateway.json prune --runs-root /path/to/public/runs
 python -m remote_gateway --config gateway.json prune --runs-root /path/to/public/runs --days 7 --delete
 ```
+
+For the campus example, pass `--runs-root "$HOME/ab-campus-data/runs"` to these commands.
 
 The default is a dry run: each candidate's absolute path, file size in bytes, age in days, and a total. Review the list and export anything wanted before using `--delete`; the first real deletion needs the owner's review. No timer is enabled. Run cleanup while the gateway is stopped and nobody else is changing the run root.
 
