@@ -173,7 +173,7 @@ test('REMOTE-FORM: Remote shows main\'s sections and fields, plus Queue, minus 0
   assert.deepEqual(await sectionHeads(remote.form), [...(await sectionHeads(main.form)).filter(h => h !== '06Advanced'), '07Queue']);
   assert.deepEqual(await fieldNames(remote.form), (await fieldNames(main.form)).filter(name => name !== 'goal_id'));
   assert.equal(await remote.form.locator('input[type=hidden][name=goal_id]').count(), 1, 'the host still gets a goal key');
-  assert.deepEqual(await remote.form.locator('select[name=seed] option').evaluateAll(els => els.map(e => e.value)), ['101'], 'Remote Counter to Sink: 101 only (102 fails on qifei, 11-09)');
+  assert.deepEqual(await remote.form.locator('select[name=seed] option').evaluateAll(els => els.map(e => e.value)), ['101', '102'], 'Remote: two seeds per task (102 back after the host-variant fix, 11-09)');
   const hidden = await remote.form.locator('.ab-launch-section').evaluateAll(els => els.filter(e => !e.getClientRects().length).length);
   assert.equal(hidden, 0, 'every section shows, nothing is folded (user 11-08)');
   assert.equal(await remote.form.locator('[data-more-settings]').count(), 0);
