@@ -82,13 +82,14 @@ def send_fault(port, value):
     urllib.request.urlopen(request, timeout=5).close()
 
 
-def outcome_checks(port, events, cast, codes):
+def outcome_checks(port, events, cast, codes, model_source='codex'):
     """What the person saw is one thing; this asks the fake host what really reached it."""
     with urllib.request.urlopen(f'http://127.0.0.1:{port}/sim/state', timeout=5) as response:world = json.load(response)
     rows = [json.loads(line) for line in events.open(encoding='utf-8')]
     log = sim_users.Log(events, codes)
     for run_id, run in world['runs'].items():
-        if run['dev_model'] != 'gpt-6.1-sol' or run.get('dev_reasoning_effort') != 'high' or run['quota_stop_percent'] != 77 or run['eval_provider'] != 'parcc' or run.get('advisor_provider') != 'parcc':
+        model, provider = ('gpt-6.1-sol', 'openai') if model_source == 'codex' else ('parcc/GLM', 'parcc')
+        if run['dev_model'] != model or run.get('dev_reasoning_effort') != 'high' or run['quota_stop_percent'] != 77 or run['eval_provider'] != provider or run.get('advisor_provider') != provider:
             log.write(lane='-', kind='guard', message=f'run {run_id[-8:]} 的配置不对：{run}')
     wanted = {'认真回复': 'human', '关页再回来': 'human', '断线重连': 'human', '跳过求助': 'skip', '不回复': 'advisor'}
     for lane, name, story in cast:
@@ -175,12 +176,12 @@ def offline(args):
         codes = invites(config, len(cast), directory / 'invites.json')
         people = [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)]
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
-        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned',
+        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer', '--canned'), reply_source='canned', model_source=args.model_source,
                                       fake=f'http://127.0.0.1:{args.fake_port}')
         for at, value in args.fault:threading.Timer(at, send_fault, (args.fake_port, value)).start()
         asyncio.run(sim_users.run_all(settings, people, directory / 'events.jsonl', codes))
         sweep(config, directory / 'events.jsonl', codes)
-        outcome_checks(args.fake_port, directory / 'events.jsonl', cast, codes)
+        outcome_checks(args.fake_port, directory / 'events.jsonl', cast, codes, args.model_source)
         with urllib.request.urlopen(f'http://127.0.0.1:{args.monitor_port}/api/state', timeout=5) as response:final = json.load(response)
         (directory / 'report.json').write_text(json.dumps(final, ensure_ascii=False, indent=1), encoding='utf-8')
         print(json.dumps(final['totals'], ensure_ascii=False), flush=True)
@@ -304,7 +305,7 @@ def real(args):
         codes = invites(config, len(cast), directory / 'invites.json')
         shared = {};log = sim_users.Log(directory / 'events.jsonl', codes)
         guard = DiskGuard(args, config, shared, log);guard.start()
-        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, seed=args.seed, run_cap_seconds=args.run_cap_seconds,
+        settings = sim_users.Settings(base=f'http://127.0.0.1:{args.gateway_port}', out=directory, scale=args.scale, drop_seconds=args.drop_seconds, seed=args.seed, run_cap_seconds=args.run_cap_seconds, model_source=args.model_source,
                                       reply_command=(sys.executable, '-B', '-m', 'remote_gateway.simtest.reply_writer'), reply_source='codex')
         print(f'监控页 http://127.0.0.1:{args.monitor_port}/', flush=True)
         asyncio.run(sim_users.run_all(settings, [(lane, name, story, code) for (lane, name, story), code in zip(cast, codes)], directory / 'events.jsonl', codes, shared))
@@ -351,6 +352,7 @@ def main():
     parser.add_argument('--quota-url', default='http://127.0.0.1:8769/api/codex-quota', help="or 'local' to read this machine's Codex session logs")
     parser.add_argument('--quota-stop-percent', type=float, default=77)
     parser.add_argument('--seed', type=int, default=101)
+    parser.add_argument('--model-source', choices=('codex', 'parcc'), default='codex', help="what each person picks in 03 Model source: Lab Codex (gpt-6.1-sol high) or PARCC")
     args = parser.parse_args();args.fault = [(float(at), value) for at, value in args.fault]
     raise SystemExit(real(args) if args.real else offline(args))
 
