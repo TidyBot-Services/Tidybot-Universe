@@ -200,7 +200,7 @@ def attempt_story(review):
         short, failure = 'awaiting evaluation', None
     # Remove source citations before choosing the first sentence. Full Eval text
     # stays in the downloadable agent report (region 03 no longer shows it, 10-30).
-    plain = re.sub(r'\([^)]*(?:\.txt|\.json|\.png|e\d{6}|v\d{4})[^)]*\)', '', reason)
+    plain = re.sub(r'\([^)]*(?:\.txt|\.json|\.png|\.jpg|e\d{6}|v\d{4})[^)]*\)', '', reason)
     plain = re.sub(r'\b(?:stdout|stderr|trace|state_log|frames)\b.*', '', plain, flags=re.I)
     plain = re.sub(r'\b(?:e\d{6,}|v\d{4,}|[a-f0-9]{32,})\b', '', plain)
     plain = re.sub(r'\s+', ' ', plain).strip()
@@ -259,8 +259,8 @@ def activity_intervals(cell, timeline):
 
 def plain_sentence(text):
     """One operator sentence, without file citations or diagnostic identifiers."""
-    text = re.sub(r'\([^)]*\.(?:txt|json|jsonl|png)[^)]*\)', '', str(text or ''))
-    text = re.sub(r'\b[\w/-]+\.(?:txt|json|jsonl|png)(?::[\d–—,: -]+)?', '', text)
+    text = re.sub(r'\([^)]*\.(?:txt|json|jsonl|png|jpg)[^)]*\)', '', str(text or ''))
+    text = re.sub(r'\b[\w/-]+\.(?:txt|json|jsonl|png|jpg)(?::[\d–—,: -]+)?', '', text)
     text = re.sub(r'\s+([,;!?]|\.(?!\d))', r'\1', re.sub(r'\s+', ' ', text)).strip()
     return re.split(r'(?<=[.!?])\s+', text)[0]
 
@@ -488,7 +488,7 @@ def version_evidence(cell, version, *, media=True, instruments=True):
     for citation in review.get('evidence', []):
         entry = dict(citation)
         # Preserve the full citation; link only a recognized public filename.
-        match = re.match(r'^(stdout\.txt|stderr\.txt|trace\.json|state_log\.json|diagnostics/planner\.json|frames/[A-Za-z0-9_.-]+\.png)(?=$|[\s:#])', citation.get('source', ''))
+        match = re.match(r'^(stdout\.txt|stderr\.txt|trace\.json|state_log\.json|diagnostics/planner\.json|frames/[A-Za-z0-9_.-]+\.(?:png|jpg))(?=$|[\s:#])', citation.get('source', ''))
         if match:
             entry['uri'] = f'{ROOT}/executions/{eid}/'+match[1]
         citations.append(entry)

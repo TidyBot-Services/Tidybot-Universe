@@ -24,7 +24,7 @@ COPY_ERRORS = (errno.EXDEV, errno.EPERM, errno.EMLINK, errno.EOPNOTSUPP)
 
 
 def shared_name(name):
-    return bool(re.fullmatch(r'executions/e\d+/frames/[^/]+\.png', name))
+    return bool(re.fullmatch(r'executions/e\d+/frames/[^/]+\.(?:png|jpg)', name))
 
 
 def encode(value):

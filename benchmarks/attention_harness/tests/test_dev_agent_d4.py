@@ -116,10 +116,12 @@ def test_recording_pixels_metadata_and_sim_time(tmp_path):
     rows=[dict(file=path.name,sha256=hashlib.sha256(path.read_bytes()).hexdigest(),physical_sequence=7,trace_seconds=900)]
     (folder/'frames.jsonl').write_text(''.join(json.dumps(x)+'\n' for x in rows))
     frames=list(recording_frames(tmp_path,5))
-    assert len(frames)==1 and frames[0]['filename']=='frames/overview-000000-sim-1.400000s.png'
+    # 11-08: exported as JPEG (about 28% of the PNG bytes); the source may still be PNG.
+    assert len(frames)==1 and frames[0]['filename']=='frames/overview-000000-sim-1.400000s.jpg'
     assert not re.search(rb'native_success|native_result|check_success|reward',frames[0]['data'])
     with Image.open(io.BytesIO(frames[0]['data'])) as im:
-        assert im.info=={} and im.getpixel((0,0))==(20,40,60)
+        assert im.format=='JPEG' and set(im.info) <= {'jfif','jfif_version','jfif_unit','jfif_density','dpi'}
+        assert max(abs(a-b) for a,b in zip(im.getpixel((0,0)),(20,40,60))) <= 2
     # Production capture paths feed rendered RGB directly, without text drawing.
     for name in ['benchmarks/attention_harness/robocasa365/human_camera.py','openarm365_dev_v2/extra_views.py','benchmarks/attention_harness/robocasa365/recording.py']:
         assert not re.search(r'putText|ImageDraw|drawtext',Path(name).read_text())

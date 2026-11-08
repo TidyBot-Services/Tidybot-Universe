@@ -101,6 +101,9 @@ class MujocoV2Planner:
             self.upload();body=self.body(active)
             self.client.call('/warmup',{k:v for k,v in body.items() if k!='env_id'})
             fk=self.client.call('/fk',body);errors={}
+            # After env.step the site poses still describe the previous substep (MuJoCo integrates qpos last);
+            # recompute them from the same qpos the planner just received, so a moving arm is compared like for like.
+            self.env.sim.forward()
             for side in ('left','right'):
                 tool=f'openarm_{side}_hand_tcp';got=fk['poses'][tool]
                 actual=np.linalg.inv(mount_pose(self.env))@tcp_pose(self.env,side)

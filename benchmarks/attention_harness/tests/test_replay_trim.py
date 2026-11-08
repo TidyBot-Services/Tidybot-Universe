@@ -61,7 +61,7 @@ def test_negative_control_originals_and_evidence_unchanged(tmp_path):
     assert _evidence_refs(root,**options) == evidence_before
     restored=list(recording_frames(root,20))
     assert len(restored)==8
-    assert all(row['data'].startswith(b'\x89PNG') for row in restored)
+    assert all(row['data'].startswith(b'\xff\xd8') for row in restored)  # JPEG since 11-08
 
 
 @pytest.mark.parametrize('times,colors,expected', [

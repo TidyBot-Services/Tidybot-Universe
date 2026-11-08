@@ -56,8 +56,8 @@ def recording_frames(episode, control_freq):
                     if hashlib.sha256(raw).hexdigest() != row['sha256']: raise ValueError('recording_digest_mismatch')
                 with Image.open(io.BytesIO(raw)) as picture:
                     clean = Image.frombytes('RGB', picture.size, picture.convert('RGB').tobytes())
-                    output = io.BytesIO(); clean.save(output, format='PNG')
+                    output = io.BytesIO(); clean.save(output, format='JPEG', quality=92, subsampling=0)
                 seconds = seq/control_freq
-                yield dict(filename=f'frames/{view}-{index:06d}-sim-{seconds:.6f}s.png',
+                yield dict(filename=f'frames/{view}-{index:06d}-sim-{seconds:.6f}s.jpg',
                     view=view,index=index,sim_seconds=seconds,physical_sequence=seq,
                     trace_seconds=row.get('trace_seconds'),data=output.getvalue())

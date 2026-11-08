@@ -37,6 +37,7 @@ def display(value):
 
 VIEW_LIMIT=32*1024*1024       # inlined into the view
 DOWNLOAD_LIMIT=256*1024*1024  # one public file download; clean() needs the whole text (10-30: sol3 state logs 42 MB)
+FRAME_SUFFIXES=('.png','.jpg')  # .png: runs before 11-08; .jpg: exported frames since (about 28% of the PNG bytes)
 
 
 def _read(root,name,default=None):
@@ -50,7 +51,7 @@ def _size(value):
 
 def _link(base,label,root,name):
     """Availability without reading: an unsafe or oversize file marks only its own link."""
-    try:size=stat_beneath(root,name,shared=name.endswith('.png'))
+    try:size=stat_beneath(root,name,shared=name.endswith(FRAME_SUFFIXES))
     except FileNotFoundError:return dict(label=label+' (not yet available)',available=False)
     except (OSError,ValueError) as exc:
         return dict(label=label+' (unavailable: unsafe file)',available=False,reason=f'unsafe file ({exc})')
@@ -64,7 +65,7 @@ def _link(base,label,root,name):
 
 def _public_name(name):
     if re.fullmatch(r'(?:events/forced-fallback\.json|history/help\.jsonl|executions/e\d+/(?:help|execution|evidence)\.json|versions/v\d+/(?:evidence|decision)\.json)',name):return True
-    if re.fullmatch(r'executions/e\d+/(?:frames\.json|frames/(?:overview|side|top|left_wrist|right_wrist)-\d+-sim-\d+\.\d+s\.png)',name):return True
+    if re.fullmatch(r'executions/e\d+/(?:frames\.json|frames/(?:overview|side|top|left_wrist|right_wrist)-\d+-sim-\d+\.\d+s\.(?:png|jpg))',name):return True
     return bool(re.fullmatch(r'(?:events/demo\.json|probes/p\d+\.json|rpc/responses/[A-Za-z0-9_-]{1,64}\.json|history/(?:versions|executions|probes)\.jsonl|history/version_history\.json|versions/v\d+/(?:policy\.py|bundle\.py|bundle-map\.json|submission\.json|eval\.json|help\.json|continue\.json|sources/[A-Za-z0-9_-]+\.py)|executions/e\d+/(?:policy\.py|stdout\.txt|stderr\.txt|trace\.json|state_log\.json|result\.json|initial_observation\.json|final_observation\.json|diagnostics/planner\.json))',name))
 
 
@@ -77,20 +78,20 @@ def artifact(cell,name):
     if not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
     root=Path(cell['artifact_dir'])/'agent'
     try:
-        linked=name.endswith('.png')
+        linked=name.endswith(FRAME_SUFFIXES)
         raw=read_beneath(root/'ws',name,DOWNLOAD_LIMIT,shared=linked)
         canonical=read_beneath(root/'private/public',name,DOWNLOAD_LIMIT,shared=linked)
     except FileNotFoundError:raise FileNotFoundError('Agent public evidence unavailable') from None
     except (OSError,ValueError) as exc:raise FileNotFoundError(f'Agent public evidence unavailable: {exc}') from None
     if raw!=canonical:raise FileNotFoundError('Agent public evidence digest mismatch')
-    if name.endswith('.png'):
+    if name.endswith(FRAME_SUFFIXES):
         import hashlib
         folder,filename=name.split('/frames/',1)
         manifest=_read(root/'private/public',folder+'/frames.json',[])
         entry=next((r for r in manifest if r.get('filename')=='frames/'+filename),None)
         if not entry or hashlib.sha256(raw).hexdigest()!=entry.get('sha256'):
             raise FileNotFoundError('Agent frame digest mismatch')
-        return raw,'image/png'
+        return raw,'image/png' if name.endswith('.png') else 'image/jpeg'
     text=raw.decode('utf-8')
     # Scrub any paths from text too. This endpoint cannot download private/raw logs.
     return (clean(json.loads(text)),'application/json') if name.endswith('.json') else (clean(text),'text/plain; charset=utf-8')
