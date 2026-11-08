@@ -1,0 +1,19 @@
+[Unit]
+Description=AttentionBench campus harness (own workspace and data)
+After=network-online.target
+
+[Service]
+WorkingDirectory=__SRC__
+Environment=PYTHONDONTWRITEBYTECODE=1
+# The launcher uses the installed workspace's clean environment and loopback harness.
+# Its DATA is gateway-state, where the shared secret lives; runs are in gateway-state/runs.
+# __SIM_LOCK__ must be the run host's shared simulator lock, not a new private lock.
+# The lab key, if PARCC is offered, is read by the launcher from this account's home.
+ExecStart=__PY__ -B -u __SRC__/remote_gateway/deploy/run_host_harness.py __WORKSPACE__ __DATA__/gateway-state 8860 --sim-lock __SIM_LOCK__ --run-slots 3
+UMask=0077
+LimitCORE=0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

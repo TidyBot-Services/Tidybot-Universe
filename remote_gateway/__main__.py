@@ -1,4 +1,4 @@
-"""python -m remote_gateway --config FILE {serve,secret,invite,revoke-invite,revoke-user,invites,pause,resume}"""
+"""python -m remote_gateway --config FILE {serve,secret,invite,revoke-invite,revoke-user,invites,pause,resume,prune}"""
 import argparse
 import os
 from pathlib import Path
@@ -21,6 +21,10 @@ def main():
     for name, field in (('revoke-invite', 'invite'), ('revoke-user', 'user')):commands.add_parser(name).add_argument(field)
     commands.add_parser('pause', help='refuse new runs; running ones continue')
     commands.add_parser('resume', help='accept new runs again')
+    cleanup = commands.add_parser('prune', help='list old finished run directories; delete only with --delete')
+    cleanup.add_argument('--runs-root', type=Path, required=True)
+    cleanup.add_argument('--days', type=int)
+    cleanup.add_argument('--delete', action='store_true')
     args = parser.parse_args()
     config = load(args.config)
     config.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -39,7 +43,11 @@ def main():
         config.pause_file.unlink(missing_ok=True)
     else:
         store = Store(config.database)
-        if args.command == 'invite':
+        if args.command == 'prune':
+            from .prune import prune
+            try:prune(store, args.runs_root, days=config.retention_days if args.days is None else args.days, delete=args.delete)
+            except (ValueError, OSError) as error:parser.error(str(error))
+        elif args.command == 'invite':
             invite_id, code = store.create_invite(days=args.days)
             print(f'{invite_id} {code}')
         elif args.command == 'invites':

@@ -1,20 +1,23 @@
 """The HTTP side: login, the page, and the few routes a browser may use. Anything not listed here answers 404."""
 from base64 import b64encode
 from hashlib import sha256
+from html import escape
 from http import HTTPStatus
 from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from ipaddress import ip_address
 import json
 from pathlib import Path
 import re
 import secrets
+import shutil
 import sys
 import threading
 import time
 from urllib.parse import parse_qs, urlsplit
 
 from . import policy
-from .pages import LOGIN_PAGE
+from .pages import AVAILABILITY_SCRIPT, LOGIN_PAGE
 from .store import Store
 from .upstream import Upstream, UpstreamError
 
@@ -31,9 +34,10 @@ SCRIPT = re.compile(r'<script>(.*?)</script>', re.S)
 
 
 class RateLimits:
-    """Per person, a token bucket; per address, a count of failed logins in the current hour."""
+    """Per person, a token bucket; failed logins counted by address, code prefix and hour."""
     def __init__(self, limits, clock):
         self.limits, self.clock, self.lock = limits, clock, threading.Lock()
+        self.login_lock = threading.Lock()
         self.buckets, self.failures = {}, {}
 
     def take(self, user, live=False):
@@ -47,17 +51,22 @@ class RateLimits:
             self.buckets[(user, live)] = (tokens - 1, now)
             return True
 
-    def login_allowed(self, address):
+    def login_keys(self, address, code):
+        # Keep no clear invite prefix, even in memory. Shared prefixes limit guessing the rest of a code.
+        return (('address', address), ('code', sha256(code[:6].encode()).hexdigest()), ('global', ''))
+
+    def login_allowed(self, address, code=''):
         with self.lock:
             hour = int(self.clock() // 3600)
-            count = self.failures.get((address, hour), 0)
             self.failures = {key: value for key, value in self.failures.items() if key[1] == hour}
-            return count < self.limits.logins_per_hour
+            caps = (self.limits.logins_per_hour, self.limits.logins_per_code_per_hour, self.limits.logins_global_per_hour)
+            return all(self.failures.get((key, hour), 0) < cap for key, cap in zip(self.login_keys(address, code), caps))
 
-    def login_failed(self, address):
+    def login_failed(self, address, code=''):
         with self.lock:
-            key = (address, int(self.clock() // 3600))
-            self.failures[key] = self.failures.get(key, 0) + 1
+            for group in self.login_keys(address, code):
+                key = (group, int(self.clock() // 3600))
+                self.failures[key] = self.failures.get(key, 0) + 1
 
 
 class Audit:
@@ -85,14 +94,30 @@ class Gateway:
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
 
+    def unavailable(self, *, codex=False):
+        if self.paused():return policy.Refused('runs_paused', 'New runs are paused right now.', 503)
+        if self.config.disk_path is not None:
+            try:free = shutil.disk_usage(self.config.disk_path).free / 1024 ** 3
+            except OSError:return policy.Refused('disk_low', 'New runs are paused: free disk space could not be checked.', 503)
+            if free < self.config.min_free_gb:return policy.Refused('disk_low', 'New runs are paused: free disk space is below the required minimum.', 503)
+        lab = self.config.lab_codex
+        if codex and lab is None:return policy.Refused('lab_source_not_offered', 'Lab Codex runs are not offered right now.', 400)
+        if codex and lab and self.store.codex_today() >= lab['runs_per_day']:
+            return policy.Refused('codex_daily_limit', f'New lab Codex runs are paused: the UTC daily limit of {lab["runs_per_day"]} has been reached.', 429)
+        return None
+
     def listing(self):
         status, value = self.upstream.json(PUBLIC, 'GET', '/api/runs')
         if status != 200:raise UpstreamError('the run host did not list its runs')
+        self.store.observe_finished(value, policy.ENDED_STATES)
         return value
 
     def board(self, viewer, listing=None):
         listing = listing if listing is not None else self.listing()
-        return policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits, now=self.clock(), start_errors=self.store.start_failures())
+        board = policy.board(listing, owners=self.store.owners(), nicknames=self.store.nicknames(), queue=self.store.queue(), viewer=viewer, limits=self.config.limits, now=self.clock(), start_errors=self.store.start_failures(), run_order=self.store.run_order())
+        reason = self.unavailable(codex=self.config.lab_codex is not None or any(self.store.codex_run(row['experiment_id']) for row in board['queue']))
+        board['availability'] = dict(code=reason.code, message=reason.message) if reason else None
+        return board
 
     def open_runs(self, listing):
         """Runs holding a slot: those the host lists as running, and those started moments ago that it may not list yet."""
@@ -111,8 +136,10 @@ class Gateway:
     def start_next(self):
         line = self.store.queue()
         listing = self.listing()
-        if len(self.open_runs(listing)) >= self.config.limits.run_slots or not line or self.paused():return None
+        if len(self.open_runs(listing)) >= self.config.limits.run_slots or not line:return None
         head = line[0]
+        reason = self.unavailable(codex=self.store.codex_run(head['experiment_id']))
+        if reason:return None
         status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
         if status != 200:print('dispatch refused:', status, str(value.get('error') if isinstance(value, dict) else value)[:200], file=sys.stderr, flush=True)
         # A stopped run is listed as ended before its processes are gone, so for a while a refusal keeps this one's place and the next pass retries.
@@ -120,7 +147,9 @@ class Gateway:
         if status == 409 and (self.clock() < self.settling_until or 'run slots are in use' in str(value.get('error') if isinstance(value, dict) else value)):
             return None
         self.store.dequeue(head['experiment_id'])
-        if status == 200:self.starting[head['experiment_id']] = self.clock() + 30
+        if status == 200:
+            self.store.started(head['experiment_id'])
+            self.starting[head['experiment_id']] = self.clock() + 30
         else:
             # Whoever waited in line may be away; the reason stays on the run for them to read.
             self.store.start_failed(head['experiment_id'], str(value.get('error') if isinstance(value, dict) and value.get('error') else f'The run host refused the start (HTTP {status}).')[:300])
@@ -183,6 +212,14 @@ class Handler(BaseHTTPRequestHandler):
         except CookieError:return None
         return cookie[COOKIE].value if COOKIE in cookie else None
 
+    def client_ip(self):
+        peer = self.client_address[0]
+        try:
+            if self.gateway.config.trusted_proxy and ip_address(peer).is_loopback:
+                return str(ip_address(self.headers.get('X-Real-IP', '')))
+        except ValueError:pass
+        return peer
+
     def read_body(self, limit=JSON_LIMIT):
         try:size = int(self.headers.get('Content-Length', '0'))
         except ValueError:raise policy.Refused('invalid_body', 'Invalid request.', 400) from None
@@ -208,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
         if session is None and not self.open_to_all(path):raise policy.Refused('login_required', 'Please log in.', 401)
         self.user = session['user_id'] if session else None
         # The page's own files are cheap and never reach the harness; losing one would break the page.
-        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_address[0], live=path.endswith(('/live', '/live/frame'))):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
+        if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_ip(), live=path.endswith(('/live', '/live/frame'))):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
         if session and self.command != 'GET' and not secrets.compare_digest(self.headers.get('X-Attention-Token', ''), session['csrf']):
             raise policy.Refused('csrf_token_required', 'Reload the page and try again.', 403)
         if path in ('/', '/ui'):return self.redirect('/ui/', 302)
@@ -241,12 +278,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', 'That code is not valid.' if failed else '').encode(), 'text/html; charset=utf-8',
                                    headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         if self.command != 'POST':raise UNOWNED
-        address = self.client_address[0]
-        if not self.gateway.rate.login_allowed(address):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)
+        address = self.client_ip()
         code = parse_qs(self.read_body(1024).decode(errors='replace'), max_num_fields=2).get('code', [''])[0].strip()
-        user = self.gateway.store.redeem(code) if code else None
+        # Check and record together: concurrent guesses must not all pass the last available failure slot.
+        with self.gateway.rate.login_lock:
+            if not self.gateway.rate.login_allowed(address, code):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)
+            user = self.gateway.store.redeem(code) if code else None
+            if user is None:self.gateway.rate.login_failed(address, code)
         if user is None:
-            self.gateway.rate.login_failed(address)
             return self.redirect('/login?failed=1')
         self.user = user
         config = self.gateway.config
@@ -259,6 +298,10 @@ class Handler(BaseHTTPRequestHandler):
         marks = f'data-control-token="{session["csrf"]}"' if session else 'data-guest="1"'
         page = page.replace('data-mode="live"', f'data-mode="live" {marks} data-gateway="1" data-remote="1"', 1)
         if name != 'index.html':page = page.replace('<body', f'<body data-gateway="1"{"" if session else " data-guest=" + chr(34) + "1" + chr(34)}', 1)
+        reason = self.gateway.unavailable(codex=self.gateway.config.lab_codex is not None)
+        notice = f'<p id="gateway-availability" role="status" style="position:fixed;bottom:12px;left:12px;right:12px;z-index:1000;margin:0;padding:12px;background:#211a0d;color:#ffe2a8;border:1px solid #9e7531;text-align:center"{"" if reason else " hidden"}>{escape(reason.message) if reason else ""}</p>'
+        page = re.sub(r'(<body\b[^>]*>)', lambda match:match[0] + notice, page, count=1)
+        page = page.replace('</body>', AVAILABILITY_SCRIPT + '</body>', 1)
         page = page.replace(' media="print" onload="this.media=\'all\'"', '', 1)  # An inline handler would need a looser policy.
         inline = ' '.join("'sha256-%s'" % b64encode(sha256(script.encode()).digest()).decode() for script in SCRIPT.findall(page))
         self.send_bytes(page.encode(), 'text/html; charset=utf-8', headers={'Content-Security-Policy':
@@ -302,14 +345,16 @@ class Handler(BaseHTTPRequestHandler):
         self.relay(self.path, self.read_body() if self.command in ('POST', 'PUT') else b'')
 
     def guard_new_run(self):
-        if self.gateway.paused():raise policy.Refused('runs_paused', 'New runs are paused right now.', 503)
+        reason = self.gateway.unavailable(codex=self.gateway.config.lab_codex is not None)
+        if reason:raise reason
         limits = self.gateway.config.limits
         if self.gateway.store.runs_today(self.user) >= limits.runs_per_day:
             raise policy.Refused('daily_limit', f'You have used your {limits.runs_per_day} runs for today.', 429)
         self.guard_active()
 
-    def guard_active(self):
-        if self.gateway.paused():raise policy.Refused('runs_paused', 'New runs are paused right now.', 503)
+    def guard_active(self, experiment_id=None):
+        reason = self.gateway.unavailable(codex=self.gateway.store.codex_run(experiment_id) if experiment_id else self.gateway.config.lab_codex is not None)
+        if reason:raise reason
         limits = self.gateway.config.limits
         queued = sum(row['user_id'] == self.user for row in self.gateway.store.queue())
         if policy.active_runs(self.gateway.listing(), self.gateway.store.runs_of(self.user)) + queued >= limits.active_runs:
@@ -323,11 +368,12 @@ class Handler(BaseHTTPRequestHandler):
         if status != 200:raise UpstreamError('the run host did not list its tasks')
         status, credentials = upstream.json(self.user, 'GET', '/api/provider/credentials')
         if status != 200:raise UpstreamError('the run host did not list your keys')
-        selection = policy.rebuild(body, user=self.user, options=options, limits=self.gateway.config.limits, credentials=credentials)
+        settings = dict(lab_codex=self.gateway.config.lab_codex) if self.gateway.config.lab_codex is not None else {}
+        selection = policy.rebuild(body, user=self.user, options=options, limits=self.gateway.config.limits, credentials=credentials, **settings)
         # Created first, started second: a run that cannot start stays owned and can be started from its page.
         status, made = upstream.json(self.user, 'POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
         if status != 200:return self.send_json(policy.scrub(made), status)
-        self.gateway.store.record_run(made['experiment_id'], self.user, self.gateway.config.host_id)
+        self.gateway.store.record_run(made['experiment_id'], self.user, self.gateway.config.host_id, lab_codex=self.gateway.config.lab_codex is not None)
         if body.get('start') is True:
             refused = self.join_queue(made['experiment_id'])
             if refused:return self.send_json(policy.scrub(refused[1]), refused[0])
@@ -351,7 +397,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.command != 'POST' or suffix not in policy.COMMANDS or parts.query:raise UNOWNED
         if self.read_json() != {}:raise policy.Refused('invalid_body', 'This command takes no settings.', 400)
         if suffix == 'run':
-            self.guard_active()
+            self.guard_active(experiment_id)
             refused = self.join_queue(experiment_id)
             if refused:return self.send_json(policy.scrub(refused[1]), refused[0])
             return self.send_json(dict(experiment_id=experiment_id, queued=True))

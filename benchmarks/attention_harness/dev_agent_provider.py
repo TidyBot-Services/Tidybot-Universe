@@ -1,5 +1,6 @@
 """Provider descriptions, URL admission and bounded connectivity checks."""
 from dataclasses import dataclass, field, replace
+import http.client
 import ipaddress
 import json
 import os
@@ -67,6 +68,22 @@ def reasoning_effort(spec, model, effort):
     return None if spec.id=='parcc' and model=='parcc/Qwen' and effort=='high' else effort
 
 
+# Requests carry URLs only, so retain explicit local-provider grants by host and port.
+_PRIVATE_ORIGINS = set()
+
+
+def _resolve_addresses(host, port, *, allowed=False):
+    try:
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+        if not addresses: raise OSError()
+        if not allowed and any(not ipaddress.ip_address(a[4][0]).is_global for a in addresses):
+            raise ProviderError('base_url_private_host', 'Provider URL must resolve to public addresses')
+        return addresses
+    except ProviderError: raise
+    except (OSError, ValueError):
+        raise ProviderError('base_url_dns_failed', 'Provider host could not be resolved') from None
+
+
 def resolve_provider(provider_id, base_url=None, *, allow_custom=False, allow_private_hosts=(), public_gateway_mode=False):
     spec = presets().get(provider_id) if isinstance(provider_id,str) else None
     if spec is None: raise ProviderError('provider_unknown', 'Unknown provider')
@@ -96,14 +113,9 @@ def resolve_provider(provider_id, base_url=None, *, allow_custom=False, allow_pr
     except ValueError: loopback = host == 'localhost'
     if url.scheme != 'https' and not (url.scheme == 'http' and allowed and loopback):
         raise ProviderError('base_url_not_https', 'Provider URL must use HTTPS')
-    try:
-        addresses = socket.getaddrinfo(host, port or (443 if url.scheme=='https' else 80), type=socket.SOCK_STREAM)
-        if not addresses: raise OSError()
-        if not allowed and any(not ipaddress.ip_address(a[4][0]).is_global for a in addresses):
-            raise ProviderError('base_url_private_host', 'Provider URL must resolve to public addresses')
-    except ProviderError: raise
-    except (OSError, ValueError):
-        raise ProviderError('base_url_dns_failed', 'Provider host could not be resolved') from None
+    port = port or (443 if url.scheme=='https' else 80)
+    _resolve_addresses(host, port, allowed=allowed)
+    if allowed: _PRIVATE_ORIGINS.add((host, port))
     base = base_url.rstrip('/')
     return replace(spec, chat_url=base+'/chat/completions', models_url=base+'/models')
 
@@ -112,9 +124,52 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl): return None
 
 
+class _VettedConnection:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = self._connect_vetted
+
+    def _connect_vetted(self, address, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, source_address=None):
+        host, port = address
+        addresses = _resolve_addresses(host, port, allowed=(host, port) in _PRIVATE_ORIGINS)
+        error = None
+        for family, kind, proto, _, sockaddr in addresses:
+            sock = None
+            try:
+                sock = socket.socket(family, kind, proto)
+                if timeout is not socket._GLOBAL_DEFAULT_TIMEOUT: sock.settimeout(timeout)
+                if source_address: sock.bind(source_address)
+                # Use this vetted sockaddr directly; create_connection would resolve again.
+                sock.connect(sockaddr)
+                return sock
+            except OSError as exc:
+                error = exc
+                if sock is not None: sock.close()
+        raise error
+
+
+class _VettedHTTPConnection(_VettedConnection, http.client.HTTPConnection):
+    pass
+
+
+class _VettedHTTPSConnection(_VettedConnection, http.client.HTTPSConnection):
+    # Keep self.host unchanged: HTTPSConnection uses it for SNI and verification.
+    pass
+
+
+class _HTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req): return self.do_open(_VettedHTTPConnection, req)
+
+
+class _HTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_VettedHTTPSConnection, req, context=self._context, check_hostname=self._check_hostname)
+
+
 def open_request(request, *, timeout=20):
     # Neither ambient proxies nor redirects may move a credential to another host.
-    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect()).open(request, timeout=timeout)
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect(),
+        _HTTPHandler(), _HTTPSHandler()).open(request, timeout=timeout)
 
 
 @dataclass

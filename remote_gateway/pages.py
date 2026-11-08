@@ -1,4 +1,19 @@
-"""The one page the gateway writes itself; everything after login is the main UI's own page. It carries no script: the motion is CSS."""
+"""The login page and a small availability notice added to the main UI's own pages."""
+AVAILABILITY_SCRIPT = '''<script>
+(() => {
+  const notice = document.getElementById('gateway-availability');
+  async function refresh() {
+    try {
+      const response = await fetch('/api/lobby', {cache: 'no-store'});
+      if (!response.ok) return;
+      const board = await response.json();
+      notice.textContent = board.availability?.message || '';
+      notice.hidden = !notice.textContent;
+    } catch (_) {}
+  }
+  setInterval(refresh, 15000);
+})();
+</script>'''
 LOGIN_PAGE = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in · Attention Bench</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">

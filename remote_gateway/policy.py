@@ -99,11 +99,17 @@ def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None
                 robot=robot_state(row) if running(row) else None)
 
 
-def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, now=0, start_errors=None):
+def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, now=0, start_errors=None, run_order=None):
     """What the lobby shows: the open runs (up to run_slots) and which of them is on the one robot, who is next, and what finished.
     Real runs only. robot.running is the run executing on the robot right now, if any."""
     rows = {row['experiment_id']: row for row in listing.get('dev_sessions', []) if row.get('experiment_id') in owners}
-    make = lambda row, position=None, eta=None:_card(row, nickname=nicknames.get(owners[row['experiment_id']], 'Someone'), mine=owners[row['experiment_id']] == viewer,
+    order = run_order if run_order is not None else [r['experiment_id'] for r in sorted(rows.values(), key=lambda r:(r.get('created_at') or 0, r['experiment_id']))]
+    counts, names = {}, {}
+    for eid in order:
+        if eid not in owners:continue
+        owner = owners[eid];counts[owner] = counts.get(owner, 0) + 1
+        names[eid] = nicknames.get(owner, 'Someone') + (f' · run {counts[owner]}' if counts[owner] > 1 else '')
+    make = lambda row, position=None, eta=None:_card(row, nickname=names.get(row['experiment_id'], 'Someone'), mine=owners[row['experiment_id']] == viewer,
                                                      position=position, eta=eta, limits=limits, now=now, start_error=(start_errors or {}).get(row['experiment_id']))
     opened = sorted((make(row) for row in rows.values() if running(row)), key=lambda c:c['started_at'] or 0)
     live = next((c for c in opened if c['robot']['state'] == 'executing'), None)
@@ -168,7 +174,7 @@ def _roles(value, credentials):
     return result
 
 
-def rebuild(body, *, user, options, limits, credentials):
+def rebuild(body, *, user, options, limits, credentials, lab_codex=None):
     """The selection the harness receives: built from named fields, never copied, so nothing else a browser sends gets through."""
     selection = body.get('selection') if isinstance(body, dict) else None
     if not isinstance(selection, dict):raise Refused('invalid_body', 'A selection is required.', 400)
@@ -183,7 +189,7 @@ def rebuild(body, *, user, options, limits, credentials):
     wanted = selection.get('agent_limits') if isinstance(selection.get('agent_limits'), dict) else {}
     client_key = selection.get('request_key')
     if not isinstance(client_key, str) or not 8 <= len(client_key) <= 100:raise Refused('invalid_body', 'A request key is required.', 400)
-    roles = _roles(selection.get('agent_provider'), credentials)
+    roles = {role: dict(credential='lab', provider='openai', model=lab_codex['model']) for role in ('dev', 'eval', 'advisor')} if lab_codex else _roles(selection.get('agent_provider'), credentials)
     tag = hashlib.sha256(f'{user}\n{client_key}'.encode()).hexdigest()[:32]
     result = dict(request_key=f'gw-{user}-{tag}', goal_key=f'gw-{user}-{tag}', tasks=[tasks[0]], seeds=[_integer(seeds[0], 1, 99999, 'seed')], policies=[policies[0]],
                   mode=selection['mode'], help_budget=_integer(selection.get('help_budget'), 1, limits.help_requests, 'help_requests'),
@@ -196,6 +202,7 @@ def rebuild(body, *, user, options, limits, credentials):
     if rules:result['rules_profile'] = rules
     suffix = selection.get('name_suffix')
     if isinstance(suffix, str) and suffix.strip():result['name_suffix'] = suffix.strip()[:80]
+    if lab_codex:result.update(dev_reasoning_effort=lab_codex['effort'], quota_stop_percent=lab_codex['stop_percent'])
     return result
 
 

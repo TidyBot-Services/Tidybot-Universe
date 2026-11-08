@@ -1,6 +1,7 @@
 """Who may log in and who owns which run. The gateway keeps no keys and no run data, only these rows."""
 from contextlib import contextmanager
 import hashlib
+import math
 from pathlib import Path
 import secrets
 import sqlite3
@@ -30,6 +31,10 @@ class Store:
         self.path = Path(path);self.clock = clock;self.lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with self.tx() as db:db.executescript(SCHEMA)
+        with self.tx() as db:
+            columns = {r['name'] for r in db.execute('PRAGMA table_info(runs)')}
+            for name, kind in (('lab_codex', 'INTEGER NOT NULL DEFAULT 0'), ('started_at', 'REAL'), ('ended_at', 'REAL')):
+                if name not in columns:db.execute(f'ALTER TABLE runs ADD COLUMN {name} {kind}')
         self.path.chmod(0o600)
 
     @contextmanager
@@ -90,8 +95,44 @@ class Store:
     def end_session(self, token):
         with self.tx() as db:db.execute('DELETE FROM sessions WHERE token_hash=?', (digest(token),))
 
-    def record_run(self, experiment_id, user_id, host_id):
-        with self.tx() as db:db.execute('INSERT OR IGNORE INTO runs VALUES(?,?,?,?)', (experiment_id, user_id, host_id, self.clock()))
+    def record_run(self, experiment_id, user_id, host_id, *, lab_codex=False):
+        with self.tx() as db:db.execute('INSERT OR IGNORE INTO runs(experiment_id,user_id,host_id,created_at,lab_codex) VALUES(?,?,?,?,?)', (experiment_id, user_id, host_id, self.clock(), int(lab_codex)))
+
+    def run_order(self):
+        with self.tx() as db:return [r[0] for r in db.execute('SELECT experiment_id FROM runs ORDER BY created_at,rowid')]
+
+    def codex_run(self, experiment_id):
+        with self.tx() as db:
+            row = db.execute('SELECT lab_codex FROM runs WHERE experiment_id=?', (experiment_id,)).fetchone()
+            return bool(row and row[0])
+
+    def codex_today(self):
+        start = int(self.clock() // 86400) * 86400
+        with self.tx() as db:return db.execute('SELECT count(*) FROM runs WHERE lab_codex=1 AND started_at>=? AND started_at<?', (start, start + 86400)).fetchone()[0]
+
+    def started(self, experiment_id):
+        with self.tx() as db:db.execute('UPDATE runs SET started_at=?,ended_at=NULL WHERE experiment_id=?', (self.clock(), experiment_id))
+
+    def observe_finished(self, listing, ended_states):
+        """Use a listed end time, or conservatively the first observed end, never directory timestamps.
+        A resumed or unknown state clears the end. Missing rows cannot establish an end."""
+        states = {}
+        for row in listing.get('dev_sessions', []):
+            states.setdefault(row.get('experiment_id'), []).append(row)
+        with self.tx() as db:
+            for eid, rows in states.items():
+                if all((row.get('experiment_state') or row.get('state')) in ended_states for row in rows):
+                    ends = [row.get('ended_at') for row in rows];now = self.clock()
+                    ended = max(ends) if all(type(end) in (int, float) and math.isfinite(end) and 0 < end <= now for end in ends) else now
+                    db.execute('UPDATE runs SET ended_at=COALESCE(ended_at,?) WHERE experiment_id=? AND experiment_id NOT IN (SELECT experiment_id FROM queue)', (ended, eid))
+                else:db.execute('UPDATE runs SET ended_at=NULL WHERE experiment_id=?', (eid,))
+
+    def finished_before(self, before):
+        with self.tx() as db:return {r['experiment_id']: r['ended_at'] for r in db.execute('SELECT experiment_id,ended_at FROM runs WHERE ended_at<? AND experiment_id NOT IN (SELECT experiment_id FROM queue)', (before,))}
+
+    def forget_run(self, experiment_id):
+        with self.tx() as db:
+            for table in ('queue', 'start_failures', 'runs'):db.execute(f'DELETE FROM {table} WHERE experiment_id=?', (experiment_id,))
 
     def owns(self, user_id, experiment_id):
         with self.tx() as db:return db.execute('SELECT 1 FROM runs WHERE experiment_id=? AND user_id=?', (experiment_id, user_id)).fetchone() is not None
@@ -111,7 +152,9 @@ class Store:
         with self.tx() as db:return db.execute('SELECT 1 FROM runs WHERE experiment_id=?', (experiment_id,)).fetchone() is not None
 
     def enqueue(self, experiment_id, user_id):
-        with self.tx() as db:db.execute('INSERT OR IGNORE INTO queue VALUES(?,?,?)', (experiment_id, user_id, self.clock()))
+        with self.tx() as db:
+            db.execute('UPDATE runs SET ended_at=NULL WHERE experiment_id=?', (experiment_id,))
+            db.execute('INSERT OR IGNORE INTO queue VALUES(?,?,?)', (experiment_id, user_id, self.clock()))
 
     def dequeue(self, experiment_id):
         with self.tx() as db:return db.execute('DELETE FROM queue WHERE experiment_id=?', (experiment_id,)).rowcount > 0

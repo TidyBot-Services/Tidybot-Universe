@@ -1,6 +1,7 @@
 """Gateway settings. Where the harness runs is one value here, so moving it to another host is a config change."""
 from dataclasses import dataclass, field, fields
 import json
+import math
 from pathlib import Path
 import stat
 
@@ -28,6 +29,8 @@ class Limits:
     live_requests_per_second: float = 30
     live_request_burst: int = 120
     logins_per_hour: int = 10
+    logins_per_code_per_hour: int = 5
+    logins_global_per_hour: int = 200
 
     def __post_init__(self):
         # Agent runs accept 1-10 versions and 20 minutes to 6 hours; a limit outside that could never be honoured.
@@ -37,6 +40,8 @@ class Limits:
         if not 1 <= self.help_requests <= 10 or self.runs_per_day < 1 or self.active_runs < 1:
             raise ValueError('help_requests, runs_per_day and active_runs must be positive')
         if type(self.run_slots) is not int or not 1 <= self.run_slots <= 16:raise ValueError('run_slots must be 1-16')
+        for name in ('logins_per_hour', 'logins_per_code_per_hour', 'logins_global_per_hour'):
+            if type(getattr(self, name)) is not int or getattr(self, name) < 1:raise ValueError(name + ' must be a positive integer')
 
     def public(self):
         """What New run shows; the same shape as the main UI's own limits. There is no time limit, so the wall field is fixed."""
@@ -56,6 +61,11 @@ class Config:
     listen_host: str = '127.0.0.1'
     listen_port: int = 8861
     cookie_secure: bool = True
+    trusted_proxy: bool = False
+    disk_path: Path | None = None
+    min_free_gb: float = 0
+    retention_days: int = 7
+    lab_codex: dict | None = None
     session_hours: int = 24
     stop_files: tuple = ()
     # Kept for the monitor, which shows who holds it. The gateway no longer takes it: the harness takes the run host's own
@@ -66,6 +76,16 @@ class Config:
     def __post_init__(self):
         # A tunnel or reverse proxy faces the network; the gateway itself never does.
         if self.listen_host not in LOOPBACK:raise ValueError('the gateway listens on loopback only')
+        if type(self.trusted_proxy) is not bool:raise ValueError('trusted_proxy must be a boolean')
+        if type(self.min_free_gb) not in (int, float) or not math.isfinite(self.min_free_gb) or self.min_free_gb < 0:raise ValueError('min_free_gb must be finite and nonnegative')
+        if type(self.retention_days) is not int or self.retention_days < 1:raise ValueError('retention_days must be a positive integer')
+        if self.lab_codex is not None:
+            value = self.lab_codex
+            if not isinstance(value, dict) or set(value) != {'model', 'effort', 'runs_per_day', 'stop_percent'}:raise ValueError('invalid lab_codex settings')
+            # Eval and Advisor currently fix Codex effort at high, so only offer a setting all three roles can honour.
+            if value['model'] not in ('gpt-6.1-sol', 'gpt-6-astra') or value['effort'] != 'high':raise ValueError('unsupported lab_codex model or effort (must be high)')
+            if type(value['runs_per_day']) is not int or value['runs_per_day'] < 1:raise ValueError('lab_codex runs_per_day must be a positive integer')
+            if type(value['stop_percent']) not in (int, float) or not math.isfinite(value['stop_percent']) or not 0 < value['stop_percent'] <= 100:raise ValueError('invalid lab_codex stop_percent')
 
     @property
     def database(self):return self.state_dir / 'gateway.sqlite3'
@@ -90,5 +110,6 @@ def load(path):
     if not isinstance(value, dict) or set(value) - known:raise ValueError('unknown gateway settings')
     limits = Limits(**value.pop('limits', {}))
     lock = value.pop('sim_lock', None)
+    disk = value.pop('disk_path', None)
     return Config(state_dir=Path(value.pop('state_dir')), ui_dir=Path(value.pop('ui_dir')), stop_files=tuple(value.pop('stop_files', ())),
-                  sim_lock=Path(lock) if lock else None, limits=limits, **value)
+                  sim_lock=Path(lock) if lock else None, disk_path=Path(disk) if disk else None, limits=limits, **value)

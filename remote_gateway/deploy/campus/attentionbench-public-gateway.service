@@ -1,0 +1,17 @@
+[Unit]
+Description=AttentionBench campus gateway (loopback only)
+After=attentionbench-public-harness.service
+Wants=attentionbench-public-harness.service
+
+[Service]
+WorkingDirectory=__SRC__
+Environment=PYTHONPATH=__SRC__
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=__PY__ -B -u -m remote_gateway --config __DATA__/gateway.json serve
+UMask=0077
+LimitCORE=0
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
