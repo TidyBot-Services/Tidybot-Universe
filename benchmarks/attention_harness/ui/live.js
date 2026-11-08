@@ -543,7 +543,13 @@
   function renderRunningStatus(){
     const executing=navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun)&&window.Lobby.isMine(r));
     runningStatus.hidden=!executing.length;
-    runningStatus.innerHTML=executing.map(r=>`<div><strong>${r.lifecycle?esc(recordStatus(r)):'Executing'} · ${esc(displayRun(r))}</strong><span>${esc(r.robot?.model||'')} · ${Number(r.pending_hints||0)} pending Hints · ${esc(r.interrupt?.state?label(r.interrupt.state):r.lifecycle?recordStatus(r):'Running')}</span><button type="button" ${r.development?'data-view-dev-running':'data-view-running'}="${esc(r.run_id)}">View executing run</button><button type="button" class="danger" ${r.development?'data-stop-dev':'data-stop-executing'}="${esc(r.run_id)}" ${r.interrupt?'disabled':''} title="Stop target: ${esc(displayRun(r))} (${esc(r.run_id)})">■ Stop</button></div>`).join('');
+    // 11-09 option A: one quiet row per run; the stage and elapsed time replace the old Hints count (always 0 for Agent runs).
+    runningStatus.classList.add('ab-run-banner-a');
+    runningStatus.innerHTML=executing.map(r=>{
+      const since=Number(r.started_at||r.created_at||0),minutes=since?Math.max(0,Math.round((Date.now()/1000-since)/60)):null;
+      const stage=r.interrupt?.state?label(r.interrupt.state):r.lifecycle?recordStatus(r):'';
+      const meta=[stage,minutes===null?'':minutes<1?'just started':`${minutes} min`].filter(Boolean).join(' · ');
+      return `<div><span class="ab-run-dot" aria-hidden="true"></span><span class="ab-run-chip">${r.interrupt?'Stopping':'Running'}</span><span class="ab-run-task" title="${esc(displayRun(r))}">${esc(customRunName(r)||resolvedTask(r)||'Run')}</span><span class="ab-run-meta">${esc(meta)}</span><button type="button" ${r.development?'data-view-dev-running':'data-view-running'}="${esc(r.run_id)}">View run →</button><button type="button" class="danger" ${r.development?'data-stop-dev':'data-stop-executing'}="${esc(r.run_id)}" ${r.interrupt?'disabled':''} title="Stop target: ${esc(displayRun(r))} (${esc(r.run_id)})">Stop</button></div>`;}).join('');
     runningStatus.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>e.preventDefault()));
     runningStatus.querySelectorAll('[data-view-dev-running]').forEach(b=>b.addEventListener('click',()=>navigateRecord(b.dataset.viewDevRunning)));
     runningStatus.querySelectorAll('[data-stop-dev]').forEach(b=>b.addEventListener('click',()=>{const session=devSessions.find(s=>s.session_id===b.dataset.stopDev);return sidebarWrite(session?.channel==='dev_v2'?`/api/dev-v2/experiments/${session.experiment_id}/cancel`:`/api/dev/sessions/${encodeURIComponent(b.dataset.stopDev)}/stop`,{});}));

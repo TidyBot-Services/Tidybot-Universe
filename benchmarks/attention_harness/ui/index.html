@@ -2399,6 +2399,18 @@ html #attentionbench-clear[data-operator-view="true"] .ab-sidebar article[data-c
 #attentionbench-clear[data-operator-view="true"] .ab-execution-viewer>.op-eval-review{margin-top:16px}
 /* the sticky running-status bar (z 45) sat on top of the open Notices panel */
 #attentionbench-clear header.top:has(.ab-notices-panel:not([hidden])){z-index:60}
+/* 11-09 executing banner, option A: dot, status chip, task, stage and time, View run. Colours come from the theme variables. */
+#attentionbench-clear .ab-running-status.ab-run-banner-a{background:var(--op-paper,#f8f6f0);border:1px solid var(--op-line,#d3d4c6);border-radius:10px;padding:8px 12px;color:var(--op-ink,#242822)}
+#attentionbench-clear .ab-run-banner-a>div{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px}
+#attentionbench-clear .ab-run-banner-a>div+div{margin-top:6px;padding-top:6px;border-top:1px solid var(--op-line,#d3d4c6)}
+#attentionbench-clear .ab-run-banner-a .ab-run-dot{width:8px;height:8px;border-radius:50%;background:var(--op-orange,#d94d27);flex:none;animation:ab-run-pulse 1.6s ease-in-out infinite}
+@keyframes ab-run-pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){#attentionbench-clear .ab-run-banner-a .ab-run-dot{animation:none}}
+#attentionbench-clear .ab-run-banner-a .ab-run-chip{background:color-mix(in srgb,var(--op-orange,#d94d27) 14%,transparent);color:var(--op-orange,#d94d27);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600}
+#attentionbench-clear .ab-run-banner-a .ab-run-task{font-weight:600;min-width:0;overflow-wrap:anywhere}
+#attentionbench-clear .ab-run-banner-a .ab-run-meta{flex:1 1 160px;min-width:0;color:var(--op-muted,#686e64)}
+#attentionbench-clear .ab-run-banner-a button{padding:5px 12px;border-radius:8px;font:inherit;font-size:13px}
+#attentionbench-clear .ab-run-banner-a button.danger{background:transparent;border:1px solid var(--op-line,#d3d4c6);color:var(--op-muted,#686e64)}
 
 /* Older runs that continued from an attempt: lineage in the title. */
 #attentionbench-clear .op-page-title .op-lineage{display:inline-flex;align-items:center;margin-left:10px;padding:3px 10px;border-radius:999px;background:#dfe9f6;color:#24507e;text-decoration:none;letter-spacing:.06em}
@@ -3359,6 +3371,12 @@ html[data-theme="dark"] .ab-run-notice-banner button{border:0;background:none;co
 #attentionbench-clear[data-theme="dark"].ab-industrial .op-controls .ab-button-primary{box-shadow:0 1px 2px #00000053}
 #attentionbench-clear[data-theme="dark"].ab-industrial .ab-sidebar :is(.ab-run-actions button,.ab-record-restore){box-shadow:0 1px 2px #0000002e}
 #attentionbench-clear[data-theme="dark"].ab-industrial .ab-session-dialog :is(button.ab-button-quiet,button.ab-button-primary,button.ab-button-danger,:is(.ab-launch-header,.ab-dag-dialog-header,.ab-session-modal>.panel-title)>button){box-shadow:0 1px 2px #0000002e}
+#attentionbench-clear[data-theme="dark"] .ab-running-status.ab-run-banner-a{background:var(--op-paper,#1d2024);border:1px solid var(--op-line,#33383d);color:var(--op-ink,#ecebe6)}
+#attentionbench-clear[data-theme="dark"] .ab-run-banner-a>div+div{border-top:1px solid var(--op-line,#33383d)}
+#attentionbench-clear[data-theme="dark"] .ab-run-banner-a .ab-run-dot{background:var(--op-orange,#ec6a43)}
+#attentionbench-clear[data-theme="dark"] .ab-run-banner-a .ab-run-chip{background:color-mix(in srgb,var(--op-orange,#ec6a43) 14%,transparent);color:var(--op-orange,#ec6a43)}
+#attentionbench-clear[data-theme="dark"] .ab-run-banner-a .ab-run-meta{color:var(--op-muted,#a3a199)}
+#attentionbench-clear[data-theme="dark"] .ab-run-banner-a button.danger{background:transparent;border:1px solid var(--op-line,#33383d);color:var(--op-muted,#a3a199)}
 #attentionbench-clear[data-theme="dark"] .op-page-title .op-lineage{background:#212427;color:#80acdb;text-decoration:none}
 #attentionbench-clear[data-theme="dark"] .op-page-title .op-lineage:hover{text-decoration:underline}
 #attentionbench-clear[data-theme="dark"] .op-page-title .op-excluded{background:#443722;color:#ecbb6e}
