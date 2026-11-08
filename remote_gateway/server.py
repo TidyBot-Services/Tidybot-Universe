@@ -101,9 +101,11 @@ class Gateway:
             except OSError:return policy.Refused('disk_low', 'New runs are paused: free disk space could not be checked.', 503)
             if free < self.config.min_free_gb:return policy.Refused('disk_low', 'New runs are paused: free disk space is below the required minimum.', 503)
         lab = self.config.lab_codex
+        # A run recorded as Lab Codex was created while lab_codex was on; once it is off, such runs do not start.
+        # The test gateway offers Codex without lab_codex, so its runs are never recorded as Lab Codex and are not stopped here.
         if codex and lab is None:return policy.Refused('lab_source_not_offered', 'Lab Codex runs are not offered right now.', 400)
         if codex and lab and self.store.codex_today() >= lab['runs_per_day']:
-            return policy.Refused('codex_daily_limit', f'New lab Codex runs are paused: the UTC daily limit of {lab["runs_per_day"]} has been reached.', 429)
+            return policy.Refused('codex_daily_limit', f'Lab Codex has reached its UTC daily limit of {lab["runs_per_day"]} runs. PARCC and your own keys remain available.', 429)
         return None
 
     def listing(self):
@@ -324,7 +326,7 @@ class Handler(BaseHTTPRequestHandler):
     def options(self):
         status, value = self.gateway.upstream.json(self.user or PUBLIC, 'GET', '/api/run-options')
         if status != 200:raise UpstreamError('the run host did not list its tasks')
-        self.send_json(policy.filter_options(value, self.gateway.config.limits))
+        self.send_json(policy.filter_options(value, self.gateway.config.limits, lab_codex=self.gateway.config.lab_codex))
 
     def runs(self):
         listing = self.gateway.listing()
@@ -345,7 +347,7 @@ class Handler(BaseHTTPRequestHandler):
         self.relay(self.path, self.read_body() if self.command in ('POST', 'PUT') else b'')
 
     def guard_new_run(self):
-        reason = self.gateway.unavailable(codex=self.gateway.config.lab_codex is not None)
+        reason = self.gateway.unavailable()
         if reason:raise reason
         limits = self.gateway.config.limits
         if self.gateway.store.runs_today(self.user) >= limits.runs_per_day:
@@ -353,7 +355,7 @@ class Handler(BaseHTTPRequestHandler):
         self.guard_active()
 
     def guard_active(self, experiment_id=None):
-        reason = self.gateway.unavailable(codex=self.gateway.store.codex_run(experiment_id) if experiment_id else self.gateway.config.lab_codex is not None)
+        reason = self.gateway.unavailable(codex=self.gateway.store.codex_run(experiment_id) if experiment_id else False)
         if reason:raise reason
         limits = self.gateway.config.limits
         queued = sum(row['user_id'] == self.user for row in self.gateway.store.queue())
@@ -370,10 +372,14 @@ class Handler(BaseHTTPRequestHandler):
         if status != 200:raise UpstreamError('the run host did not list your keys')
         settings = dict(lab_codex=self.gateway.config.lab_codex) if self.gateway.config.lab_codex is not None else {}
         selection = policy.rebuild(body, user=self.user, options=options, limits=self.gateway.config.limits, credentials=credentials, **settings)
+        # Counted and capped only under this gateway's own lab_codex switch (see unavailable()).
+        codex = self.gateway.config.lab_codex is not None and policy.uses_lab_codex(selection)
+        reason = self.gateway.unavailable(codex=codex)
+        if reason:raise reason
         # Created first, started second: a run that cannot start stays owned and can be started from its page.
         status, made = upstream.json(self.user, 'POST', '/api/dev-v2/experiments', dict(selection=selection, start=False))
         if status != 200:return self.send_json(policy.scrub(made), status)
-        self.gateway.store.record_run(made['experiment_id'], self.user, self.gateway.config.host_id, lab_codex=self.gateway.config.lab_codex is not None)
+        self.gateway.store.record_run(made['experiment_id'], self.user, self.gateway.config.host_id, lab_codex=codex)
         if body.get('start') is True:
             refused = self.join_queue(made['experiment_id'])
             if refused:return self.send_json(policy.scrub(refused[1]), refused[0])

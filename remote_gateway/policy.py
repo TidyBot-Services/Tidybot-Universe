@@ -123,10 +123,14 @@ def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, 
                 counts=dict(needs_you=sum(c['mine'] and c['state'] == 'waiting_human' for c in opened), queued=len(line), running=len(opened)), limits=dict(help_wait_seconds=limits.human_reply_seconds))
 
 
-def filter_options(options, limits):
+def filter_options(options, limits, *, lab_codex=None):
     v2 = options.get('dev_v2') or {}
     keep = ('enabled', 'budget_tier', 'tasks', 'fixture_tasks', 'agent_policies', 'registered_scene_seeds', 'default_cell_budget', 'default_max_iterations', 'profiles')
-    return dict(dev_v2={**scrub({k: v2[k] for k in keep if k in v2}), 'goal_key': 'set-by-host'}, hosted=dict(limits=limits.public()))
+    hosted = dict(limits=limits.public())
+    if lab_codex is not None:
+        # The harness's per-run quota cap (benchmarks.attention_harness.dev_agent_quota.RUN_CAP_POINTS).
+        hosted['lab_codex'] = dict(model=lab_codex['model'], reasoning_effort=lab_codex['effort'], quota_stop_percent=lab_codex['stop_percent'], run_cap_points=5)
+    return dict(dev_v2={**scrub({k: v2[k] for k in keep if k in v2}), 'goal_key': 'set-by-host'}, hosted=hosted)
 
 
 def filter_presets(presets):
@@ -153,20 +157,31 @@ def _integer(value, low, high, name):
     return value
 
 
-def _roles(value, credentials):
-    """All three roles, each on the lab's PARCC or on a key this person saved, custom endpoints included. Nothing can reach the lab's Codex."""
+def lab_codex_role(role):
+    return isinstance(role, dict) and role.get('credential') == 'lab' and role.get('provider') == 'openai'
+
+
+def uses_lab_codex(selection):
+    return any(lab_codex_role(role) for role in selection['agent_provider']['roles'].values())
+
+
+def _roles(value, credentials, *, lab_codex=None):
+    """Each role on PARCC, an explicitly offered lab Codex model, or a key this person saved."""
     roles = value.get('roles') if isinstance(value, dict) else None
     if not isinstance(roles, dict) or set(roles) != {'dev', 'eval', 'advisor'}:
         raise Refused('roles_required', 'Choose a source for Dev, Eval and Advisor.', 400)
     known = {row['credential_id']: row for row in credentials}
     result = {}
     for role, desc in roles.items():
+        if lab_codex is not None and lab_codex_role(desc) and desc.get('model') != lab_codex['model']:
+            raise Refused('lab_model_not_offered', f'Lab Codex here is {lab_codex["model"]} only.', 400)
         if not isinstance(desc, dict) or not isinstance(desc.get('model'), str) or not 0 < len(desc['model'].strip()) <= 128:
             raise Refused('invalid_role', 'Each agent needs a model.', 400)
         name = desc.get('credential')
         if name == 'lab':
-            if desc.get('provider') != 'parcc':raise Refused('lab_source_not_offered', 'Only the lab PARCC models are offered here.', 400)
-            result[role] = dict(credential='lab', provider='parcc', model=desc['model'])
+            if desc.get('provider') != 'parcc' and not (lab_codex is not None and lab_codex_role(desc)):
+                raise Refused('lab_source_not_offered', 'That lab source is not offered here.' if lab_codex is not None else 'Only the lab PARCC models are offered here.', 400)
+            result[role] = dict(credential='lab', provider=desc['provider'], model=desc['model'])
         elif name in known and desc.get('provider') == known[name]['provider']:
             result[role] = dict(credential=name, provider=known[name]['provider'], model=desc['model'].strip())
             if desc.get('vision') is False:result[role]['vision'] = False  # Its own test found it reads text only. The harness refuses this on Dev.
@@ -189,7 +204,8 @@ def rebuild(body, *, user, options, limits, credentials, lab_codex=None):
     wanted = selection.get('agent_limits') if isinstance(selection.get('agent_limits'), dict) else {}
     client_key = selection.get('request_key')
     if not isinstance(client_key, str) or not 8 <= len(client_key) <= 100:raise Refused('invalid_body', 'A request key is required.', 400)
-    roles = {role: dict(credential='lab', provider='openai', model=lab_codex['model']) for role in ('dev', 'eval', 'advisor')} if lab_codex else _roles(selection.get('agent_provider'), credentials)
+    settings = dict(lab_codex=lab_codex) if lab_codex is not None else {}
+    roles = _roles(selection.get('agent_provider'), credentials, **settings)
     tag = hashlib.sha256(f'{user}\n{client_key}'.encode()).hexdigest()[:32]
     result = dict(request_key=f'gw-{user}-{tag}', goal_key=f'gw-{user}-{tag}', tasks=[tasks[0]], seeds=[_integer(seeds[0], 1, 99999, 'seed')], policies=[policies[0]],
                   mode=selection['mode'], help_budget=_integer(selection.get('help_budget'), 1, limits.help_requests, 'help_requests'),
@@ -202,7 +218,7 @@ def rebuild(body, *, user, options, limits, credentials, lab_codex=None):
     if rules:result['rules_profile'] = rules
     suffix = selection.get('name_suffix')
     if isinstance(suffix, str) and suffix.strip():result['name_suffix'] = suffix.strip()[:80]
-    if lab_codex:result.update(dev_reasoning_effort=lab_codex['effort'], quota_stop_percent=lab_codex['stop_percent'])
+    if lab_codex is not None and uses_lab_codex(result):result.update(dev_reasoning_effort=lab_codex['effort'], quota_stop_percent=lab_codex['stop_percent'])
     return result
 
 

@@ -21,11 +21,18 @@ DEPLOY = Path(__file__).resolve().parents[1] / 'deploy/campus'
 CODEX = dict(model='gpt-6.1-sol', effort='high', runs_per_day=2, stop_percent=77)
 OPTIONS = dict(dev_v2=dict(profiles=[dict(task_id='task', enabled=True)], agent_policies=dict(policies=[dict(policy_id='autonomous')])))
 LAB = dict(credential='lab', provider='parcc', model='parcc/GLM')
+LAB_CODEX = dict(credential='lab', provider='openai', model=CODEX['model'])
 
 
 def body(key='request-1', **changes):
     return dict(selection=dict(request_key=key, tasks=['task'], seeds=[101], policies=['autonomous'], mode='interactive', help_budget=2,
                                agent_provider=dict(roles={role: dict(LAB) for role in ('dev', 'eval', 'advisor')}), **changes), start=True)
+
+
+def codex_body(key='request-1', *, roles=('dev',), **changes):
+    value = body(key, **changes)
+    for role in roles:value['selection']['agent_provider']['roles'][role] = dict(LAB_CODEX)
+    return value
 
 
 @pytest.fixture
@@ -214,29 +221,75 @@ def test_paused_notice_uses_same_path_as_disk_notice(app):
 
 def test_lab_codex_off_keeps_existing_refusal(app):
     headers, _ = person(app)
-    roles = {role:dict(credential='lab', provider='openai', model='gpt-6.1-sol') for role in ('dev', 'eval', 'advisor')}
-    value = body();value['selection']['agent_provider'] = dict(roles=roles)
-    response = request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers)
+    offered = request(app, 'GET', '/api/run-options').value
+    assert 'lab_codex' not in offered['hosted'] and 'codex' not in json.dumps(offered).lower()
+    assert b'Codex' not in request(app, 'GET', '/ui/').raw
+    response = request(app, 'POST', '/api/dev-v2/experiments', codex_body(), headers=headers)
     assert response.status == 400 and response.value['code'] == 'lab_source_not_offered'
+    assert not any(call[1:3] == ('POST', '/api/dev-v2/experiments') for call in app.calls)
 
 
-def test_lab_codex_overwrites_browser_roles_models_effort_and_stop_line(app):
+@pytest.mark.parametrize('model', ['gpt-6.1-sol', 'gpt-6-astra'])
+def test_lab_codex_options_offer_the_configured_model_next_to_parcc(app, model):
+    settings(app, lab_codex=dict(CODEX, model=model))
+    offered = request(app, 'GET', '/api/run-options').value
+    assert offered['hosted']['lab_codex'] == dict(model=model, reasoning_effort='high', quota_stop_percent=77, run_cap_points=5)
+    assert 'limits' in offered['hosted'] and offered['dev_v2']['profiles'] == OPTIONS['dev_v2']['profiles']
+
+
+@pytest.mark.parametrize('roles', [('dev',), ('eval',), ('advisor',), ('dev', 'eval', 'advisor')])
+def test_lab_codex_preserves_each_role_and_sets_effort_and_stop_only_for_codex(app, roles):
     settings(app, lab_codex=CODEX)
     headers, _ = person(app)
-    value = body(dev_model='evil', eval_model='evil', advisor_model='evil', dev_reasoning_effort='low', quota_stop_percent=100)
-    value['selection']['agent_provider'] = dict(roles={role:dict(credential='stolen', provider='fake', model='evil') for role in ('dev', 'eval', 'advisor')})
-    assert request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers).status == 200
+    value = codex_body(roles=roles, dev_model='evil', eval_model='evil', advisor_model='evil', dev_reasoning_effort='low', quota_stop_percent=100)
+    response = request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers)
+    assert response.status == 200
     selected = next(call[3]['selection'] for call in app.calls if call[1:3] == ('POST', '/api/dev-v2/experiments'))
-    assert selected['agent_provider']['roles'] == {role:dict(credential='lab', provider='openai', model=CODEX['model']) for role in ('dev', 'eval', 'advisor')}
-    assert all(selected[role + '_model'] == CODEX['model'] for role in ('dev', 'eval', 'advisor'))
+    assert selected['agent_provider']['roles'] == value['selection']['agent_provider']['roles']
+    assert all(selected[role + '_model'] == (CODEX['model'] if role in roles else LAB['model']) for role in ('dev', 'eval', 'advisor'))
     assert selected['dev_reasoning_effort'] == 'high' and selected['quota_stop_percent'] == 77
-    assert app.gateway.store.codex_today() == 1
+    assert app.gateway.store.codex_run(response.value['experiment_id']) and app.gateway.store.codex_today() == 1
+
+
+@pytest.mark.parametrize('lab_codex', [None, CODEX])
+def test_parcc_only_keeps_public_effort_and_stop_values(app, lab_codex):
+    settings(app, lab_codex=lab_codex)
+    headers, _ = person(app)
+    value = body(dev_reasoning_effort='low', quota_stop_percent=100)
+    response = request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers)
+    assert response.status == 200
+    selected = next(call[3]['selection'] for call in app.calls if call[1:3] == ('POST', '/api/dev-v2/experiments'))
+    assert selected['agent_provider']['roles'] == value['selection']['agent_provider']['roles']
+    assert selected['quota_stop_percent'] == 90 and 'dev_reasoning_effort' not in selected
+    assert not app.gateway.store.codex_run(response.value['experiment_id']) and app.gateway.store.codex_today() == 0
+
+
+@pytest.mark.parametrize('role', ['dev', 'eval', 'advisor'])
+@pytest.mark.parametrize('model', ['gpt-6-astra', ' gpt-6.1-sol ', '', None])
+def test_lab_codex_wrong_model_is_refused(app, role, model):
+    settings(app, lab_codex=CODEX)
+    headers, _ = person(app)
+    value = codex_body(roles=(role,))
+    value['selection']['agent_provider']['roles'][role]['model'] = model
+    response = request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers)
+    assert response.status == 400 and response.value['code'] == 'lab_model_not_offered'
+    assert not any(call[1:3] == ('POST', '/api/dev-v2/experiments') for call in app.calls)
+
+
+@pytest.mark.parametrize('change,code', [(dict(credential='stolen'), 'key_not_found'), (dict(provider='fake'), 'lab_source_not_offered')])
+def test_lab_codex_does_not_bypass_other_role_validation(app, change, code):
+    settings(app, lab_codex=CODEX)
+    headers, _ = person(app)
+    value = codex_body()
+    value['selection']['agent_provider']['roles']['dev'].update(change)
+    response = request(app, 'POST', '/api/dev-v2/experiments', value, headers=headers)
+    assert response.status == 400 and response.value['code'] == code
 
 
 def test_disabling_lab_codex_blocks_previously_created_codex_runs(app):
     settings(app, lab_codex=CODEX)
     headers, user = person(app)
-    made = request(app, 'POST', '/api/dev-v2/experiments', dict(body(), start=False), headers=headers).value['experiment_id']
+    made = request(app, 'POST', '/api/dev-v2/experiments', dict(codex_body(), start=False), headers=headers).value['experiment_id']
     app.gateway.store.enqueue(made, user)
     settings(app, lab_codex=None)
     assert app.gateway.dispatch() is None and app.gateway.store.codex_today() == 0
@@ -250,32 +303,67 @@ def test_codex_cap_is_global_persistent_and_uses_utc_calendar_day(app):
     app.now[0] = 20000 * 86400 + 86390
     for n in range(2):
         headers, _ = person(app)
-        assert request(app, 'POST', '/api/dev-v2/experiments', body(f'request-{n}'), headers=headers).status == 200
+        assert request(app, 'POST', '/api/dev-v2/experiments', codex_body(f'request-{n}'), headers=headers).status == 200
     headers, _ = person(app)
-    response = request(app, 'POST', '/api/dev-v2/experiments', body('request-next'), headers=headers)
+    response = request(app, 'POST', '/api/dev-v2/experiments', codex_body('request-next'), headers=headers)
     assert response.status == 429 and response.value['code'] == 'codex_daily_limit'
     assert app.gateway.board(None)['availability']['code'] == 'codex_daily_limit'
     reopened = Store(app.gateway.config.database, clock=lambda: app.now[0])
     assert reopened.codex_today() == 2
     app.now[0] += 11
     assert reopened.codex_today() == 0
-    assert request(app, 'POST', '/api/dev-v2/experiments', body('request-next'), headers=headers).status == 200
+    assert request(app, 'POST', '/api/dev-v2/experiments', codex_body('request-next'), headers=headers).status == 200
+
+
+@pytest.mark.parametrize('own_key', [False, True])
+def test_codex_cap_does_not_block_parcc_or_own_keys_at_creation_or_manual_start(app, own_key):
+    settings(app, lab_codex=dict(CODEX, runs_per_day=1))
+    headers, _ = person(app)
+    assert request(app, 'POST', '/api/dev-v2/experiments', codex_body(), headers=headers).status == 200
+    headers, _ = person(app)
+    value = body('request-non-codex', dev_reasoning_effort='low', quota_stop_percent=100)
+    if own_key:
+        original = app.gateway.upstream.json
+        app.gateway.upstream.json = lambda user, method, path, value=None:(200, [dict(credential_id='mine', provider='openai')]) if path == '/api/provider/credentials' else original(user, method, path, value)
+        value['selection']['agent_provider']['roles'] = {role:dict(LAB_CODEX, credential='mine') for role in ('dev', 'eval', 'advisor')}
+    response = request(app, 'POST', '/api/dev-v2/experiments', dict(value, start=False), headers=headers)
+    assert response.status == 200
+    eid = response.value['experiment_id']
+    assert not app.gateway.store.codex_run(eid)
+    selected = [call[3]['selection'] for call in app.calls if call[1:3] == ('POST', '/api/dev-v2/experiments')][-1]
+    assert selected['agent_provider']['roles'] == value['selection']['agent_provider']['roles']
+    assert selected['quota_stop_percent'] == 90 and 'dev_reasoning_effort' not in selected
+    assert request(app, 'POST', f'/api/dev-v2/experiments/{eid}/run', {}, headers=headers).status == 200
+    assert next(row for row in app.rows if row['experiment_id'] == eid)['state'] == 'running'
+    assert app.gateway.store.codex_today() == 1
+    notice = request(app, 'GET', '/api/lobby').value['availability']
+    assert notice['code'] == 'codex_daily_limit'
+    assert 'PARCC and your own keys remain available.' in notice['message'] and 'New runs are paused' not in notice['message']
+    assert notice['message'].encode() in request(app, 'GET', '/ui/').raw
+    for start in (False, True):
+        response = request(app, 'POST', '/api/dev-v2/experiments', dict(codex_body('request-capped'), start=start), headers=person(app)[0])
+        assert response.status == 429 and response.value['code'] == 'codex_daily_limit'
+    assert len(app.rows) == 2
 
 
 def test_cap_rechecked_at_dispatch_and_manual_start_keeps_place(app):
     settings(app, lab_codex=dict(CODEX, runs_per_day=1))
-    people = [person(app) for _ in range(2)]
+    people = [person(app) for _ in range(3)]
     made = []
     for n, (headers, _) in enumerate(people):
-        made.append(request(app, 'POST', '/api/dev-v2/experiments', dict(body(f'request-{n}'), start=False), headers=headers).value['experiment_id'])
+        value = (codex_body if n < 2 else body)(f'request-{n}')
+        made.append(request(app, 'POST', '/api/dev-v2/experiments', dict(value, start=False), headers=headers).value['experiment_id'])
     for eid, (_, user) in zip(made, people):app.gateway.store.enqueue(eid, user)
     assert app.gateway.dispatch()[:2] == (made[0], 200)
     assert app.gateway.dispatch() is None
-    assert [r['experiment_id'] for r in app.gateway.store.queue()] == [made[1]]
+    assert [r['experiment_id'] for r in app.gateway.store.queue()] == made[1:]
+    assert next(row for row in app.rows if row['experiment_id'] == made[2])['state'] == 'planned'
+    assert not app.gateway.store.codex_run(made[2])
     response = request(app, 'POST', f'/api/dev-v2/experiments/{made[1]}/run', {}, headers=people[1][0])
     assert response.value['code'] == 'codex_daily_limit'
     app.now[0] += 86400
     assert app.gateway.dispatch()[:2] == (made[1], 200)
+    assert app.gateway.dispatch()[:2] == (made[2], 200)
 
 
 def test_failed_start_and_non_codex_runs_do_not_use_codex_count(app):
@@ -286,7 +374,7 @@ def test_failed_start_and_non_codex_runs_do_not_use_codex_count(app):
     original = app.gateway.upstream.json
     app.gateway.upstream.json = lambda user, method, path, value=None:(500, dict(error='start failed')) if path.endswith('/run') else original(user, method, path, value)
     headers, _ = person(app)
-    assert request(app, 'POST', '/api/dev-v2/experiments', body('request-next'), headers=headers).status == 500
+    assert request(app, 'POST', '/api/dev-v2/experiments', codex_body('request-next'), headers=headers).status == 500
     assert app.gateway.store.codex_today() == 0
 
 
