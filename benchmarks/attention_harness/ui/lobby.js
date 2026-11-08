@@ -247,15 +247,16 @@
   // Which real recording a simulated run replays (shown in the run's detail, never in the sidebar list).
   const provenance = c => c.recording ? `<p class="lb-prov" data-lobby-prov><b>Simulated</b> · replays the recording of <code>${esc(String(c.recording.id).slice(0, 16))}…</code> (${esc(c.recording.attempts)} recorded attempts)${c.mine ? '. Your answers do not change what happens next.' : '.'}</p>` : '';
   const mineCard = () => [...(state.snap?.robot?.open || []), state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
-  function banner(snapshot) {
+  function banner(snapshot, taskName = value => value) {
     const c = snapshot?.lobby;
     if (!c) return '';
     if (c.mine) return provenance(c);
     // 11-09 (user): one bar. Your own open run is shown here, so the separate "Running" bar above is not drawn as well.
     const mine = mineCard(), open = mine && ['queued', 'running', 'waiting_human'].includes(mine.state);
     const since = Number(mine?.started_at || 0), minutes = since ? Math.max(0, Math.round((Date.now() / 1000 - since) / 60)) : null;
-    const yours = open ? `<span class="lb-mine-run">Your run: ${esc(statusWord({lobby: mine}))}${mine.task_title ? ` · ${esc(mine.task_title)}` : ''}${minutes === null ? '' : ` · ${minutes} min`}</span>` : '';
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch, but not answer or stop it.</span>${yours}${mine ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button>' : ''}</div>${provenance(c)}`;
+    const task = mine && (mine.task_key || mine.task_title) ? taskName(mine.task_key || mine.task_title) : '';
+    const yours = open ? `<span class="lb-mine-run"><span class="lb-mine-dot" aria-hidden="true"></span><span class="lb-mine-label">Your run</span><b>${esc(statusWord({lobby: mine}))}</b>${task ? `<span>${esc(task)}</span>` : ''}${minutes === null ? '' : `<span>${minutes} min</span>`}</span>` : '';
+    return `<div class="lb-readonly" data-lobby-readonly role="note"><span class="lb-readonly-chip">Read-only</span><span class="lb-readonly-text"><b>${esc(c.nickname)}'s run</b><small>You can watch, but not answer or stop it.</small></span>${yours}${mine ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run →</button>' : ''}</div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
   const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;

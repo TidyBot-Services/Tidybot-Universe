@@ -4897,7 +4897,7 @@
     }
     const active = actionableRequests(snapshot);
     const chosen = active.find(item => item.request_id === selectedRequest) || active[0];
-    const html = workspaceHTML(snapshot,chosen), banner = Lobby.banner(snapshot) || '';
+    const html = workspaceHTML(snapshot,chosen), banner = Lobby.banner(snapshot,taskName) || '';
     // An Agent run's poll often changes nothing on the page (a quota timestamp, say). Leave the page alone then.
     // An empty lastRendered means an action asked for a redraw, to reset what it disabled.
     const clock = /(<em data-count-to=")[\d.]+(" data-count-seconds="1">)([^<]*)(<\/em>)/g;

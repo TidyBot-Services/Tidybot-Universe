@@ -85,10 +85,12 @@ test('the ended panel says a no-progress stop stopped itself, not a system probl
 
 test('viewing someone else\'s run: one bar says read-only and carries your own open run (user 11-09)',async()=>{
   const Lobby=await loadLobby(shared);
-  const html=Lobby.banner({lobby:Lobby.card('a')});
-  assert.match(html,/Viewing Fox-a's run · read-only\./);
-  assert.match(html,/Your run: Running/);
-  assert.match(html,/data-lb-back>Back to my run/);
+  const html=Lobby.banner({lobby:Lobby.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key);
+  assert.match(html,/lb-readonly-chip">Read-only<\/span><span class="lb-readonly-text"><b>Fox-a's run<\/b>/);
+  assert.match(html,/lb-mine-label">Your run<\/span><b>Running<\/b>/);
+  assert.match(html,/data-lb-back>Back to my run →/);
+  const named=await loadLobby({...shared,robot:{...shared.robot,open:[...shared.robot.open.slice(0,2),card('c',{mine:true,task_key:'pick'})]}});
+  assert.match(named.banner({lobby:named.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key),/<span>Pick Place: Counter → Sink<\/span>/,'the task is named, not its key');
   assert.match(live,/const viewingOthers=Boolean\(currentSnapshot\?\.lobby&&!currentSnapshot\.lobby\.mine\);/);
   assert.match(live,/const executing=viewingOthers\?\[\]:/,'the separate Running bar is not drawn as well');
 });
