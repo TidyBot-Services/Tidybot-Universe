@@ -2078,14 +2078,6 @@
   }
   // Remote opens what a newcomer came for: their own live run, else the run on the robot now, else the lobby.
   // Someone else's finished run is history, never the first page.
-  // Remote keeps what a first-time visitor decides (task, help) in view and folds the rest under one heading.
-  function foldRemoteSettings(form) {
-    const body=form.querySelector('.ab-launch-body'),rest=['models','reviewer','limits','advanced'].map(k=>body?.querySelector(`[data-run-config-section="${k}"]`)).filter(Boolean);
-    if(!rest.length||body.querySelector('[data-more-settings]'))return;
-    const more=document.createElement('details');more.className='ab-more-settings';more.dataset.moreSettings='';
-    more.innerHTML='<summary>More settings <small>Models, reviewer, limits. The defaults work for a first run.</small></summary>';
-    rest[0].before(more);rest.forEach(section=>more.append(section));
-  }
   function remoteLanding(devs) {
     const ready=devs.filter(d=>resolvedTask(devNavigationRecord(d))&&d.lobby);
     const live=d=>['queued','running','waiting_human'].includes(d.lobby.state);
@@ -3046,7 +3038,6 @@
           updatePreview();
         }
       });
-      if(root.dataset.remote==='1')foldRemoteSettings(form);
       launchDialog.showModal();
     }));
   }
@@ -4195,7 +4186,7 @@
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
     const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}</div>`:'';
     const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
-    const stills=images.filter(e=>!['camera_initial','initial_observation','camera_final','final_observation'].includes(e.kind)).map(e=>`<figure><img data-history-image loading="lazy" ${flipStaticRows?'style="transform:scaleY(-1)"':''} src="${esc(e.media_url)}" alt="" onerror="this.closest('figure').remove()"></figure>`).join('');
+    // Saved still frames are not shown under the replay (user 11-08): the video already shows the attempt.
     const station=cameraStation(snapshot);
     const devJobs=(!isTerminal(snapshot) && snapshot.dev_session?.jobs) || [];
     const lifecycle=snapshot.dev_v2?.lifecycle, lifecycleCopy=operatorLifecycleCopy(snapshot);
@@ -4216,7 +4207,7 @@
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch ${attemptName(attempt)}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${a.try_number?(a.status==='succeeded'?'○':'✕'):snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} ${attemptName(a)}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo)+stills:live}${attempt?.try_number?(currentReplay?'':`<p class="op-hint" data-agent-try-label>${esc(attempt.try_label)}</p>`):snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${a.try_number?(a.status==='succeeded'?'○':'✕'):snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} ${attemptName(a)}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo):live}${attempt?.try_number?(currentReplay?'':`<p class="op-hint" data-agent-try-label>${esc(attempt.try_label)}</p>`):snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   function attemptName(a) {return a.try_number?`Try ${a.try_number}`:`Attempt ${a.index+1}`;}

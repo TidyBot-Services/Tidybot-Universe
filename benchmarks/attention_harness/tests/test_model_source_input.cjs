@@ -45,8 +45,6 @@ async function dialog(t, {credentials = [], width = 1280, options = runOptions, 
   if (remote) await page.waitForFunction(() => window.Lobby?.enabled);
   await page.locator('[data-open-launch]').first().click();
   const form = page.locator('#ab-launch-form');
-  // Remote folds models, reviewer, limits and advanced under More settings; the checks below look inside it.
-  if (await form.locator('[data-more-settings]').count()) await form.locator('[data-more-settings] > summary').click();
   await form.locator('[data-keys-source]').waitFor();
   // The My-key options are enabled by the credentials read; wait for that, not for a timer.
   await page.waitForFunction(() => document.querySelector('#ab-launch-form [data-keys-source] option[value="all"]')?.disabled === false);
@@ -175,10 +173,8 @@ test('REMOTE-FORM: Remote shows main\'s sections and fields, plus Queue', async 
   assert.deepEqual(await sectionHeads(remote.form), [...await sectionHeads(main.form), '07Queue']);
   assert.deepEqual(await fieldNames(remote.form), await fieldNames(main.form));
   const hidden = await remote.form.locator('.ab-launch-section').evaluateAll(els => els.filter(e => !e.getClientRects().length).length);
-  assert.equal(hidden, 0, 'with More settings open every section shows');
-  assert.deepEqual(await remote.form.locator('[data-more-settings] [data-run-config-section]').evaluateAll(els => els.map(e => e.dataset.runConfigSection)),
-    ['models', 'reviewer', 'limits', 'advanced'], 'what to run and help stay in view; the rest is folded');
-  assert.equal(await main.form.locator('[data-more-settings]').count(), 0, 'the local page folds nothing');
+  assert.equal(hidden, 0, 'every section shows, nothing is folded (user 11-08)');
+  assert.equal(await remote.form.locator('[data-more-settings]').count(), 0);
   assert.equal(await remote.form.locator('[data-launch-preview]').isVisible(), true);
   assert.match(await remote.page.locator('[data-remote-note]').innerText(), /Real runs are not connected yet/);
 });
@@ -459,7 +455,7 @@ test('MODEL-SOURCE-LAYOUT-NARROW: at 390px the card stacks under the select, ful
   for (const section of ['models', 'limits']) near((await box(form.locator(`[data-run-config-section="${section}"] .ab-run-section-head h4`))).x, field.x, `${section} heading = field left`);
 });
 
-test('REMOTE-FIRST-RUN: a first run on Remote starts interactive with help, says the person is asked first, and folds the rest', async t => {
+test('REMOTE-FIRST-RUN: a first run on Remote starts interactive with help, says the person is asked first', async t => {
   const {form} = await dialog(t, {remote: ['pick_place_counter_to_sink']});
   assert.equal(await form.locator('select[name="v2_mode"]').inputValue(), 'interactive');
   assert.equal(await form.locator('select[name="v2_policy"]').inputValue(), 'reactive_help');
