@@ -1,0 +1,91 @@
+{
+  "container": {
+    "fixture": "sink_left_group",
+    "interior_region": "basin",
+    "public_scene_check": {
+      "field": "perception.values.sink_pos",
+      "value": [
+        0.2999998883379904,
+        -1.7962400049525014,
+        0.9861874579216556
+      ]
+    }
+  },
+  "derivation": {
+    "fixture_sha256": "492309cde6dd04f9f1c73ca1679876bcff4766f901fc28c51ba6f23dce2fb0d3",
+    "robocasa_commit": "456174f62b89b8fca99eaaf33949c29fec9cfc2a",
+    "source": "fixture diagnostic_truth.sink_int_sites_world_m (fixture.get_int_sites(relative=False))",
+    "upstream": "robocasa.utils.object_utils.obj_inside_of(partial_check=True): object center, th=0"
+  },
+  "public_fields": {
+    "final_gripper_positions": "final_observation.json robot.robot0_left_eef_pos / robot0_right_eef_pos",
+    "final_object_position": "final_observation.json perception.values.obj_pos",
+    "trajectory": "state_log.json"
+  },
+  "region": {
+    "axis_aligned_box_world_m": {
+      "x": [
+        0.14000854900914994,
+        0.5195837837141636
+      ],
+      "y": [
+        -1.9724472194406208,
+        -1.4237202590017066
+      ],
+      "z": [
+        0.7073681824055011,
+        0.9182226614912212
+      ]
+    },
+    "description": "p0 plus the three edge points px, py, pz. A point o is inside when, for each edge point p in (px, py, pz), dot(p-p0, p0) <= dot(p-p0, o) <= dot(p-p0, p); projection_ranges lists those [low, high] pairs. When axis_aligned_box_world_m is present it is the same box written as x/y/z ranges.",
+    "frame": "world",
+    "interior_sites_world_m": [
+      [
+        0.5195837837141636,
+        -1.9724472194406208,
+        0.7073681824055011
+      ],
+      [
+        0.5195838024962874,
+        -1.4237202719940145,
+        0.7073681824055011
+      ],
+      [
+        0.1400085302270261,
+        -1.972447206448313,
+        0.7073681824055011
+      ],
+      [
+        0.5195837837141636,
+        -1.9724472194406208,
+        0.9182226614912212
+      ]
+    ],
+    "projection_ranges": [
+      [
+        -1.0823349319643114,
+        -0.7812336691102403
+      ],
+      [
+        -0.19722117203775125,
+        -0.053143798977926406
+      ],
+      [
+        0.14915174962292457,
+        0.19361136097343493
+      ]
+    ],
+    "units": "m"
+  },
+  "rule": {
+    "gripper_far_m": 0.25,
+    "gripper_reference": "robot.*_eef_pos (public end-effector position; the upstream check uses the gripper site, so treat distances within 2 cm of 0.25 m as uncertain)",
+    "object_reference": "object body center (obj_pos), not its bounding box",
+    "tolerance_m": 0.0
+  },
+  "schema": "attentionbench.success-condition.v1",
+  "seed": 103,
+  "sha256": "496dc8e4ebc5fd756b5e94ce49c0edaf3ee7ecd40fce183d5f128d1fd5b7aca0",
+  "task_id": "pick_place_counter_to_sink",
+  "task_rule": "The object counts as placed in the sink when its body center is inside the sink basin interior box and both grippers are released and at least 0.25 m away from it."
+}

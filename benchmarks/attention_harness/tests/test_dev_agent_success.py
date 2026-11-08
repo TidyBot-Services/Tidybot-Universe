@@ -113,7 +113,12 @@ def test_manifest_freezes_condition_only_for_matching_configs():
     configs = {'pick_place_counter_to_sink:102': dict(task_id='pick_place_counter_to_sink', seed=102),
                'pick_place_counter_to_sink:101': dict(task_id='pick_place_counter_to_sink', seed=101)}
     frozen = success.for_configs(configs)
-    assert list(frozen) == ['pick_place_counter_to_sink:102'] and frozen['pick_place_counter_to_sink:102'] == COND
+    # 11-09: seed 101 has its own condition too (same sink); before, its Eval had no rule and passed a cup left on the rack.
+    assert sorted(frozen) == ['pick_place_counter_to_sink:101', 'pick_place_counter_to_sink:102'] and frozen['pick_place_counter_to_sink:102'] == COND
+    assert frozen['pick_place_counter_to_sink:101']['region'] == COND['region'] and frozen['pick_place_counter_to_sink:101']['seed'] == 101
+    # The two disputed 11-09 executions: the cup ended beside the basin (y below the box) with a gripper 0.17 m away.
+    lo, hi = frozen['pick_place_counter_to_sink:101']['region']['axis_aligned_box_world_m']['y']
+    assert not lo <= -2.084 <= hi and not lo <= -2.038 <= hi
     assert 'never quote the region' in success.EVAL_RULE
 
 
