@@ -620,7 +620,20 @@
     };
     return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.controller}</svg>`;
   }
+  // Press guard: refresh rebuilds the sidebar every few seconds. A rebuild between pressing and
+  // releasing on a card makes the browser drop the click, so a rebuild waits until the press ends.
+  function sidebarPressHeld(render){const s=sidebarPressHeld;if(!s.pressed)return false;s.held=render;return true;}
+  function bindSidebarPress(area,win,later){
+    const s=sidebarPressHeld;
+    area.addEventListener('pointerdown',e=>{if(e.button===0)s.pressed=true;},true);
+    const release=()=>{if(!s.pressed)return;s.pressed=false;const run=s.held;s.held=null;if(run)later(()=>{if(!s.pressed)run();});};
+    for(const type of ['pointerup','pointercancel'])win.addEventListener(type,release,true);
+    win.addEventListener('blur',release);
+  }
+  // End press guard.
+  bindSidebarPress(sidebar,window,f=>setTimeout(f,0));
   function renderSidebar(){
+    if(sidebarPressHeld(renderSidebar))return;
     renderRunningStatus();
     const c=currentSnapshot?.attention_control;
     const run=currentSnapshot?.run;
