@@ -1,0 +1,36 @@
+{
+  "schema": "attentionbench.public-scene-contract-host-variants.v1",
+  "base_contract": {
+    "file": "dev-seeds-101-103-v2-20261019-kp1500.json",
+    "sha256": "bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
+  },
+  "variants": [
+    {
+      "id": "zen5-glibc239-20261109",
+      "host": {
+        "cpu_model": "AMD Ryzen 9 9950X 16-Core Processor",
+        "avx512": true,
+        "glibc": "2.39",
+        "python": "3.11.16",
+        "mujoco": "3.3.1",
+        "numpy": "2.2.5",
+        "observed_on": "qifei"
+      },
+      "evidence": {
+        "fresh_processes": 5,
+        "resets_per_process": 4,
+        "date": "2026-11-09",
+        "report": "docs/REPORT-seed102-qifei-20261109.md"
+      },
+      "tasks": {
+        "pick_place_counter_to_sink": {
+          "seeds": {
+            "102": {
+              "normalized_sha256": "149932e26b0a6c8d4651418eac60b8fdf1c4a5c348d9b22a37056c0c40af9676"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

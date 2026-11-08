@@ -34,6 +34,8 @@ SCHEMA_V1='attentionbench.public-scene-contract.v1'
 SCHEMA_V2='attentionbench.public-scene-contract.v2'
 REGISTERED_CONTRACT=Path(__file__).resolve().parent/'scene_contracts'/'dev-seeds-101-103-v2-20261019-kp1500.json'
 REGISTERED_SHA256="bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
+REGISTERED_HOST_VARIANTS=REGISTERED_CONTRACT.parent/'host-variants-20261109.json'
+REGISTERED_HOST_VARIANTS_SHA256='9fa774f30b523fac866e74628dd081244d3de06a004c97faffbfac2ecbe9fb65'
 def registered_contract_ref():
  """Reference to the contract registered for development experiments. Pinned by digest in code: editing the file without
  re-registering it here fails closed instead of silently changing what counts as the same scene."""
@@ -51,15 +53,38 @@ def seed_entry(contract,task,seed):
  if contract['schema']!=SCHEMA_V2:raise ValueError('seed-keyed scene contract required')
  try:return contract['tasks'][task]['seeds'][str(seed)]
  except KeyError:raise ValueError(f'scene contract has no reference for {task} seed {seed}') from None
+def accepted_fingerprints(ref,task,seed)->list[tuple[str,str]]:
+ accepted=[('reference',seed_entry(load_contract(ref),task,seed)['normalized_sha256'])]
+ if ref!=registered_contract_ref() or ref['sha256']!=REGISTERED_SHA256:return accepted
+ data=REGISTERED_HOST_VARIANTS.read_bytes()
+ if hashlib.sha256(data).hexdigest()!=REGISTERED_HOST_VARIANTS_SHA256:raise ValueError('registered host variants digest drift')
+ variants=json.loads(data)
+ if variants['schema']!='attentionbench.public-scene-contract-host-variants.v1':raise ValueError('unregistered host variants schema')
+ if variants['base_contract']['sha256']!=REGISTERED_SHA256:raise ValueError('host variants base contract mismatch')
+ for variant in variants['variants']:
+  entry=variant['tasks'].get(task,{}).get('seeds',{}).get(str(seed))
+  if entry is not None:accepted.append((variant['id'],entry['normalized_sha256']))
+ return accepted
+def host_info():
+ """Diagnostic metadata only; host identity never selects an accepted fingerprint."""
+ import platform
+ from importlib.metadata import version
+ cpuinfo=Path('/proc/cpuinfo').read_text()
+ cpu_model=next((line.split(':',1)[1].strip() for line in cpuinfo.splitlines() if line.startswith('model name')),platform.processor())
+ return {'cpu_model':cpu_model,'glibc':platform.libc_ver()[1],'python':platform.python_version(),
+         'mujoco':version('mujoco'),'numpy':version('numpy')}
 def validate(ref,task,state,seed=None):
  contract=load_contract(ref)
  if contract['schema']==SCHEMA_V2:
   if type(seed) is not int:raise ValueError('seed-keyed scene contract requires the configuration seed')
-  expected=seed_entry(contract,task,seed)['normalized_sha256']
-  actual=fingerprint(state,True);matched=actual==expected
+  accepted=accepted_fingerprints(ref,task,seed);expected=accepted[0][1]
+  actual=fingerprint(state,True);matched=actual in {sha for _,sha in accepted}
+  matched_variant=next((variant for variant,sha in accepted if sha==actual),None)
+  accepted=[{'variant':variant,'normalized_sha256':sha} for variant,sha in accepted]
   return {'matched':matched,'tolerance':contract['tolerance'],'comparison':'normalized_sha256',
-          'differences':[] if matched else [{'field':'state','reason':'fingerprint_mismatch','reference':expected,'actual':actual}],
+          'differences':[] if matched else [{'field':'state','reason':'fingerprint_mismatch','reference':expected,'actual':actual,'accepted':accepted}],
           'raw_sha256':fingerprint(state),'normalized_sha256':actual,'contract':ref,'task_id':task,'seed':seed,
+          'matched_variant':matched_variant,'accepted':accepted,
           'status':'verified' if matched else 'scene_contract_mismatch'}
  result=compare(contract['tasks'][task]['state'],state,contract['tolerance'])
  return {**result,'contract':ref,'task_id':task,'status':'verified' if result['matched'] else 'scene_contract_mismatch'}

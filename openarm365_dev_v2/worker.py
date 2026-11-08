@@ -143,9 +143,12 @@ def main():
                 perception={'source':'official_public_sim_gt','values':values})
             if fixture_enabled(execution_settings):result['fixtures']=find_fixtures(env,execution_settings)
             return result
-        from .scene_contract import capture_state,validate
+        from .scene_contract import capture_state,validate,host_info
         scene_state=capture_state(env)
         condition=validate(c['scene_contract'],c['task_id'],scene_state,c['seed']) if 'scene_contract' in c else None
+        if condition is not None:
+            try:condition['host']=host_info()
+            except Exception as exc:condition['host']={'error':repr(exc)}
         (args.evidence/'scene-condition.json').write_text(json.dumps({'state':scene_state,'validation':condition},sort_keys=True,indent=2)+'\n')
         scene=env.model.get_xml()
         (args.evidence/'scene.xml').write_text(scene)

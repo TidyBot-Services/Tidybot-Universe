@@ -140,3 +140,188 @@ def test_missing_fixture_body_fails_instead_of_fabricating_pose():
  def missing(name):raise ValueError('body absent')
  env=SimpleNamespace(fixtures={'floor':SimpleNamespace(root_body='missing')},sim=SimpleNamespace(model=SimpleNamespace(body_name2id=missing)))
  with pytest.raises(ValueError,match='body absent'):fixture_state(env)
+
+TASK='pick_place_counter_to_sink'
+QIFEI_SHA256='149932e26b0a6c8d4651418eac60b8fdf1c4a5c348d9b22a37056c0c40af9676'
+
+def validate_fingerprint(monkeypatch,digest,seed=102,task=TASK,ref=None):
+ import openarm365_dev_v2.scene_contract as sc
+ # Exercise the real pinned registrations without constructing a native scene.
+ monkeypatch.setattr(sc,'fingerprint',lambda state,rounded=False:digest if rounded else 'a'*64)
+ return sc.validate(sc.registered_contract_ref() if ref is None else ref,task,{},seed)
+
+@pytest.mark.parametrize('task',['pick_place_counter_to_sink','open_cabinet'])
+@pytest.mark.parametrize('seed',[101,102,103])
+def test_registered_reference_fingerprint_verified(monkeypatch,task,seed):
+ from openarm365_dev_v2 import scene_contract as sc
+ ref=sc.registered_contract_ref();sha=sc.seed_entry(sc.load_contract(ref),task,seed)['normalized_sha256']
+ result=validate_fingerprint(monkeypatch,sha,seed,task)
+ assert result['matched'] and result['status']=='verified' and result['matched_variant']=='reference'
+ assert result['accepted'][0]=={'variant':'reference','normalized_sha256':sha}
+ assert result['differences']==[] and result['contract']==ref
+
+def test_registered_qifei_fingerprint_verified(monkeypatch):
+ result=validate_fingerprint(monkeypatch,QIFEI_SHA256)
+ assert result['matched'] and result['status']=='verified'
+ assert result['matched_variant']=='zen5-glibc239-20261109'
+ assert result['accepted'][1]=={'variant':result['matched_variant'],'normalized_sha256':QIFEI_SHA256}
+ assert result['differences']==[]
+
+@pytest.mark.parametrize('task,seed',[(TASK,101),(TASK,103),('open_cabinet',102)])
+def test_host_variant_is_scoped_to_task_and_seed(monkeypatch,task,seed):
+ result=validate_fingerprint(monkeypatch,QIFEI_SHA256,seed,task)
+ assert not result['matched'] and result['status']=='scene_contract_mismatch'
+ assert result['matched_variant'] is None and len(result['accepted'])==1
+
+def test_unknown_fingerprint_reports_all_accepted_and_base_reference(monkeypatch):
+ from openarm365_dev_v2 import scene_contract as sc
+ expected=sc.seed_entry(sc.load_contract(sc.registered_contract_ref()),TASK,102)['normalized_sha256']
+ result=validate_fingerprint(monkeypatch,'0'*64)
+ assert not result['matched'] and result['status']=='scene_contract_mismatch' and result['matched_variant'] is None
+ assert result['accepted']==[{'variant':'reference','normalized_sha256':expected},
+                            {'variant':'zen5-glibc239-20261109','normalized_sha256':QIFEI_SHA256}]
+ assert result['differences']==[{'field':'state','reason':'fingerprint_mismatch','reference':expected,
+                                'actual':'0'*64,'accepted':result['accepted']}]
+
+def test_host_variants_digest_drift_fails_closed(tmp_path,monkeypatch):
+ from openarm365_dev_v2 import scene_contract as sc
+ path=tmp_path/'variants.json';path.write_bytes(sc.REGISTERED_HOST_VARIANTS.read_bytes()+b' ')
+ monkeypatch.setattr(sc,'REGISTERED_HOST_VARIANTS',path)
+ with pytest.raises(ValueError,match='host variants digest drift'):
+  validate_fingerprint(monkeypatch,QIFEI_SHA256)
+
+@pytest.mark.parametrize('seed',[101,102])
+def test_host_variants_base_mismatch_fails_closed(tmp_path,monkeypatch,seed):
+ import hashlib
+ from openarm365_dev_v2 import scene_contract as sc
+ variants=json.loads(sc.REGISTERED_HOST_VARIANTS.read_bytes());variants['base_contract']['sha256']='0'*64
+ path=tmp_path/'variants.json';path.write_text(json.dumps(variants))
+ monkeypatch.setattr(sc,'REGISTERED_HOST_VARIANTS',path)
+ monkeypatch.setattr(sc,'REGISTERED_HOST_VARIANTS_SHA256',hashlib.sha256(path.read_bytes()).hexdigest())
+ ref=sc.registered_contract_ref()
+ assert ref['sha256']==sc.REGISTERED_SHA256
+ with pytest.raises(ValueError,match='base contract mismatch'):
+  validate_fingerprint(monkeypatch,QIFEI_SHA256,seed,ref=ref)
+
+def test_synthetic_registered_contract_has_only_reference_without_reading_variants(tmp_path,monkeypatch):
+ import hashlib
+ from openarm365_dev_v2 import scene_contract as sc
+ path=tmp_path/'synthetic-contract.json';own='1'*64
+ path.write_text(json.dumps({'schema':sc.SCHEMA_V2,'tolerance':1e-6,
+                             'tasks':{TASK:{'seeds':{'102':{'normalized_sha256':own}}}}}))
+ ref={'uri':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+ assert ref['sha256']!=sc.REGISTERED_SHA256
+ monkeypatch.setattr(sc,'registered_contract_ref',lambda:ref)
+ monkeypatch.setattr(sc,'REGISTERED_HOST_VARIANTS',tmp_path/'absent.json')
+ assert sc.accepted_fingerprints(ref,TASK,102)==[('reference',own)]
+ result=validate_fingerprint(monkeypatch,own,ref=ref)
+ assert result['matched'] and result['accepted']==[{'variant':'reference','normalized_sha256':own}]
+ result=validate_fingerprint(monkeypatch,QIFEI_SHA256,ref=ref)
+ assert not result['matched'] and result['matched_variant'] is None
+
+@pytest.mark.parametrize('mode',['success','error','no_condition'])
+def test_worker_host_info_is_diagnostic_only(mode):
+ import ast
+ from openarm365_dev_v2 import worker
+ # Execute the actual diagnostic branch without starting the worker or a simulator.
+ tree=ast.parse(Path(worker.__file__).read_text())
+ branch=next(n for n in ast.walk(tree) if isinstance(n,ast.If) and ast.unparse(n.test)=='condition is not None')
+ calls=[];error=RuntimeError('host metadata unavailable');host={'cpu_model':'test'}
+ def host_info():
+  calls.append('host_info')
+  if mode=='error':raise error
+  return host
+ condition=None if mode=='no_condition' else {'matched':True,'status':'verified'}
+ scope=dict(condition=condition,host_info=host_info)
+ exec(compile(ast.Module(body=[branch],type_ignores=[]),worker.__file__,'exec'),scope)
+ if condition is None:assert not calls
+ else:
+  assert calls==['host_info'] and condition['matched'] and condition['status']=='verified'
+  assert condition['host']==({'error':repr(error)} if mode=='error' else host)
+
+@pytest.mark.parametrize('copied_base',[False,True])
+def test_other_v2_contract_has_only_its_own_fingerprint(tmp_path,monkeypatch,copied_base):
+ import hashlib
+ from openarm365_dev_v2 import scene_contract as sc
+ path=tmp_path/'contract.json'
+ if copied_base:path.write_bytes(sc.REGISTERED_CONTRACT.read_bytes())
+ else:path.write_text(json.dumps({'schema':sc.SCHEMA_V2,'tolerance':1e-6,
+                                'tasks':{TASK:{'seeds':{'102':{'normalized_sha256':'1'*64}}}}}))
+ ref={'uri':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}
+ own=sc.seed_entry(sc.load_contract(ref),TASK,102)['normalized_sha256']
+ # A nonregistered URI must not even read the host-variant file, including when its base digest matches.
+ monkeypatch.setattr(sc,'REGISTERED_HOST_VARIANTS',tmp_path/'absent.json')
+ assert sc.accepted_fingerprints(ref,TASK,102)==[('reference',own)]
+ result=validate_fingerprint(monkeypatch,own,ref=ref)
+ assert result['matched'] and result['matched_variant']=='reference' and len(result['accepted'])==1
+ result=validate_fingerprint(monkeypatch,QIFEI_SHA256,ref=ref)
+ assert not result['matched'] and result['matched_variant'] is None
+
+def test_registered_contract_ref_compatibility_is_pinned():
+ from openarm365_dev_v2 import scene_contract as sc
+ expected=Path(__file__).resolve().parents[1]/'scene_contracts'/'dev-seeds-101-103-v2-20261019-kp1500.json'
+ assert sc.registered_contract_ref()=={'uri':str(expected),'sha256':'bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716'}
+
+@pytest.mark.parametrize('mismatch',[False,True])
+def test_scene_check_all_seeds_in_fresh_processes(monkeypatch,capsys,mismatch):
+ from scripts.attentionbench import scene_fingerprint_check as check
+ from openarm365_dev_v2 import scene_contract as sc
+ calls=[]
+ def probe(task,seed,resets,render=False):
+  calls.append((task,seed,resets,render))
+  sha=sc.seed_entry(sc.load_contract(sc.registered_contract_ref()),task,seed)['normalized_sha256']
+  if seed==102:sha='0'*64 if mismatch else QIFEI_SHA256
+  return dict(normalized_sha256=[sha],host={'cpu_model':'test'},frame_rendered=render)
+ monkeypatch.setattr(check,'fresh_probe',probe)
+ assert check.check_registered() is (not mismatch)
+ assert calls==[(TASK,101,1,True),(TASK,102,1,False),(TASK,103,1,False)]
+ output=capsys.readouterr().out
+ assert f'matches_registered: {not mismatch}' in output and 'frame_rendered: True' in output
+ if mismatch:assert 'host:' in output and 'register_host_variant.py' in output and 'matches_registered: True' not in output
+ else:assert 'matched_variant: zen5-glibc239-20261109' in output
+
+def test_host_variant_collector_prints_only_snippet_and_omits_reference_seeds(monkeypatch,capsys):
+ from scripts.attentionbench import register_host_variant as register
+ from openarm365_dev_v2 import scene_contract as sc
+ before=sc.REGISTERED_HOST_VARIANTS.read_bytes();calls=[]
+ def probe(task,seed,resets):
+  calls.append((task,seed,resets))
+  sha=sc.seed_entry(sc.load_contract(sc.registered_contract_ref()),task,seed)['normalized_sha256']
+  return dict(seed=seed,normalized_sha256=[QIFEI_SHA256 if seed==102 else sha]*resets,host={'cpu_model':'test'})
+ monkeypatch.setattr(register,'fresh_probe',probe)
+ assert register.main(['--task',TASK,'--seeds','101','102','103','--id','test-host'])==0
+ snippet=json.loads(capsys.readouterr().out)
+ assert snippet['id']=='test-host' and snippet['tasks']=={TASK:{'seeds':{'102':{'normalized_sha256':QIFEI_SHA256}}}}
+ assert snippet['evidence']['fresh_processes']==5 and snippet['evidence']['resets_per_process']==4
+ assert calls==[(TASK,seed,4) for seed in (101,102,103) for _ in range(5)]
+ assert sc.REGISTERED_HOST_VARIANTS.read_bytes()==before
+
+@pytest.mark.parametrize('between_processes',[False,True])
+def test_host_variant_collector_refuses_unstable_evidence(monkeypatch,capsys,between_processes):
+ from scripts.attentionbench import register_host_variant as register
+ calls=[]
+ def probe(task,seed,resets):
+  calls.append(seed)
+  values=[QIFEI_SHA256]*resets
+  if between_processes and len(calls)>1:values=['0'*64]*resets
+  elif not between_processes:values[-1]='0'*64
+  return dict(seed=seed,normalized_sha256=values,host={'cpu_model':'test'})
+ monkeypatch.setattr(register,'fresh_probe',probe)
+ assert register.main(['--task',TASK,'--seeds','102','--processes','2','--resets','2','--id','test'])==1
+ output=capsys.readouterr()
+ assert output.out=='' and 'unstable normalized fingerprints' in output.err
+
+def test_reset_probe_repeats_seeded_reset_and_closes_without_planner(monkeypatch):
+ from scripts.attentionbench import scene_fingerprint_check as check
+ from openarm365_dev_v2 import environment
+ calls=[]
+ env=SimpleNamespace(reset=lambda:calls.append('reset'),close=lambda:calls.append('close'))
+ def create(name,**kwargs):
+  assert name=='PickPlaceCounterToSink' and kwargs['seed']==kwargs['scene_reset_seed']==102
+  return env
+ monkeypatch.setattr(environment,'create_env',create)
+ monkeypatch.setattr(check,'capture_state',lambda env:{'x':[1.]})
+ monkeypatch.setattr(check,'host_info',lambda:{'cpu_model':'test'})
+ row=check.probe_scene(TASK,102,4)
+ assert calls==['reset']*4+['close'] and len(set(row['normalized_sha256']))==1
+ assert row['frame_rendered'] is None

@@ -133,6 +133,19 @@ The parent project inventory is not part of the official content comparison. The
 **Official-environment comparison:** The comparison uses five fixed path map-back rules and one fixed order rule, documented in [`curobo_v2/official/AUTHOR-PATHS.md`](../curobo_v2/official/AUTHOR-PATHS.md). A different machine may show new differences; send the `--report-official-diff` output back for review and do not relax the check. Offline unit tests do not attest the planner chain.
 
 **Scene fingerprint:** `verify.sh` runs `scripts/attentionbench/scene_fingerprint_check.py`, which must print `matches_registered: True`.
+It checks every seed registered for `pick_place_counter_to_sink` (currently 101, 102 and 103), each in a fresh process,
+and prints each normalized fingerprint and matched variant. One seed also renders a frame (`frame_rendered: True`).
+Matching remains exact normalized SHA-256 equality. The separately pinned host-variant table is bound to the existing
+registered base contract; host metadata is diagnostic and does not affect matching.
+
+If a fingerprint does not match, collect evidence in the configured simulator environment with
+`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD python scripts/attentionbench/register_host_variant.py --task pick_place_counter_to_sink --seeds 101 102 103 --id HOST-DATE`.
+The tool requires identical fingerprints across five fresh processes and four resets per process for each seed.
+It only prints a JSON snippet containing seeds that differ from the base contract; it never edits the registration.
+Review and retain the evidence, obtain user approval, then manually add the snippet to
+`openarm365_dev_v2/scene_contracts/host-variants-20261109.json` and update `REGISTERED_HOST_VARIANTS_SHA256` in
+`openarm365_dev_v2/scene_contract.py`. Rerun the scene check afterward. Neither tool starts a planner or policy or acquires
+`sim.lock`. Cross-host Memory comparisons still follow `host_lib_policy_b` and require review.
 
 ## Docker appendix
 
