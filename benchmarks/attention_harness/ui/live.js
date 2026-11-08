@@ -2519,7 +2519,7 @@
       saveButton.disabled=!state.available||state.saving;
       addBox.querySelectorAll('input,select').forEach(input=>{input.disabled=state.saving;});
       box.querySelectorAll('[data-keys-mode]').forEach(input=>{
-        input.checked=input.value===state.mode;input.disabled=state.saving||(input.value!=='lab'&&!state.available);
+        input.checked=input.value===state.mode;input.disabled=state.saving||(input.value!=='lab'&&!state.available&&!(input.value==='different'&&state.explicitCodex));
       });
       drawAddFields();
       drawRoles();
@@ -2814,7 +2814,8 @@
         const select=form.querySelector('[data-keys-source]');
         if(!select)return;
         const mode=keyMode();
-        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!keys.available;
+        // Different per agent also mixes the two lab sources (PARCC and Lab Codex) when the host offers Lab Codex, no own key needed (11-09).
+        for(const name of ['all','different'])select.querySelector(`option[value="${name}"]`).disabled=!(keys.available||(name==='different'&&labCodex));
         keys.labSource(form.model_source.value);
         select.value=mode==='lab'?form.model_source.value:mode;
         const mine=keys.summary(),stop=Number(form.quota_stop_percent.value)||90;

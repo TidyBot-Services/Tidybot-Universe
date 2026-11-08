@@ -460,7 +460,8 @@ test('a failed Save also frees the radios, and no follow-up reads run for a key 
   assert.ok(!f.requests.some(r=>r.method==='GET'&&r.url.endsWith('/models')));
 });
 test('the Model source row follows whether keys are available, not the radios\' passing disabled state',()=>{
-  assert.match(source,/option\[value="\$\{name\}"\]`\)\.disabled=!keys\.available;/);
+  // 11-09: Different per agent is also open when the host offers Lab Codex, to mix PARCC and Lab Codex by role.
+  assert.match(source,/option\[value="\$\{name\}"\]`\)\.disabled=!\(keys\.available\|\|\(name==='different'&&labCodex\)\);/);
   assert.doesNotMatch(source,/radio\(name\)\?\.disabled/);
   assert.match(source,/get available\(\) \{ return state\.available; \}/);
   // Saving ends with the PUT; the model listing and the key test run after it.
