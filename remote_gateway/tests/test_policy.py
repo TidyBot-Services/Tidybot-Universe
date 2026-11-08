@@ -159,7 +159,8 @@ def test_only_an_interactive_run_waits_for_its_owner():
 def test_new_run_says_there_is_no_time_limit_whatever_an_old_config_says():
     limits = Limits(wall_seconds=1200, run_slots=3).public()
     assert limits['noTimeLimit'] is True and limits['wall'] == 21600 and limits['wallRange'].startswith('No time limit')
-    assert 'no time limit' in limits['note'] and 'Up to 3 runs are open at once' in limits['note'] and '2 hours' in limits['note']
+    # 11-09 (user): no 05 note; the 2-hour stop is in the wall field and 07 Queue explains the shared robot.
+    assert limits['note'] == '' and '2 hours' in limits['wallRange']
     assert policy.rebuild(body(agent_limits=dict(versions=2, wall_seconds=1200)), user='u-1', options=OPTIONS, limits=Limits(wall_seconds=1200), credentials=MINE)['agent_limits']['wall_seconds'] == 21600
 
 

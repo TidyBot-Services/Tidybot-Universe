@@ -251,7 +251,11 @@
     const c = snapshot?.lobby;
     if (!c) return '';
     if (c.mine) return provenance(c);
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch everything, but not answer or stop it.</span>${mineCard() ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button>' : ''}</div>${provenance(c)}`;
+    // 11-09 (user): one bar. Your own open run is shown here, so the separate "Running" bar above is not drawn as well.
+    const mine = mineCard(), open = mine && ['queued', 'running', 'waiting_human'].includes(mine.state);
+    const since = Number(mine?.started_at || 0), minutes = since ? Math.max(0, Math.round((Date.now() / 1000 - since) / 60)) : null;
+    const yours = open ? `<span class="lb-mine-run">Your run: ${esc(statusWord({lobby: mine}))}${mine.task_title ? ` · ${esc(mine.task_title)}` : ''}${minutes === null ? '' : ` · ${minutes} min`}</span>` : '';
+    return `<div class="lb-readonly" data-lobby-readonly role="note"><b>Viewing ${esc(c.nickname)}'s run · read-only.</b><span>You can watch, but not answer or stop it.</span>${yours}${mine ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run</button>' : ''}</div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
   const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;
@@ -279,7 +283,7 @@
     if (shared()) {
       const opened = snap.robot.open.length, slots = snap.robot.slots, free = opened < slots && !waiting;
       return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun data-lobby-shared><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Up to ${esc(slots)} runs are open at once. They take turns on the one robot, one Try at a time.</small></div>
-      <p class="ab-run-hint" data-lobby-queue-note>${opened} of ${esc(slots)} runs open · ${waiting} waiting for a slot. ${mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? 'Your run would start right away.' : `Your run would be #${waiting + 1} in line.`} Waiting for the robot does not count toward a run's time; there is no time limit.</p></section>`;
+      <p class="ab-run-hint" data-lobby-queue-note>${opened} of ${esc(slots)} runs open · ${waiting} waiting for a slot. ${mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? 'Your run would start right away.' : `Your run would be #${waiting + 1} in line.`}</p></section>`;
     }
     return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
       <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;

@@ -541,7 +541,9 @@
     return `<details data-run-path="${esc(item.run_id)}"><summary>${esc(path.length>2?`${path[0]} → ${path.at(-1)} · ${path.length-1} switches`:path.join(' → '))}</summary><ol>${segments.map(s=>`<li>${esc(policyTitle(s.policy_id))}<small>${s.effective_at?esc(dateTime(s.effective_at)):'Start time not recorded'}</small></li>`).join('')}</ol></details>`;
   }
   function renderRunningStatus(){
-    const executing=navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun)&&window.Lobby.isMine(r));
+    // Viewing someone else's Remote run: the read-only bar already shows your own run (Lobby.banner), so this bar stays empty.
+    const viewingOthers=Boolean(currentSnapshot?.lobby&&!currentSnapshot.lobby.mine);
+    const executing=viewingOthers?[]:navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun)&&window.Lobby.isMine(r));
     runningStatus.hidden=!executing.length;
     // 11-09 option A: one quiet row per run; the stage and elapsed time replace the old Hints count (always 0 for Agent runs).
     runningStatus.classList.add('ab-run-banner-a');
@@ -2934,7 +2936,7 @@
         });
         form.querySelector('[data-reduced-note]').hidden=!budget.reduced;
         if(budget.reduced)form.querySelector('[data-reduced-text]').textContent=`${versions} of ${limits.versions} versions · ${wall/3600} of ${hoursText(limits.wall)}.`;
-        form.querySelector('[data-official-budget]').hidden=!(budget.valid&&!budget.reduced);
+        form.querySelector('[data-official-budget]').hidden=!(budget.valid&&!budget.reduced)||!limits.note;
       }
       function updateSummary() {
         const profile=selectedProfile(),preview=form.querySelector('[data-launch-preview]');

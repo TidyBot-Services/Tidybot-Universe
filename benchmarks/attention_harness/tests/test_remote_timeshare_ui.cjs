@@ -42,7 +42,7 @@ test('a run in line waits for a slot, with no time estimate',async()=>{
   assert.match(html,/#1 in line for a run slot/);
   assert.match(html,/Up to 3 runs are open at once and take turns on the robot/);
   assert.doesNotMatch(html,/estimate/i);
-  assert.match(Lobby.newRunHtml(),/3 of 3 runs open · 1 waiting for a slot.*there is no time limit/s);
+  assert.match(Lobby.newRunHtml(),/3 of 3 runs open · 1 waiting for a slot\./);assert.doesNotMatch(Lobby.newRunHtml(),/does not count toward/);
 });
 
 test('a lobby without open runs renders as before',async()=>{
@@ -81,4 +81,14 @@ test('the ended panel says a no-progress stop stopped itself, not a system probl
   assert.match(said,/stopped itself/);
   assert.doesNotMatch(said,/system problem \(not|someone stopped it/);
   assert.ok(devEndSummary);
+});
+
+test('viewing someone else\'s run: one bar says read-only and carries your own open run (user 11-09)',async()=>{
+  const Lobby=await loadLobby(shared);
+  const html=Lobby.banner({lobby:Lobby.card('a')});
+  assert.match(html,/Viewing Fox-a's run · read-only\./);
+  assert.match(html,/Your run: Running/);
+  assert.match(html,/data-lb-back>Back to my run/);
+  assert.match(live,/const viewingOthers=Boolean\(currentSnapshot\?\.lobby&&!currentSnapshot\.lobby\.mine\);/);
+  assert.match(live,/const executing=viewingOthers\?\[\]:/,'the separate Running bar is not drawn as well');
 });

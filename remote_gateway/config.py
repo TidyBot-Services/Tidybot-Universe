@@ -47,9 +47,8 @@ class Limits:
         """What New run shows; the same shape as the main UI's own limits. There is no time limit, so the wall field is fixed."""
         return dict(versions=self.versions, wall=NOMINAL_WALL_SECONDS, help=self.help_requests, maxHelp=self.help_requests, noTimeLimit=True,
                     versionsRange=f'1–{self.versions} · Remote limit', wallRange='No time limit · stops after 2 hours without progress',
-                    note=f'Remote limit: {self.versions} versions · {self.help_requests} help requests · no time limit. Up to {self.run_slots} runs are open at once and take turns on the one robot; '
-                         'waiting for the robot does not count. A run with no new Try, version or help request for 2 hours stops itself. '
-                         'Results are not comparable with the official 10-version runs.')
+                    # 11-09 (user): no note under 05. Its fields already show the limits and the 2-hour stop, and 07 Queue explains the shared robot.
+                    note='')
 
 
 @dataclass(frozen=True)
