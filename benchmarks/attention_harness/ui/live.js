@@ -2106,7 +2106,7 @@
     const groups=[...POLICY_GROUPS,{key:'other',title:'Other',note:''}].map(group=>({...group,ids:ids.filter(id=>(POLICY_HELP[id]?.[0]||'other')===group.key)})).filter(group=>group.ids.length);
     return `<fieldset class="ab-launch-field wide ab-policy-field"><legend>Attention policy</legend>
       <select name="v2_policy" aria-label="Attention policy" hidden>${ids.map(id=>`<option value="${esc(id)}">${esc(policyTitle(id))}</option>`).join('')}</select>
-      ${root.dataset.remote==='1'?'<p class="ab-policy-human-note" data-policy-human-note>In an interactive run, every help request comes to you first. You get 2 minutes to answer; after that an AI advisor answers for you.</p>':''}
+      <p class="ab-policy-human-note" data-policy-human-note>In an interactive run, every help request comes to you first. You get 2 minutes to answer; after that an AI advisor answers for you.</p>
       <div class="ab-policy-columns">${groups.map(group=>`<div class="ab-policy-group" data-policy-group="${group.key}"><p><b>${esc(group.title)}</b>${group.note?`<small>${esc(group.note)}</small>`:''}</p>${group.ids.map(card).join('')}</div>`).join('')}</div></fieldset>`;
   }
   function syncPolicyCards(form) {
