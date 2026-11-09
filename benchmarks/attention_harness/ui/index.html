@@ -3897,6 +3897,8 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [hidden]{display:none!important}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form.ab-v2-profile :is(select[name=robot_model],select[name=execution_arm]),#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form:not(.ab-v2-profile) [data-robot-summary]{display:none}
 @media(max-width:560px){#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-section-head{align-items:flex-start}}
+/* 01 What to run: the fields under the picker share one row (11-10); auto-fit wraps them on narrow screens. */
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=what]>.ab-launch-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 @media(max-width:760px){
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-formrow{grid-template-columns:minmax(0,1fr)}
  #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-keys-formrow>.ab-keys-save{grid-column:auto;justify-self:stretch}
