@@ -2735,7 +2735,24 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear button.tp-seed:disabled{cursor:default;opacity:.85}
 #attentionbench-clear .tp-search{display:flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:13px}
 #attentionbench-clear .tp-search input{width:150px;min-height:28px;border:0!important;outline:0;background:transparent!important;color:var(--text);font:inherit;padding:0!important;box-shadow:none!important}
-#attentionbench-clear .tp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#attentionbench-clear .tp-grid{display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr);gap:16px;align-items:start}
+/* 11-10 (user, design H3): text list on the left, the pointed/chosen task large on the right. */
+#attentionbench-clear .tp-list{display:flex;flex-direction:column;gap:8px}
+#attentionbench-clear button.tp-item{appearance:none;box-shadow:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);text-align:left;cursor:pointer;transform:none}
+#attentionbench-clear button.tp-item:hover:not(:disabled){border-color:var(--orange);box-shadow:none;transform:none}
+#attentionbench-clear button.tp-item:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+#attentionbench-clear button.tp-item.is-selected{background:#242822;border-color:#242822;color:#ffffff}
+#attentionbench-clear button.tp-item.is-selected .tp-title{color:#ffffff}
+#attentionbench-clear .tp-item-sub{font-size:12.5px;line-height:1.4;color:var(--muted)}
+#attentionbench-clear button.tp-item.is-selected .tp-item-sub{color:#d9d7cf}
+#attentionbench-clear .tp-preview{min-width:0}
+#attentionbench-clear .tp-preview-card{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+#attentionbench-clear .tp-preview-card .tp-pics{position:relative;display:block}
+#attentionbench-clear .tp-preview-card .tp-between{display:none}
+#attentionbench-clear .tp-preview-card .tp-pic+.tp-between+.tp-pic{position:absolute;right:12px;bottom:12px;width:34%;border:2px solid #ffffff;border-radius:8px;box-shadow:0 10px 20px -8px #000000aa}
+#attentionbench-clear .tp-preview-card .tp-body{padding:14px 16px 16px}
+#attentionbench-clear .tp-preview-card .tp-title{font-size:22px}
+#attentionbench-clear .tp-preview-card .tp-sentence{font-size:14px}
 #attentionbench-clear button.tp-card{appearance:none;box-shadow:none;display:flex;flex-direction:column;align-items:stretch;width:100%;min-width:0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);color:var(--text);text-align:left;cursor:pointer;font:inherit}
 #attentionbench-clear button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #24282299;transform:none}
 #attentionbench-clear button.tp-tab:hover:not(:disabled),#attentionbench-clear button.tp-seed:hover:not(:disabled){box-shadow:none;transform:none}
@@ -2771,6 +2788,7 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear .tp-empty{margin:0;color:var(--muted);font-size:13px}
 @media (max-width:760px){
   #attentionbench-clear .tp-grid{grid-template-columns:1fr}
+  #attentionbench-clear .tp-preview{order:-1}
   #attentionbench-clear .tp-search{margin-left:0;width:100%}
   #attentionbench-clear .tp-search input{flex:1;width:auto}
 }
@@ -3729,6 +3747,15 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] button.tp-tab:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-seed:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-card:focus-visible{outline:3px solid var(--orange)}
 #attentionbench-clear[data-theme="dark"] .tp-search{border:1px solid var(--line);background:var(--panel);color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .tp-search input{border:0!important;outline:0;background:transparent!important;color:var(--text);box-shadow:none!important}
+#attentionbench-clear[data-theme="dark"] button.tp-item{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+#attentionbench-clear[data-theme="dark"] button.tp-item:hover:not(:disabled){border-color:var(--orange);box-shadow:none}
+#attentionbench-clear[data-theme="dark"] button.tp-item:focus-visible{outline:3px solid var(--orange)}
+#attentionbench-clear[data-theme="dark"] button.tp-item.is-selected{background:#ecebe6;border-color:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] button.tp-item.is-selected .tp-title{color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .tp-item-sub{color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] button.tp-item.is-selected .tp-item-sub{color:#545b63}
+#attentionbench-clear[data-theme="dark"] .tp-preview-card{border:1px solid var(--line);background:var(--panel)}
+#attentionbench-clear[data-theme="dark"] .tp-preview-card .tp-pic+.tp-between+.tp-pic{border:2px solid #23272c;box-shadow:0 10px 20px -8px #000000ff}
 #attentionbench-clear[data-theme="dark"] button.tp-card{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 #attentionbench-clear[data-theme="dark"] button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #000000ff}
 #attentionbench-clear[data-theme="dark"] button.tp-tab:hover:not(:disabled),#attentionbench-clear[data-theme="dark"] button.tp-seed:hover:not(:disabled){box-shadow:none}

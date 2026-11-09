@@ -2389,6 +2389,15 @@
       ${card.defect?`<span class="tp-defect" role="note"><b>Check defect:</b> ${esc(card.defect)}</span>`:card.note?`<span class="tp-note" role="note"><b>Known gap:</b> ${esc(card.note)}</span>`:''}</span>
     </button>`;
   }
+  // 11-10 (user, design H3): a text list on the left; the right shows the pointed (or chosen) task large,
+  // start picture with its marks plus the done picture inset. The preview reuses the card renderer.
+  function taskListItemHtml(card,selected){
+    const plain=(card.sentence||[]).map?.(s=>s.text).join('')||'';
+    return `<button type="button" class="tp-item${selected?' is-selected':''}" role="radio" aria-checked="${selected}" data-task-card="${esc(card.value)}"><b class="tp-title">${esc(card.title)}</b><span class="tp-item-sub">${esc(plain)}</span></button>`;
+  }
+  function taskPreviewHtml(card,seed){
+    return taskCardHtml(card,{selected:false,seed}).replace(/^<button type="button" class="tp-card([^"]*)"[^>]*>/,'<div class="tp-card tp-preview-card$1" data-task-preview-card="'+esc(card.value)+'">').replace(/<\/button>\s*$/,'</div>');
+  }
   function taskPickerToolbarHtml(cards,tab) {
     const tabs=[{id:'all',label:'All',n:cards.length},...taskPickerFamilies(cards)];
     return `<div class="tp-tabs" role="group" aria-label="Task family">${tabs.map(t=>`<button type="button" class="tp-tab" data-task-tab="${esc(t.id)}" aria-pressed="${t.id===(tab||'all')}">${esc(t.label)} · ${t.n}</button>`).join('')}</div>
@@ -2931,7 +2940,7 @@
         <form id="ab-launch-form"><div class="ab-launch-body">
           ${window.Lobby.newRunNotice()}${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
           <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene. Left: how it starts. Right: what done looks like.</small></div>
-          <div class="tp" data-task-picker><div class="tp-toolbar" data-task-toolbar></div><p class="tp-error" data-task-picker-error role="alert" hidden></p><div class="tp-grid" role="radiogroup" aria-label="Task" data-task-cards></div><div data-task-seeds></div></div>
+          <div class="tp" data-task-picker><div class="tp-toolbar" data-task-toolbar></div><p class="tp-error" data-task-picker-error role="alert" hidden></p><div class="tp-grid" data-task-cards></div><div data-task-seeds></div></div>
           <div class="ab-launch-grid">
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
             <label class="ab-launch-field" hidden data-task-select>Task<select name="task_id" aria-label="Task" required></select></label>
@@ -3195,11 +3204,11 @@
         } else box.querySelectorAll('[data-task-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.taskTab===picker.tab)));
         const seed=Number(form.seed.value);
         const visible=cards.filter(c=>c.value===form.task_id.value||taskPickerMatches(c,picker.tab,picker.query));
-        const html=visible.map(c=>{
-          const selected=c.value===form.task_id.value;
-          const show=selected&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
-          return taskCardHtml(c,{selected,seed:show});
-        }).join('')||'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
+        const showSeed=c=>c.value===form.task_id.value&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
+        const previewed=visible.find(c=>c.value===picker.preview)||visible.find(c=>c.value===form.task_id.value)||visible[0];
+        picker.showSeed=showSeed;
+        const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${visible.map(c=>taskListItemHtml(c,c.value===form.task_id.value)).join('')}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed)):''}</div>`
+          :'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
         const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
         const chips=taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
         if(html+chips===picker.html)return;
@@ -3227,6 +3236,15 @@
           form.seed.dispatchEvent(new Event('change',{bubbles:true}));
         }
       });
+      // Pointing at (or tabbing to) a task previews it; leaving the list returns to the chosen task.
+      const previewTask=value=>{
+        const box=form.querySelector('[data-task-preview]');if(!box||!picker.manifest)return;
+        const card=pickerCards().find(c=>c.value===value);if(!card||box.firstElementChild?.dataset.taskPreviewCard===value)return;
+        picker.preview=value;box.innerHTML=taskPreviewHtml(card,picker.showSeed?picker.showSeed(card):null);
+      };
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
+      form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerleave',()=>{picker.preview=null;previewTask(form.task_id.value);});
       form.querySelector('[data-task-picker]')?.addEventListener('input',event=>{
         if(!event.target.matches('[data-task-search]'))return;
         event.stopPropagation();  // Typing a search is not a configuration change.
@@ -3236,7 +3254,7 @@
         // Arrow keys move between cards like a radio group; Enter/Space press the focused button.
         const card=event.target.closest?.('[data-task-card]');
         if(!card||!['ArrowRight','ArrowDown','ArrowLeft','ArrowUp'].includes(event.key))return;
-        const all=[...form.querySelectorAll('[data-task-card]')],i=all.indexOf(card);
+        const all=[...form.querySelectorAll('.tp-item[data-task-card]')],i=all.indexOf(card);
         const next=all[(i+(event.key==='ArrowRight'||event.key==='ArrowDown'?1:-1)+all.length)%all.length];
         if(next){event.preventDefault();next.focus();}
       });

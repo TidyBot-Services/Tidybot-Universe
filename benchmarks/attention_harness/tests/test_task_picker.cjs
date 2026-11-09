@@ -113,9 +113,19 @@ test('the form still submits the same task_id and seed; the select stays, cards 
 });
 
 test('both themes and phone width are styled',()=>{
-  assert.match(html,/#attentionbench-clear \.tp-grid\{display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(html,/#attentionbench-clear \.tp-grid\{display:grid;grid-template-columns:minmax\(200px,280px\) minmax\(0,1fr\)/,'H3: list left, preview right');
   assert.match(html,/@media \(max-width:760px\)\{\s*#attentionbench-clear \.tp-grid\{grid-template-columns:1fr\}/);
   const dark=html.slice(html.indexOf('<style id="ab-dark-theme">'));
   assert.match(dark,/\[data-theme="dark"\] button\.tp-card\{/);assert.match(dark,/\[data-theme="dark"\] \.tp-defect\{/);
   assert.match(html,/button\.tp-card:focus-visible\{outline:3px solid var\(--orange\)/);
+});
+
+test('H3 (user 11-10): text list on the left, pointed task previewed large with its marks',()=>{
+  const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
+  assert.match(live,/function taskListItemHtml\(card,selected\)/);
+  assert.match(live,/function taskPreviewHtml\(card,seed\)/);
+  assert.match(live,/taskCardHtml\(card,\{selected:false,seed\}\)\.replace/,'the preview reuses the card with its marks');
+  assert.match(live,/addEventListener\('pointerover'/);
+  assert.match(live,/addEventListener\('pointerleave',\(\)=>\{picker\.preview=null;previewTask\(form\.task_id\.value\);\}\)/,'leaving returns to the chosen task');
+  assert.match(live,/querySelectorAll\('\.tp-item\[data-task-card\]'\)/,'arrow keys move along the list');
 });
