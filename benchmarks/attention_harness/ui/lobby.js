@@ -10,7 +10,7 @@
   const write = (key, value) => { try { global.localStorage.setItem(key, value); } catch (_) { /* storage can be blocked */ } };
   const state = {enabled: false, snap: null, cards: new Map(), hooks: {}, timer: null, fp: '', started: false, seen: new Map(),
     mode: ['mine', 'all', 'queue'].includes(read('attention.lobby.mode')) ? read('attention.lobby.mode') : 'all',
-    group: ['task', 'person', 'status'].includes(read('attention.lobby.group')) ? read('attention.lobby.group') : 'task'};
+    group: ['task', 'person', 'status'].includes(read('attention.lobby.group')) ? read('attention.lobby.group') : 'person'};
 
   const minutes = seconds => seconds == null ? '' : seconds < 90 ? 'under 2 min' : `~${Math.round(seconds / 60)} min`;
   const clock = seconds => { const s = Math.max(0, Math.round(seconds || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -36,6 +36,7 @@
       if (!response.ok) { if (!state.enabled) return stop(); throw new Error(`lobby ${response.status}`); }
       const before = state.cards;
       ingest(await response.json());
+      paintMe();
       const first = !state.enabled;
       state.enabled = true;
       rootEl.dataset.lobby = '1'; doc.documentElement.dataset.lobby = '1';
@@ -148,7 +149,8 @@
   function groupOf(record) {
     if (!state.enabled || state.group === 'task') return null;
     const c = record.lobby;
-    if (state.group === 'person') return c ? [c.nickname + (c.mine ? ' (you)' : ''), c.nickname] : ['You · earlier runs', 'zz-earlier'];
+    // 11-09 (user): your own runs first as "My runs", then one group per person (all of that person's runs together).
+    if (state.group === 'person') return c ? (c.mine ? ['My runs', '0me'] : [personOf(c), `1${personOf(c)}`]) : ['You · earlier runs', 'zz-earlier'];
     const word = c ? ({queued: 'Waiting in line', running: 'Running now', waiting_human: 'Running now', finished: 'Finished', cancelled: 'Finished'}[c.state]) : 'Finished';
     return [word, ({'Running now': '1', 'Waiting in line': '2', 'Finished': '3'})[word] + word];
   }
@@ -246,6 +248,25 @@
   }
   // Which real recording a simulated run replays (shown in the run's detail, never in the sidebar list).
   const provenance = c => c.recording ? `<p class="lb-prov" data-lobby-prov><b>Simulated</b> · replays the recording of <code>${esc(String(c.recording.id).slice(0, 16))}…</code> (${esc(c.recording.attempts)} recorded attempts)${c.mine ? '. Your answers do not change what happens next.' : '.'}</p>` : '';
+  // 11-09 (user): one avatar per person: a letter in a colour fixed by when they joined; you are always orange.
+  const personOf = c => String(c?.person || c?.nickname || 'Someone').split(' · ')[0];
+  const avatar = (c, size = '') => {
+    if (!c) return '';
+    const name = personOf(c), n = Number((name.match(/-(\d+)$/) || [])[1]);
+    return `<span class="lb-av ${c.mine ? 'me' : `p${n > 0 ? (n - 1) % 8 : 0}`}${size ? ` ${size}` : ''}" aria-hidden="true">${esc(name[0] || '?')}</span>`;
+  };
+  const groupAvatar = rows => rows?.groupTitle && rows[0]?.lobby ? avatar(rows[0].lobby) : '';
+  const groupDivider = (key, index, list) => state.enabled && state.group === 'person' && String(key).startsWith('lobby:1') && !String(list[index - 1]?.[0] || '').startsWith('lobby:1') ? '<p class="lb-divider" data-lb-divider>Other people</p>' : '';
+  // The header says who you are, with the same avatar the lists use.
+  function paintMe() {
+    const name = state.snap?.me?.nickname, bar = doc.querySelector('.op-top-actions');
+    let chip = doc.querySelector('[data-lb-me]');
+    if (!name || !bar) { chip?.remove(); return; }
+    if (!chip) { chip = doc.createElement('span'); chip.className = 'lb-me'; chip.dataset.lbMe = ''; bar.insertBefore(chip, bar.querySelector('[data-sign-out]')); }
+    const html = `<span class="lb-me-k">You</span><span class="lb-me-v">${avatar({nickname: name, mine: true})}${esc(name)}</span>`;
+    if (chip.innerHTML !== html) chip.innerHTML = html;
+    chip.title = `Other people see you as ${name}`;
+  }
   const mineCard = () => [...(state.snap?.robot?.open || []), state.snap?.robot?.running, ...(state.snap?.queue || []), ...(state.snap?.recent || [])].find(c => c?.mine);
   function banner(snapshot, taskName = value => value) {
     const c = snapshot?.lobby;
@@ -256,7 +277,7 @@
     const since = Number(mine?.started_at || 0), minutes = since ? Math.max(0, Math.round((Date.now() / 1000 - since) / 60)) : null;
     const task = mine && (mine.task_key || mine.task_title) ? taskName(mine.task_key || mine.task_title) : '';
     const yours = open ? `<span class="lb-mine-run"><span class="lb-mine-dot" aria-hidden="true"></span><span class="lb-mine-label">Your run</span><b>${esc(statusWord({lobby: mine}))}</b>${task ? `<span>${esc(task)}</span>` : ''}${minutes === null ? '' : `<span>${minutes} min</span>`}</span>` : '';
-    return `<div class="lb-readonly" data-lobby-readonly role="note"><span class="lb-readonly-chip">Read-only</span><span class="lb-readonly-text"><b>${esc(c.nickname)}'s run</b><small>You can watch, but not answer or stop it.</small></span>${yours}${mine ? '<button type="button" class="ab-button-quiet" data-lb-back>Back to my run →</button>' : ''}</div>${provenance(c)}`;
+    return `<div class="lb-readonly" data-lobby-readonly role="note">${avatar(c, 'lg')}<span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only</small><b>${esc(personOf(c))}'s run</b><small>You can watch, but not answer or stop it.</small></span>${yours}${mine ? '<button type="button" class="lb-back" data-lb-back>Back to my run →</button>' : ''}</div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
   const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;
@@ -315,7 +336,7 @@
   }
 
   global.Lobby = {
-    get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf,
+    get enabled() { return state.enabled; }, get grouped() { return state.enabled && state.mode !== 'queue' && state.group !== 'task'; }, get mode() { return state.mode; }, get snap() { return state.snap; }, card, isMine, tone, statusWord, isActive, visible, groupOf, personOf, avatar, groupAvatar, groupDivider,
     newRunHtml, newRunNotice, newRunLimits, shapeNewRun, syncJoin, devSource, simAgo, open: experimentId => state.hooks.open?.(experimentId), setupForOthers, beforeRender, controlsHtml, pinnedHtml, bindSidebar, outcomeHtml, helpHtml, sharingHtml, resourcesHtml, bindHelp, markView, banner, bindBanner, send, errorText,
     fingerprintOf: experimentId => JSON.stringify(card(experimentId) ? [card(experimentId).state, card(experimentId).queue_position, card(experimentId).attempt, card(experimentId).share_replies, !!card(experimentId).waiting, card(experimentId).start_error] : null),
     start(hooks) { state.hooks = hooks || {}; if (!state.started) { state.started = true; next(); } },

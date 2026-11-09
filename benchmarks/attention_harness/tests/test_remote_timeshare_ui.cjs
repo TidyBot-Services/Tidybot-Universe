@@ -86,11 +86,23 @@ test('the ended panel says a no-progress stop stopped itself, not a system probl
 test('viewing someone else\'s run: one bar says read-only and carries your own open run (user 11-09)',async()=>{
   const Lobby=await loadLobby(shared);
   const html=Lobby.banner({lobby:Lobby.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key);
-  assert.match(html,/lb-readonly-chip">Read-only<\/span><span class="lb-readonly-text"><b>Fox-a's run<\/b>/);
+  assert.match(html,/<span class="lb-av p0 lg" aria-hidden="true">F<\/span><span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only<\/small><b>Fox-a's run<\/b>/,'11-09: avatar, then whose run');
   assert.match(html,/lb-mine-label">Your run<\/span><b>Running<\/b>/);
   assert.match(html,/data-lb-back>Back to my run →/);
   const named=await loadLobby({...shared,robot:{...shared.robot,open:[...shared.robot.open.slice(0,2),card('c',{mine:true,task_key:'pick'})]}});
   assert.match(named.banner({lobby:named.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key),/<span>Pick Place: Counter → Sink<\/span>/,'the task is named, not its key');
   assert.match(live,/const viewingOthers=Boolean\(currentSnapshot\?\.lobby&&!currentSnapshot\.lobby\.mine\);/);
   assert.match(live,/const executing=viewingOthers\?\[\]:/,'the separate Running bar is not drawn as well');
+});
+
+test('who is who: one avatar per person, own runs first as My runs, Other people below (user 11-09)',async()=>{
+  const Lobby=await loadLobby(shared);
+  assert.equal(Lobby.personOf({nickname:'Fox-3 · run 2'}),'Fox-3','all of one person\'s runs share a name');
+  assert.match(Lobby.avatar({nickname:'Fox-3'}),/class="lb-av p2"/,'colour by joining order');
+  assert.match(Lobby.avatar({nickname:'Fox-11'}),/class="lb-av p2"/);
+  assert.match(Lobby.avatar({nickname:'Fox-12'}),/class="lb-av p3"/,'Fox-1x neighbours differ');
+  assert.match(Lobby.avatar({nickname:'Panda-2',mine:true}),/class="lb-av me"/,'you are always orange');
+  assert.match(lobbySource,/c\.mine \? \['My runs', '0me'\]/);
+  assert.match(lobbySource,/data-lb-divider>Other people/);
+  assert.match(lobbySource,/<span class="lb-me-k">You<\/span>/,'the header names you');
 });

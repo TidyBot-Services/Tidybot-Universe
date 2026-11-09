@@ -2590,6 +2590,27 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .lb-demo-note b{color:#c44420;letter-spacing:.08em}
 #attentionbench-clear .lb-prov{margin:0 0 12px;padding:6px 12px;border-left:3px solid #c9c6ba;background:#f8f6f0;color:#686e64;font-size:12.5px}
 #attentionbench-clear .lb-prov b{color:#c44420;letter-spacing:.06em;text-transform:uppercase;font-size:11.5px}
+/* 11-09 (user) who is who: one avatar per person, your name in the header, your runs first, a clear bar when watching someone else. */
+#attentionbench-clear .lb-av{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-right:8px;border-radius:50%;background:#24507e;color:#ffffff;font:700 11px var(--body,inherit);letter-spacing:0;text-transform:uppercase;vertical-align:-5px;-webkit-text-fill-color:#ffffff}
+#attentionbench-clear .lb-av.sm{width:18px;height:18px;margin-right:6px;font-size:10px;vertical-align:-3px}
+#attentionbench-clear .lb-av.lg{width:38px;height:38px;margin-right:0;font-size:17px}
+#attentionbench-clear .lb-av.p0{background:#24507e}#attentionbench-clear .lb-av.p1{background:#1f6f68}#attentionbench-clear .lb-av.p2{background:#6b4fa0}#attentionbench-clear .lb-av.p3{background:#8a5a12}
+#attentionbench-clear .lb-av.p4{background:#a8456b}#attentionbench-clear .lb-av.p5{background:#3d6b2a}#attentionbench-clear .lb-av.p6{background:#4b55a8}#attentionbench-clear .lb-av.p7{background:#7a4a3a}
+#attentionbench-clear .lb-av.me{background:#c44420}
+#attentionbench-clear .lb-me{display:inline-flex;align-items:stretch;height:38px;border:1.5px solid #c44420;border-radius:999px;overflow:hidden;background:#ffffff}
+#attentionbench-clear .lb-me-k{display:flex;align-items:center;padding:0 12px;background:#c44420;color:#ffffff;font:700 11px var(--body,inherit);letter-spacing:.12em;text-transform:uppercase}
+#attentionbench-clear .lb-me-v{display:flex;align-items:center;padding:0 14px 0 8px;color:#a2361a;font:700 17px var(--heading,var(--body,inherit));letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"],#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"][data-viewing="true"]{border:1.5px solid #c44420;background:#fbe9e2}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"] .ab-task-title{color:#a2361a}
+#attentionbench-clear .lb-divider{margin:12px 4px 4px;color:#686e64;font:600 11px var(--body,inherit);letter-spacing:.1em;text-transform:uppercase}
+#attentionbench-clear .lb-owner{display:inline-flex;align-items:center}
+#attentionbench-clear .lb-readonly{background:#e6eef8;border:1px solid #b7cbe3;color:#242822;padding:10px 14px;border-radius:12px;gap:12px}
+#attentionbench-clear .lb-readonly .lb-readonly-text{flex-direction:column;align-items:flex-start;gap:1px}
+#attentionbench-clear .lb-readonly .lb-readonly-chip{padding:0;background:none;color:#24507e;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+#attentionbench-clear .lb-readonly .lb-readonly-text b{font:700 20px var(--heading,var(--body,inherit));letter-spacing:.04em;text-transform:uppercase}
+#attentionbench-clear .lb-readonly .lb-readonly-text small:last-child{font-size:12px;color:#4a5560}
+#attentionbench-clear .lb-readonly .lb-back{margin-left:auto;padding:8px 14px;border:0;border-radius:999px;background:#c44420;color:#ffffff;font:600 13px var(--body,inherit);cursor:pointer}
+#attentionbench-clear .lb-readonly .lb-mine-run+.lb-back{margin-left:0}
 #attentionbench-clear .lb-prov code{font:500 12px var(--mono,ui-monospace,monospace);color:#242822}
 #attentionbench-clear .lb-share{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e3dfd3}
 #attentionbench-clear .lb-share small{color:#686e64}
@@ -3506,6 +3527,26 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-demo-note b{color:#e88c73}
 #attentionbench-clear[data-theme="dark"] .lb-prov{border-left:3px solid #34383d;background:#1d2024;color:#a3a199}
 #attentionbench-clear[data-theme="dark"] .lb-prov b{color:#e88c73}
+#attentionbench-clear[data-theme="dark"] .lb-av{background:#5f97d1;color:#ffffff;-webkit-text-fill-color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .lb-av.p0{background:#5f97d1}
+#attentionbench-clear[data-theme="dark"] .lb-av.p1{background:#4fcec3}
+#attentionbench-clear[data-theme="dark"] .lb-av.p2{background:#6b4fa0}
+#attentionbench-clear[data-theme="dark"] .lb-av.p3{background:#e0a24a}
+#attentionbench-clear[data-theme="dark"] .lb-av.p4{background:#a8456b}
+#attentionbench-clear[data-theme="dark"] .lb-av.p5{background:#7ec162}
+#attentionbench-clear[data-theme="dark"] .lb-av.p6{background:#4b55a8}
+#attentionbench-clear[data-theme="dark"] .lb-av.p7{background:#c39180}
+#attentionbench-clear[data-theme="dark"] .lb-av.me{background:#eb9b84}
+#attentionbench-clear[data-theme="dark"] .lb-me{border:1.5px solid #eb9b84;background:#23272c}
+#attentionbench-clear[data-theme="dark"] .lb-me-k{background:#eb9b84;color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .lb-me-v{color:#e88b72}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"],#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"][data-viewing="true"]{border:1.5px solid #eb9b84;background:#1f2224}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>[data-task-group="lobby:0me"] .ab-task-title{color:#e88b72}
+#attentionbench-clear[data-theme="dark"] .lb-divider{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .lb-readonly{background:#1f2124;border:1px solid #28323e;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .lb-readonly .lb-readonly-chip{background:none;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .lb-readonly .lb-readonly-text small:last-child{color:#b1b6bd}
+#attentionbench-clear[data-theme="dark"] .lb-readonly .lb-back{border:0;background:#eb9b84;color:#ffffff}
 #attentionbench-clear[data-theme="dark"] .lb-prov code{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-share{border-top:1px solid #282b2f}
 #attentionbench-clear[data-theme="dark"] .lb-share small{color:#a3a199}

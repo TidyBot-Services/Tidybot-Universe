@@ -87,12 +87,12 @@ def robot_state(row):
     return dict(state='thinking')
 
 
-def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None):
+def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None, person=None):
     state = _state(row);versions = row.get('versions') or [];wait = row.get('human_wait') if running(row) else None
     # A legacy run lists its versions; an Agent run's listing carries only the cell's own end reason.
     solved = row.get('reason') == 'native_success' or any(v.get('native_success') is True for v in versions if isinstance(v, dict))
     shown = 'queued' if position else 'waiting_human' if wait else 'running' if running(row) else 'cancelled' if state == 'cancelled' else 'created' if state in IDLE_STATES else 'finished'
-    return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
+    return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, person=person or nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
                 state=shown, result=None if shown != 'finished' else 'solved' if solved else 'failed', mine=mine, real=True, started_at=row.get('created_at'), ended_at=None,
                 attempt=dict(current=len(versions), limit=limits.versions), queue_position=position, eta_start_seconds=eta, help_waiting_seconds=max(0, wait['seconds'] - (wait['deadline_at'] - now)) if wait else None,
                 waiting=dict(question=wait.get('question')) if wait else None, recording=None, start_error=start_error if shown == 'created' else None,
@@ -109,7 +109,7 @@ def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, 
         if eid not in owners:continue
         owner = owners[eid];counts[owner] = counts.get(owner, 0) + 1
         names[eid] = nicknames.get(owner, 'Someone') + (f' · run {counts[owner]}' if counts[owner] > 1 else '')
-    make = lambda row, position=None, eta=None:_card(row, nickname=names.get(row['experiment_id'], 'Someone'), mine=owners[row['experiment_id']] == viewer,
+    make = lambda row, position=None, eta=None:_card(row, nickname=names.get(row['experiment_id'], 'Someone'), person=nicknames.get(owners[row['experiment_id']], 'Someone'), mine=owners[row['experiment_id']] == viewer,
                                                      position=position, eta=eta, limits=limits, now=now, start_error=(start_errors or {}).get(row['experiment_id']))
     opened = sorted((make(row) for row in rows.values() if running(row)), key=lambda c:c['started_at'] or 0)
     live = next((c for c in opened if c['robot']['state'] == 'executing'), None)
