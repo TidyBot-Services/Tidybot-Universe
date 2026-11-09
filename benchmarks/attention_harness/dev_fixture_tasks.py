@@ -12,6 +12,9 @@ FAMILIES={'A':('Open and close fixtures',('open_cabinet','close_blender_lid','op
           'D':('Cabinet pick and place',('pick_place_counter_to_cabinet','categorize_condiments','weigh_ingredients','arrange_tea'))}
 HELD_OUT={'open_drawer','open_stand_mixer_head','heat_kebab_sandwich','arrange_tea'}
 SHARED={'open_cabinet','pick_place_counter_to_cabinet'}
+# Set aside by the user 2026-11-10 (~/下载/success-teleport-20261110/REPORT.md): the head falls shut on seed 101
+# and the lock button has no effect upstream. Hidden from New run and refused for new runs; old runs still open.
+SET_ASIDE={'open_stand_mixer_head':'set aside 2026-11-10: the stand mixer head falls shut when released on seed 101 and its lock button has no effect'}
 INTERACTIVE_ONLY='R5 fixture runs are interactive only until a measured fixture scene contract exists (scene positions are not verified)'
 SCENE_VERIFICATION='fixture_contract_only'
 
@@ -36,6 +39,7 @@ def prepare_selection(selection):
     if not isinstance(tasks,list) or not tasks:raise ValueError('explicit fixture task selection required')
     if selection.get('budget_tier','dev')!='dev':raise ValueError('fixture profile requires dev tier')
     for task in tasks:
+        if task in SET_ASIDE:raise ValueError(f'{task}: {SET_ASIDE[task]}')
         for seed in selection.get('seeds',[101]):validate(task,seed)
     if selection.get('scene_contract') is not None:raise ValueError('R5 uses fixture_scene_contract, not a measured scene_contract')
     return dict(selection,rules_profile=PROFILE)
@@ -44,7 +48,7 @@ def options():
     return [dict(task_record(t).public(),rules_profile=PROFILE,family=family,family_label=label,
         held_out=t in HELD_OUT,explicit_only=True,rules_label='fixture rules (R5)',
         seed_options=[dict({'seed':s,'enabled':exclusion(t,s) is None},**({} if exclusion(t,s) is None else exclusion(t,s))) for s in PILOT_SEEDS[t]])
-        for family,(label,tasks) in FAMILIES.items() for t in tasks]
+        for family,(label,tasks) in FAMILIES.items() for t in tasks if t not in SET_ASIDE]
 
 def validate_contract(config):
     validate(config['task_id'],config['seed'])

@@ -22,7 +22,7 @@ from openarm365_dev_v2 import dev_config as dc
 from openarm365_dev_v2.tests.test_fixture_interaction import settings,fixture_types,fake_mujoco_if_unavailable
 from openarm365_dev_v2.tests.test_fixture_phase1f import appliance_executor
 
-PAIRS=[(t,s) for t in fi.PILOT_TASKS for s in registry.seeds(t)]
+PAIRS=[(t,s) for t in fi.PILOT_TASKS if t not in registry.SET_ASIDE for s in registry.seeds(t)]  # set-aside tasks: test_fixture_set_aside.py
 
 @pytest.fixture
 def identity(r4_deployment,source_only_lock,monkeypatch):
@@ -92,7 +92,7 @@ def test_excluded_seed_refused_before_creation(tmp_path,row,path):
         else:exp.create(DevV2Store(tmp_path/'db'),tmp_path/'runs',request)
     assert not list(tmp_path.rglob('identity-lock.json')) and not list(tmp_path.rglob('selection.json'))
 
-@pytest.mark.parametrize('task',[t for t in fi.PILOT_TASKS if t not in registry.SHARED])
+@pytest.mark.parametrize('task',[t for t in fi.PILOT_TASKS if t not in registry.SHARED and t not in registry.SET_ASIDE])
 def test_fixture_task_implies_profile(task):
     request=selection(task,registry.seeds(task)[0],'agent');del request['rules_profile']
     assert registry.prepare_selection(request)['rules_profile']==fi.PROFILE
@@ -121,9 +121,9 @@ def test_registry_options_and_original_task_records(monkeypatch):
             assert dt.dev_sdk_seal(c)==old.dev_sdk_seal(c)
     bridge=object.__new__(DailyDevV2);bridge.memory=None;bridge.profiles=[];bridge.per_run_budget=True
     opts=bridge.options();rows=opts['fixture_tasks']
-    assert len(rows)==14 and sum(len(t['seeds']) for t in rows)==37
-    assert [sum(t['family']==f for t in rows) for f in 'ABCD']==[3,3,4,4]
-    assert {t['task_id'] for t in rows if t['held_out']}==registry.HELD_OUT
+    assert len(rows)==13 and sum(len(t['seeds']) for t in rows)==34  # 14 minus set-aside open_stand_mixer_head (3 seeds)
+    assert [sum(t['family']==f for t in rows) for f in 'ABCD']==[3,2,4,4]
+    assert {t['task_id'] for t in rows if t['held_out']}==registry.HELD_OUT-set(registry.SET_ASIDE)
     assert sum(not s['enabled'] for t in rows for s in t['seed_options'])==5
     assert [t['task_id'] for t in opts['tasks']]==list(old.TASKS)
 
