@@ -231,7 +231,9 @@ def baseline(cfg, commit, tree):
 def test_tree(cfg, tree):
     """Gateway tests must all pass; UI tests may not fail anywhere the live release passes."""
     say('gateway tests …')
-    done = run([str(cfg['ws']/'envs/ui/bin/python'), '-B', '-m', 'pytest', '-q', '-p', 'no:cacheprovider', 'remote_gateway/tests'], capture_output=True, cwd=tree)
+    # The harness-link tests resolve paths.json through the installed workspace, as the services do.
+    env = dict(os.environ, ATTENTIONBENCH_WORKSPACE=str(cfg['ws']), PYTHONDONTWRITEBYTECODE='1')
+    done = run([str(cfg['ws']/'envs/ui/bin/python'), '-B', '-m', 'pytest', '-q', '-p', 'no:cacheprovider', 'remote_gateway/tests'], capture_output=True, cwd=tree, env=env)
     say(done.stdout.strip().splitlines()[-1] if done.stdout.strip() else done.stderr.strip()[-400:])
     if done.returncode:return f'gateway tests failed:\n{done.stdout[-3000:]}'
     say('UI tests …')
