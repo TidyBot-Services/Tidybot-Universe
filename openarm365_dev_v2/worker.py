@@ -83,6 +83,11 @@ def main():
             install_success(env)
             from .fixture_contract import validate_reset
             fixture_condition=validate_reset(env,c,execution_settings)
+        elif execution_settings and c['task_id']=='pick_place_counter_to_sink':
+            # 11-10 (user): either arm may finish Counter -> Sink too, and neither may still hold the object
+            # (upstream checks the physical left gripper only). Dev tier only; formal runs keep the upstream verdict.
+            from .fixture_success import install as install_success
+            install_success(env)
         test_fixture_receipt=None
         if 'test_fixture' in c:
             from .test_fixture import apply_test_fixture

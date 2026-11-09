@@ -13,10 +13,10 @@
    "family": "D",
    "family_label": "Cabinet & sink",
    "note": null,
-   "rule": "Done when the item is inside the sink basin and the robot has let go of it.",
+   "rule": "Done when the item is inside the sink basin and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the mug is inside the sink basin and the robot has let go of it.",
+     "alt_done": "Done: Done when the mug is inside the sink basin and both hands have let go.",
      "alt_start": "Start: Pick the mug from the counter and place it in the sink.",
      "done": "pick_place_counter_to_sink-101-done.jpg",
      "marks": [
@@ -66,7 +66,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug is inside the sink basin and the robot has let go of it.",
+     "rule": "Done when the mug is inside the sink basin and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -92,7 +92,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the banana is inside the sink basin and the robot has let go of it.",
+     "alt_done": "Done: Done when the banana is inside the sink basin and both hands have let go.",
      "alt_start": "Start: Pick the banana from the counter and place it in the sink.",
      "done": "pick_place_counter_to_sink-102-done.jpg",
      "marks": [
@@ -142,7 +142,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the banana is inside the sink basin and the robot has let go of it.",
+     "rule": "Done when the banana is inside the sink basin and both hands have let go.",
      "seed": 102,
      "sentence": [
       {

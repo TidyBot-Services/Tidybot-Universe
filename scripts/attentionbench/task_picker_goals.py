@@ -35,7 +35,7 @@ TEXT = {
     'pick_place_counter_to_sink': dict(
         family='D', title='Counter → Sink',
         sentence='Pick up the [o:{obj}] and put it in the [b:sink].',
-        rule='Done when the {obj} is inside the sink basin and the robot has let go of it.'),
+        rule='Done when the {obj} is inside the sink basin and both hands have let go.'),
     'turn_on_microwave': dict(
         family='B', title='Turn on the microwave',
         sentence='Press the [o:start button] on the microwave.',
