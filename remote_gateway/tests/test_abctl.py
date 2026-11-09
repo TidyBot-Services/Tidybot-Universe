@@ -95,9 +95,9 @@ def test_prune_keeps_live_and_original(host):
 
 def test_ui_failure_names_are_parsed(monkeypatch, tmp_path):
     (tmp_path/'benchmarks/attention_harness/tests').mkdir(parents=True)
-    fake = subprocess.CompletedProcess([], 1, stdout='ok 1 - a\nnot ok 2 - b thing\n  not ok 3 - c\n', stderr='')
+    fake = subprocess.CompletedProcess([], 1, stdout=f'ok 1 - a\nnot ok 2 - b thing\n  not ok 3 - c\nnot ok 4 - {tmp_path.resolve()}/t/x.cjs\n', stderr='')
     monkeypatch.setattr(abctl, 'run', lambda *a, **k:fake)
-    assert abctl.ui_failures(tmp_path) == ['b thing', 'c']
+    assert abctl.ui_failures(tmp_path) == ['b thing', 'c', 't/x.cjs'], 'absolute file names lose the release folder'
 
 
 def test_ui_tests_run_with_paths_relative_to_the_release(monkeypatch, tmp_path):
