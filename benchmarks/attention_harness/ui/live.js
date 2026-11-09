@@ -3264,7 +3264,13 @@
         const next=all[(i+(event.key==='ArrowRight'||event.key==='ArrowDown'?1:-1)+all.length)%all.length];
         if(next){event.preventDefault();next.focus();}
       });
-      loadTaskPickerManifest().then(manifest=>{picker.manifest=manifest;picker.html='';renderTaskPicker(true);}).catch(error=>{
+      loadTaskPickerManifest().then(manifest=>{picker.manifest=manifest;picker.html='';renderTaskPicker(true);
+        // 11-10 (user): one seed control. The picker's seed chips drive the form's seed select, so the old
+        // "Scene seed" dropdown is hidden (it still submits) and its note moves under the chips.
+        const seedField=form.seed.closest('label'),note=form.querySelector('[data-seed-note]'),box=form.querySelector('[data-task-picker]');
+        if(seedField)seedField.hidden=true;
+        if(note&&box){note.classList.add('tp-seed-note');box.append(note);}
+      }).catch(error=>{
         const box=form.querySelector('[data-task-picker-error]');
         if(box){box.hidden=false;box.textContent=`Task pictures could not load: ${error?.message||String(error)}. Tasks are listed as text.`;}
       });

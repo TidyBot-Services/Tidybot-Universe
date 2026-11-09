@@ -136,3 +136,10 @@ test('the task list is as tall as the preview and scrolls inside; families head 
   const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
   assert.match(live,/function taskListGroupsHtml\(cards,chosen\)/);
 });
+
+
+test('one seed control: the picker hides the old Scene seed dropdown once pictures load (user 11-10)',()=>{
+  const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
+  assert.match(live,/const seedField=form\.seed\.closest\('label'\)[^;]*;\s*if\(seedField\)seedField\.hidden=true;/);
+  assert.match(live,/note\.classList\.add\('tp-seed-note'\);box\.append\(note\)/,'the seed note stays visible under the chips');
+});
