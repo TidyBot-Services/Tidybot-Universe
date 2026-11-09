@@ -5,7 +5,7 @@
 ## 登录
 
 ```bash
-ssh -p 7288 qifei@158.130.109.188          # 需要 Penn VPN
+ssh <run-host>                              # 地址、端口和账号向管理员要；需要 Penn VPN
 export PATH=~/ab-remote-20261107/tools/bin:$PATH
 ```
 
