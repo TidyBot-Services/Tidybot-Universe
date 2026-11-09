@@ -114,6 +114,11 @@ def test_attempts_and_status_flags_match_the_main_ui():
            'used': {'executions': 0}, 'budget': {'executions': 5}, 'jobs': []}
     assert home.attempts_used(row) == 0 and home.attempts_limit(row) == 5
     assert home.SYSTEM_PROBLEM.search(row['reason'])
+    # An Agent run counts versions against its own limit, as the Run page does (11-10: Remote showed 0/10 instead of 0/5).
+    agent = {'dev_mode': 'agent', 'versions': [], 'used': {'executions': 7}, 'budget': {'executions': 10},
+             'agent_resources': {'used': {'formal_versions': 1}, 'limits': {'formal_versions': 5}}}
+    assert home.attempts_used(agent) == 1 and home.attempts_limit(agent) == 5
+    assert home.attempts_limit({'dev_mode': 'agent'}) == 10
     failed = {'state': 'completed', 'jobs': [{'kind': 'execute', 'receipt': {'execution_status': 'failed'}}] * 2}
     assert home.all_attempts_failed(failed)
     assert not home.all_attempts_failed({**failed, 'jobs': [{'kind': 'execute', 'receipt': {'execution_status': 'completed'}}]})

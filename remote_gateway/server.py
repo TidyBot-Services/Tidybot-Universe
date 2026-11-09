@@ -259,7 +259,8 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith('/ui/') and not self.gateway.rate.take(self.user or self.client_ip(), live=path.endswith(('/live', '/live/frame'))):raise policy.Refused('too_many_requests', 'Too many requests. Wait a moment.', 429)
         if session and self.command != 'GET' and not secrets.compare_digest(self.headers.get('X-Attention-Token', ''), session['csrf']):
             raise policy.Refused('csrf_token_required', 'Reload the page and try again.', 403)
-        if path in ('/', '/ui'):return self.redirect('/ui/', 302)
+        # 11-10 (user): the site opens on Home; its New run leads a visitor to the invite page.
+        if path in ('/', '/ui'):return self.redirect('/ui/home.html', 302)
         if path == '/ui/' and self.command == 'GET':return self.page(session)
         if path in policy.UI_PAGES and self.command == 'GET':return self.page(session, policy.UI_PAGES[path])
         if path.startswith('/ui/') and self.command == 'GET':return self.asset(path[4:])
@@ -307,7 +308,8 @@ class Handler(BaseHTTPRequestHandler):
         self.user = user
         config = self.gateway.config
         token, _ = self.gateway.store.new_session(user, hours=config.session_hours)
-        self.redirect('/ui/', cookie=self.cookie(token, config.session_hours * 3600))
+        # Signed in from New run: straight into the New run form.
+        self.redirect('/ui/#new-run', cookie=self.cookie(token, config.session_hours * 3600))
 
     def page(self, session, name='index.html'):
         page = (self.gateway.config.ui_dir / name).read_text(encoding='utf-8')

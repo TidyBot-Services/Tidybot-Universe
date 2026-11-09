@@ -26,13 +26,27 @@ ENDED = {'needs_review', 'cancelled', 'condition_invalid', 'completed', 'failed'
 SYSTEM_PROBLEM = re.compile(r'infrastructure|dispatch unknown|outcome_unknown', re.I)
 
 
+def is_agent(row):
+    return row.get('dev_mode') == 'agent' or bool(row.get('agent'))
+
+
 def attempts_used(row):
-    """Attempts the robot actually ran, counted like the main UI (used.executions); a version that never ran is not an attempt."""
+    """Counted like the main UI: an Agent run counts its formal versions; an older run the executions that ran."""
+    if is_agent(row):
+        counts = (row.get('agent') or {}).get('counts') or (row.get('agent_resources') or {}).get('used') or {}
+        used = counts.get('formal_versions')
+        return used if isinstance(used, int) else len(row.get('versions') or [])
     used = (row.get('used') or {}).get('executions')
     return used if isinstance(used, int) else len(row.get('versions') or [])
 
 
 def attempts_limit(row):
+    """The run's own limit (11-10: a Remote run allows 5 versions, not the formal 10)."""
+    if is_agent(row):
+        for source in ((row.get('agent') or {}).get('limits'), (row.get('agent_resources') or {}).get('limits')):
+            limit = (source or {}).get('formal_versions')
+            if isinstance(limit, int):return limit
+        return 10
     limit = (row.get('budget') or {}).get('executions')
     return limit if isinstance(limit, int) else None
 

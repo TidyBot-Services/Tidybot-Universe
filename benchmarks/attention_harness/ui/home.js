@@ -70,8 +70,11 @@
   function renderHero(s) {
     const running = s.running[0], go = $('go');
     $('eyebrow').replaceChildren(dot(running ? 'ok' : 'warn', true), document.createTextNode(running ? 'LIVE · A RUN IS GOING' : 'STANDBY · READY FOR THE NEXT RUN'));
-    go.href = running ? shell.runUrl(running) : '/ui/#new-run';
-    $('go-label').textContent = running ? 'OPEN THE RUN' : 'NEW RUN';
+    // Remote (11-10, user): several runs share the robot, so New run is always offered; a visitor is sent to the invite page first.
+    const remote = document.body.dataset.gateway === '1', guest = document.body.dataset.guest === '1';
+    const open = running && !remote;
+    go.href = open ? shell.runUrl(running) : guest ? '/login' : '/ui/#new-run';
+    $('go-label').textContent = open ? 'OPEN THE RUN' : 'NEW RUN';
   }
 
   function countUp(node, target) {
@@ -94,7 +97,7 @@
     }
   }
 
-  function render() { if (!status) return; renderHero(status); if (document.body.dataset.guest === '1' && !status.running.length) $('go').href = '/login'; renderInstruments(status); renderStats(status); renderSide(status); playScenes(status.scenes); firstPaint = false; }
+  function render() { if (!status) return; renderHero(status); renderInstruments(status); renderStats(status); renderSide(status); playScenes(status.scenes); firstPaint = false; }
 
   function showError(text) { const e = $('error'); e.textContent = text; e.hidden = !text; }
 
