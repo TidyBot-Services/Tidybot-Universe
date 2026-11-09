@@ -129,3 +129,10 @@ test('H3 (user 11-10): text list on the left, pointed task previewed large with 
   assert.match(live,/addEventListener\('pointerleave',\(\)=>\{picker\.preview=null;previewTask\(form\.task_id\.value\);\}\)/,'leaving returns to the chosen task');
   assert.match(live,/querySelectorAll\('\.tp-item\[data-task-card\]'\)/,'arrow keys move along the list');
 });
+
+test('the task list is as tall as the preview and scrolls inside; families head the list (user 11-10)',()=>{
+  assert.match(html,/#attentionbench-clear \.tp-list\{display:flex;flex-direction:column;gap:8px;height:0;min-height:100%;overflow-y:auto/);
+  assert.match(html,/\.tp-grid\{display:grid;grid-template-columns:minmax\(200px,280px\) minmax\(0,1fr\);gap:16px;align-items:stretch\}/);
+  const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
+  assert.match(live,/function taskListGroupsHtml\(cards,chosen\)/);
+});

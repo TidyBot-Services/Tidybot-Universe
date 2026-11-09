@@ -2735,9 +2735,13 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear button.tp-seed:disabled{cursor:default;opacity:.85}
 #attentionbench-clear .tp-search{display:flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:13px}
 #attentionbench-clear .tp-search input{width:150px;min-height:28px;border:0!important;outline:0;background:transparent!important;color:var(--text);font:inherit;padding:0!important;box-shadow:none!important}
-#attentionbench-clear .tp-grid{display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr);gap:16px;align-items:start}
+#attentionbench-clear .tp-grid{display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr);gap:16px;align-items:stretch}
 /* 11-10 (user, design H3): text list on the left, the pointed/chosen task large on the right. */
-#attentionbench-clear .tp-list{display:flex;flex-direction:column;gap:8px}
+#attentionbench-clear .tp-list{display:flex;flex-direction:column;gap:8px;height:0;min-height:100%;overflow-y:auto;padding-right:4px;overscroll-behavior:contain}
+/* 11-10 (user): the list is exactly as tall as the preview beside it and scrolls inside; family headings when many tasks. */
+#attentionbench-clear .tp-list-h{margin:6px 2px 0;font:600 10.5px var(--body,inherit);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#attentionbench-clear .tp-list-h:first-child{margin-top:0}
+#attentionbench-clear button.tp-item{flex:none}
 #attentionbench-clear button.tp-item{appearance:none;box-shadow:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-width:0;margin:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--text);text-align:left;cursor:pointer;transform:none}
 #attentionbench-clear button.tp-item:hover:not(:disabled){border-color:var(--orange);box-shadow:none;transform:none}
 #attentionbench-clear button.tp-item:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
@@ -2789,6 +2793,7 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 @media (max-width:760px){
   #attentionbench-clear .tp-grid{grid-template-columns:1fr}
   #attentionbench-clear .tp-preview{order:-1}
+  #attentionbench-clear .tp-list{height:auto;min-height:0;max-height:none;overflow:visible}
   #attentionbench-clear .tp-search{margin-left:0;width:100%}
   #attentionbench-clear .tp-search input{flex:1;width:auto}
 }
@@ -3747,6 +3752,7 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] button.tp-tab:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-seed:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-card:focus-visible{outline:3px solid var(--orange)}
 #attentionbench-clear[data-theme="dark"] .tp-search{border:1px solid var(--line);background:var(--panel);color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] .tp-search input{border:0!important;outline:0;background:transparent!important;color:var(--text);box-shadow:none!important}
+#attentionbench-clear[data-theme="dark"] .tp-list-h{color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] button.tp-item{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 #attentionbench-clear[data-theme="dark"] button.tp-item:hover:not(:disabled){border-color:var(--orange);box-shadow:none}
 #attentionbench-clear[data-theme="dark"] button.tp-item:focus-visible{outline:3px solid var(--orange)}

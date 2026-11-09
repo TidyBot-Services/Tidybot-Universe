@@ -2395,6 +2395,12 @@
     const plain=(card.sentence||[]).map?.(s=>s.text).join('')||'';
     return `<button type="button" class="tp-item${selected?' is-selected':''}" role="radio" aria-checked="${selected}" data-task-card="${esc(card.value)}"><b class="tp-title">${esc(card.title)}</b><span class="tp-item-sub">${esc(plain)}</span></button>`;
   }
+  // With many tasks the list is grouped by family under "All" (11-10: 14 tasks); a single family needs no headings.
+  function taskListGroupsHtml(cards,chosen){
+    const families=[...new Set(cards.map(c=>c.family_label||''))];
+    if(families.length<2)return cards.map(c=>taskListItemHtml(c,c.value===chosen)).join('');
+    return families.map(f=>`<p class="tp-list-h">${esc(f||'Other')}</p>${cards.filter(c=>(c.family_label||'')===f).map(c=>taskListItemHtml(c,c.value===chosen)).join('')}`).join('');
+  }
   function taskPreviewHtml(card,seed){
     return taskCardHtml(card,{selected:false,seed}).replace(/^<button type="button" class="tp-card([^"]*)"[^>]*>/,'<div class="tp-card tp-preview-card$1" data-task-preview-card="'+esc(card.value)+'">').replace(/<\/button>\s*$/,'</div>');
   }
@@ -3207,7 +3213,7 @@
         const showSeed=c=>c.value===form.task_id.value&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
         const previewed=visible.find(c=>c.value===picker.preview)||visible.find(c=>c.value===form.task_id.value)||visible[0];
         picker.showSeed=showSeed;
-        const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${visible.map(c=>taskListItemHtml(c,c.value===form.task_id.value)).join('')}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed)):''}</div>`
+        const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${taskListGroupsHtml(visible,form.task_id.value)}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed)):''}</div>`
           :'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
         const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
         const chips=taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
