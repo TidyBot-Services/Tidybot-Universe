@@ -7,7 +7,7 @@ A deploy tests the new release, waits until no run is executing, switches the sy
 and the gateway (never the tunnel, so the public URL stays), checks health and switches back on failure.
 
 Paths come from ~/.config/abctl.json when present; the defaults are the qifei layout. Stdlib only.
-Read README-abctl.md next to this file for the walkthrough.
+Read README-abctl.md (short) or README-abctl-full.md next to this file.
 """
 import argparse
 import datetime
