@@ -1,0 +1,3 @@
+#!/bin/sh
+# abctl always runs from the live release, so a deploy also updates abctl itself.
+exec /usr/bin/python3 -B @WS@/repos/attentionbench/remote_gateway/deploy/abctl.py "$@"

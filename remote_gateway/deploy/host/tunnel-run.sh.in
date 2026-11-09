@@ -1,0 +1,13 @@
+#!/bin/bash
+# Quick tunnel for the campus gateway; records the current public URL for patrol (2026-11-09).
+# cloudflared output passes through unchanged (journal); when it exits this script exits and systemd restarts it.
+F=@DATA@/public-url.txt
+printf "pending %s\n" "$(date -Is)" > "$F.tmp" && mv "$F.tmp" "$F"
+@WS@/tools/bin/cloudflared tunnel --no-autoupdate --protocol http2 --url http://127.0.0.1:@PORT_GATEWAY@ 2>&1 |
+while IFS= read -r line; do
+  printf "%s\n" "$line"
+  url=$(printf "%s" "$line" | grep -o "https://[a-z0-9-]*\.trycloudflare\.com" | head -n 1)
+  if [ -n "$url" ] && [ "$url" != "https://api.trycloudflare.com" ]; then
+    printf "%s %s\n" "$url" "$(date -Is)" > "$F.tmp" && mv "$F.tmp" "$F"
+  fi
+done

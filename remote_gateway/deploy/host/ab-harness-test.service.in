@@ -1,0 +1,12 @@
+[Unit]
+Description=AttentionBench test harness @PORT_TEST@ (qifei)
+After=network-online.target
+[Service]
+WorkingDirectory=@TEST_DATA@
+Environment=CODEX_HOME=@WS@/codex-home
+Environment=PATH=@WS@/tools/bin:@WS@/tools/codex/bin:@WS@/tools/conda/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/bin/python3 @WS@/repos/attentionbench/remote_gateway/deploy/run_host_harness.py @WS@ @TEST_DATA@ @PORT_TEST@ --run-slots 3
+Restart=always
+RestartSec=10
+[Install]
+WantedBy=default.target

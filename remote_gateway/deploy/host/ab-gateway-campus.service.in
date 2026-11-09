@@ -1,0 +1,11 @@
+[Unit]
+Description=AttentionBench campus gateway @PORT_GATEWAY@ (qifei, loopback only)
+After=ab-harness-campus.service
+[Service]
+WorkingDirectory=@WS@/repos/attentionbench
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -B -u -m remote_gateway --config @DATA@/gateway.json serve
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=default.target

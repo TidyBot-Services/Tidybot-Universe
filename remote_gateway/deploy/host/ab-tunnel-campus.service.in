@@ -1,0 +1,10 @@
+[Unit]
+Description=AttentionBench public tunnel (cloudflared, quick tunnel until the named one)
+After=network-online.target ab-gateway-campus.service
+StartLimitIntervalSec=0
+[Service]
+ExecStart=@DATA@/tunnel-run.sh
+Restart=always
+RestartSec=10
+[Install]
+WantedBy=default.target
