@@ -4700,7 +4700,11 @@
   }
   function attentionStripModel(ledger,minWidth=900) {
     const ended=!!ledger.terminal&&ledger.attempts.length>0;
-    const count=ended?ledger.attempts.length:Math.max(ledger.maximum||0,ledger.attempts.length,ledger.rows.length?1:0);
+    // 11-10 (user): the strip grows with the run. Only attempts that happened are drawn, plus one circle for the next
+    // attempt while none is running; the rest of the limit stays hidden (it is named in the summary instead).
+    const reached=ledger.attempts.length,running=ledger.attempts.some(a=>a.status==='running');
+    const upcoming=Math.max(reached+(running?0:1),ledger.rows.length?1:0);
+    const count=ended?reached:Math.max(reached,ledger.maximum?Math.min(ledger.maximum,upcoming):upcoming);
     const attempts=Array.from({length:count},(_,index)=>{
       const attempt=ledger.attempts.find(a=>a.index===index);
       const solved=attempt&&(ledger.solved?.attempt_id===attempt.attempt_id);

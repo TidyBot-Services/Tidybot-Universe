@@ -19,13 +19,13 @@ function snapshot({statuses=['failed','succeeded'],maximum=4,requests=[],termina
 test('ledger becomes ordered attempts and fanned help, with dashed waiting marks',()=>{
  const {api}=setup();const snap=snapshot({statuses:['failed','failed','running'],requests:[{id:'h1',after:0},{id:'h2',after:0,person:true,seconds:42},{id:'h3',after:1,pending:true,person:true}]});
  const model=api.attentionStripModel(api.attentionLedger(snap));
- assert.deepEqual(Array.from(model.attempts,a=>a.state),['failed','failed','running','future']);
+ assert.deepEqual(Array.from(model.attempts,a=>a.state),['failed','failed','running'],'11-10: no circle for attempts not reached yet');
  assert.deepEqual(Array.from(model.requests,r=>[r.id,r.after,r.stack,r.dashed]),[['h1',0,0,false],['h2',0,1,false],['h3',1,0,true]]);
- assert.deepEqual(Array.from(model.attempts,a=>a.x),[model.left,model.left+model.step,model.left+2*model.step,model.left+3*model.step]);
+ assert.deepEqual(Array.from(model.attempts,a=>a.x),[model.left,model.left+model.step,model.left+2*model.step]);
  assert.ok(model.requests[0].x<model.requests[1].x);assert.ok(model.requests[1].top<model.requests[0].top);
  assert.ok(model.step>=2*92+48);assert.ok(model.width>320);
  const html=api.attentionEfficiency(snap);assert.match(html,/data-attn-help="h3"[^>]*dashed|class="[^"]*dashed"[^>]*data-attn-help="h3"/);
- assert.match(html,/data-attn-attempt="4"/);assert.match(html,/42 s of human time/);
+ assert.doesNotMatch(html,/data-attn-attempt="4"/,"no circle for an attempt not reached");assert.match(html,/3 of 4 attempts used so far/,"the limit is still named");assert.match(html,/42 s of human time/);
 });
 test('help requests are ordered by the attempt they follow and request time',()=>{
  const {api}=setup();const snap=snapshot({statuses:['failed','failed','succeeded'],requests:[{id:'first',after:0},{id:'second',after:1},{id:'third',after:0}]});
@@ -58,13 +58,14 @@ test('all effect words and request kinds remain available',()=>{
 });
 test('empty, automatic-only, ended, and twelve-attempt budgets render',()=>{
  const {api}=setup();let snap=snapshot({statuses:[],maximum:4});let html=api.attentionEfficiency(snap);
- assert.match(html,/No attempts yet/);assert.match(html,/no help requested/);assert.match(html,/data-attn-attempt="4"/);
+ assert.match(html,/No attempts yet/);assert.match(html,/no help requested/);assert.match(html,/data-attn-attempt="1"/);assert.doesNotMatch(html,/data-attn-attempt="2"/,'only the next attempt is drawn');
  snap=snapshot({statuses:['failed'],requests:[{after:0}],terminal:true});html=api.attentionEfficiency(snap);
  assert.match(html,/not solved/);assert.match(html,/answered by the automatic advisor, 0 s of human time/);
  assert.match(html,/class="op-attn-end unsolved"/);assert.match(html,/>Not completed</);assert.doesNotMatch(html,/data-attn-attempt="2"/);assert.match(html,/data-attn-watch="a0"/);
  assert.doesNotMatch(html,/Was the human attention worth it/);assert.doesNotMatch(html,/op-attn-foot/);
  snap=snapshot({statuses:['failed'],maximum:12,requests:Array.from({length:7},(_,i)=>({id:`h${i}`,after:0}))});
- const model=api.attentionStripModel(api.attentionLedger(snap));assert.equal(model.attempts.length,12);assert.equal(model.requests[6].stack,6);assert.ok(model.width>1900);
+ const model=api.attentionStripModel(api.attentionLedger(snap));assert.equal(model.attempts.length,2,'one done + the next, not all twelve');assert.equal(model.requests[6].stack,6);
+ snap=snapshot({statuses:['failed','failed'],maximum:2});assert.equal(api.attentionStripModel(api.attentionLedger(snap)).attempts.length,2,'never past the limit');
 });
 test('help before the first attempt has room in the strip',()=>{
  const {api}=setup();const snap=snapshot({statuses:[],maximum:2});
