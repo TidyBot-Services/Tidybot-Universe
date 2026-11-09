@@ -1,0 +1,4438 @@
+{
+ "families": {
+  "A": "Open & close",
+  "B": "Buttons & knobs",
+  "C": "Put on an appliance",
+  "D": "Cabinet & sink"
+ },
+ "schema": "attentionbench.task-picker.v1",
+ "source": "scripts/attentionbench/task_picker_pictures.py; goals from the 2026-11-10 native success check",
+ "tasks": [
+  {
+   "defect": null,
+   "family": "D",
+   "family_label": "Cabinet & sink",
+   "note": null,
+   "rule": "Done when the item is inside the sink basin and the robot has let go of it.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the mug is inside the sink basin and the robot has let go of it.",
+     "alt_start": "Start: Pick the mug from the counter and place it in the sink.",
+     "done": "pick_place_counter_to_sink-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        529.5,
+        373.4,
+        495.6,
+        304.0
+       ],
+       "circle": {
+        "cx": 529.5,
+        "cy": 373.4,
+        "r": 31.0
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          447.0,
+          311.6
+         ],
+         [
+          452.3,
+          244.6
+         ],
+         [
+          535.8,
+          244.6
+         ],
+         [
+          546.4,
+          311.6
+         ],
+         [
+          543.7,
+          355.8
+         ],
+         [
+          448.3,
+          355.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug is inside the sink basin and the robot has let go of it.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Pick up the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " and put it in the "
+      },
+      {
+       "mark": "b",
+       "text": "sink"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "pick_place_counter_to_sink-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the banana is inside the sink basin and the robot has let go of it.",
+     "alt_start": "Start: Pick the banana from the counter and place it in the sink.",
+     "done": "pick_place_counter_to_sink-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        550.8,
+        376.6,
+        495.6,
+        304.0
+       ],
+       "circle": {
+        "cx": 550.8,
+        "cy": 376.6,
+        "r": 29.0
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          447.0,
+          311.6
+         ],
+         [
+          452.3,
+          244.6
+         ],
+         [
+          535.8,
+          244.6
+         ],
+         [
+          546.4,
+          311.6
+         ],
+         [
+          543.7,
+          355.8
+         ],
+         [
+          448.3,
+          355.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the banana is inside the sink basin and the robot has let go of it.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Pick up the "
+      },
+      {
+       "mark": "o",
+       "text": "banana"
+      },
+      {
+       "text": " and put it in the "
+      },
+      {
+       "mark": "b",
+       "text": "sink"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "pick_place_counter_to_sink-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Pick up the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " and put it in the "
+    },
+    {
+     "mark": "b",
+     "text": "sink"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "pick_place_counter_to_sink",
+   "title": "Counter → Sink"
+  },
+  {
+   "defect": null,
+   "family": "A",
+   "family_label": "Open & close",
+   "note": null,
+   "rule": "Done when every door is open at least 90% (about 81°).",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when every door is open at least 90% (about 81°).",
+     "alt_start": "Start: Open the cabinet doors.",
+     "done": "open_cabinet-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        475.8,
+        356.1,
+        320.8,
+        447.1
+       ],
+       "circle": {
+        "cx": 475.8,
+        "cy": 356.1,
+        "r": 28.7
+       },
+       "kind": "part",
+       "n": 1,
+       "part": "cab_3_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          311.7,
+          423.0
+         ],
+         [
+          313.1,
+          418.9
+         ],
+         [
+          315.4,
+          418.9
+         ],
+         [
+          319.6,
+          419.2
+         ],
+         [
+          320.0,
+          419.8
+         ],
+         [
+          328.4,
+          470.9
+         ],
+         [
+          328.3,
+          471.9
+         ],
+         [
+          327.2,
+          476.0
+         ],
+         [
+          323.1,
+          476.2
+         ],
+         [
+          320.9,
+          476.2
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        501.6,
+        356.1,
+        660.2,
+        445.0
+       ],
+       "circle": {
+        "cx": 501.6,
+        "cy": 356.1,
+        "r": 28.8
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "cab_3_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          651.8,
+          470.9
+         ],
+         [
+          652.5,
+          466.7
+         ],
+         [
+          660.4,
+          424.4
+         ],
+         [
+          661.3,
+          419.8
+         ],
+         [
+          661.7,
+          419.2
+         ],
+         [
+          666.0,
+          418.9
+         ],
+         [
+          668.3,
+          418.9
+         ],
+         [
+          669.7,
+          423.0
+         ],
+         [
+          669.7,
+          423.2
+         ],
+         [
+          659.4,
+          476.2
+         ],
+         [
+          657.2,
+          476.2
+         ],
+         [
+          653.1,
+          476.0
+         ],
+         [
+          651.8,
+          471.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when every door is open at least 90% (about 81°).",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Open the "
+      },
+      {
+       "mark": "o",
+       "text": "cabinet doors"
+      },
+      {
+       "text": " all the way."
+      }
+     ],
+     "start": "open_cabinet-102-start.jpg",
+     "steps": 2,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Open the "
+    },
+    {
+     "mark": "o",
+     "text": "cabinet doors"
+    },
+    {
+     "text": " all the way."
+    }
+   ],
+   "task_id": "open_cabinet",
+   "title": "Open the cabinet"
+  },
+  {
+   "defect": null,
+   "family": "A",
+   "family_label": "Open & close",
+   "note": "Holding the lid 3.5 cm above the blender also counts.",
+   "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
+     "done": "close_blender_lid-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        627.0,
+        303.8,
+        496.1,
+        238.3
+       ],
+       "circle": {
+        "cx": 627.0,
+        "cy": 303.8,
+        "r": 16.8
+       },
+       "kind": "part",
+       "part": "blender_main_group_auxiliary_main_group_main",
+       "region": {
+        "points": [
+         [
+          489.7,
+          241.9
+         ],
+         [
+          489.8,
+          228.9
+         ],
+         [
+          502.3,
+          228.9
+         ],
+         [
+          502.7,
+          234.5
+         ],
+         [
+          502.4,
+          247.7
+         ],
+         [
+          489.8,
+          247.7
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "lid"
+      },
+      {
+       "text": " back on the "
+      },
+      {
+       "mark": "b",
+       "text": "blender"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "close_blender_lid-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
+     "done": "close_blender_lid-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        586.4,
+        306.7,
+        496.1,
+        238.3
+       ],
+       "circle": {
+        "cx": 586.4,
+        "cy": 306.7,
+        "r": 16.8
+       },
+       "kind": "part",
+       "part": "blender_main_group_auxiliary_main_group_main",
+       "region": {
+        "points": [
+         [
+          489.7,
+          241.9
+         ],
+         [
+          489.8,
+          228.9
+         ],
+         [
+          502.3,
+          228.9
+         ],
+         [
+          502.7,
+          234.5
+         ],
+         [
+          502.4,
+          247.7
+         ],
+         [
+          489.8,
+          247.7
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "lid"
+      },
+      {
+       "text": " back on the "
+      },
+      {
+       "mark": "b",
+       "text": "blender"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "close_blender_lid-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
+     "done": "close_blender_lid-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        648.9,
+        306.7,
+        496.1,
+        238.3
+       ],
+       "circle": {
+        "cx": 648.9,
+        "cy": 306.7,
+        "r": 16.9
+       },
+       "kind": "part",
+       "part": "blender_main_group_auxiliary_main_group_main",
+       "region": {
+        "points": [
+         [
+          489.7,
+          241.9
+         ],
+         [
+          489.8,
+          228.9
+         ],
+         [
+          502.3,
+          228.9
+         ],
+         [
+          502.7,
+          234.5
+         ],
+         [
+          502.4,
+          247.7
+         ],
+         [
+          489.8,
+          247.7
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "lid"
+      },
+      {
+       "text": " back on the "
+      },
+      {
+       "mark": "b",
+       "text": "blender"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "close_blender_lid-103-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Put the "
+    },
+    {
+     "mark": "o",
+     "text": "lid"
+    },
+    {
+     "text": " back on the "
+    },
+    {
+     "mark": "b",
+     "text": "blender"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "close_blender_lid",
+   "title": "Close the blender lid"
+  },
+  {
+   "defect": null,
+   "family": "A",
+   "family_label": "Open & close",
+   "note": null,
+   "rule": "Done when the drawer is fully open (90% open is not enough).",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the drawer is fully open (90% open is not enough).",
+     "alt_start": "Start: Open the right drawer.",
+     "done": "open_drawer-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        489.6,
+        313.2,
+        493.8,
+        371.3
+       ],
+       "circle": {
+        "cx": 489.6,
+        "cy": 313.2,
+        "r": 22.5
+       },
+       "kind": "part",
+       "part": "stack_3_main_group_2_inner_box",
+       "region": {
+        "points": [
+         [
+          470.8,
+          370.1
+         ],
+         [
+          470.9,
+          367.4
+         ],
+         [
+          510.7,
+          367.4
+         ],
+         [
+          511.0,
+          370.1
+         ],
+         [
+          511.1,
+          371.6
+         ],
+         [
+          511.0,
+          376.3
+         ],
+         [
+          470.8,
+          376.3
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the drawer is fully open (90% open is not enough).",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Pull the "
+      },
+      {
+       "mark": "o",
+       "text": "drawer"
+      },
+      {
+       "text": " all the way open."
+      }
+     ],
+     "start": "open_drawer-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the drawer is fully open (90% open is not enough).",
+     "alt_start": "Start: Open the right drawer.",
+     "done": "open_drawer-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        566.2,
+        270.2,
+        649.1,
+        270.2
+       ],
+       "circle": {
+        "cx": 566.2,
+        "cy": 270.2,
+        "r": 16.6
+       },
+       "kind": "part",
+       "part": "stack_2_left_group_2_inner_box",
+       "region": {
+        "points": [
+         [
+          642.5,
+          264.3
+         ],
+         [
+          643.0,
+          260.4
+         ],
+         [
+          646.4,
+          260.3
+         ],
+         [
+          648.2,
+          260.3
+         ],
+         [
+          655.4,
+          276.0
+         ],
+         [
+          654.7,
+          280.1
+         ],
+         [
+          652.9,
+          280.1
+         ],
+         [
+          649.3,
+          280.0
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the drawer is fully open (90% open is not enough).",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Pull the "
+      },
+      {
+       "mark": "o",
+       "text": "drawer"
+      },
+      {
+       "text": " all the way open."
+      }
+     ],
+     "start": "open_drawer-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the drawer is fully open (90% open is not enough).",
+     "alt_start": "Start: Open the right drawer.",
+     "done": "open_drawer-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        566.2,
+        270.2,
+        649.1,
+        270.2
+       ],
+       "circle": {
+        "cx": 566.2,
+        "cy": 270.2,
+        "r": 16.6
+       },
+       "kind": "part",
+       "part": "stack_2_left_group_2_inner_box",
+       "region": {
+        "points": [
+         [
+          642.5,
+          264.3
+         ],
+         [
+          643.0,
+          260.4
+         ],
+         [
+          646.4,
+          260.3
+         ],
+         [
+          648.2,
+          260.3
+         ],
+         [
+          655.4,
+          276.0
+         ],
+         [
+          654.7,
+          280.1
+         ],
+         [
+          652.9,
+          280.1
+         ],
+         [
+          649.3,
+          280.0
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the drawer is fully open (90% open is not enough).",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Pull the "
+      },
+      {
+       "mark": "o",
+       "text": "drawer"
+      },
+      {
+       "text": " all the way open."
+      }
+     ],
+     "start": "open_drawer-103-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Pull the "
+    },
+    {
+     "mark": "o",
+     "text": "drawer"
+    },
+    {
+     "text": " all the way open."
+    }
+   ],
+   "task_id": "open_drawer",
+   "title": "Open the drawer"
+  },
+  {
+   "defect": null,
+   "family": "B",
+   "family_label": "Buttons & knobs",
+   "note": "Only a press by the robot’s left arm counts; the check does not see a right-arm press. Feasibility with the left arm is proven on seed 101 only.",
+   "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_start": "Start: Press the start button on the microwave.",
+     "done": "turn_on_microwave-101-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 574.1,
+        "cy": 328.9,
+        "r": 18
+       },
+       "kind": "press",
+       "part": "microwave_main_group_start_button"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": " on the microwave."
+      }
+     ],
+     "start": "turn_on_microwave-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_start": "Start: Press the start button on the microwave.",
+     "done": "turn_on_microwave-102-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 574.1,
+        "cy": 328.9,
+        "r": 18
+       },
+       "kind": "press",
+       "part": "microwave_main_group_start_button"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": " on the microwave."
+      }
+     ],
+     "start": "turn_on_microwave-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_start": "Start: Press the start button on the microwave.",
+     "done": "turn_on_microwave-103-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 574.1,
+        "cy": 328.9,
+        "r": 18
+       },
+       "kind": "press",
+       "part": "microwave_main_group_start_button"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": " on the microwave."
+      }
+     ],
+     "start": "turn_on_microwave-103-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Press the "
+    },
+    {
+     "mark": "o",
+     "text": "start button"
+    },
+    {
+     "text": " on the microwave."
+    }
+   ],
+   "task_id": "turn_on_microwave",
+   "title": "Turn on the microwave"
+  },
+  {
+   "defect": null,
+   "family": "B",
+   "family_label": "Buttons & knobs",
+   "note": null,
+   "rule": "Done when that burner’s knob is below about 20°.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when that burner’s knob is below about 20°.",
+     "alt_start": "Start: Turn off the rear right burner of the stove.",
+     "done": "turn_off_stove-101-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 549.6,
+        "cy": 245.9,
+        "r": 18.7
+       },
+       "kind": "part",
+       "part": "stove_1_main_group_knob_rear_right"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when that burner’s knob is below about 20°.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Turn the "
+      },
+      {
+       "mark": "o",
+       "text": "knob"
+      },
+      {
+       "text": " of the lit burner back to off."
+      }
+     ],
+     "start": "turn_off_stove-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when that burner’s knob is below about 20°.",
+     "alt_start": "Start: Turn off the front right burner of the stove.",
+     "done": "turn_off_stove-102-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 582.5,
+        "cy": 245.8,
+        "r": 18.8
+       },
+       "kind": "part",
+       "part": "stove_1_main_group_knob_front_right"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when that burner’s knob is below about 20°.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Turn the "
+      },
+      {
+       "mark": "o",
+       "text": "knob"
+      },
+      {
+       "text": " of the lit burner back to off."
+      }
+     ],
+     "start": "turn_off_stove-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when that burner’s knob is below about 20°.",
+     "alt_start": "Start: Turn off the front right burner of the stove.",
+     "done": "turn_off_stove-103-done.jpg",
+     "marks": [
+      {
+       "circle": {
+        "cx": 582.5,
+        "cy": 245.9,
+        "r": 18.7
+       },
+       "kind": "part",
+       "part": "stove_1_main_group_knob_front_right"
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when that burner’s knob is below about 20°.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Turn the "
+      },
+      {
+       "mark": "o",
+       "text": "knob"
+      },
+      {
+       "text": " of the lit burner back to off."
+      }
+     ],
+     "start": "turn_off_stove-103-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Turn the "
+    },
+    {
+     "mark": "o",
+     "text": "knob"
+    },
+    {
+     "text": " of the lit burner back to off."
+    }
+   ],
+   "task_id": "turn_off_stove",
+   "title": "Turn off the burner"
+  },
+  {
+   "defect": "Check is defective: the head-lock button does nothing, the screening checked the wrong action, and on seed 101 the head falls back when released.",
+   "family": "B",
+   "family_label": "Buttons & knobs",
+   "note": null,
+   "rule": "Done when the head is raised past 99% (about 89°).",
+   "seeds": [
+    {
+     "pictures": false,
+     "reason": "goal state is not a native success",
+     "seed": 101
+    },
+    {
+     "alt_done": "Done: Done when the head is raised past 99% (about 89°).",
+     "alt_start": "Start: Open the stand mixer head.",
+     "done": "open_stand_mixer_head-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        481.0,
+        256.2,
+        518.6,
+        240.5
+       ],
+       "circle": {
+        "cx": 481.0,
+        "cy": 256.2,
+        "r": 39.1
+       },
+       "kind": "part",
+       "n": 1,
+       "part": "stand_mixer_left_group_head",
+       "region": {
+        "points": [
+         [
+          491.2,
+          261.8
+         ],
+         [
+          495.7,
+          244.7
+         ],
+         [
+          507.1,
+          203.9
+         ],
+         [
+          532.4,
+          206.2
+         ],
+         [
+          548.5,
+          213.8
+         ],
+         [
+          537.4,
+          251.7
+         ],
+         [
+          530.8,
+          270.6
+         ],
+         [
+          505.7,
+          271.7
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        472.1,
+        277.1,
+        504.1,
+        233.3
+       ],
+       "circle": {
+        "cx": 472.1,
+        "cy": 277.1,
+        "r": 24.8
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "stand_mixer_left_group_blender",
+       "region": {
+        "points": [
+         [
+          483.6,
+          234.7
+         ],
+         [
+          491.9,
+          222.5
+         ],
+         [
+          504.0,
+          218.8
+         ],
+         [
+          517.6,
+          216.9
+         ],
+         [
+          525.1,
+          231.5
+         ],
+         [
+          515.9,
+          244.2
+         ],
+         [
+          503.8,
+          248.3
+         ],
+         [
+          490.7,
+          249.2
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the head is raised past 99% (about 89°).",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Lift the "
+      },
+      {
+       "mark": "o",
+       "text": "mixer head"
+      },
+      {
+       "text": " all the way up."
+      }
+     ],
+     "start": "open_stand_mixer_head-102-start.jpg",
+     "steps": 2,
+     "view": "overview"
+    },
+    {
+     "alt_done": "Done: Done when the head is raised past 99% (about 89°).",
+     "alt_start": "Start: Open the stand mixer head.",
+     "done": "open_stand_mixer_head-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        481.0,
+        256.2,
+        518.6,
+        240.5
+       ],
+       "circle": {
+        "cx": 481.0,
+        "cy": 256.2,
+        "r": 39.1
+       },
+       "kind": "part",
+       "n": 1,
+       "part": "stand_mixer_left_group_head",
+       "region": {
+        "points": [
+         [
+          491.2,
+          261.8
+         ],
+         [
+          495.7,
+          244.7
+         ],
+         [
+          507.1,
+          203.9
+         ],
+         [
+          532.4,
+          206.2
+         ],
+         [
+          548.5,
+          213.8
+         ],
+         [
+          537.4,
+          251.7
+         ],
+         [
+          530.8,
+          270.6
+         ],
+         [
+          505.7,
+          271.7
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        472.1,
+        277.1,
+        504.1,
+        233.3
+       ],
+       "circle": {
+        "cx": 472.1,
+        "cy": 277.1,
+        "r": 24.8
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "stand_mixer_left_group_blender",
+       "region": {
+        "points": [
+         [
+          483.6,
+          234.7
+         ],
+         [
+          491.9,
+          222.5
+         ],
+         [
+          504.0,
+          218.8
+         ],
+         [
+          517.6,
+          216.9
+         ],
+         [
+          525.1,
+          231.5
+         ],
+         [
+          515.9,
+          244.2
+         ],
+         [
+          503.8,
+          248.3
+         ],
+         [
+          490.7,
+          249.2
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 0,
+     "pictures": true,
+     "rule": "Done when the head is raised past 99% (about 89°).",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Lift the "
+      },
+      {
+       "mark": "o",
+       "text": "mixer head"
+      },
+      {
+       "text": " all the way up."
+      }
+     ],
+     "start": "open_stand_mixer_head-103-start.jpg",
+     "steps": 2,
+     "view": "overview"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Lift the "
+    },
+    {
+     "mark": "o",
+     "text": "mixer head"
+    },
+    {
+     "text": " all the way up."
+    }
+   ],
+   "task_id": "open_stand_mixer_head",
+   "title": "Open the mixer head"
+  },
+  {
+   "defect": null,
+   "family": "C",
+   "family_label": "Put on an appliance",
+   "note": "On seed 104 a mug lying on its side also counts.",
+   "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "alt_start": "Start: Pick the mug from the counter and place it under the coffee machine dispenser.",
+     "done": "coffee_setup_mug-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        520.0,
+        308.4,
+        500.5,
+        298.4
+       ],
+       "circle": {
+        "cx": 520.0,
+        "cy": 308.4,
+        "r": 20.3
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          477.9,
+          278.3
+         ],
+         [
+          515.0,
+          274.1
+         ],
+         [
+          524.4,
+          289.4
+         ],
+         [
+          522.5,
+          318.5
+         ],
+         [
+          485.0,
+          323.6
+         ],
+         [
+          478.0,
+          306.7
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " under the "
+      },
+      {
+       "mark": "b",
+       "text": "coffee outlet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "coffee_setup_mug-101-start.jpg",
+     "steps": 1,
+     "view": "overview"
+    },
+    {
+     "alt_done": "Done: Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "alt_start": "Start: Pick the mug from the counter and place it under the coffee machine dispenser.",
+     "done": "coffee_setup_mug-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        513.0,
+        311.4,
+        500.3,
+        298.4
+       ],
+       "circle": {
+        "cx": 513.0,
+        "cy": 311.4,
+        "r": 20.5
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          475.1,
+          281.1
+         ],
+         [
+          511.8,
+          271.9
+         ],
+         [
+          526.7,
+          285.9
+         ],
+         [
+          524.7,
+          315.2
+         ],
+         [
+          488.1,
+          326.1
+         ],
+         [
+          475.2,
+          310.1
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " under the "
+      },
+      {
+       "mark": "b",
+       "text": "coffee outlet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "coffee_setup_mug-103-start.jpg",
+     "steps": 1,
+     "view": "overview"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " under the "
+    },
+    {
+     "mark": "b",
+     "text": "coffee outlet"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "coffee_setup_mug",
+   "title": "Mug under the coffee machine"
+  },
+  {
+   "defect": "Check is defective: pressing start before the mug is in place also counts. Only a left-arm press counts.",
+   "family": "C",
+   "family_label": "Put on an appliance",
+   "note": null,
+   "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
+     "done": "prepare_coffee-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        873.5,
+        172.1,
+        500.4,
+        299.0
+       ],
+       "circle": {
+        "cx": 873.5,
+        "cy": 172.1,
+        "r": 21.4
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          478.9,
+          279.2
+         ],
+         [
+          514.7,
+          275.6
+         ],
+         [
+          523.2,
+          291.1
+         ],
+         [
+          521.5,
+          318.7
+         ],
+         [
+          485.2,
+          323.0
+         ],
+         [
+          479.0,
+          306.2
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 493.3,
+        "cy": 274.1,
+        "r": 18
+       },
+       "kind": "press",
+       "n": 2,
+       "part": "coffee_machine_left_group_start_button_1"
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " under the "
+      },
+      {
+       "mark": "b",
+       "text": "coffee outlet"
+      },
+      {
+       "text": ", ② press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "prepare_coffee-102-start.jpg",
+     "steps": 2,
+     "view": "overview"
+    },
+    {
+     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
+     "done": "prepare_coffee-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        892.7,
+        168.2,
+        500.1,
+        298.4
+       ],
+       "circle": {
+        "cx": 892.7,
+        "cy": 168.2,
+        "r": 20.2
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          474.7,
+          284.0
+         ],
+         [
+          507.0,
+          270.7
+         ],
+         [
+          526.4,
+          283.0
+         ],
+         [
+          524.5,
+          312.1
+         ],
+         [
+          493.0,
+          327.6
+         ],
+         [
+          475.0,
+          313.2
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 493.3,
+        "cy": 274.1,
+        "r": 18
+       },
+       "kind": "press",
+       "n": 2,
+       "part": "coffee_machine_left_group_start_button_1"
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " under the "
+      },
+      {
+       "mark": "b",
+       "text": "coffee outlet"
+      },
+      {
+       "text": ", ② press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "prepare_coffee-103-start.jpg",
+     "steps": 2,
+     "view": "overview"
+    },
+    {
+     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
+     "done": "prepare_coffee-104-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        632.3,
+        56.9,
+        536.8,
+        287.6
+       ],
+       "circle": {
+        "cx": 632.3,
+        "cy": 56.9,
+        "r": 16.9
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          514.6,
+          322.4
+         ],
+         [
+          515.9,
+          282.5
+         ],
+         [
+          517.3,
+          255.6
+         ],
+         [
+          557.5,
+          257.0
+         ],
+         [
+          559.1,
+          284.1
+         ],
+         [
+          556.2,
+          324.1
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 535.4,
+        "cy": 258.0,
+        "r": 18
+       },
+       "kind": "press",
+       "n": 2,
+       "part": "coffee_machine_left_group_start_button_1"
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "seed": 104,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " under the "
+      },
+      {
+       "mark": "b",
+       "text": "coffee outlet"
+      },
+      {
+       "text": ", ② press the "
+      },
+      {
+       "mark": "o",
+       "text": "start button"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "prepare_coffee-104-start.jpg",
+     "steps": 2,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "① Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " under the "
+    },
+    {
+     "mark": "b",
+     "text": "coffee outlet"
+    },
+    {
+     "text": ", ② press the "
+    },
+    {
+     "mark": "o",
+     "text": "start button"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "prepare_coffee",
+   "title": "Prepare coffee"
+  },
+  {
+   "defect": null,
+   "family": "C",
+   "family_label": "Put on an appliance",
+   "note": null,
+   "rule": "Done when the kettle stands on a burner and that same burner is on.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the kettle stands on a burner and that same burner is on.",
+     "alt_start": "Start: Pick the kettle from the counter and place it on a stove burner. Then turn the burner on.",
+     "done": "kettle_boiling-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        340.6,
+        190.8,
+        534.0,
+        143.6
+       ],
+       "circle": {
+        "cx": 340.6,
+        "cy": 190.8,
+        "r": 46.1
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          483.1,
+          210.0
+         ],
+         [
+          484.3,
+          119.2
+         ],
+         [
+          486.8,
+          98.0
+         ],
+         [
+          581.1,
+          100.0
+         ],
+         [
+          588.7,
+          121.5
+         ],
+         [
+          580.1,
+          212.6
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 549.7,
+        "cy": 245.6,
+        "r": 18.7
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "stove_1_main_group_knob_rear_right"
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the kettle stands on a burner and that same burner is on.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kettle non electric"
+      },
+      {
+       "text": " on a free "
+      },
+      {
+       "mark": "b",
+       "text": "burner"
+      },
+      {
+       "text": ", ② turn that burner’s "
+      },
+      {
+       "mark": "o",
+       "text": "knob"
+      },
+      {
+       "text": " on."
+      }
+     ],
+     "start": "kettle_boiling-101-start.jpg",
+     "steps": 2,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the kettle stands on a burner and that same burner is on.",
+     "alt_start": "Start: Pick the kettle from the counter and place it on a stove burner. Then turn the burner on.",
+     "done": "kettle_boiling-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        640.0,
+        187.8,
+        532.2,
+        154.4
+       ],
+       "circle": {
+        "cx": 640.0,
+        "cy": 187.8,
+        "r": 46.6
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          474.9,
+          111.5
+         ],
+         [
+          540.9,
+          93.3
+         ],
+         [
+          593.0,
+          106.8
+         ],
+         [
+          585.4,
+          193.8
+         ],
+         [
+          523.8,
+          220.9
+         ],
+         [
+          475.3,
+          199.9
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 549.7,
+        "cy": 245.6,
+        "r": 18.7
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "stove_1_main_group_knob_rear_right"
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the kettle stands on a burner and that same burner is on.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kettle non electric"
+      },
+      {
+       "text": " on a free "
+      },
+      {
+       "mark": "b",
+       "text": "burner"
+      },
+      {
+       "text": ", ② turn that burner’s "
+      },
+      {
+       "mark": "o",
+       "text": "knob"
+      },
+      {
+       "text": " on."
+      }
+     ],
+     "start": "kettle_boiling-102-start.jpg",
+     "steps": 2,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "① Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " on a free "
+    },
+    {
+     "mark": "b",
+     "text": "burner"
+    },
+    {
+     "text": ", ② turn that burner’s "
+    },
+    {
+     "mark": "o",
+     "text": "knob"
+    },
+    {
+     "text": " on."
+    }
+   ],
+   "task_id": "kettle_boiling",
+   "title": "Boil the kettle"
+  },
+  {
+   "defect": "Check is defective: a door left 17–62% open with the timer set also counts, and the hand need not let go.",
+   "family": "C",
+   "family_label": "Put on an appliance",
+   "note": null,
+   "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
+     "done": "heat_kebab_sandwich-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        323.8,
+        325.4,
+        498.2,
+        276.5
+       ],
+       "circle": {
+        "cx": 323.8,
+        "cy": 325.4,
+        "r": 31.6
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "kebab",
+       "region": {
+        "points": [
+         [
+          473.4,
+          235.3
+         ],
+         [
+          505.8,
+          231.2
+         ],
+         [
+          522.0,
+          289.9
+         ],
+         [
+          524.3,
+          318.3
+         ],
+         [
+          487.2,
+          323.1
+         ],
+         [
+          476.4,
+          260.9
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        292.0,
+        330.6,
+        479.9,
+        281.7
+       ],
+       "circle": {
+        "cx": 292.0,
+        "cy": 330.6,
+        "r": 27.2
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "baguette",
+       "region": {
+        "points": [
+         [
+          461.1,
+          289.8
+         ],
+         [
+          463.3,
+          242.7
+         ],
+         [
+          496.8,
+          243.2
+         ],
+         [
+          499.0,
+          290.4
+         ],
+         [
+          498.2,
+          312.4
+         ],
+         [
+          461.1,
+          311.8
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        489.4,
+        349.5,
+        489.2,
+        284.9
+       ],
+       "circle": {
+        "cx": 489.4,
+        "cy": 349.5,
+        "r": 34.4
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "toaster_oven_main_group_door",
+       "region": {
+        "points": [
+         [
+          457.0,
+          282.6
+         ],
+         [
+          457.1,
+          280.5
+         ],
+         [
+          521.2,
+          280.5
+         ],
+         [
+          521.4,
+          282.6
+         ],
+         [
+          521.0,
+          291.7
+         ],
+         [
+          457.2,
+          291.7
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 519.5,
+        "cy": 267.1,
+        "r": 16
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "toaster_oven_main_group_knob_time"
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kebab skewer"
+      },
+      {
+       "text": " and "
+      },
+      {
+       "mark": "o",
+       "text": "baguette"
+      },
+      {
+       "text": " in the "
+      },
+      {
+       "mark": "b",
+       "text": "toaster oven"
+      },
+      {
+       "text": ", close the door and set the timer."
+      }
+     ],
+     "start": "heat_kebab_sandwich-103-start.jpg",
+     "steps": 4,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
+     "done": "heat_kebab_sandwich-105-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        342.4,
+        329.9,
+        496.8,
+        280.1
+       ],
+       "circle": {
+        "cx": 342.4,
+        "cy": 329.9,
+        "r": 20.9
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "kebab",
+       "region": {
+        "points": [
+         [
+          483.9,
+          250.7
+         ],
+         [
+          505.8,
+          249.0
+         ],
+         [
+          508.7,
+          284.2
+         ],
+         [
+          510.3,
+          304.5
+         ],
+         [
+          486.9,
+          306.3
+         ],
+         [
+          484.9,
+          286.0
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        355.2,
+        339.9,
+        477.6,
+        276.2
+       ],
+       "circle": {
+        "cx": 355.2,
+        "cy": 339.9,
+        "r": 35.5
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "baguette",
+       "region": {
+        "points": [
+         [
+          447.2,
+          284.5
+         ],
+         [
+          453.0,
+          241.5
+         ],
+         [
+          499.3,
+          233.9
+         ],
+         [
+          504.8,
+          266.1
+         ],
+         [
+          506.5,
+          311.8
+         ],
+         [
+          455.0,
+          319.7
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        489.4,
+        349.5,
+        489.2,
+        284.9
+       ],
+       "circle": {
+        "cx": 489.4,
+        "cy": 349.5,
+        "r": 34.4
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "toaster_oven_main_group_door",
+       "region": {
+        "points": [
+         [
+          457.0,
+          282.6
+         ],
+         [
+          457.1,
+          280.5
+         ],
+         [
+          521.2,
+          280.5
+         ],
+         [
+          521.4,
+          282.6
+         ],
+         [
+          521.0,
+          291.7
+         ],
+         [
+          457.2,
+          291.7
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 519.5,
+        "cy": 267.1,
+        "r": 16
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "toaster_oven_main_group_knob_time"
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "seed": 105,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kebab skewer"
+      },
+      {
+       "text": " and "
+      },
+      {
+       "mark": "o",
+       "text": "baguette"
+      },
+      {
+       "text": " in the "
+      },
+      {
+       "mark": "b",
+       "text": "toaster oven"
+      },
+      {
+       "text": ", close the door and set the timer."
+      }
+     ],
+     "start": "heat_kebab_sandwich-105-start.jpg",
+     "steps": 4,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
+     "done": "heat_kebab_sandwich-106-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        359.7,
+        318.1,
+        496.9,
+        279.2
+       ],
+       "circle": {
+        "cx": 359.7,
+        "cy": 318.1,
+        "r": 28.5
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "kebab",
+       "region": {
+        "points": [
+         [
+          481.5,
+          242.7
+         ],
+         [
+          503.1,
+          241.0
+         ],
+         [
+          511.9,
+          297.1
+         ],
+         [
+          513.0,
+          316.1
+         ],
+         [
+          488.7,
+          318.0
+         ],
+         [
+          483.0,
+          260.2
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        362.1,
+        331.2,
+        478.8,
+        277.6
+       ],
+       "circle": {
+        "cx": 362.1,
+        "cy": 331.2,
+        "r": 28.1
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "baguette",
+       "region": {
+        "points": [
+         [
+          462.7,
+          293.6
+         ],
+         [
+          464.8,
+          243.6
+         ],
+         [
+          491.7,
+          241.4
+         ],
+         [
+          493.3,
+          260.6
+         ],
+         [
+          495.2,
+          312.1
+         ],
+         [
+          465.1,
+          314.5
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        489.4,
+        349.5,
+        489.2,
+        284.9
+       ],
+       "circle": {
+        "cx": 489.4,
+        "cy": 349.5,
+        "r": 34.4
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "toaster_oven_main_group_door",
+       "region": {
+        "points": [
+         [
+          457.0,
+          282.6
+         ],
+         [
+          457.1,
+          280.5
+         ],
+         [
+          521.2,
+          280.5
+         ],
+         [
+          521.4,
+          282.6
+         ],
+         [
+          521.0,
+          291.7
+         ],
+         [
+          457.2,
+          291.7
+         ]
+        ]
+       }
+      },
+      {
+       "circle": {
+        "cx": 519.5,
+        "cy": 267.1,
+        "r": 16
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "toaster_oven_main_group_knob_time"
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "seed": 106,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kebab skewer"
+      },
+      {
+       "text": " and "
+      },
+      {
+       "mark": "o",
+       "text": "baguette"
+      },
+      {
+       "text": " in the "
+      },
+      {
+       "mark": "b",
+       "text": "toaster oven"
+      },
+      {
+       "text": ", close the door and set the timer."
+      }
+     ],
+     "start": "heat_kebab_sandwich-106-start.jpg",
+     "steps": 4,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Put the "
+    },
+    {
+     "mark": "o",
+     "text": "kebab"
+    },
+    {
+     "text": " and "
+    },
+    {
+     "mark": "o",
+     "text": "baguette"
+    },
+    {
+     "text": " in the "
+    },
+    {
+     "mark": "b",
+     "text": "toaster oven"
+    },
+    {
+     "text": ", close the door and set the timer."
+    }
+   ],
+   "task_id": "heat_kebab_sandwich",
+   "title": "Heat the kebab sandwich"
+  },
+  {
+   "defect": null,
+   "family": "D",
+   "family_label": "Cabinet & sink",
+   "note": "The check’s “inside” margin is loose (even the cabinet top counts), and a right hand still holding the item also counts as done.",
+   "rule": "Done when the item is inside the cabinet and the robot’s left hand has let go.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the bell pepper is inside the cabinet and the robot’s left hand has let go.",
+     "alt_start": "Start: Pick the bell pepper from the counter and place it in the cabinet.",
+     "done": "pick_place_counter_to_cabinet-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        532.2,
+        465.8,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 532.2,
+        "cy": 465.8,
+        "r": 19.0
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the bell pepper is inside the cabinet and the robot’s left hand has let go.",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "Pick up the "
+      },
+      {
+       "mark": "o",
+       "text": "bell pepper"
+      },
+      {
+       "text": " and put it in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "pick_place_counter_to_cabinet-101-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the squash is inside the cabinet and the robot’s left hand has let go.",
+     "alt_start": "Start: Pick the squash from the counter and place it in the cabinet.",
+     "done": "pick_place_counter_to_cabinet-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        527.1,
+        471.4,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 527.1,
+        "cy": 471.4,
+        "r": 19.4
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the squash is inside the cabinet and the robot’s left hand has let go.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Pick up the "
+      },
+      {
+       "mark": "o",
+       "text": "squash"
+      },
+      {
+       "text": " and put it in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "pick_place_counter_to_cabinet-102-start.jpg",
+     "steps": 1,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the cucumber is inside the cabinet and the robot’s left hand has let go.",
+     "alt_start": "Start: Pick the cucumber from the counter and place it in the cabinet.",
+     "done": "pick_place_counter_to_cabinet-107-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        487.2,
+        462.3,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 487.2,
+        "cy": 462.3,
+        "r": 25.0
+       },
+       "kind": "move",
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the cucumber is inside the cabinet and the robot’s left hand has let go.",
+     "seed": 107,
+     "sentence": [
+      {
+       "text": "Pick up the "
+      },
+      {
+       "mark": "o",
+       "text": "cucumber"
+      },
+      {
+       "text": " and put it in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "pick_place_counter_to_cabinet-107-start.jpg",
+     "steps": 1,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Pick up the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " and put it in the "
+    },
+    {
+     "mark": "b",
+     "text": "cabinet"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "pick_place_counter_to_cabinet",
+   "title": "Counter → Cabinet"
+  },
+  {
+   "defect": null,
+   "family": "D",
+   "family_label": "Cabinet & sink",
+   "note": null,
+   "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
+     "done": "categorize_condiments-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        523.5,
+        487.2,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 523.5,
+        "cy": 487.2,
+        "r": 24.0
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj1",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        475.1,
+        480.6,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 475.1,
+        "cy": 480.6,
+        "r": 19.8
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "ketchup"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "shaker"
+      },
+      {
+       "text": " next to their matches in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "categorize_condiments-102-start.jpg",
+     "steps": 2,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
+     "done": "categorize_condiments-103-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        489.3,
+        485.9,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 489.3,
+        "cy": 485.9,
+        "r": 24.0
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj1",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        458.1,
+        486.1,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 458.1,
+        "cy": 486.1,
+        "r": 19.7
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          351.8,
+          328.2
+         ],
+         [
+          365.1,
+          283.0
+         ],
+         [
+          610.5,
+          283.0
+         ],
+         [
+          625.7,
+          328.2
+         ],
+         [
+          618.4,
+          381.8
+         ],
+         [
+          358.2,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "seed": 103,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "ketchup"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "shaker"
+      },
+      {
+       "text": " next to their matches in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "categorize_condiments-103-start.jpg",
+     "steps": 2,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
+     "done": "categorize_condiments-105-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        500.6,
+        476.7,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 500.6,
+        "cy": 476.7,
+        "r": 30.8
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj1",
+       "region": {
+        "points": [
+         [
+          351.0,
+          328.2
+         ],
+         [
+          364.4,
+          283.0
+         ],
+         [
+          611.2,
+          283.0
+         ],
+         [
+          626.5,
+          328.2
+         ],
+         [
+          619.2,
+          381.8
+         ],
+         [
+          357.5,
+          381.8
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        458.4,
+        494.8,
+        488.3,
+        331.0
+       ],
+       "circle": {
+        "cx": 458.4,
+        "cy": 494.8,
+        "r": 19.8
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          351.0,
+          328.2
+         ],
+         [
+          364.4,
+          283.0
+         ],
+         [
+          611.2,
+          283.0
+         ],
+         [
+          626.5,
+          328.2
+         ],
+         [
+          619.2,
+          381.8
+         ],
+         [
+          357.5,
+          381.8
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "seed": 105,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "syrup bottle"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "shaker"
+      },
+      {
+       "text": " next to their matches in the "
+      },
+      {
+       "mark": "b",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "categorize_condiments-105-start.jpg",
+     "steps": 2,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " and the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " next to their matches in the "
+    },
+    {
+     "mark": "b",
+     "text": "cabinet"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "categorize_condiments",
+   "title": "Sort the condiments"
+  },
+  {
+   "defect": null,
+   "family": "D",
+   "family_label": "Cabinet & sink",
+   "note": null,
+   "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+   "seeds": [
+    {
+     "alt_done": "Done: Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "alt_start": "Start: Pick the honey bottle and place it on the digital scale for weighing, and close the cabinet.",
+     "done": "weigh_ingredients-101-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        479.1,
+        351.5,
+        493.7,
+        472.2
+       ],
+       "circle": {
+        "cx": 479.1,
+        "cy": 351.5,
+        "r": 27.2
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          468.0,
+          433.1
+         ],
+         [
+          517.2,
+          432.3
+         ],
+         [
+          520.9,
+          470.0
+         ],
+         [
+          519.0,
+          513.1
+         ],
+         [
+          468.8,
+          514.0
+         ],
+         [
+          468.3,
+          470.9
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        340.4,
+        447.5,
+        475.5,
+        357.5
+       ],
+       "circle": {
+        "cx": 340.4,
+        "cy": 447.5,
+        "r": 31.4
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "cab_1_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          473.1,
+          330.9
+         ],
+         [
+          473.3,
+          330.3
+         ],
+         [
+          478.0,
+          330.3
+         ],
+         [
+          478.2,
+          330.9
+         ],
+         [
+          478.3,
+          373.7
+         ],
+         [
+          478.3,
+          379.9
+         ],
+         [
+          478.2,
+          381.9
+         ],
+         [
+          473.5,
+          381.9
+         ],
+         [
+          473.4,
+          379.9
+         ],
+         [
+          473.3,
+          376.0
+         ],
+         [
+          473.1,
+          337.3
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        652.3,
+        448.2,
+        501.7,
+        352.1
+       ],
+       "circle": {
+        "cx": 652.3,
+        "cy": 448.2,
+        "r": 31.7
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "cab_1_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          498.6,
+          377.6
+         ],
+         [
+          499.4,
+          335.1
+         ],
+         [
+          499.5,
+          330.9
+         ],
+         [
+          499.7,
+          330.3
+         ],
+         [
+          504.4,
+          330.3
+         ],
+         [
+          504.6,
+          330.9
+         ],
+         [
+          504.7,
+          333.1
+         ],
+         [
+          504.7,
+          333.3
+         ],
+         [
+          503.7,
+          379.9
+         ],
+         [
+          503.5,
+          381.9
+         ],
+         [
+          498.9,
+          381.9
+         ],
+         [
+          498.7,
+          379.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "seed": 101,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "honey bottle"
+      },
+      {
+       "text": " on the "
+      },
+      {
+       "mark": "b",
+       "text": "scale"
+      },
+      {
+       "text": ", ② close the "
+      },
+      {
+       "mark": "o",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "weigh_ingredients-101-start.jpg",
+     "steps": 3,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "alt_start": "Start: Pick the cereal and place it on the digital scale for weighing, and close the cabinet.",
+     "done": "weigh_ingredients-102-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        514.5,
+        353.3,
+        474.9,
+        475.8
+       ],
+       "circle": {
+        "cx": 514.5,
+        "cy": 353.3,
+        "r": 26.2
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          453.0,
+          436.5
+         ],
+         [
+          467.3,
+          431.8
+         ],
+         [
+          497.0,
+          470.3
+         ],
+         [
+          496.1,
+          515.1
+         ],
+         [
+          481.8,
+          520.7
+         ],
+         [
+          454.2,
+          480.3
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        340.5,
+        446.9,
+        475.8,
+        355.3
+       ],
+       "circle": {
+        "cx": 340.5,
+        "cy": 446.9,
+        "r": 31.4
+       },
+       "kind": "part",
+       "n": 2,
+       "part": "cab_3_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          473.1,
+          333.1
+         ],
+         [
+          473.2,
+          330.9
+         ],
+         [
+          473.3,
+          330.3
+         ],
+         [
+          478.1,
+          330.3
+         ],
+         [
+          478.3,
+          330.9
+         ],
+         [
+          478.4,
+          373.7
+         ],
+         [
+          478.4,
+          379.9
+         ],
+         [
+          478.2,
+          381.9
+         ],
+         [
+          473.5,
+          381.9
+         ],
+         [
+          473.4,
+          379.9
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        651.5,
+        447.5,
+        501.6,
+        355.3
+       ],
+       "circle": {
+        "cx": 651.5,
+        "cy": 447.5,
+        "r": 31.6
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "cab_3_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          498.6,
+          373.7
+         ],
+         [
+          499.3,
+          335.1
+         ],
+         [
+          499.4,
+          330.9
+         ],
+         [
+          499.6,
+          330.3
+         ],
+         [
+          504.4,
+          330.3
+         ],
+         [
+          504.5,
+          330.9
+         ],
+         [
+          504.7,
+          333.1
+         ],
+         [
+          503.7,
+          376.0
+         ],
+         [
+          503.6,
+          379.9
+         ],
+         [
+          503.5,
+          381.9
+         ],
+         [
+          498.8,
+          381.9
+         ],
+         [
+          498.6,
+          379.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 1,
+     "pictures": true,
+     "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "seed": 102,
+     "sentence": [
+      {
+       "text": "① Put the "
+      },
+      {
+       "mark": "o",
+       "text": "cereal"
+      },
+      {
+       "text": " on the "
+      },
+      {
+       "mark": "b",
+       "text": "scale"
+      },
+      {
+       "text": ", ② close the "
+      },
+      {
+       "mark": "o",
+       "text": "cabinet"
+      },
+      {
+       "text": "."
+      }
+     ],
+     "start": "weigh_ingredients-102-start.jpg",
+     "steps": 3,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "① Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " on the "
+    },
+    {
+     "mark": "b",
+     "text": "scale"
+    },
+    {
+     "text": ", ② close the "
+    },
+    {
+     "mark": "o",
+     "text": "cabinet"
+    },
+    {
+     "text": "."
+    }
+   ],
+   "task_id": "weigh_ingredients",
+   "title": "Weigh an ingredient"
+  },
+  {
+   "defect": null,
+   "family": "D",
+   "family_label": "Cabinet & sink",
+   "note": null,
+   "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+   "seeds": [
+    {
+     "pictures": false,
+     "reason": "goal state is not a native success",
+     "seed": 104
+    },
+    {
+     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "alt_start": "Start: Pick the kettle from the counter and place it on the tray. Then pick the mug from the cabinet and place it on the tray. Then close the cabinet doors.",
+     "done": "arrange_tea-105-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        480.1,
+        489.6,
+        422.6,
+        440.6
+       ],
+       "circle": {
+        "cx": 480.1,
+        "cy": 489.6,
+        "r": 36.3
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          379.0,
+          460.0
+         ],
+         [
+          383.9,
+          418.6
+         ],
+         [
+          418.2,
+          383.6
+         ],
+         [
+          469.3,
+          420.8
+         ],
+         [
+          457.6,
+          461.1
+         ],
+         [
+          427.4,
+          499.6
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        447.9,
+        357.4,
+        454.6,
+        436.9
+       ],
+       "circle": {
+        "cx": 447.9,
+        "cy": 357.4,
+        "r": 23.9
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          427.4,
+          432.2
+         ],
+         [
+          448.1,
+          402.2
+         ],
+         [
+          480.6,
+          410.9
+         ],
+         [
+          480.6,
+          440.8
+         ],
+         [
+          462.0,
+          472.7
+         ],
+         [
+          429.1,
+          462.6
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        337.4,
+        447.7,
+        475.5,
+        357.5
+       ],
+       "circle": {
+        "cx": 337.4,
+        "cy": 447.7,
+        "r": 31.5
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "cab_1_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          473.1,
+          330.9
+         ],
+         [
+          473.3,
+          330.3
+         ],
+         [
+          478.0,
+          330.3
+         ],
+         [
+          478.2,
+          330.9
+         ],
+         [
+          478.3,
+          373.7
+         ],
+         [
+          478.3,
+          379.9
+         ],
+         [
+          478.2,
+          381.9
+         ],
+         [
+          473.5,
+          381.9
+         ],
+         [
+          473.4,
+          379.9
+         ],
+         [
+          473.3,
+          376.0
+         ],
+         [
+          473.1,
+          337.3
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        648.1,
+        448.1,
+        501.7,
+        352.1
+       ],
+       "circle": {
+        "cx": 648.1,
+        "cy": 448.1,
+        "r": 31.6
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "cab_1_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          498.6,
+          377.6
+         ],
+         [
+          499.4,
+          335.1
+         ],
+         [
+          499.5,
+          330.9
+         ],
+         [
+          499.7,
+          330.3
+         ],
+         [
+          504.4,
+          330.3
+         ],
+         [
+          504.6,
+          330.9
+         ],
+         [
+          504.7,
+          333.1
+         ],
+         [
+          504.7,
+          333.3
+         ],
+         [
+          503.7,
+          379.9
+         ],
+         [
+          503.5,
+          381.9
+         ],
+         [
+          498.9,
+          381.9
+         ],
+         [
+          498.7,
+          379.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "seed": 105,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kettle non electric"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " on the "
+      },
+      {
+       "mark": "b",
+       "text": "tray"
+      },
+      {
+       "text": ", then close the cabinet doors."
+      }
+     ],
+     "start": "arrange_tea-105-start.jpg",
+     "steps": 4,
+     "view": "side"
+    },
+    {
+     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "alt_start": "Start: Pick the kettle from the counter and place it on the tray. Then pick the mug from the cabinet and place it on the tray. Then close the cabinet doors.",
+     "done": "arrange_tea-106-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        485.0,
+        448.4,
+        417.2,
+        438.2
+       ],
+       "circle": {
+        "cx": 485.0,
+        "cy": 448.4,
+        "r": 33.5
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          370.2,
+          473.3
+         ],
+         [
+          379.7,
+          429.1
+         ],
+         [
+          402.1,
+          383.3
+         ],
+         [
+          464.1,
+          403.5
+         ],
+         [
+          451.8,
+          445.3
+         ],
+         [
+          435.0,
+          495.0
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        532.2,
+        358.0,
+        442.5,
+        443.3
+       ],
+       "circle": {
+        "cx": 532.2,
+        "cy": 358.0,
+        "r": 23.1
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          417.6,
+          450.2
+         ],
+         [
+          419.7,
+          418.6
+         ],
+         [
+          449.6,
+          408.1
+         ],
+         [
+          465.8,
+          436.1
+         ],
+         [
+          466.8,
+          468.2
+         ],
+         [
+          435.6,
+          478.6
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        335.9,
+        447.3,
+        475.8,
+        355.3
+       ],
+       "circle": {
+        "cx": 335.9,
+        "cy": 447.3,
+        "r": 31.5
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "cab_3_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          473.1,
+          333.1
+         ],
+         [
+          473.2,
+          330.9
+         ],
+         [
+          473.3,
+          330.3
+         ],
+         [
+          478.1,
+          330.3
+         ],
+         [
+          478.3,
+          330.9
+         ],
+         [
+          478.4,
+          373.7
+         ],
+         [
+          478.4,
+          379.9
+         ],
+         [
+          478.2,
+          381.9
+         ],
+         [
+          473.5,
+          381.9
+         ],
+         [
+          473.4,
+          379.9
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        659.1,
+        447.5,
+        501.6,
+        355.3
+       ],
+       "circle": {
+        "cx": 659.1,
+        "cy": 447.5,
+        "r": 31.7
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "cab_3_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          498.6,
+          373.7
+         ],
+         [
+          499.3,
+          335.1
+         ],
+         [
+          499.4,
+          330.9
+         ],
+         [
+          499.6,
+          330.3
+         ],
+         [
+          504.4,
+          330.3
+         ],
+         [
+          504.5,
+          330.9
+         ],
+         [
+          504.7,
+          333.1
+         ],
+         [
+          503.7,
+          376.0
+         ],
+         [
+          503.6,
+          379.9
+         ],
+         [
+          503.5,
+          381.9
+         ],
+         [
+          498.8,
+          381.9
+         ],
+         [
+          498.6,
+          379.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "seed": 106,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kettle non electric"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " on the "
+      },
+      {
+       "mark": "b",
+       "text": "tray"
+      },
+      {
+       "text": ", then close the cabinet doors."
+      }
+     ],
+     "start": "arrange_tea-106-start.jpg",
+     "steps": 4,
+     "view": "side"
+    }
+   ],
+   "sentence": [
+    {
+     "text": "Put the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " and the "
+    },
+    {
+     "mark": "o",
+     "text": "item"
+    },
+    {
+     "text": " on the "
+    },
+    {
+     "mark": "b",
+     "text": "tray"
+    },
+    {
+     "text": ", then close the cabinet doors."
+    }
+   ],
+   "task_id": "arrange_tea",
+   "title": "Arrange tea"
+  }
+ ]
+}

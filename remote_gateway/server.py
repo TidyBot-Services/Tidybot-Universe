@@ -329,9 +329,10 @@ class Handler(BaseHTTPRequestHandler):
             "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
 
     def asset(self, name):
-        kind = policy.UI_ASSETS.get(name)
-        if kind is None:raise UNOWNED
-        self.send_bytes((self.gateway.config.ui_dir / name).read_bytes(), kind)
+        kind = policy.ui_asset(name)
+        file = self.gateway.config.ui_dir / name
+        if kind is None or not file.is_file():raise UNOWNED
+        self.send_bytes(file.read_bytes(), kind)
 
     def session_route(self, session, token):
         if self.command == 'GET':

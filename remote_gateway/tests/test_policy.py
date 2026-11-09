@@ -223,3 +223,14 @@ def test_a_place_in_line_has_no_time_estimate_because_runs_have_no_time_limit():
     rows = [dict(experiment_id='devexp-' + 'a' * 24, state='planned', experiment_state='planned')]
     board = policy.board(dict(dev_sessions=rows), owners={rows[0]['experiment_id']: 'u-1'}, nicknames={}, queue=[dict(experiment_id=rows[0]['experiment_id'], user_id='u-1')], limits=Limits(), viewer='u-1')
     assert board['queue'][0]['queue_position'] == 1 and board['queue'][0]['eta_start_seconds'] is None
+
+
+def test_task_picker_pictures_and_manifest_are_the_only_new_ui_files():
+    # 11-10 task picker: generated pictures + manifest under ui/tasks/, nothing else from that folder.
+    assert policy.ui_asset('tasks/manifest.json') == 'application/json; charset=utf-8'
+    assert policy.ui_asset('tasks/turn_on_microwave-101-start.jpg') == 'image/jpeg'
+    assert policy.ui_asset('tasks/pick_place_counter_to_sink-102-done.jpg') == 'image/jpeg'
+    assert policy.ui_asset('live.js') == 'text/javascript; charset=utf-8'
+    for name in ('tasks/render-log.jsonl', 'tasks/../index.html', 'tasks/x-101-start.png', 'tasks/X-101-start.jpg',
+                 'tasks/a/b-101-done.jpg', 'tasks/manifest.json.bak', 'index.html', 'tasks/'):
+        assert policy.ui_asset(name) is None, name

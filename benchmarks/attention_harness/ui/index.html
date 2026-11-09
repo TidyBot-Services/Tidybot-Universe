@@ -2692,6 +2692,55 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear[data-lobby="1"] [data-start-no]{display:none!important}
 #attentionbench-clear[data-lobby-view="other"] :is([data-open-run-again],[data-stop-dev],[data-dev-pause],[data-dev-resume],#ab-emergency-interrupt,#ab-cancel-run,[data-continue-attempt]){display:none!important}
 #attentionbench-clear[data-lobby-view="mine"] :is([data-open-run-again],[data-dev-pause],[data-dev-resume],[data-continue-attempt]){display:none!important}
+/* Task picker (11-10, design A2): family tabs, cards with start (marked) -> done pictures, seed chips. */
+#attentionbench-clear .tp{display:grid;gap:12px;margin:0 0 14px}
+#attentionbench-clear .tp-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#attentionbench-clear .tp-tabs{display:flex;flex-wrap:wrap;gap:6px}
+#attentionbench-clear button.tp-tab,#attentionbench-clear button.tp-seed{appearance:none;box-shadow:none;transform:none;cursor:pointer;min-height:34px;padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:600 13px/1.2 var(--body)}
+#attentionbench-clear button.tp-tab[aria-pressed="true"],#attentionbench-clear button.tp-seed[aria-pressed="true"]{background:#242822;border-color:#242822;color:#f8f6f0}
+#attentionbench-clear button.tp-tab:focus-visible,#attentionbench-clear button.tp-seed:focus-visible,#attentionbench-clear button.tp-card:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+#attentionbench-clear button.tp-seed:disabled{cursor:default;opacity:.85}
+#attentionbench-clear .tp-search{display:flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:13px}
+#attentionbench-clear .tp-search input{width:150px;min-height:28px;border:0!important;outline:0;background:transparent!important;color:var(--text);font:inherit;padding:0!important;box-shadow:none!important}
+#attentionbench-clear .tp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#attentionbench-clear button.tp-card{appearance:none;box-shadow:none;display:flex;flex-direction:column;min-width:0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);color:var(--text);text-align:left;cursor:pointer;font:inherit}
+#attentionbench-clear button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #24282299;transform:none}
+#attentionbench-clear button.tp-tab:hover:not(:disabled),#attentionbench-clear button.tp-seed:hover:not(:disabled){box-shadow:none;transform:none}
+#attentionbench-clear button.tp-card.is-selected,#attentionbench-clear button.tp-card.is-selected:hover:not(:disabled){border-color:var(--orange);box-shadow:0 0 0 2px var(--orange)}
+#attentionbench-clear .tp-pics{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);align-items:center;background:#0b0d0b}
+#attentionbench-clear .tp-pic{position:relative;display:block;aspect-ratio:16/9;overflow:hidden}
+#attentionbench-clear .tp-pic img,#attentionbench-clear .tp-pic .tp-marks{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#attentionbench-clear .tp-nopic{display:flex;align-items:center;justify-content:center;padding:22px 10px 8px;background:repeating-linear-gradient(45deg,#2f342e 0 10px,#343a33 10px 20px);color:#d9d7cf;font-size:12px;line-height:1.35;text-align:center;overflow-wrap:anywhere}
+#attentionbench-clear .tp-between{color:#9a9e92;text-align:center;font-size:16px}
+#attentionbench-clear .tp-tag{position:absolute;left:6px;top:6px;padding:1px 7px;border-radius:5px;background:#000000b3;color:#fff;font:500 10px/1.6 var(--mono,monospace);letter-spacing:.06em}
+#attentionbench-clear .tp-tag-done{background:#48683b}
+#attentionbench-clear .tp-marks .tp-mark-region{fill:#4f8fd61f;stroke:#4f8fd6;stroke-width:6;stroke-dasharray:16 9;stroke-linejoin:round}
+#attentionbench-clear .tp-marks .tp-mark-object{fill:none;stroke:#ff6a3d;stroke-width:7}
+#attentionbench-clear .tp-marks .tp-mark-arrow{fill:none;stroke:#ff6a3d;stroke-width:6;stroke-linecap:round}
+#attentionbench-clear .tp-marks marker path{fill:#ff6a3d}
+#attentionbench-clear .tp-marks .tp-mark-step circle{fill:#ff6a3d;stroke:#fff;stroke-width:3}
+#attentionbench-clear .tp-marks .tp-mark-step text{fill:#fff;font:700 26px/1 sans-serif}
+#attentionbench-clear .tp-body{display:grid;gap:5px;padding:11px 13px 13px}
+#attentionbench-clear .tp-title-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#attentionbench-clear .tp-title{font:700 17px/1.15 var(--heading);letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+#attentionbench-clear .tp-badge{padding:1px 7px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px}
+#attentionbench-clear .tp-selected{margin-left:auto;padding:2px 8px;border-radius:999px;background:var(--orange);color:#fff;font-size:11px;font-weight:700}
+#attentionbench-clear .tp-sentence{font-size:13px;line-height:1.45;color:var(--text)}
+#attentionbench-clear .tp-sentence .tp-o{color:#c44420}
+#attentionbench-clear .tp-sentence .tp-b{color:#24507e}
+#attentionbench-clear .tp-meta,#attentionbench-clear .tp-rule{font-size:12px;line-height:1.4;color:var(--muted)}
+#attentionbench-clear .tp-rule b,#attentionbench-clear .tp-note b,#attentionbench-clear .tp-defect b{font-weight:600}
+#attentionbench-clear .tp-note{font-size:12px;line-height:1.4;color:#7a5212}
+#attentionbench-clear .tp-defect{padding:6px 8px;border-left:3px solid #a23f32;background:#f3e2d6;font-size:12px;line-height:1.4;color:#a23f32}
+#attentionbench-clear .tp-seeds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+#attentionbench-clear .tp-seeds>span{margin-right:4px}
+#attentionbench-clear .tp-error{margin:0;padding:8px 10px;border-left:3px solid #a23f32;background:#f3e2d6;color:#a23f32;font-size:13px}
+#attentionbench-clear .tp-empty{margin:0;color:var(--muted);font-size:13px}
+@media (max-width:760px){
+  #attentionbench-clear .tp-grid{grid-template-columns:1fr}
+  #attentionbench-clear .tp-search{margin-left:0;width:100%}
+  #attentionbench-clear .tp-search input{flex:1;width:auto}
+}
 </style>
 <style>
 #attentionbench-clear [data-agent-run] .ab-status-head {display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;}
@@ -3616,6 +3665,38 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-demo{background:#ecebe6;color:#545b63}
 #attentionbench-clear[data-theme="dark"] .lb-demo i{background:#ec6a43}
 #attentionbench-clear[data-theme="dark"][data-lobby-view="other"] .op-controls[data-ended]::after{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] button.tp-tab,#attentionbench-clear[data-theme="dark"] button.tp-seed{box-shadow:none;border:1px solid var(--line);background:transparent;color:var(--text)}
+#attentionbench-clear[data-theme="dark"] button.tp-tab[aria-pressed="true"],#attentionbench-clear[data-theme="dark"] button.tp-seed[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#1d2024}
+#attentionbench-clear[data-theme="dark"] button.tp-tab:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-seed:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-card:focus-visible{outline:3px solid var(--orange)}
+#attentionbench-clear[data-theme="dark"] .tp-search{border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .tp-search input{border:0!important;outline:0;background:transparent!important;color:var(--text);box-shadow:none!important}
+#attentionbench-clear[data-theme="dark"] button.tp-card{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+#attentionbench-clear[data-theme="dark"] button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #000000ff}
+#attentionbench-clear[data-theme="dark"] button.tp-tab:hover:not(:disabled),#attentionbench-clear[data-theme="dark"] button.tp-seed:hover:not(:disabled){box-shadow:none}
+#attentionbench-clear[data-theme="dark"] button.tp-card.is-selected,#attentionbench-clear[data-theme="dark"] button.tp-card.is-selected:hover:not(:disabled){border-color:var(--orange);box-shadow:0 0 0 2px var(--orange)}
+#attentionbench-clear[data-theme="dark"] .tp-pics{background:#000000}
+#attentionbench-clear[data-theme="dark"] .tp-nopic{background:repeating-linear-gradient(45deg,#d2d5d7 0 10px,#cfd1d4 10px 20px);color:#545b63}
+#attentionbench-clear[data-theme="dark"] .tp-between{color:#6d737a}
+#attentionbench-clear[data-theme="dark"] .tp-tag{background:#f2f2f2b3;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .tp-tag-done{background:#58b583}
+#attentionbench-clear[data-theme="dark"] .tp-marks .tp-mark-region{fill:#7babe01f;stroke:#4f8fd6}
+#attentionbench-clear[data-theme="dark"] .tp-marks .tp-mark-object{fill:none;stroke:#ff6a3d}
+#attentionbench-clear[data-theme="dark"] .tp-marks .tp-mark-arrow{fill:none;stroke:#ff6a3d}
+#attentionbench-clear[data-theme="dark"] .tp-marks marker path{fill:#ff825c}
+#attentionbench-clear[data-theme="dark"] .tp-marks .tp-mark-step circle{fill:#ff825c;stroke:#23272c}
+#attentionbench-clear[data-theme="dark"] .tp-marks .tp-mark-step text{fill:#ffffff}
+#attentionbench-clear[data-theme="dark"] .tp-title{color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .tp-badge{border:1px solid var(--line);color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .tp-selected{background:var(--orange);color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .tp-sentence{color:var(--text)}
+#attentionbench-clear[data-theme="dark"] .tp-sentence .tp-o{color:#e88c73}
+#attentionbench-clear[data-theme="dark"] .tp-sentence .tp-b{color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .tp-meta,#attentionbench-clear[data-theme="dark"] .tp-rule{color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .tp-note{color:#d9a55a}
+#attentionbench-clear[data-theme="dark"] .tp-defect{border-left:3px solid #e08670;background:#3a2824;color:#e08670}
+#attentionbench-clear[data-theme="dark"] .tp-seeds{color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .tp-error{border-left:3px solid #e08670;background:#3a2824;color:#e08670}
+#attentionbench-clear[data-theme="dark"] .tp-empty{color:var(--muted)}
 </style>
 <style id="ab-run-dialog">
 /* New run dialog (Run configuration / OptX). Not regenerated by gen_dark_theme.py: it sits after the generated dark block and only uses theme tokens. */

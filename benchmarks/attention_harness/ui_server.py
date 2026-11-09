@@ -53,6 +53,7 @@ from .notices import NoticeReader
 
 
 UI_DIR = Path(__file__).with_name("ui")
+TASK_PICTURE = re.compile(r"/ui/tasks/(?:[a-z_]{1,64}-\d{3,4}-(?:start|done)\.jpg|manifest\.json)")
 GRAPH_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
 
 
@@ -861,6 +862,9 @@ def create_server(
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/ui/shell.css":
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
+            elif TASK_PICTURE.fullmatch(path) and (UI_DIR / path[4:]).is_file():
+                # Task picker pictures + manifest (scripts/attentionbench/task_picker_pictures.py).
+                self._send((UI_DIR / path[4:]).read_bytes(), "image/jpeg" if path.endswith(".jpg") else "application/json; charset=utf-8")
             elif path == "/api/codex-quota":
                 self._json(public_codex_quota())
             elif path in {"/ui/home.html", "/ui/home.js", "/ui/home.css"}:

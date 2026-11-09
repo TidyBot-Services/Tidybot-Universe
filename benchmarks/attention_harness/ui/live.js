@@ -1739,6 +1739,14 @@
   const flowKey = snapshot => `attention.flow:${snapshot.run.run_id}`;
   const skillKey = (snapshot, attemptId) => `attention.skill:${snapshot.run.run_id}:${attemptId}`;
   function taskName(value) {return taskTitles[value]||label(value);}
+  let taskPickerManifestLoad=null;
+  function loadTaskPickerManifest() {
+    if(!taskPickerManifestLoad)taskPickerManifestLoad=fetch('./tasks/manifest.json',{cache:'no-cache'}).then(response=>{
+      if(!response.ok)throw new Error(`HTTP ${response.status} for tasks/manifest.json`);
+      return response.json();
+    }).catch(error=>{taskPickerManifestLoad=null;throw error;});
+    return taskPickerManifestLoad;
+  }
   // 11-09: a stopped run says in plain words what happened and what to do; the internal code stays at the end for the lab.
   function fatalStopMessage(snapshot) {
     const cause=snapshot.agent?.fatal_cause;
@@ -2290,6 +2298,89 @@
       return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
     }).join('');
   }
+  // Task picker (11-10, user design A2): cards with the real start scene (object circled orange, target dashed
+  // blue) and the real goal state, both from the side camera runs record. Pictures, marks and text come from
+  // ui/tasks/manifest.json (scripts/attentionbench/task_picker_pictures.py). The Task select stays the form's
+  // value; a card only sets it. A task or seed without pictures gets a text card, never a broken image.
+  const TASK_FAMILY_ORDER=['A','B','C','D'];
+  function seedListText(seeds) {
+    const s=[...seeds].sort((a,b)=>a-b);
+    if(s.length>3&&s.every((v,i)=>!i||v===s[i-1]+1))return `seeds ${s[0]}–${s[s.length-1]}`;
+    return s.length?`seed${s.length>1?'s':''} ${s.join(', ')}`:'';
+  }
+  // options: [{value,label,group,seeds}] from the Task select; manifest: the picker manifest or null.
+  function taskPickerCards(options,manifest) {
+    const byTask=new Map((manifest?.tasks||[]).map(t=>[t.task_id,t]));
+    return options.map(o=>{
+      const id=o.value.split('@')[0],m=byTask.get(id);
+      const badges=[o.value.includes('@')?'R5 fixture rules':'',/held-out/.test(o.label)?'held-out':'',/^Presets/.test(o.group||'')?'preset':''].filter(Boolean);
+      return {value:o.value,task_id:id,title:m?.title||o.label,family:m?.family||'',family_label:m?.family_label||manifest?.families?.[m?.family]||'',
+        sentence:m?.sentence||[{text:o.label}],rule:m?.rule||'',note:m?.note||'',defect:m?.defect||'',badges,seeds:o.seeds||[],
+        pictures:new Map((m?.seeds||[]).filter(s=>s.pictures).map(s=>[s.seed,s])),missing:new Map((m?.seeds||[]).filter(s=>!s.pictures).map(s=>[s.seed,s.reason||'']))};
+    });
+  }
+  function taskPickerFamilies(cards) {
+    const counts=new Map();
+    for(const c of cards)if(c.family)counts.set(c.family,{label:c.family_label,n:(counts.get(c.family)?.n||0)+1});
+    return TASK_FAMILY_ORDER.filter(f=>counts.has(f)).map(f=>({id:f,label:counts.get(f).label,n:counts.get(f).n}));
+  }
+  function taskPickerMatches(card,tab,query) {
+    if(tab&&tab!=='all'&&card.family!==tab)return false;
+    const q=String(query||'').trim().toLowerCase();
+    if(!q)return true;
+    return [card.title,card.task_id,card.family_label,card.rule,...card.sentence.map(s=>s.text)].join(' ').toLowerCase().replaceAll('_',' ').includes(q.replaceAll('_',' '));
+  }
+  function taskMarksSvg(marks,uid) {
+    const n=v=>Number(v)||0,parts=[];
+    const arrowId=`tp-arrow-${uid}`;
+    for(const m of marks||[]){
+      if(m.region?.points?.length>2)parts.push(`<polygon class="tp-mark-region" points="${m.region.points.map(p=>`${n(p[0])},${n(p[1])}`).join(' ')}"/>`);
+    }
+    for(const m of marks||[]){
+      const c=m.circle;if(!c)continue;
+      if(m.arrow){
+        const [x1,y1,x2,y2]=m.arrow.map(n),dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+        if(len>n(c.r)+12){
+          const sx=x1+dx/len*(n(c.r)+4),sy=y1+dy/len*(n(c.r)+4),ex=x2-dx/len*10,ey=y2-dy/len*10;
+          parts.push(`<path class="tp-mark-arrow" d="M${sx.toFixed(1)} ${sy.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}" marker-end="url(#${arrowId})"/>`);
+        }
+      }
+      parts.push(`<circle class="tp-mark-object" cx="${n(c.cx)}" cy="${n(c.cy)}" r="${n(c.r)}"/>`);
+      if(m.n){const bx=n(c.cx)+n(c.r)*.75,by=n(c.cy)-n(c.r)*.75;parts.push(`<g class="tp-mark-step"><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="22"/><text x="${bx.toFixed(1)}" y="${(by+9).toFixed(1)}" text-anchor="middle">${n(m.n)}</text></g>`);}
+    }
+    return `<svg class="tp-marks" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs><marker id="${arrowId}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>${parts.join('')}</svg>`;
+  }
+  function taskSentenceHtml(segments) {
+    return (segments||[]).map(s=>s.mark==='o'?`<b class="tp-o">${esc(s.text)}</b>`:s.mark==='b'?`<b class="tp-b">${esc(s.text)}</b>`:esc(s.text)).join('');
+  }
+  // One card. seed: the seed whose pictures to show (the form's seed for the selected card).
+  function taskCardHtml(card,{selected=false,seed=null}={}) {
+    const shown=card.pictures.get(seed)||null;
+    const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" loading="lazy" decoding="async" data-tp-img>${marks||''}<span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
+    const why=card.missing.has(seed)?card.missing.get(seed):'';
+    const none=tag=>`<span class="tp-pic tp-nopic"><span>${tag==='START'?`No picture${seed!=null?` for seed ${esc(seed)}`:''}${why?`: ${esc(why)}`:''}`:'Goal picture not available'}</span><span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
+    const uid=`${card.value}-${seed}`.replace(/[^A-Za-z0-9_-]/g,'_');
+    const pics=shown?`${pic(shown.start,shown.alt_start||`Start of ${card.title}, seed ${seed}`,'START',taskMarksSvg(shown.marks,uid))}<span class="tp-between" aria-hidden="true">→</span>${pic(shown.done,shown.alt_done||`Done: ${card.title}, seed ${seed}`,'DONE','')}`
+      :`${none('START')}<span class="tp-between" aria-hidden="true">→</span>${none('DONE')}`;
+    const meta=[shown?`${shown.objects?`${shown.objects} object${shown.objects>1?'s':''}`:'No object'} · ${shown.steps} step${shown.steps>1?'s':''}`:'',seedListText(card.seeds)].filter(Boolean).join(' · ');
+    return `<button type="button" class="tp-card${selected?' is-selected':''}${card.defect?' has-defect':''}" role="radio" aria-checked="${selected}" data-task-card="${esc(card.value)}">
+      <span class="tp-pics">${pics}</span>
+      <span class="tp-body"><span class="tp-title-row"><b class="tp-title">${esc(card.title)}</b>${card.badges.map(b=>`<span class="tp-badge">${esc(b)}</span>`).join('')}${selected?'<span class="tp-selected">Selected</span>':''}</span>
+      <span class="tp-sentence">${taskSentenceHtml(shown?.sentence||card.sentence)}</span>
+      ${meta?`<span class="tp-meta">${esc(meta)}</span>`:''}
+      ${(shown?.rule||card.rule)?`<span class="tp-rule"><b>Counts as done:</b> ${esc(shown?.rule||card.rule)}</span>`:''}
+      ${card.defect?`<span class="tp-defect" role="note"><b>Check defect:</b> ${esc(card.defect)}</span>`:card.note?`<span class="tp-note" role="note"><b>Known gap:</b> ${esc(card.note)}</span>`:''}</span>
+    </button>`;
+  }
+  function taskPickerToolbarHtml(cards,tab) {
+    const tabs=[{id:'all',label:'All',n:cards.length},...taskPickerFamilies(cards)];
+    return `<div class="tp-tabs" role="group" aria-label="Task family">${tabs.map(t=>`<button type="button" class="tp-tab" data-task-tab="${esc(t.id)}" aria-pressed="${t.id===(tab||'all')}">${esc(t.label)} · ${t.n}</button>`).join('')}</div>
+      <label class="tp-search">Search<input type="search" placeholder="e.g. microwave" data-task-search aria-label="Search tasks" autocomplete="off"></label>`;
+  }
+  function taskSeedChipsHtml(seeds,current,disabled) {
+    if(!seeds.length)return '';
+    return `<div class="tp-seeds" role="group" aria-label="Scene seed"><span>Scene seed</span>${seeds.map(s=>`<button type="button" class="tp-seed" data-task-seed="${esc(s)}" aria-pressed="${String(s)===String(current)}"${disabled?' disabled':''}>${esc(s)}</button>`).join('')}</div>`;
+  }
   function fixtureSeedOptions(profile) {
     return profile.seed_options.map(row=>`<option value="${row.seed}" ${row.enabled?'':'disabled'}>${esc(String(row.seed)+(row.enabled?'':' · '+row.reason))}</option>`).join('');
   }
@@ -2822,9 +2913,11 @@
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
           ${window.Lobby.newRunNotice()}${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
-          <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene.</small></div><div class="ab-launch-grid">
+          <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene. Left: how it starts. Right: what done looks like.</small></div>
+          <div class="tp" data-task-picker><div class="tp-toolbar" data-task-toolbar></div><p class="tp-error" data-task-picker-error role="alert" hidden></p><div class="tp-grid" role="radiogroup" aria-label="Task" data-task-cards></div><div data-task-seeds></div></div>
+          <div class="ab-launch-grid">
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
-            <label class="ab-launch-field">Task<select name="task_id" aria-label="Task" required></select></label>
+            <label class="ab-launch-field" hidden data-task-select>Task<select name="task_id" aria-label="Task" required></select></label>
             <label class="ab-launch-field">Scene seed<select name="seed" aria-label="Scene seed"></select><small data-seed-note role="status"></small></label>
             <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Robot <small class="ab-field-meta">· Set by task</small><output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
@@ -2990,6 +3083,7 @@
         for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid||!!blocked;
         window.Lobby.syncJoin(form,profile);
         syncSeedOptions();
+        renderTaskPicker();
       }
       // 05: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
       let budget=agentBudgetCheck(limits.versions,limits.wall,limits);
@@ -3054,7 +3148,85 @@
         form.task_id.innerHTML=fixtureTaskOptions(newRunProfiles(devProfiles.filter(p=>p.suite===form.benchmark.value),sourceProfile));
         if([...form.task_id.options].some(o=>o.value===previous))form.task_id.value=previous;
         syncTask();
+        renderTaskPicker(true);
       }
+      // Task picker: cards drive the hidden Task select and the Seed select, which stay the form's values.
+      const picker={tab:'all',query:'',manifest:null,html:''};
+      function cardSeeds(value) {
+        const matching=devProfiles.filter(p=>p.suite===form.benchmark.value&&fixtureTaskKey(p)===value);
+        const profile=matching.find(p=>p.enabled)||matching[0];
+        if(!profile)return [];
+        const v2=profile.channel==='dev_v2',enabled=(profile.seed_options||[]).filter(row=>row.enabled).map(row=>row.seed);
+        const remote=remoteSeeds(profile,profile.rules_profile?enabled:v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||[]):[]);
+        if(remote?.length)return remote;
+        const fixed=presetSeed(profile);
+        if(fixed!==null)return [fixed];
+        if(profile.rules_profile)return enabled;
+        return v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||Array.from({length:25},(_,i)=>101+i)):[profile.seed??101];
+      }
+      function pickerCards() {
+        const opts=[...form.task_id.options].map(o=>({value:o.value,label:o.textContent,group:o.parentElement?.tagName==='OPTGROUP'?o.parentElement.label:'',seeds:cardSeeds(o.value)}));
+        return taskPickerCards(opts,picker.manifest);
+      }
+      function renderTaskPicker(toolbar=false) {
+        const box=form.querySelector('[data-task-picker]');
+        if(!box)return;
+        const cards=pickerCards();
+        if(toolbar||!box.querySelector('[data-task-search]')){
+          box.querySelector('[data-task-toolbar]').innerHTML=taskPickerToolbarHtml(cards,picker.tab);
+          box.querySelector('[data-task-search]').value=picker.query;
+        } else box.querySelectorAll('[data-task-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.taskTab===picker.tab)));
+        const seed=Number(form.seed.value);
+        const visible=cards.filter(c=>c.value===form.task_id.value||taskPickerMatches(c,picker.tab,picker.query));
+        const html=visible.map(c=>{
+          const selected=c.value===form.task_id.value;
+          const show=selected&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
+          return taskCardHtml(c,{selected,seed:show});
+        }).join('')||'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
+        const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
+        const chips=taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
+        if(html+chips===picker.html)return;
+        picker.html=html+chips;
+        const grid=box.querySelector('[data-task-cards]'),focused=document.activeElement?.closest?.('[data-task-card],[data-task-seed]');
+        const refocus=focused&&box.contains(focused)?(focused.dataset.taskCard!=null?`[data-task-card="${CSS.escape(focused.dataset.taskCard)}"]`:`[data-task-seed="${CSS.escape(focused.dataset.taskSeed)}"]`):null;
+        grid.innerHTML=html;
+        box.querySelector('[data-task-seeds]').innerHTML=chips;
+        // A picture that fails to load becomes a text card with the reason, never a broken image.
+        grid.querySelectorAll('[data-tp-img]').forEach(img=>img.addEventListener('error',()=>{
+          const holder=img.closest('.tp-pic');if(!holder)return;
+          holder.classList.add('tp-nopic');holder.querySelector('svg')?.remove();
+          const note=document.createElement('span');note.textContent=`Picture could not load (${img.getAttribute('src')})`;img.replaceWith(note);
+        },{once:true}));
+        if(refocus)box.querySelector(refocus)?.focus();
+      }
+      form.querySelector('[data-task-picker]')?.addEventListener('click',event=>{
+        const card=event.target.closest('[data-task-card]'),tab=event.target.closest('[data-task-tab]'),chip=event.target.closest('[data-task-seed]');
+        if(card&&form.task_id.value!==card.dataset.taskCard){
+          form.task_id.value=card.dataset.taskCard;
+          form.task_id.dispatchEvent(new Event('change',{bubbles:true}));
+        } else if(tab){picker.tab=tab.dataset.taskTab;renderTaskPicker();}
+        else if(chip&&!chip.disabled&&form.seed.value!==chip.dataset.taskSeed){
+          form.seed.value=chip.dataset.taskSeed;
+          form.seed.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+      });
+      form.querySelector('[data-task-picker]')?.addEventListener('input',event=>{
+        if(!event.target.matches('[data-task-search]'))return;
+        event.stopPropagation();  // Typing a search is not a configuration change.
+        picker.query=event.target.value;renderTaskPicker();
+      });
+      form.querySelector('[data-task-picker]')?.addEventListener('keydown',event=>{
+        // Arrow keys move between cards like a radio group; Enter/Space press the focused button.
+        const card=event.target.closest?.('[data-task-card]');
+        if(!card||!['ArrowRight','ArrowDown','ArrowLeft','ArrowUp'].includes(event.key))return;
+        const all=[...form.querySelectorAll('[data-task-card]')],i=all.indexOf(card);
+        const next=all[(i+(event.key==='ArrowRight'||event.key==='ArrowDown'?1:-1)+all.length)%all.length];
+        if(next){event.preventDefault();next.focus();}
+      });
+      loadTaskPickerManifest().then(manifest=>{picker.manifest=manifest;picker.html='';renderTaskPicker(true);}).catch(error=>{
+        const box=form.querySelector('[data-task-picker-error]');
+        if(box){box.hidden=false;box.textContent=`Task pictures could not load: ${error?.message||String(error)}. Tasks are listed as text.`;}
+      });
       fillOptions(form.benchmark,[...new Set(devProfiles.map(p=>p.suite))],suite=>benchmarkNames[suite]||suite);
       syncBenchmark();
       if (sourceProfile) {
