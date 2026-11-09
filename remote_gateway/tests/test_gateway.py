@@ -161,8 +161,8 @@ def test_login_needs_an_email_and_keeps_it_out_of_every_page(world):
     status, content, _ = Browser(world.port).send('GET', '/login?failed=email')
     assert b'Enter a valid email address.' in content and b'name="email"' in content and b'type="email"' in content
     browser = Browser(world.port)
-    assert browser.login(code, email='  Ada@UPenn.edu ')[1].getheader('Location') == '/ui/#new-run', 'signed in straight into New run'
-    assert Browser(world.port).login(code, email='ada.other@upenn.edu')[1].getheader('Location') == '/ui/#new-run'
+    assert browser.login(code, email='  Ada@UPenn.edu ')[1].getheader('Location') == '/ui/home.html', 'signed in onto Home'
+    assert Browser(world.port).login(code, email='ada.other@upenn.edu')[1].getheader('Location') == '/ui/home.html'
     rows = store.emails()
     assert {r['email'] for r in rows} == {'ada@upenn.edu', 'ada.other@upenn.edu'} and len({r['user_id'] for r in rows}) == 1
     assert rows[0]['nickname'], 'listed with the public name, for the operator'

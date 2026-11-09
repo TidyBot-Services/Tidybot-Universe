@@ -308,8 +308,9 @@ class Handler(BaseHTTPRequestHandler):
         self.user = user
         config = self.gateway.config
         token, _ = self.gateway.store.new_session(user, hours=config.session_hours)
-        # Signed in from New run: straight into the New run form.
-        self.redirect('/ui/#new-run', cookie=self.cookie(token, config.session_hours * 3600))
+        # 11-10 (user): signing in lands on Home; its New run then opens the form. (The Run page would open on
+        # the newest run, often someone else's, which read as being dropped into a stranger's run.)
+        self.redirect('/ui/home.html', cookie=self.cookie(token, config.session_hours * 3600))
 
     def page(self, session, name='index.html'):
         page = (self.gateway.config.ui_dir / name).read_text(encoding='utf-8')
