@@ -2401,8 +2401,9 @@
     if(families.length<2)return cards.map(c=>taskListItemHtml(c,c.value===chosen)).join('');
     return families.map(f=>`<p class="tp-list-h">${esc(f||'Other')}</p>${cards.filter(c=>(c.family_label||'')===f).map(c=>taskListItemHtml(c,c.value===chosen)).join('')}`).join('');
   }
-  function taskPreviewHtml(card,seed){
-    return taskCardHtml(card,{selected:false,seed}).replace(/^<button type="button" class="tp-card([^"]*)"[^>]*>/,'<div class="tp-card tp-preview-card$1" data-task-preview-card="'+esc(card.value)+'">').replace(/<\/button>\s*$/,'</div>');
+  // extra: the seed chips, shown inside the card when it previews the chosen task (11-10: no loose seed row).
+  function taskPreviewHtml(card,seed,extra=''){
+    return taskCardHtml(card,{selected:false,seed}).replace(/^<button type="button" class="tp-card([^"]*)"[^>]*>/,'<div class="tp-card tp-preview-card$1" data-task-preview-card="'+esc(card.value)+'">').replace(/<\/span>\s*<\/button>\s*$/,extra+'</span></div>');
   }
   function taskPickerToolbarHtml(cards,tab) {
     const tabs=[{id:'all',label:'All',n:cards.length},...taskPickerFamilies(cards)];
@@ -3213,16 +3214,17 @@
         const showSeed=c=>c.value===form.task_id.value&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
         const previewed=visible.find(c=>c.value===picker.preview)||visible.find(c=>c.value===form.task_id.value)||visible[0];
         picker.showSeed=showSeed;
-        const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${taskListGroupsHtml(visible,form.task_id.value)}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed)):''}</div>`
-          :'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
         const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
         const chips=taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
+        picker.chips=chips;
+        const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${taskListGroupsHtml(visible,form.task_id.value)}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed),previewed.value===form.task_id.value?picker.chips:''):''}</div>`
+          :'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
         if(html+chips===picker.html)return;
         picker.html=html+chips;
         const grid=box.querySelector('[data-task-cards]'),focused=document.activeElement?.closest?.('[data-task-card],[data-task-seed]');
         const refocus=focused&&box.contains(focused)?(focused.dataset.taskCard!=null?`[data-task-card="${CSS.escape(focused.dataset.taskCard)}"]`:`[data-task-seed="${CSS.escape(focused.dataset.taskSeed)}"]`):null;
         grid.innerHTML=html;
-        box.querySelector('[data-task-seeds]').innerHTML=chips;
+        box.querySelector('[data-task-seeds]').innerHTML='';  // the chips live inside the chosen task's preview
         // A picture that fails to load becomes a text card with the reason, never a broken image.
         grid.querySelectorAll('[data-tp-img]').forEach(img=>img.addEventListener('error',()=>{
           const holder=img.closest('.tp-pic');if(!holder)return;
@@ -3246,7 +3248,7 @@
       const previewTask=value=>{
         const box=form.querySelector('[data-task-preview]');if(!box||!picker.manifest)return;
         const card=pickerCards().find(c=>c.value===value);if(!card||box.firstElementChild?.dataset.taskPreviewCard===value)return;
-        picker.preview=value;box.innerHTML=taskPreviewHtml(card,picker.showSeed?picker.showSeed(card):null);
+        picker.preview=value;box.innerHTML=taskPreviewHtml(card,picker.showSeed?picker.showSeed(card):null,value===form.task_id.value?picker.chips||'':'');
       };
       form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});

@@ -123,7 +123,7 @@ test('both themes and phone width are styled',()=>{
 test('H3 (user 11-10): text list on the left, pointed task previewed large with its marks',()=>{
   const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
   assert.match(live,/function taskListItemHtml\(card,selected\)/);
-  assert.match(live,/function taskPreviewHtml\(card,seed\)/);
+  assert.match(live,/function taskPreviewHtml\(card,seed,extra=''\)/);
   assert.match(live,/taskCardHtml\(card,\{selected:false,seed\}\)\.replace/,'the preview reuses the card with its marks');
   assert.match(live,/addEventListener\('pointerover'/);
   assert.match(live,/addEventListener\('pointerleave',\(\)=>\{picker\.preview=null;previewTask\(form\.task_id\.value\);\}\)/,'leaving returns to the chosen task');
@@ -142,4 +142,11 @@ test('one seed control: the picker hides the old Scene seed dropdown once pictur
   const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
   assert.match(live,/const seedField=form\.seed\.closest\('label'\)[^;]*;\s*if\(seedField\)seedField\.hidden=true;/);
   assert.match(live,/note\.classList\.add\('tp-seed-note'\);box\.append\(note\)/,'the seed note stays visible under the chips');
+});
+
+test('seed chips sit inside the chosen task\'s preview card, not in a loose row (user 11-10)',()=>{
+  const live=require('node:fs').readFileSync(require('node:path').join(__dirname,'../ui/live.js'),'utf8');
+  assert.match(live,/previewed\.value===form\.task_id\.value\?picker\.chips:''/);
+  assert.match(live,/box\.querySelector\('\[data-task-seeds\]'\)\.innerHTML='';/);
+  assert.match(html,/\.tp-preview-card \.tp-seeds\{/);
 });
