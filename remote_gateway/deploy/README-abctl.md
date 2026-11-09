@@ -9,7 +9,7 @@ The public AttentionBench site (Remote) runs entirely on **qifei**: two harnesse
 ## 0. 登录
 
 ```bash
-ssh -p 7288 qifei@158.130.109.188     # 需要 Penn VPN；所有操作都用 qifei 账号
+ssh <run-host>                         # 运行主机的地址、端口和账号向管理员要；所有操作都用服务账号
 abctl status                           # 先看一眼现在的状态
 ```
 
