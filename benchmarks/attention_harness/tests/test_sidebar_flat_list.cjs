@@ -15,6 +15,8 @@ test('sections, chips and card subline',()=>{
   for(const s of ["section('running','Running now'","section('mine','My runs'","section('earlier','Earlier · newest first'"])assert.ok(live.includes(s),s);
   assert.match(live,/chip\('data-sidebar-task','','All',records\.length,!sidebarTask\)/);
   assert.match(live,/chip\('data-lb-mode','mine','Mine'/,'Who reuses the lobby mode buttons');
-  assert.match(live,/<small class="ab-run-sub" data-run-sub>/);
-  assert.match(live,/!sidebarTask\?taskTitle\(r\):''/,'a picked task is not repeated on every card');
+  assert.match(live,/<span class="ab-fcard-sub" data-run-sub>/,'mockup card: task · seed · time under the name');
+  assert.match(live,/\(c\|\|customRunName\(r\)\)&&!sidebarTask\?taskTitle\(r\)/,'a picked task is not repeated on every card');
+  assert.match(live,/list\.map\(flatCard\)/,'the flat list uses its own card');
+  assert.match(live,/One robot · \$\{/,'the robot box becomes one line');
 });

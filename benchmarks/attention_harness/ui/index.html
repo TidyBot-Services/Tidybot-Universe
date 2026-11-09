@@ -2661,6 +2661,39 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .ab-flat-h[data-flat-section="mine"]{color:#a2361a}
 #attentionbench-clear .ab-flat-task b{color:#48683b}
 #attentionbench-clear .ab-run-sub{display:block;margin:2px 0 4px;font-size:12.5px;color:#4a5048;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 11-10 (user): match the mockup — flat pill chips (no button bevel), white rounded run cards. */
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-flat-controls{margin:12px 0 0;gap:8px}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip{min-height:0;padding:7px 14px;border:1px solid #c9c6ba;border-radius:999px!important;background:#ffffff;box-shadow:none!important;transform:none!important;color:#242822;font:600 13px var(--body,inherit);letter-spacing:0;text-transform:none}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip:hover{border-color:#242822}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"]{background:#242822;border-color:#242822;color:#ffffff}
+#attentionbench-clear .ab-flat-robot{margin:14px 2px 0;font:500 11.5px var(--mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:#7a5212}
+#attentionbench-clear .ab-fcard{position:relative;margin:0 0 10px;border:1.5px solid transparent;border-radius:14px;background:#ffffff;box-shadow:0 1px 2px #2428220f}
+#attentionbench-clear .ab-fcard[data-mine="true"]{background:#fbe9e2;border-color:#c44420}
+#attentionbench-clear .ab-fcard[data-active="true"]{border:2px solid #24507e}
+#attentionbench-clear .ab-fcard[data-viewing="true"]{box-shadow:0 0 0 3px #c4442040}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-fcard-main{display:flex;flex-direction:column;gap:7px;width:100%;min-height:0;padding:13px 14px;border:0;border-radius:14px;background:none;box-shadow:none!important;transform:none!important;color:#242822;text-align:left;font:400 13px var(--body,inherit);text-transform:none;letter-spacing:0;cursor:pointer}
+#attentionbench-clear .ab-fcard-top{display:flex;align-items:center;gap:8px;min-width:0}
+#attentionbench-clear .ab-fcard-top .lb-av{margin-right:0}
+#attentionbench-clear .ab-fcard-top b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 15px var(--body,inherit)}
+#attentionbench-clear .ab-fcard[data-mine="true"] .ab-fcard-top b{color:#a2361a}
+#attentionbench-clear .ab-fcard-status{margin:0 22px 0 auto;flex:none;font:700 11px var(--body,inherit);letter-spacing:.08em;text-transform:uppercase;color:#686e64}
+#attentionbench-clear .ab-fcard-status[data-outcome="bad"]{color:#a23f32}
+#attentionbench-clear .ab-fcard-status[data-outcome="ok"]{color:#48683b}
+#attentionbench-clear .ab-fcard-status.live{padding:3px 9px;border-radius:999px;background:#dfe9f6;color:#24507e;letter-spacing:0;text-transform:none;font-size:12px}
+#attentionbench-clear .ab-fcard-sub{font-size:13.5px;color:#4a5048;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#attentionbench-clear .ab-fcard-bar{display:flex;align-items:center;gap:10px;font-size:12.5px;color:#686e64}
+#attentionbench-clear .ab-fcard-bar>i{display:block;flex:1;height:4px;border-radius:2px;background:#e3e2da;overflow:hidden}
+#attentionbench-clear .ab-fcard-bar>i>b{display:block;height:100%;background:#9a9e92}
+#attentionbench-clear .ab-fcard[data-active="true"] .ab-fcard-bar>i>b{background:#24507e}
+#attentionbench-clear .ab-fcard[data-tone="failed"] .ab-fcard-bar>i>b{background:#a23f32}
+#attentionbench-clear .ab-fcard[data-tone="success"] .ab-fcard-bar>i>b{background:#48683b}
+#attentionbench-clear .ab-fcard>.ab-record-more{position:absolute;top:9px;right:6px}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard{margin:0 0 10px;padding:0!important;border:1.5px solid transparent;border-radius:14px;background:#ffffff;box-shadow:0 1px 2px #2428220f}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard::before{display:none}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-mine="true"]{background:#fbe9e2;border-color:#c44420}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-active="true"]{border:2px solid #24507e}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-viewing="true"]{box-shadow:0 0 0 3px #c4442040}
+#attentionbench-clear[data-operator-view="true"] .ab-sidebar nav>article.ab-fcard:hover{border-color:#c9c6ba}
 #attentionbench-clear .lb-prov code{font:500 12px var(--mono,ui-monospace,monospace);color:#242822}
 #attentionbench-clear .lb-share{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e3dfd3}
 #attentionbench-clear .lb-share small{color:#686e64}
@@ -3656,6 +3689,32 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .ab-flat-h[data-flat-section="mine"]{color:#e88b72}
 #attentionbench-clear[data-theme="dark"] .ab-flat-task b{color:#58b583}
 #attentionbench-clear[data-theme="dark"] .ab-run-sub{color:#bcbfc3}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip{border:1px solid #34383d;background:#23272c;box-shadow:none!important;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip:hover{border-color:#ecebe6}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .ab-flat-robot{color:#d9a55a}
+#attentionbench-clear[data-theme="dark"] .ab-fcard{border:1.5px solid transparent;background:#23272c;box-shadow:0 1px 2px #00000025}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-mine="true"]{background:#1f2224;border-color:#eb9b84}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-active="true"]{border:2px solid #5f97d1}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-viewing="true"]{box-shadow:0 0 0 3px #0000007d}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-fcard-main{border:0;background:none;box-shadow:none!important;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-mine="true"] .ab-fcard-top b{color:#e88b72}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-status{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-status[data-outcome="bad"]{color:#e08670}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-status[data-outcome="ok"]{color:#58b583}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-status.live{background:#212427;color:#80acdb}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-sub{color:#bcbfc3}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-bar{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-bar>i{background:#26292d}
+#attentionbench-clear[data-theme="dark"] .ab-fcard-bar>i>b{background:#494d51}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-active="true"] .ab-fcard-bar>i>b{background:#5f97d1}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-tone="failed"] .ab-fcard-bar>i>b{background:#e08670}
+#attentionbench-clear[data-theme="dark"] .ab-fcard[data-tone="success"] .ab-fcard-bar>i>b{background:#58b583}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>article.ab-fcard{border:1.5px solid transparent;background:#23272c;box-shadow:0 1px 2px #00000025}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-mine="true"]{background:#1f2224;border-color:#eb9b84}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-active="true"]{border:2px solid #5f97d1}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>article.ab-fcard[data-viewing="true"]{box-shadow:0 0 0 3px #0000007d}
+#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar nav>article.ab-fcard:hover{border-color:#34383d}
 #attentionbench-clear[data-theme="dark"] .lb-prov code{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-share{border-top:1px solid #282b2f}
 #attentionbench-clear[data-theme="dark"] .lb-share small{color:#a3a199}
