@@ -98,3 +98,11 @@ def test_ui_failure_names_are_parsed(monkeypatch, tmp_path):
     fake = subprocess.CompletedProcess([], 1, stdout='ok 1 - a\nnot ok 2 - b thing\n  not ok 3 - c\n', stderr='')
     monkeypatch.setattr(abctl, 'run', lambda *a, **k:fake)
     assert abctl.ui_failures(tmp_path) == ['b thing', 'c']
+
+
+def test_ui_tests_run_with_paths_relative_to_the_release(monkeypatch, tmp_path):
+    (tmp_path/'benchmarks/attention_harness/tests').mkdir(parents=True);(tmp_path/'benchmarks/attention_harness/tests/a.cjs').write_text('')
+    seen = []
+    monkeypatch.setattr(abctl, 'run', lambda cmd, **k:seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, stdout='', stderr=''))
+    abctl.ui_failures(tmp_path)
+    assert seen[0][2:] == ['benchmarks/attention_harness/tests/a.cjs'], 'names must not depend on the release folder'

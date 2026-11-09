@@ -215,13 +215,14 @@ def cmd_releases(cfg, args):
 
 # ---------- tests ----------
 def ui_failures(tree):
-    done = run(['node', '--test', *sorted(str(p) for p in (tree/'benchmarks/attention_harness/tests').glob('*.cjs'))], capture_output=True, cwd=tree)
+    # Relative paths, so a failure has the same name in every release folder.
+    done = run(['node', '--test', *sorted(str(p.relative_to(tree)) for p in (tree/'benchmarks/attention_harness/tests').glob('*.cjs'))], capture_output=True, cwd=tree)
     return sorted({line.split(' - ', 1)[1].strip() for line in done.stdout.splitlines() if line.lstrip().startswith('not ok') and ' - ' in line})
 
 
 def baseline(cfg, commit, tree):
     """UI test failures of the live release, measured once on this host and cached (node versions differ by host)."""
-    path = cfg['state']/f'ui-failures-{commit}.json'
+    path = cfg['state']/f'ui-failures-v2-{commit}.json'
     if path.exists():return json.loads(path.read_text())
     say(f'measuring the UI test baseline of the live release {commit[:12]} …')
     value = ui_failures(tree);cfg['state'].mkdir(parents=True, exist_ok=True);path.write_text(json.dumps(value))
