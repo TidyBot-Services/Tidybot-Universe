@@ -13,7 +13,7 @@ ssh -p 7288 qifei@158.130.109.188     # 需要 Penn VPN；所有操作都用 qif
 abctl status                           # 先看一眼现在的状态
 ```
 
-`abctl` 就在 `~/ab-remote-20261107/tools/bin/` 里，已经在 PATH 上。如果提示找不到，用完整路径运行。
+`abctl` 在 `~/ab-remote-20261107/tools/bin/abctl`，默认不在 PATH 上。登录后先运行一次 `export PATH=~/ab-remote-20261107/tools/bin:$PATH`（只对当前终端生效），或者每次都写完整路径。下面的例子都假设已经运行过这句 export。
 
 ## 1. 看状态、拿网址和邀请码
 
@@ -56,7 +56,7 @@ abctl rollback          # 回到上一次部署前的版本
 abctl rollback 1a2b3c4d5e6f   # 回到指定版本
 ```
 
-回滚也会等空闲、做健康检查。最多保留 3 个版本；`original-*` 是第一次接入 abctl 之前的原始代码，作为最后的退路，不会被自动删除。
+回滚也会等空闲、做健康检查。线上版本和它之前的那个版本（回滚目标）永远不会被清理；其余版本最多一共保留 3 个，`abctl test` 产生的版本最先被清理；`original-*` 是第一次接入 abctl 之前的原始代码，作为最后的退路，不会被自动删除。
 
 ## 4. 代码怎么流动
 
@@ -103,7 +103,7 @@ abctl restart-all         # 重启全部服务，包括隧道（网址会变）
 
 ## English summary
 
-- Log in as `qifei` (Penn VPN), run `abctl status`.
+- Log in as `qifei` (Penn VPN), `export PATH=~/ab-remote-20261107/tools/bin:$PATH`, run `abctl status`.
 - Change code: `abctl workspace <you>` → edit in `~/ab-dev/<you>` → commit → `abctl test <you>` → `abctl --by <you> deploy <you>`.
 - A deploy locks (one at a time), refuses a branch that would drop live changes, runs gateway pytest (all must pass) and the UI node tests (no new failures versus the live release), waits until no run is executing (`--now` asks for `yes`), pauses new runs, backs up the gateway DB, switches the live symlink, restarts the harnesses and the gateway (not the tunnel, so the URL stays), health-checks for 120 s and rolls back automatically on failure.
 - `abctl rollback [release]` goes back; `abctl releases` lists them; 3 are kept plus the `original-*` checkout.

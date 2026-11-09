@@ -344,9 +344,13 @@ def switch(cfg, args, commit, tree, action):
 
 
 def prune(cfg):
+    # Never removed: the live release and the one before it (the rollback target). Others: the newest are kept.
     live = cfg['live'].resolve()
-    trees = sorted((p for p in cfg['releases'].iterdir() if p.is_dir() and p != live), key=lambda p:p.stat().st_mtime)
-    for old in trees[:max(0, len(trees) - (cfg['keep_releases'] - 1))]:
+    history = cfg['state']/'history.json'
+    rows = json.loads(history.read_text()) if history.exists() else []
+    keep = {live, *(Path(rows[-1]['previous']).resolve() for _ in [0] if rows)}
+    trees = sorted((p for p in cfg['releases'].iterdir() if p.is_dir() and p.resolve() not in keep), key=lambda p:p.stat().st_mtime)
+    for old in trees[:max(0, len(trees) - max(0, cfg['keep_releases'] - len(keep)))]:
         if (old/'.git').is_file():git(cfg, 'worktree', 'remove', '--force', str(old))
         # A non-worktree release (the adopted original) is kept: it is the oldest fallback and is removed only by hand.
 

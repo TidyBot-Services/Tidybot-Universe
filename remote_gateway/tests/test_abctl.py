@@ -106,3 +106,17 @@ def test_ui_tests_run_with_paths_relative_to_the_release(monkeypatch, tmp_path):
     monkeypatch.setattr(abctl, 'run', lambda cmd, **k:seen.append(cmd) or subprocess.CompletedProcess(cmd, 0, stdout='', stderr=''))
     abctl.ui_failures(tmp_path)
     assert seen[0][2:] == ['benchmarks/attention_harness/tests/a.cjs'], 'names must not depend on the release folder'
+
+
+def test_prune_never_removes_the_rollback_target(host):
+    cfg, src = host
+    cfg['keep_releases'] = 2
+    prev = abctl.release_for(cfg, 'main~1')[1]
+    git('-C', str(src), 'commit', '--allow-empty', '-qm', 'c3', '-c', cwd=src) if False else None
+    live = abctl.release_for(cfg, 'main')[1]
+    abctl.point_live(cfg, live)
+    (cfg['state']).mkdir(parents=True, exist_ok=True)
+    (cfg['state']/'history.json').write_text(json.dumps([dict(release=str(live), previous=str(prev), commit='x', at='t')]))
+    extra = cfg['releases']/'zz-test';git('--git-dir', str(cfg['bare']), 'worktree', 'add', '--detach', str(extra), 'main', cwd=cfg['ws'])
+    abctl.prune(cfg)
+    assert prev.exists() and live.exists() and not extra.exists(), 'a newer test-only release goes first'
