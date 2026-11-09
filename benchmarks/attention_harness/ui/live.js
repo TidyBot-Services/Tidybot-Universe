@@ -780,6 +780,7 @@
     return send();
   }
   function connectionState(connected) {
+    if (connected) bootDone();
     const wasDisconnected = root.dataset.connection === 'disconnected';
     root.dataset.connection = connected ? 'connected' : 'disconnected';
     if (!connected) {
@@ -830,6 +831,43 @@
       cameraLabel.dataset.liveLabel ||= cameraLabel.textContent;
       cameraLabel.textContent = connected ? cameraLabel.dataset.liveLabel : `Stale frame · ${cameraLabel.dataset.liveLabel}`;
     }
+  }
+  // Boot screen (11-09, user picked style B): status lines while the first picture loads, then it fades out.
+  const bootEl = document.getElementById('ab-boot');
+  function bootLine(key, state, text) {
+    const line = bootEl?.querySelector(`[data-boot-line="${key}"]`);
+    if (!line) return;
+    line.dataset.bootState = state;
+    line.innerHTML = `<b>${state === 'ok' ? 'ok' : state === 'error' ? '!!' : '..'}</b>${esc(text)}`;
+    const done = [...bootEl.querySelectorAll('[data-boot-line]')].filter(n => n.dataset.bootState === 'ok').length;
+    const step = bootEl.querySelector('[data-boot-step]');
+    if (step) step.textContent = `step ${Math.min(3, done + 1)} of 3`;
+  }
+  function bootFromLobby() {
+    const snap = window.Lobby.snap;
+    if (!bootEl || !snap) return;
+    bootLine('session', 'ok', snap.me?.nickname ? `session · ${snap.me.nickname}` : 'session · watching as a guest');
+    const open = snap.robot?.open?.length || 0, slots = snap.robot?.slots || 1;
+    bootLine('robot', 'ok', `robot · ${snap.robot?.running ? 'busy' : 'free'} · ${open} of ${slots} runs open`);
+  }
+  let bootStarted = Date.now();
+  // Surface a slow start instead of a silent screen.
+  setTimeout(() => { if (bootEl?.dataset.state === 'loading' && bootEl.querySelector('[data-boot-line="runs"]')?.dataset.bootState === 'wait') bootLine('runs', 'error', 'still waiting for run data · check your connection'); }, 15000);
+  function bootDone() {
+    if (!bootEl || bootEl.dataset.state !== 'loading') return;
+    if (root.dataset.remote !== '1') { bootLine('session', 'ok', gatewayPage ? 'session · signed in' : 'session · this computer'); bootLine('robot', 'ok', 'robot · OpenArm365 simulator'); }
+    else bootFromLobby();
+    bootLine('runs', 'ok', 'runs and tasks loaded');
+    const head = bootEl.querySelector('[data-boot-headline]');
+    if (head) head.textContent = 'READY';
+    // Shown at least 0.7 s so it does not flash, then faded out and removed.
+    setTimeout(() => { bootEl.dataset.state = 'leaving'; setTimeout(() => bootEl.remove(), 500); }, Math.max(0, 700 - (Date.now() - bootStarted)));
+  }
+  function bootError(message) {
+    if (!bootEl || bootEl.dataset.state !== 'loading') return;
+    bootLine('runs', 'error', message);
+    const head = bootEl.querySelector('[data-boot-headline]');
+    if (head) head.textContent = 'RETRYING';
   }
   function traceTime(event, index) {
     if (event.timestamp_basis === 'epoch') return dateTime(event.timestamp);
@@ -6049,6 +6087,7 @@
         : 'The page could not load run data. It will try again shortly.';
       const status = view.querySelector('#ab-live-message');
       noticeController?.clientError(phase === 'render' ? 'page display' : 'run data');
+      bootError(message);
       if (status) { status.textContent = message; status.dataset.readError = 'true'; }
       else view.innerHTML = `<section class="panel"><h2>Could not load run data</h2><p class="lead">${esc(message)}</p></section>`;
     } finally {
@@ -6057,9 +6096,9 @@
     }
   }
 
-  view.innerHTML = '<section class="panel"><h2>Reading AttentionStore…</h2></section>';
+  view.innerHTML = '<div class="op-skeleton" aria-hidden="true"><i></i><i></i><i></i></div>';
   root.classList.add('ready');
-  Lobby.start({changed:()=>{lastRendered='';renderSidebar();refresh();},open:experimentId=>{const go=n=>{const d=devSessions.find(x=>x.experiment_id===experimentId);if(d)navigateRecord(d.session_id);else if(n<10)setTimeout(()=>go(n+1),700);};go(0);},toast:(message,tone)=>toast(message,tone)});
+  Lobby.start({changed:()=>{bootFromLobby();lastRendered='';renderSidebar();refresh();},open:experimentId=>{const go=n=>{const d=devSessions.find(x=>x.experiment_id===experimentId);if(d)navigateRecord(d.session_id);else if(n<10)setTimeout(()=>go(n+1),700);};go(0);},toast:(message,tone)=>toast(message,tone)});
   refresh();
   setInterval(refresh, 3000);
   setInterval(refreshPreview, 1000);

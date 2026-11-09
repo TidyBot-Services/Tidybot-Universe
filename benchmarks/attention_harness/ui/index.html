@@ -284,6 +284,40 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"></noscript>
 </head>
 <body>
+<!-- 11-09 (user picked style B): full-screen boot screen, one dark "instrument" look in both themes; live.js fills the status lines and fades it out after the first picture. -->
+<style id="ab-boot-style">
+#ab-boot{position:fixed;inset:0;z-index:2147483000;overflow:hidden;background:radial-gradient(ellipse at center,#1b1f1a 0,#080a08 72%);color:#f1eee4;font-family:'DM Sans',sans-serif;opacity:1;transition:opacity .45s ease}
+#ab-boot[data-state="leaving"]{opacity:0;pointer-events:none}
+#ab-boot::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,#ffffff08 0 1px,transparent 1px 4px)}
+#ab-boot .ab-boot-scan{position:absolute;left:0;right:0;height:18%;top:-20%;background:linear-gradient(180deg,transparent,#ffffff10,transparent);animation:ab-boot-scan 2.8s linear infinite}
+#ab-boot .ab-boot-corner{position:absolute;width:min(60px,8vw);height:min(60px,8vw);border:0 solid #f1eee4aa}
+#ab-boot .tl{left:max(24px,8vw);top:max(24px,12vh);border-left-width:2px;border-top-width:2px}#ab-boot .tr{right:max(24px,8vw);top:max(24px,12vh);border-right-width:2px;border-top-width:2px}
+#ab-boot .bl{left:max(24px,8vw);bottom:max(24px,12vh);border-left-width:2px;border-bottom-width:2px}#ab-boot .br{right:max(24px,8vw);bottom:max(24px,12vh);border-right-width:2px;border-bottom-width:2px}
+#ab-boot .ab-boot-top,#ab-boot .ab-boot-foot{position:absolute;left:calc(max(24px,8vw) + 30px);right:calc(max(24px,8vw) + 30px);display:flex;justify-content:space-between;align-items:flex-end;gap:16px;font:400 13px 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;color:#b9bdaf}
+#ab-boot .ab-boot-top{top:calc(max(24px,12vh) + 22px);align-items:center}#ab-boot .ab-boot-foot{bottom:calc(max(24px,12vh) + 22px)}
+#ab-boot .ab-boot-rec{display:flex;align-items:center;gap:10px;color:#ec6a43;letter-spacing:.1em;font-weight:500}
+#ab-boot .ab-boot-rec i{width:10px;height:10px;border-radius:50%;background:#ec6a43;animation:ab-boot-blink 1.1s steps(2,jump-none) infinite}
+#ab-boot .ab-boot-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(12px,2.4vh,22px)}
+#ab-boot .ab-boot-word{font:700 clamp(44px,7.2vw,104px)/1 'Barlow Condensed',sans-serif;letter-spacing:.32em;padding-left:.32em;text-transform:uppercase;color:#f6f2e6;text-shadow:0 0 26px #ffb85f55}
+#ab-boot .ab-boot-sub{font:600 clamp(15px,1.6vw,22px) 'Barlow Condensed',sans-serif;letter-spacing:.6em;padding-left:.6em;text-transform:uppercase;color:#ec6a43}
+#ab-boot .ab-boot-bar{position:relative;width:min(280px,60vw);height:3px;margin-top:14px;border-radius:2px;background:#ffffff1c;overflow:hidden}
+#ab-boot .ab-boot-bar i{position:absolute;inset:0 auto 0 0;width:38%;background:#ec6a43;animation:ab-boot-bar 1.3s ease-in-out infinite}
+#ab-boot .ab-boot-lines{display:flex;flex-direction:column;gap:6px;min-width:0}
+#ab-boot .ab-boot-lines span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ab-boot .ab-boot-lines b{display:inline-block;width:2.4em;font-weight:500}
+#ab-boot [data-boot-state="ok"] b{color:#58b583}#ab-boot [data-boot-state="wait"] b{color:#e0a24a}#ab-boot [data-boot-state="error"]{color:#f2a08a}#ab-boot [data-boot-state="error"] b{color:#e08670}
+#ab-boot .ab-boot-step{color:#8a8d82;white-space:nowrap}
+@keyframes ab-boot-scan{to{top:110%}}@keyframes ab-boot-blink{50%{opacity:.35}}@keyframes ab-boot-bar{from{transform:translateX(-100%)}to{transform:translateX(265%)}}
+@media (prefers-reduced-motion:reduce){#ab-boot .ab-boot-scan,#ab-boot .ab-boot-rec i,#ab-boot .ab-boot-bar i{animation:none}}
+@media (max-width:640px){#ab-boot .ab-boot-top>span:last-child,#ab-boot .ab-boot-step{display:none}}
+</style>
+<div id="ab-boot" data-state="loading" role="status" aria-live="polite" aria-label="Loading AttentionBench">
+<div class="ab-boot-scan" aria-hidden="true"></div>
+<i class="ab-boot-corner tl" aria-hidden="true"></i><i class="ab-boot-corner tr" aria-hidden="true"></i><i class="ab-boot-corner bl" aria-hidden="true"></i><i class="ab-boot-corner br" aria-hidden="true"></i>
+<div class="ab-boot-top"><span class="ab-boot-rec"><i aria-hidden="true"></i><span data-boot-headline>CONNECTING</span></span><span>OPENARM · ROBOCASA365</span></div>
+<div class="ab-boot-mid" aria-hidden="true"><span class="ab-boot-word">Attention</span><span class="ab-boot-sub">Bench</span><span class="ab-boot-bar"><i></i></span></div>
+<div class="ab-boot-foot"><div class="ab-boot-lines"><span data-boot-line="session" data-boot-state="wait"><b>..</b>session · checking</span><span data-boot-line="robot" data-boot-state="wait"><b>..</b>robot · checking</span><span data-boot-line="runs" data-boot-state="wait"><b>..</b>loading runs and tasks</span></div><span class="ab-boot-step" data-boot-step>step 1 of 3</span></div>
+</div>
 <div id="attentionbench-clear" class="ab-industrial" data-mode="live" aria-label="AttentionBench operations workspace">
 <style>
 #attentionbench-clear{--bg:#111119;--panel:#1d1d29;--panel2:#252531;--line:#3c3a4b;--text:#f5f4f8;--muted:#b3afc0;--orange:#ff8c00;--cyan:#13cce6;--purple:#b975ef;--green:#39e51d;--body:Ubuntu,ui-rounded,"Hiragino Maru Gothic ProN","Microsoft YaHei","Noto Sans CJK SC",Arial,sans-serif;--heading:var(--body);background:var(--bg);color:var(--text);border:1px solid var(--line);font-family:var(--body);width:100%;box-sizing:border-box;overflow:hidden}
