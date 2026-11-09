@@ -43,11 +43,17 @@ test('every task Remote offers has verified pictures for both of its seeds',()=>
   assert.equal(press.kind,'press');assert.match(press.part,/start_button/);
 });
 
-test('the success check findings are on the cards, not hidden',()=>{
+test('cards state success rule v2 and the remaining check gaps',()=>{
   const by=id=>manifest.tasks.find(t=>t.task_id===id);
-  assert.match(by('turn_on_microwave').note,/left arm/);
-  assert.match(by('pick_place_counter_to_cabinet').note,/loose/);
-  for(const id of ['heat_kebab_sandwich','prepare_coffee','open_stand_mixer_head'])assert.match(by(id).defect,/defective/,id);
+  // Success rule v2 (43ebfe2): either arm presses, so the microwave card names no hand; the three fixed tasks
+  // carry no defect; "both hands" wherever release counts.
+  assert.equal(/\b(left|right)\b/i.test(by('turn_on_microwave').rule+(by('turn_on_microwave').note||'')),false);
+  assert.match(by('pick_place_counter_to_cabinet').note,/loose/);assert.match(by('pick_place_counter_to_cabinet').rule,/both hands/);
+  for(const id of ['heat_kebab_sandwich','prepare_coffee','open_stand_mixer_head'])assert.equal(by(id).defect,null,id);
+  assert.match(by('prepare_coffee').rule,/started with the mug already upright under the outlet/);
+  assert.match(by('heat_kebab_sandwich').rule,/door is shut and the timer was set with the door shut/);
+  assert.match(by('open_stand_mixer_head').note,/seed 101/);
+  for(const t of manifest.tasks)assert.equal(/left hand|left arm/i.test(t.rule),false,t.task_id);
   // A seed whose goal state is not a native success has no pictures, and says why.
   const mixer101=by('open_stand_mixer_head').seeds.find(s=>s.seed===101);
   assert.equal(mixer101.pictures,false);assert.match(mixer101.reason,/not a native success/);
@@ -76,7 +82,8 @@ test('cards: family tabs, search, selected card with marks, text card without pi
   assert.match(sink,/<b class="tp-o">[^<]+<\/b>/);assert.match(sink,/<b class="tp-b">sink<\/b>/);
   assert.match(sink,/1 object · 1 step · seeds 101, 102/);assert.match(sink,/Counts as done:/);
   const microwave=api.taskCardHtml(cards[1],{seed:101});
-  assert.match(microwave,/aria-checked="false"/);assert.match(microwave,/No object · 1 step/);assert.match(microwave,/Known gap:<\/b> Only a press by the robot’s left arm counts/);
+  assert.match(microwave,/aria-checked="false"/);assert.match(microwave,/No object · 1 step/);assert.equal(microwave.includes('Known gap'),false);
+  assert.match(api.taskCardHtml(cards[2],{seed:101}),/Known gap:<\/b> The check’s “inside” margin is loose/);
   // A seed without pictures (e.g. main's 25 sink seeds) is a text card: no <img>, never a broken picture.
   const text=api.taskCardHtml(cards[0],{seed:117});
   assert.equal(text.includes('<img'),false);assert.match(text,/No picture for seed 117/);

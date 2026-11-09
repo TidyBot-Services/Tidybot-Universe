@@ -4,8 +4,8 @@ For every offered (task, seed) this builds the scene exactly as a run does (``cr
 fields, ``scene_reset_seed=seed``, the R5 fixture profile for fixture tasks), renders the start picture from
 the camera that runs record as ``recording_views/side/000000.jpg`` (free camera, azimuth 90, elevation -30,
 distance 2.6, 960x540, aimed like ``ExtraViews``), teleports the scene into its goal state with the method of
-the 2026-11-10 success check (``task_picker_goals``), settles with hold actions, checks the task's native
-``_check_success()`` and renders the done picture from the same camera. Object and target positions are
+the 2026-11-10 success check (``task_picker_goals``), settles with hold actions, checks the verdict runs report as
+native_success (R5 success rule v2 for fixture tasks, upstream ``_check_success()`` otherwise) and renders the done picture from the same camera. Object and target positions are
 projected into the image to give the overlay marks.
 
 Display only: no planner, no policy, no agent, no sim.lock, no real run. Each pair runs in a fresh process.
@@ -51,6 +51,11 @@ def build(task: str, seed: int):
                      randomize_cameras=False, generative_textures=None, control_freq=20, horizon=9600,
                      scene_reset_seed=seed)
     env.reset()
+    if fixture:
+        # As the worker does for R5 fixture runs: success rule v2 (either arm presses, both arms released,
+        # task fixes; openarm365_dev_v2/fixture_success.py). Pictures are checked against that verdict.
+        from openarm365_dev_v2.fixture_success import install
+        install(env)
     # Pictures only: runs drive absolute joint targets, where a zero action pulls every joint toward 0 and the
     # arms swing down into the scene while it settles. The success check held the arms with delta input (zero =
     # hold); do the same here so the goal picture shows the arms where they started.
@@ -244,6 +249,14 @@ def fixture_corners(env, fixture):
 
 # ------------------------------------------------------------------ one pair
 
+def verdict(env, fixture):
+    """The verdict a run reports as native_success (worker.native_evaluation)."""
+    if fixture:
+        from openarm365_dev_v2.fixture_success import evaluate
+        return bool(evaluate(env)['native_success'])
+    return bool(env._check_success())
+
+
 def blank_view(jpeg: bytes) -> bool:
     """True when the side camera sees (almost) one flat colour, e.g. a wall between it and the task."""
     from PIL import Image, ImageStat
@@ -260,7 +273,7 @@ def run_pair(task: str, seed: int, out: Path) -> dict:
     try:
         camera = Camera(env, lookat(env, task, fixture))
         lang = env.get_ep_meta().get('lang')
-        start_success = bool(env._check_success())
+        start_success = verdict(env, fixture)
         start = camera.render()
         view = 'side'
         blank = blank_view(start)
@@ -273,7 +286,7 @@ def run_pair(task: str, seed: int, out: Path) -> dict:
         rec = goals.start_shapes(env, camera, sys.modules[__name__])
         with rec:
             detail = spec.goal(env) or {}               # teleport into the goal state (settles inside)
-        done_success = bool(env._check_success())
+        done_success = verdict(env, fixture)
         marks = goals.derive_marks(env, camera, sys.modules[__name__], rec, spec, rec.pressed)
         done = camera.render()
     finally:

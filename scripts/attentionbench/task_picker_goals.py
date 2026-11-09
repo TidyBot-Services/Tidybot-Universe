@@ -30,6 +30,8 @@ FAMILIES = {
 
 # Words in [o:...] are orange (the thing to move / press), [b:...] blue (where it goes). {name} = object category.
 TEXT = {
+    # "rule" = success rule v2 (2026-11-10, user-approved; openarm365_dev_v2/fixture_success.py, commit 43ebfe2):
+    # either arm may press, both hands must be away, three task fixes. Counter -> Sink keeps the upstream rule.
     'pick_place_counter_to_sink': dict(
         family='D', title='Counter → Sink',
         sentence='Pick up the [o:{obj}] and put it in the [b:sink].',
@@ -37,15 +39,12 @@ TEXT = {
     'turn_on_microwave': dict(
         family='B', title='Turn on the microwave',
         sentence='Press the [o:start button] on the microwave.',
-        rule='Done when the microwave is running: start pressed with the door closed, then the hand moves away.',
-        note='Only a press by the robot’s left arm counts; the check does not see a right-arm press. '
-             'Feasibility with the left arm is proven on seed 101 only.'),
+        rule='Done when the microwave is running: start pressed with the door closed, and the hand has moved away.'),
     'pick_place_counter_to_cabinet': dict(
         family='D', title='Counter → Cabinet',
         sentence='Pick up the [o:{obj}] and put it in the [b:cabinet].',
-        rule='Done when the {obj} is inside the cabinet and the robot’s left hand has let go.',
-        note='The check’s “inside” margin is loose (even the cabinet top counts), and a right hand still '
-             'holding the item also counts as done.'),
+        rule='Done when the {obj} is inside the cabinet and both hands have let go.',
+        note='The check’s “inside” margin is loose: the top of the cabinet also counts.'),
     'open_cabinet': dict(
         family='A', title='Open the cabinet',
         sentence='Open the [o:cabinet doors] all the way.',
@@ -53,8 +52,7 @@ TEXT = {
     'close_blender_lid': dict(
         family='A', title='Close the blender lid',
         sentence='Put the [o:lid] back on the [b:blender].',
-        rule='Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.',
-        note='Holding the lid 3.5 cm above the blender also counts.'),
+        rule='Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.'),
     'open_drawer': dict(
         family='A', title='Open the drawer',
         sentence='Pull the [o:drawer] all the way open.',
@@ -66,40 +64,36 @@ TEXT = {
     'open_stand_mixer_head': dict(
         family='B', title='Open the mixer head',
         sentence='Lift the [o:mixer head] all the way up.',
-        rule='Done when the head is raised past 99% (about 89°).',
-        defect='Check is defective: the head-lock button does nothing, the screening checked the wrong action, '
-               'and on seed 101 the head falls back when released.'),
+        rule='Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.',
+        note='On seed 101 the head falls shut when released, so that seed cannot be completed.'),
     'coffee_setup_mug': dict(
         family='C', title='Mug under the coffee machine',
         sentence='Put the [o:{obj}] under the [b:coffee outlet].',
-        rule='Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.',
-        note='On seed 104 a mug lying on its side also counts.'),
+        rule='Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.'),
     'prepare_coffee': dict(
         family='C', title='Prepare coffee',
         sentence='① Put the [o:{obj}] under the [b:coffee outlet], ② press the [o:start button].',
-        rule='Done when the mug is under the outlet, the machine is on and the hand has let go.',
-        defect='Check is defective: pressing start before the mug is in place also counts. Only a left-arm press counts.'),
+        rule='Done when the machine was started with the mug already upright under the outlet, and both hands have let go.'),
     'kettle_boiling': dict(
         family='C', title='Boil the kettle',
         sentence='① Put the [o:{obj}] on a free [b:burner], ② turn that burner’s [o:knob] on.',
-        rule='Done when the kettle stands on a burner and that same burner is on.'),
+        rule='Done when the kettle stands on a burner, that same burner is on and both hands have let go.'),
     'heat_kebab_sandwich': dict(
         family='C', title='Heat the kebab sandwich',
         sentence='Put the [o:{kebab}] and [o:{baguette}] in the [b:toaster oven], close the door and set the timer.',
-        rule='Done when both foods are on the rack, the door is not open past 90% and the timer is set.',
-        defect='Check is defective: a door left 17–62% open with the timer set also counts, and the hand need not let go.'),
+        rule='Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.'),
     'categorize_condiments': dict(
         family='D', title='Sort the condiments',
         sentence='Put the [o:{obj1}] and the [o:{obj2}] next to their matches in the [b:cabinet].',
-        rule='Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.'),
+        rule='Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.'),
     'weigh_ingredients': dict(
         family='D', title='Weigh an ingredient',
         sentence='① Put the [o:{obj}] on the [b:scale], ② close the [o:cabinet].',
-        rule='Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).'),
+        rule='Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.'),
     'arrange_tea': dict(
         family='D', title='Arrange tea',
         sentence='Put the [o:{obj2}] and the [o:{obj}] on the [b:tray], then close the cabinet doors.',
-        rule='Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.'),
+        rule='Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.'),
 }
 
 

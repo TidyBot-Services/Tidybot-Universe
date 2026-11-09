@@ -375,11 +375,11 @@
    "defect": null,
    "family": "A",
    "family_label": "Open & close",
-   "note": "Holding the lid 3.5 cm above the blender also counts.",
-   "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+   "note": null,
+   "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
      "done": "close_blender_lid-101-done.jpg",
      "marks": [
@@ -429,7 +429,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -455,7 +455,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
      "done": "close_blender_lid-102-done.jpg",
      "marks": [
@@ -505,7 +505,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -531,7 +531,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "alt_done": "Done: Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "alt_start": "Start: Close the lid blender by securely placing the lid on top.",
      "done": "close_blender_lid-103-done.jpg",
      "marks": [
@@ -581,7 +581,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and the left hand has let go.",
+     "rule": "Done when the lid sits on the blender (within 4 cm, nearly level) and both hands have let go.",
      "seed": 103,
      "sentence": [
       {
@@ -883,11 +883,11 @@
    "defect": null,
    "family": "B",
    "family_label": "Buttons & knobs",
-   "note": "Only a press by the robot’s left arm counts; the check does not see a right-arm press. Feasibility with the left arm is proven on seed 101 only.",
-   "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+   "note": null,
+   "rule": "Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "alt_start": "Start: Press the start button on the microwave.",
      "done": "turn_on_microwave-101-done.jpg",
      "marks": [
@@ -903,7 +903,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "rule": "Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "seed": 101,
      "sentence": [
       {
@@ -922,7 +922,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "alt_start": "Start: Press the start button on the microwave.",
      "done": "turn_on_microwave-102-done.jpg",
      "marks": [
@@ -938,7 +938,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "rule": "Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "seed": 102,
      "sentence": [
       {
@@ -957,7 +957,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "alt_done": "Done: Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "alt_start": "Start: Press the start button on the microwave.",
      "done": "turn_on_microwave-103-done.jpg",
      "marks": [
@@ -973,7 +973,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the microwave is running: start pressed with the door closed, then the hand moves away.",
+     "rule": "Done when the microwave is running: start pressed with the door closed, and the hand has moved away.",
      "seed": 103,
      "sentence": [
       {
@@ -1136,11 +1136,11 @@
    "title": "Turn off the burner"
   },
   {
-   "defect": "Check is defective: the head-lock button does nothing, the screening checked the wrong action, and on seed 101 the head falls back when released.",
+   "defect": null,
    "family": "B",
    "family_label": "Buttons & knobs",
-   "note": null,
-   "rule": "Done when the head is raised past 99% (about 89°).",
+   "note": "On seed 101 the head falls shut when released, so that seed cannot be completed.",
+   "rule": "Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.",
    "seeds": [
     {
      "pictures": false,
@@ -1148,7 +1148,7 @@
      "seed": 101
     },
     {
-     "alt_done": "Done: Done when the head is raised past 99% (about 89°).",
+     "alt_done": "Done: Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.",
      "alt_start": "Start: Open the stand mixer head.",
      "done": "open_stand_mixer_head-102-done.jpg",
      "marks": [
@@ -1259,7 +1259,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the head is raised past 99% (about 89°).",
+     "rule": "Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.",
      "seed": 102,
      "sentence": [
       {
@@ -1278,7 +1278,7 @@
      "view": "overview"
     },
     {
-     "alt_done": "Done: Done when the head is raised past 99% (about 89°).",
+     "alt_done": "Done: Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.",
      "alt_start": "Start: Open the stand mixer head.",
      "done": "open_stand_mixer_head-103-done.jpg",
      "marks": [
@@ -1389,7 +1389,7 @@
      ],
      "objects": 0,
      "pictures": true,
-     "rule": "Done when the head is raised past 99% (about 89°).",
+     "rule": "Done when the head is raised past 99% (about 89°) and stays up with no hand touching it.",
      "seed": 103,
      "sentence": [
       {
@@ -1427,11 +1427,11 @@
    "defect": null,
    "family": "C",
    "family_label": "Put on an appliance",
-   "note": "On seed 104 a mug lying on its side also counts.",
-   "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+   "note": null,
+   "rule": "Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "alt_done": "Done: Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.",
      "alt_start": "Start: Pick the mug from the counter and place it under the coffee machine dispenser.",
      "done": "coffee_setup_mug-101-done.jpg",
      "marks": [
@@ -1481,7 +1481,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "rule": "Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -1507,7 +1507,7 @@
      "view": "overview"
     },
     {
-     "alt_done": "Done: Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "alt_done": "Done: Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.",
      "alt_start": "Start: Pick the mug from the counter and place it under the coffee machine dispenser.",
      "done": "coffee_setup_mug-103-done.jpg",
      "marks": [
@@ -1557,7 +1557,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug’s centre is within 4 cm of the outlet and the left hand has let go.",
+     "rule": "Done when the mug stands upright with its centre within 4 cm of the outlet and both hands have let go.",
      "seed": 103,
      "sentence": [
       {
@@ -1606,14 +1606,14 @@
    "title": "Mug under the coffee machine"
   },
   {
-   "defect": "Check is defective: pressing start before the mug is in place also counts. Only a left-arm press counts.",
+   "defect": null,
    "family": "C",
    "family_label": "Put on an appliance",
    "note": null,
-   "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+   "rule": "Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_done": "Done: Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
      "done": "prepare_coffee-102-done.jpg",
      "marks": [
@@ -1674,7 +1674,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "rule": "Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -1707,7 +1707,7 @@
      "view": "overview"
     },
     {
-     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_done": "Done: Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
      "done": "prepare_coffee-103-done.jpg",
      "marks": [
@@ -1768,7 +1768,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "rule": "Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "seed": 103,
      "sentence": [
       {
@@ -1801,7 +1801,7 @@
      "view": "overview"
     },
     {
-     "alt_done": "Done: Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "alt_done": "Done: Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "alt_start": "Start: Pick the mug from the cabinet, place it under the coffee machine dispenser, and press the start button.",
      "done": "prepare_coffee-104-done.jpg",
      "marks": [
@@ -1862,7 +1862,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the mug is under the outlet, the machine is on and the hand has let go.",
+     "rule": "Done when the machine was started with the mug already upright under the outlet, and both hands have let go.",
      "seed": 104,
      "sentence": [
       {
@@ -1929,10 +1929,10 @@
    "family": "C",
    "family_label": "Put on an appliance",
    "note": null,
-   "rule": "Done when the kettle stands on a burner and that same burner is on.",
+   "rule": "Done when the kettle stands on a burner, that same burner is on and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the kettle stands on a burner and that same burner is on.",
+     "alt_done": "Done: Done when the kettle stands on a burner, that same burner is on and both hands have let go.",
      "alt_start": "Start: Pick the kettle from the counter and place it on a stove burner. Then turn the burner on.",
      "done": "kettle_boiling-101-done.jpg",
      "marks": [
@@ -1993,7 +1993,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the kettle stands on a burner and that same burner is on.",
+     "rule": "Done when the kettle stands on a burner, that same burner is on and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -2026,7 +2026,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the kettle stands on a burner and that same burner is on.",
+     "alt_done": "Done: Done when the kettle stands on a burner, that same burner is on and both hands have let go.",
      "alt_start": "Start: Pick the kettle from the counter and place it on a stove burner. Then turn the burner on.",
      "done": "kettle_boiling-102-done.jpg",
      "marks": [
@@ -2087,7 +2087,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the kettle stands on a burner and that same burner is on.",
+     "rule": "Done when the kettle stands on a burner, that same burner is on and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -2150,14 +2150,14 @@
    "title": "Boil the kettle"
   },
   {
-   "defect": "Check is defective: a door left 17–62% open with the timer set also counts, and the hand need not let go.",
+   "defect": null,
    "family": "C",
    "family_label": "Put on an appliance",
    "note": null,
-   "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+   "rule": "Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
    "seeds": [
     {
-     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_done": "Done: Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
      "done": "heat_kebab_sandwich-103-done.jpg",
      "marks": [
@@ -2306,7 +2306,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "rule": "Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "seed": 103,
      "sentence": [
       {
@@ -2339,7 +2339,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_done": "Done: Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
      "done": "heat_kebab_sandwich-105-done.jpg",
      "marks": [
@@ -2488,7 +2488,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "rule": "Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "seed": 105,
      "sentence": [
       {
@@ -2521,7 +2521,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "alt_done": "Done: Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "alt_start": "Start: Pick up the kebab skewer and baguette bread, and place them inside the toaster oven. Close the toaster oven door and start by setting the timer.",
      "done": "heat_kebab_sandwich-106-done.jpg",
      "marks": [
@@ -2670,7 +2670,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when both foods are on the rack, the door is not open past 90% and the timer is set.",
+     "rule": "Done when both foods are on the rack, the door is shut and the timer was set with the door shut and the food in.",
      "seed": 106,
      "sentence": [
       {
@@ -2736,11 +2736,11 @@
    "defect": null,
    "family": "D",
    "family_label": "Cabinet & sink",
-   "note": "The check’s “inside” margin is loose (even the cabinet top counts), and a right hand still holding the item also counts as done.",
-   "rule": "Done when the item is inside the cabinet and the robot’s left hand has let go.",
+   "note": "The check’s “inside” margin is loose: the top of the cabinet also counts.",
+   "rule": "Done when the item is inside the cabinet and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the bell pepper is inside the cabinet and the robot’s left hand has let go.",
+     "alt_done": "Done: Done when the bell pepper is inside the cabinet and both hands have let go.",
      "alt_start": "Start: Pick the bell pepper from the counter and place it in the cabinet.",
      "done": "pick_place_counter_to_cabinet-101-done.jpg",
      "marks": [
@@ -2790,7 +2790,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the bell pepper is inside the cabinet and the robot’s left hand has let go.",
+     "rule": "Done when the bell pepper is inside the cabinet and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -2816,7 +2816,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the squash is inside the cabinet and the robot’s left hand has let go.",
+     "alt_done": "Done: Done when the squash is inside the cabinet and both hands have let go.",
      "alt_start": "Start: Pick the squash from the counter and place it in the cabinet.",
      "done": "pick_place_counter_to_cabinet-102-done.jpg",
      "marks": [
@@ -2866,7 +2866,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the squash is inside the cabinet and the robot’s left hand has let go.",
+     "rule": "Done when the squash is inside the cabinet and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -2892,7 +2892,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the cucumber is inside the cabinet and the robot’s left hand has let go.",
+     "alt_done": "Done: Done when the cucumber is inside the cabinet and both hands have let go.",
      "alt_start": "Start: Pick the cucumber from the counter and place it in the cabinet.",
      "done": "pick_place_counter_to_cabinet-107-done.jpg",
      "marks": [
@@ -2942,7 +2942,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the cucumber is inside the cabinet and the robot’s left hand has let go.",
+     "rule": "Done when the cucumber is inside the cabinet and both hands have let go.",
      "seed": 107,
      "sentence": [
       {
@@ -2995,10 +2995,10 @@
    "family": "D",
    "family_label": "Cabinet & sink",
    "note": null,
-   "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+   "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
      "done": "categorize_condiments-102-done.jpg",
      "marks": [
@@ -3093,7 +3093,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -3126,7 +3126,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
      "done": "categorize_condiments-103-done.jpg",
      "marks": [
@@ -3221,7 +3221,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "seed": 103,
      "sentence": [
       {
@@ -3254,7 +3254,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "alt_done": "Done: Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "alt_start": "Start: Put the shaker and condiment bottle from the counter next to their counterparts in the cabinet.",
      "done": "categorize_condiments-105-done.jpg",
      "marks": [
@@ -3349,7 +3349,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and the hand has let go.",
+     "rule": "Done when each item stands within 15 cm of its matching item in the cabinet and both hands have let go.",
      "seed": 105,
      "sentence": [
       {
@@ -3416,10 +3416,10 @@
    "family": "D",
    "family_label": "Cabinet & sink",
    "note": null,
-   "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+   "rule": "Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.",
    "seeds": [
     {
-     "alt_done": "Done: Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "alt_done": "Done: Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.",
      "alt_start": "Start: Pick the honey bottle and place it on the digital scale for weighing, and close the cabinet.",
      "done": "weigh_ingredients-101-done.jpg",
      "marks": [
@@ -3602,7 +3602,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "rule": "Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.",
      "seed": 101,
      "sentence": [
       {
@@ -3635,7 +3635,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "alt_done": "Done: Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.",
      "alt_start": "Start: Pick the cereal and place it on the digital scale for weighing, and close the cabinet.",
      "done": "weigh_ingredients-102-done.jpg",
      "marks": [
@@ -3814,7 +3814,7 @@
      ],
      "objects": 1,
      "pictures": true,
-     "rule": "Done when the item stands upright on the scale and the cabinet door is shut (at most 0.5% open).",
+     "rule": "Done when the item stands upright on the scale, the cabinet door is shut (at most 0.5% open) and both hands have let go.",
      "seed": 102,
      "sentence": [
       {
@@ -3881,7 +3881,7 @@
    "family": "D",
    "family_label": "Cabinet & sink",
    "note": null,
-   "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+   "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
    "seeds": [
     {
      "pictures": false,
@@ -3889,7 +3889,7 @@
      "seed": 104
     },
     {
-     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
      "alt_start": "Start: Pick the kettle from the counter and place it on the tray. Then pick the mug from the cabinet and place it on the tray. Then close the cabinet doors.",
      "done": "arrange_tea-105-done.jpg",
      "marks": [
@@ -4116,7 +4116,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
      "seed": 105,
      "sentence": [
       {
@@ -4149,7 +4149,7 @@
      "view": "side"
     },
     {
-     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
      "alt_start": "Start: Pick the kettle from the counter and place it on the tray. Then pick the mug from the cabinet and place it on the tray. Then close the cabinet doors.",
      "done": "arrange_tea-106-done.jpg",
      "marks": [
@@ -4372,7 +4372,7 @@
      ],
      "objects": 2,
      "pictures": true,
-     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and the hand has let go of the mug.",
+     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
      "seed": 106,
      "sentence": [
       {
