@@ -48,7 +48,9 @@ def test_each_task_rule_matches_installed_native_sources(task):
     assert condition['sha256']==container.digest({k:v for k,v in condition.items() if k!='sha256'})
     assert set(json.loads(fixture.RESOURCE.read_bytes())['tasks'])==set(PILOT_TASKS)
     for ref in condition['derivation']:
-        if 'source_sha256' in ref:
+        if 'repo_file_sha256' in ref:  # AttentionBench rule module (fixture_success.py), hashed as a whole file
+            assert hashlib.sha256((Path(__file__).resolve().parents[3]/ref['file']).read_bytes()).hexdigest()==ref['repo_file_sha256'],ref
+        elif 'source_sha256' in ref:
             library,relative=ref['file'].split('/',1)
             raw=(NATIVE/library/library/relative).read_text()
             assert hashlib.sha256(ast.get_source_segment(raw,node(ref['file'],ref['symbol'])).encode()).hexdigest()==ref['source_sha256'],ref
@@ -62,7 +64,8 @@ def test_each_task_rule_matches_installed_native_sources(task):
             elif task=='close_blender_lid':
                 expected=.15;assert expected in constants(A+'kitchen_blender.py','CloseBlenderLid._check_success')
             else:expected=default(F+('microwave.py' if task=='turn_on_microwave' else 'coffee_machine.py'),('Microwave' if task=='turn_on_microwave' else 'CoffeeMachine')+'.gripper_button_far','th')
-            assert p['threshold_m']==expected and p['op']=='>' and p['grippers']==['left']
+            # rule v2 (fixture_success.py): every gripper-distance rule binds both physical grippers
+            assert p['threshold_m']==expected and p['op']=='>' and p['grippers']==['left','right']
         elif p['kind']=='object_in_region':
             assert p['projection_padding']==default(U,'obj_inside_of','th')
             assert p['partial_check']==default(U,'obj_inside_of','partial_check') is False
@@ -85,6 +88,9 @@ def test_each_task_rule_matches_installed_native_sources(task):
             assert p['burner_on_interval_rad'][0]==default(F+'stove.py','Stove.is_burner_on','th')==.35
         elif p['kind']=='knob_off':
             assert p['on_interval_rad']==[default(F+'stove.py','Stove.is_burner_on','th'),'2*pi - 0.35']
+        elif p['id']=='door_closed':  # HeatKebabSandwich v2: closed means the oven's own 0.01 snap-shut threshold
+            from openarm365_dev_v2.fixture_success import KEBAB_DOOR_CLOSED
+            assert task=='heat_kebab_sandwich' and p['op']=='<=' and p['value']==KEBAB_DOOR_CLOSED==.01 and p['quantifier']=='all'
         elif p['kind']=='not_all_joints' or p.get('field')=='joint_open_fraction':
             closed=task in ('weigh_ingredients','arrange_tea')
             assert p['value']==default(F+'fixture.py','Fixture.is_closed' if closed else 'Fixture.is_open','th')
@@ -104,8 +110,8 @@ def test_each_task_rule_matches_installed_native_sources(task):
     assert not container.check(condition,{'robot':{},'perception':{'values':{}}})['passed']
 
 
-def observation(distance):
-    return dict(robot={'robot0_left_eef_pos':[distance,0.,0.],'robot0_right_eef_pos':[0.,0.,0.]},perception={'values':{}},
+def observation(distance,right=1.):
+    return dict(robot={'robot0_left_eef_pos':[distance,0.,0.],'robot0_right_eef_pos':[right,0.,0.]},perception={'values':{}},
         fixtures=[dict(name='mw',task_reference='microwave',state={'turned_on':True},interaction_parts=[dict(name='mw_start_button',position=[0.,0.,0.],center=[10.,0.,0.])])])
 
 @pytest.mark.parametrize('distance,passed',[(.04,False),(.15,False),(.16,True)])
@@ -121,6 +127,11 @@ def test_microwave_native_and_public_clearance(distance,passed):
     result=container.check(fixture.load('turn_on_microwave',101),observation(distance))
     assert result['passed'] is passed and result['complete']
     assert result['predicates'][1]['value']['left']==[distance]
+
+@pytest.mark.parametrize('right,passed',[(.15,False),(.16,True)])
+def test_microwave_public_rule_binds_physical_right_gripper(right,passed):
+    result=container.check(fixture.load('turn_on_microwave',101),observation(.5,right))
+    assert result['passed'] is passed and result['predicates'][1]['value']['right']==[right]
 
 @pytest.mark.parametrize('bad',['missing_gripper','nan','missing_part','missing_state','wrong_type'])
 def test_microwave_missing_evidence_fails_closed(bad):
@@ -170,7 +181,7 @@ def test_eval_workspace_gets_frozen_fixture_rule_and_final_state(ws):
 def test_non_r5_conditions_are_byte_identical():
     import subprocess
     for path in (container.ROOT).glob('*.json'):
-        if path.name=='fixture-public-v1.json':continue
+        if path.name in ('fixture-public-v1.json','fixture-public-v2.json','fixture-pilots-v2.json','fixture-screened-v2.json'):continue
         relative=str(path.relative_to(Path.cwd()))
         assert path.read_bytes()==subprocess.check_output(['git','show','HEAD:'+relative])
     assert container.load('pick_place_counter_to_cabinet',102) is None
@@ -273,7 +284,8 @@ def test_non_r5_workspace_bytes_golden(tmp_path):
     ('open_drawer','drawer','door_open_fraction',.949,False),
     ('open_drawer','drawer','door_open_fraction',.95,True),
     ('open_stand_mixer_head','stand_mixer','head',.99,False),
-    ('open_stand_mixer_head','stand_mixer','head',.991,True)])
+    # v2: the head must also be released (no gripper contact, unpublished) -> never passes on public evidence alone
+    ('open_stand_mixer_head','stand_mixer','head',.991,False)])
 def test_fixture_fraction_boundaries(task,reference,field,value,passed):
     state={field:({'door':value} if 'fraction' in field else value)}
     assert fixture.check(fixture.load(task,101),{'fixtures':[dict(task_reference=reference,state=state)]})['passed'] is passed

@@ -5,7 +5,12 @@ from pathlib import Path
 
 def native_evaluation(env, config):
     """Owner-only task evidence; never returned through the public SDK."""
-    value = {'evaluated': True, 'native_success': bool(env._check_success())}
+    if getattr(env, '_attentionbench_success', None):
+        # R5 fixture runs: either arm presses, both arms released, task fixes (fixture_success.py).
+        from .fixture_success import evaluate
+        value = {'evaluated': True, **evaluate(env)}
+    else:
+        value = {'evaluated': True, 'native_success': bool(env._check_success())}
     if config.get('execution_settings') and config['task_id'] == 'pick_place_counter_to_sink':
         from robocasa.utils import object_utils
         value['object_in_sink'] = bool(object_utils.obj_inside_of(env, 'obj', env.sink, partial_check=True))
@@ -74,6 +79,8 @@ def main():
         env.reset();validate_physical_model(env);configure_display_camera(env)
         fixture_condition=None
         if fixture_enabled(execution_settings):
+            from .fixture_success import install as install_success
+            install_success(env)
             from .fixture_contract import validate_reset
             fixture_condition=validate_reset(env,c,execution_settings)
         test_fixture_receipt=None

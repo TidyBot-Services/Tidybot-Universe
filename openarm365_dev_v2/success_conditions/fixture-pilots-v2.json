@@ -1,0 +1,11 @@
+{
+  "authority": "openarm365_dev_v2.fixture_success.evaluate(env) in native owner only (rule attentionbench-fixture-success-v2: either arm presses, both arms released)",
+  "profile": "r5-fixture-20261031",
+  "schema": "attentionbench.fixture-success-condition.v1",
+  "tasks": {
+    "open_cabinet": "Every cabinet door joint is open to at least 0.90 of its range.",
+    "open_drawer": "Every drawer door fraction is at least 0.95.",
+    "turn_off_stove": "The selected burner knob is outside the inclusive on interval [0.35, 2*pi - 0.35] radians after modulo 2*pi.",
+    "turn_on_microwave": "The microwave is on and each physical gripper (left and right) is more than 0.15 m from the start-button geometry origin. Both physical grippers (left and right) are checked: each must satisfy every gripper distance; a press by either gripper counts."
+  }
+}

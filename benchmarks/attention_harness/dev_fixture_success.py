@@ -8,8 +8,8 @@ import operator
 from pathlib import Path
 
 SCHEMA='attentionbench.success-condition.fixture.v1'
-RESOURCE=Path(__file__).resolve().parents[2]/'openarm365_dev_v2/success_conditions/fixture-public-v1.json'
-RESOURCE_SHA256='629dd2edfb7373e9ac562370818b07b72522c7ad117ab4675f2919877474197a'
+RESOURCE=Path(__file__).resolve().parents[2]/'openarm365_dev_v2/success_conditions/fixture-public-v2.json'
+RESOURCE_SHA256='690d038b3e7fdc584101bd46f4c93a0c81de7d0d8a646c5557d4f3d80d51fe8d'
 DEV_RULE='''docs/success_condition.json gives this fixture task's public predicates, exact comparison
 operators and thresholds. Apply every predicate to the settled final observation; distances
 use the listed physical gripper(s), WORLD metres and exact part position, not part extent.
@@ -24,8 +24,9 @@ success_condition.json gives the public fixture rule, not a verdict. For this ta
 `passed` may be true only when ALL predicates are established by settled final public
 evidence and no frame contradicts them. Read final_observation.json (or the supplied
 final_observation), its robot, perception.values (objects in one-call) and fixtures, and cite numeric values,
-exact operators and thresholds. Gripper names are physical: these rules require only
-left, the gripper used by these tasks. Part position is the geometry origin in WORLD
+exact operators and thresholds. Gripper names are physical: gripper-distance rules list
+both left and right, and every listed gripper must satisfy them (either hand still holding
+or touching fails); a press by either gripper counts. Part position is the geometry origin in WORLD
 metres, not its bounding-box centre. Missing fields or checks marked observable:false
 must be identified as unavailable, never silently counted as satisfied. Use false if
 the evidence cannot establish every requirement; state the missing check and reason.
@@ -41,7 +42,7 @@ def load(task_id,seed):
     if resource['schema']!=SCHEMA:raise ValueError('fixture_success_schema')
     value=copy.deepcopy(resource['tasks'][task_id])
     value.update(schema=SCHEMA,task_id=task_id,seed=seed,combination='all',
-        public_fields=['robot.robot0_left_eef_pos','perception.values.*_pos','fixtures[].state',
+        public_fields=['robot.robot0_left_eef_pos','robot.robot0_right_eef_pos','perception.values.*_pos','fixtures[].state',
                        'fixtures[].task_controls','fixtures[].interaction_parts[].position'])
     value['sha256']=digest(value)
     return value
