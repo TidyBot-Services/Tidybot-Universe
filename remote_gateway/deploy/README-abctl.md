@@ -27,6 +27,7 @@ abctl --by 你的名字 deploy 你的名字          # 上线
 abctl status              # 看状态
 abctl url                 # 网址
 abctl invite --days 7     # 邀请码
+abctl emails              # 用户登录时填的邮箱
 abctl rollback            # 退回上一版
 ```
 

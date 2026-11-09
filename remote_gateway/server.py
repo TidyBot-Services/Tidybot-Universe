@@ -163,6 +163,15 @@ class Gateway:
             except Exception as error:print('dispatch error:', type(error).__name__, file=sys.stderr, flush=True)
 
 
+EMAIL = re.compile(r'[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}')
+
+
+def valid_email(value):
+    """A plain address (name@domain.tld), lower-cased; None otherwise. Nothing is sent to it."""
+    value = value.strip().lower()
+    return value if len(value) <= 254 and EMAIL.fullmatch(value) else None
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = 'gateway'
     sys_version = ''
@@ -276,12 +285,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def login(self, parts):
         if self.command == 'GET':
-            failed = parse_qs(parts.query).get('failed') == ['1']
-            return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', 'That code is not valid.' if failed else '').encode(), 'text/html; charset=utf-8',
+            failed = parse_qs(parts.query).get('failed', [''])[0]
+            message = {'1': 'That code is not valid.', 'email': 'Enter a valid email address.'}.get(failed, '')
+            return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', message).encode(), 'text/html; charset=utf-8',
                                    headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         if self.command != 'POST':raise UNOWNED
         address = self.client_ip()
-        code = parse_qs(self.read_body(1024).decode(errors='replace'), max_num_fields=2).get('code', [''])[0].strip()
+        form = parse_qs(self.read_body(1024).decode(errors='replace'), max_num_fields=3)
+        code = form.get('code', [''])[0].strip()
+        # 11-09 (user): an email is required. It is checked before the code, so a code is never bound to a person without one.
+        email = valid_email(form.get('email', [''])[0])
+        if email is None:return self.redirect('/login?failed=email')
         # Check and record together: concurrent guesses must not all pass the last available failure slot.
         with self.gateway.rate.login_lock:
             if not self.gateway.rate.login_allowed(address, code):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)
@@ -289,6 +303,7 @@ class Handler(BaseHTTPRequestHandler):
             if user is None:self.gateway.rate.login_failed(address, code)
         if user is None:
             return self.redirect('/login?failed=1')
+        self.gateway.store.record_email(user, email)
         self.user = user
         config = self.gateway.config
         token, _ = self.gateway.store.new_session(user, hours=config.session_hours)

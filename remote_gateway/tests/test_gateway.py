@@ -90,8 +90,8 @@ class Browser:
         response = connection.getresponse();content = response.read();connection.close()
         return response.status, content, response
 
-    def login(self, code):
-        status, _, response = self.send('POST', '/login', raw=urlencode(dict(code=code)).encode(), headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    def login(self, code, email='tester@upenn.edu'):
+        status, _, response = self.send('POST', '/login', raw=urlencode(dict(code=code, email=email)).encode(), headers={'Content-Type': 'application/x-www-form-urlencoded'})
         cookie = response.getheader('Set-Cookie')
         if cookie:
             self.cookie = cookie.split(';')[0]
@@ -148,6 +148,26 @@ def test_login_page_carries_no_script_and_a_tight_policy(world):
     status, content, response = Browser(world.port).send('GET', '/login')
     assert status == 200 and b'<script' not in content and b'name="code"' in content
     assert "default-src 'none'" in response.getheader('Content-Security-Policy')
+
+
+def test_login_needs_an_email_and_keeps_it_out_of_every_page(world):
+    """11-09 (user): login asks for an email and stores it; the code is not bound without one; no page or log shows it."""
+    store = world.gateway.gateway.store
+    _, code = store.create_invite()
+    for bad in ('', 'not-an-email', 'a@b', 'x' * 250 + '@upenn.edu'):
+        status, response = Browser(world.port).login(code, email=bad)
+        assert status == 303 and response.getheader('Location') == '/login?failed=email', bad
+    assert all(row['user_id'] is None for row in store.invites()), 'a refused login binds the code to nobody'
+    status, content, _ = Browser(world.port).send('GET', '/login?failed=email')
+    assert b'Enter a valid email address.' in content and b'name="email"' in content and b'type="email"' in content
+    browser = Browser(world.port)
+    assert browser.login(code, email='  Ada@UPenn.edu ')[1].getheader('Location') == '/ui/'
+    assert Browser(world.port).login(code, email='ada.other@upenn.edu')[1].getheader('Location') == '/ui/'
+    rows = store.emails()
+    assert {r['email'] for r in rows} == {'ada@upenn.edu', 'ada.other@upenn.edu'} and len({r['user_id'] for r in rows}) == 1
+    assert rows[0]['nickname'], 'listed with the public name, for the operator'
+    audit = (world.gateway.gateway.config.state_dir/'audit.jsonl')
+    assert not audit.exists() or b'upenn.edu' not in audit.read_bytes().lower(), 'the audit log never holds an address'
 
 
 def test_wrong_codes_are_refused_then_limited(world):

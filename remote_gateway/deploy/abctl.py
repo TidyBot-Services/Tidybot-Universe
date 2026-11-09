@@ -191,6 +191,11 @@ def cmd_invite(cfg, args):
     say(f'site: {public_url(cfg)}')
 
 
+def cmd_emails(cfg, args):
+    """The email each person logged in with (operator only; no page shows them)."""
+    say(out([sys.executable, '-B', '-m', 'remote_gateway', '--config', str(cfg['gateway_json']), 'emails'], cwd=cfg['live'].resolve()) or '(none yet)')
+
+
 def cmd_pause(cfg, args):
     cfg['stop_file'].touch();say('new runs paused; runs already going continue')
 
@@ -469,7 +474,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog='abctl', description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--by', help='your name for the deploy log (default: $ABCTL_USER or the login name)')
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('status', 'doctor', 'url', 'pause', 'resume', 'releases'):sub.add_parser(name)
+    for name in ('status', 'doctor', 'url', 'pause', 'resume', 'releases', 'emails'):sub.add_parser(name)
     sub.add_parser('invite').add_argument('--days', type=int, default=1)
     logs = sub.add_parser('logs');logs.add_argument('service', help='test | campus | gateway | tunnel');logs.add_argument('-n', '--lines', type=int, default=80)
     sub.add_parser('test').add_argument('ref')

@@ -82,8 +82,8 @@ def request(app, method, path, value=None, *, headers=None, peer='127.0.0.1', ra
     return result
 
 
-def login(app, code, **kwargs):
-    return request(app, 'POST', '/login', raw=urlencode(dict(code=code)).encode(), **kwargs)
+def login(app, code, email='tester@upenn.edu', **kwargs):
+    return request(app, 'POST', '/login', raw=urlencode(dict(code=code, email=email)).encode(), **kwargs)
 
 
 def person(app):

@@ -34,6 +34,7 @@ h1 span{display:block}h1 span+span{color:var(--fill)}
 form{position:relative;display:grid;gap:14px;padding:30px;border:1px solid var(--line);border-radius:18px;background:#14181dd9;box-shadow:0 30px 70px -30px #000,inset 0 1px #ffffff14;backdrop-filter:blur(8px)}
 h2{margin:0;font:700 34px/1 "Barlow Condensed",Impact,sans-serif;letter-spacing:.03em;text-transform:uppercase}
 form p{margin:0;font-size:15px;color:var(--muted)}
+.note{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
 label{display:grid;gap:7px;margin-top:6px;font:600 12px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 input{width:100%;min-height:54px;padding:10px 14px;border:1px solid #ffffff33;border-radius:10px;background:#0d0f12;color:var(--ink);font:500 18px "IBM Plex Mono",monospace;letter-spacing:.04em;transition:border-color .16s,box-shadow .16s}
 input:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 3px #ec6a4340}
@@ -52,8 +53,10 @@ strong{padding:9px 12px;border:1px solid #e2604f88;border-radius:10px;background
 <section class="brand"><p class="eyebrow"><i aria-hidden="true"></i>LIVE ROBOT RUNS · IN SIMULATION</p>
 <h1><span>Tidybot</span><span>AttentionBench</span></h1>
 <p class="lead">Watch an AI teach a robot to work, and step in when it asks for help.</p></section>
-<form method="post" action="/login"><h2>Invite only</h2><p>Enter your invite code to start a run.</p>
-<label>Invite code<input name="code" autocomplete="off" spellcheck="false" required autofocus></label>
+<form method="post" action="/login"><h2>Invite only</h2><p>Enter your email and invite code to start a run.</p>
+<label>Email<input name="email" type="email" autocomplete="email" maxlength="254" spellcheck="false" required autofocus></label>
+<label>Invite code<input name="code" autocomplete="off" spellcheck="false" required></label>
+<p class="note">We keep your email only to reach you about your runs. Other people never see it.</p>
 <strong role="alert">__MESSAGE__</strong><button type="submit">Continue<span aria-hidden="true">→</span></button>
 <p class="watch">No code yet?<a href="/ui/">Watch the runs →</a></p></form>
 </body></html>

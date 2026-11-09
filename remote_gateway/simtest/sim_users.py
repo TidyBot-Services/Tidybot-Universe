@@ -198,6 +198,7 @@ class Person:
     async def login(self):
         async with self.step('登录'):
             await self.page.goto(self.settings.base + '/login')
+            await self.page.fill('input[name=email]', f'sim-{self.code[:6].lower()}@example.org')
             await self.page.fill('input[name=code]', self.code)
             await self.page.click('button[type=submit]')
             await self.page.wait_for_url('**/ui/**', timeout=15000)
@@ -206,6 +207,7 @@ class Person:
         async with self.step('输入错误邀请码'):
             self.expected.append((303, '/login'))
             await self.page.goto(self.settings.base + '/login')
+            await self.page.fill('input[name=email]', 'sim-wrong@example.org')
             await self.page.fill('input[name=code]', 'not-a-real-code')
             await self.page.click('button[type=submit]')
             await self.page.wait_for_url('**/login?failed=1', timeout=10000)

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import secrets
 import threading
+import time
 
 from .config import load
 from .store import Store
@@ -18,6 +19,7 @@ def main():
     invite = commands.add_parser('invite', help='print a new invite code, once')
     invite.add_argument('--days', type=int, default=14)
     commands.add_parser('invites', help='list invites, without their codes')
+    commands.add_parser('emails', help='list the email each person logged in with (operator only)')
     for name, field in (('revoke-invite', 'invite'), ('revoke-user', 'user')):commands.add_parser(name).add_argument(field)
     commands.add_parser('pause', help='refuse new runs; running ones continue')
     commands.add_parser('resume', help='accept new runs again')
@@ -52,6 +54,9 @@ def main():
             print(f'{invite_id} {code}')
         elif args.command == 'invites':
             for row in store.invites():print(row)
+        elif args.command == 'emails':
+            for row in store.emails():
+                print(f"{row['nickname'] or row['user_id']}\t{row['email']}\tfirst {time.strftime('%Y-%m-%d %H:%M', time.localtime(row['first_seen']))}\tlast {time.strftime('%Y-%m-%d %H:%M', time.localtime(row['last_seen']))}")
         elif args.command == 'revoke-invite':
             print('revoked' if store.revoke_invite(args.invite) else 'no such invite')
         elif args.command == 'revoke-user':

@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, user_id TEXT NO
 CREATE TABLE IF NOT EXISTS runs(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, host_id TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS runs_user ON runs(user_id);
 CREATE TABLE IF NOT EXISTS queue(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, queued_at REAL NOT NULL);
+-- 11-09 (user): every login gives an email; each address a person used is kept with when it was first and last used.
+CREATE TABLE IF NOT EXISTS user_emails(user_id TEXT NOT NULL, email TEXT NOT NULL, first_seen REAL NOT NULL, last_seen REAL NOT NULL, PRIMARY KEY(user_id, email));
 CREATE TABLE IF NOT EXISTS start_failures(experiment_id TEXT PRIMARY KEY, message TEXT NOT NULL, failed_at REAL NOT NULL);
 '''
 
@@ -75,6 +77,17 @@ class Store:
             db.execute('INSERT INTO users VALUES(?,?,NULL)', (user_id, now))
             db.execute('UPDATE invites SET user_id=? WHERE id=?', (user_id, row['id']))
             return user_id
+
+    def record_email(self, user_id, email):
+        now = self.clock()
+        with self.tx() as db:
+            db.execute('INSERT INTO user_emails VALUES(?,?,?,?) ON CONFLICT(user_id, email) DO UPDATE SET last_seen=excluded.last_seen', (user_id, email, now, now))
+
+    def emails(self):
+        """Every address with its person's public name, newest use first. For the operator only: no page shows them."""
+        names = self.nicknames()
+        with self.tx() as db:rows = db.execute('SELECT * FROM user_emails ORDER BY last_seen DESC').fetchall()
+        return [dict(user_id=r['user_id'], nickname=names.get(r['user_id']), email=r['email'], first_seen=r['first_seen'], last_seen=r['last_seen']) for r in rows]
 
     def revoke_user(self, user_id):
         with self.tx() as db:
