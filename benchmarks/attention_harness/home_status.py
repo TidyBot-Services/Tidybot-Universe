@@ -201,14 +201,16 @@ def readiness(probe, quota, failures, disk_root):
 
 
 def scenes(rows, dev_root, limit=4):
-    """Cover backdrops: the newest overview of each task, then other camera views of the newest run."""
+    """Cover backdrops: the newest frame of each task, then the newest run's top view.
+    11-10 (user): the side view comes first when a run recorded it. It is a ~90 KB JPEG, where the overview is a ~1.4 MB PNG
+    the cover waits for in full, so on a slow link the cover stayed black."""
     out, seen = [], set()
     for row in rows:
         if row['task_id'] not in seen and scene_image(row, dev_root):
-            seen.add(row['task_id']); out.append({'experiment_id': row['experiment_id'], 'view': 'overview'})
+            seen.add(row['task_id']); out.append({'experiment_id': row['experiment_id'], 'view': 'side' if scene_image(row, dev_root, 'side') else 'overview'})
     newest = next((r for r in rows if scene_image(r, dev_root)), None)
-    if newest:
-        out += [{'experiment_id': newest['experiment_id'], 'view': v} for v in ('side', 'top') if scene_image(newest, dev_root, v)]
+    if newest and scene_image(newest, dev_root, 'top'):
+        out.append({'experiment_id': newest['experiment_id'], 'view': 'top'})
     return out[:limit]
 
 

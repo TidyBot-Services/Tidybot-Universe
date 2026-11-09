@@ -94,8 +94,8 @@ def test_scenes_take_the_newest_frame_of_each_task_and_refuse_unlisted_runs(tmp_
             fake_row(tmp_path, 'devexp-c', task='open_cabinet', created=now - 30, scene=True), fake_row(tmp_path, 'devexp-d', task='counter_to_sink', created=now - 40)]
     side = tmp_path / 'devexp-a' / 'cells' / 'cell-old' / 'v1' / 'executions' / 'ep' / 'recording_views' / 'side' / '000000.jpg'
     side.parent.mkdir(parents=True);side.write_bytes(b'jpg')
-    assert home.scenes(rows, tmp_path) == [{'experiment_id': 'devexp-a', 'view': 'overview'}, {'experiment_id': 'devexp-c', 'view': 'overview'},
-                                           {'experiment_id': 'devexp-a', 'view': 'side'}]
+    assert home.scenes(rows, tmp_path) == [{'experiment_id': 'devexp-a', 'view': 'side'}, {'experiment_id': 'devexp-c', 'view': 'overview'}], \
+        'the light JPEG side view first where it exists (11-10)'
     assert home.scene_for(rows, tmp_path, 'devexp-c').name == 'camera_initial.png'
     assert home.scene_for(rows, tmp_path, 'devexp-a', 'side').name == '000000.jpg'
     assert home.scene_for(rows, tmp_path, 'devexp-zzz') is None and home.scene_for(rows, tmp_path, 'devexp-a', '../../etc') is None
