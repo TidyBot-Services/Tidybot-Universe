@@ -2645,6 +2645,22 @@ circle.op-agent-trial{stroke:#f8f6f0;stroke-width:2}
 #attentionbench-clear .lb-readonly .lb-readonly-text small:last-child{font-size:12px;color:#4a5560}
 #attentionbench-clear .lb-readonly .lb-back{margin-left:auto;padding:8px 14px;border:0;border-radius:999px;background:#c44420;color:#ffffff;font:600 13px var(--body,inherit);cursor:pointer}
 #attentionbench-clear .lb-readonly .lb-mine-run+.lb-back{margin-left:0}
+/* 11-10 (user) flat run list: Task / Who chips, sections, one card per run with task and seed under the name. */
+#attentionbench-clear .ab-flat-controls{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+#attentionbench-clear .ab-chip-label{font:600 10.5px var(--body,inherit);letter-spacing:.1em;text-transform:uppercase;color:#686e64}
+#attentionbench-clear .ab-chips{display:flex;flex-wrap:wrap;gap:6px}
+#attentionbench-clear .ab-chip,#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip{padding:5px 11px;border:1px solid #c9c6ba;border-radius:999px!important;background:#ffffff;color:#242822;font:600 12.5px var(--body,inherit);cursor:pointer}
+#attentionbench-clear .ab-chip i{font-style:normal;color:#686e64;font-weight:500}
+#attentionbench-clear .ab-chip[aria-pressed="true"],#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"]{background:#242822;border-color:#242822;color:#ffffff}
+#attentionbench-clear .ab-chip[aria-pressed="true"] i,#attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"] i{color:#d9d7cf}
+#attentionbench-clear .ab-list-more{margin-top:8px;font-size:12.5px;color:#686e64}
+#attentionbench-clear .ab-list-more>summary{cursor:pointer}
+#attentionbench-clear .ab-list-more[open]>summary{margin-bottom:8px}
+#attentionbench-clear .ab-list-more .ab-chips{margin-top:8px}
+#attentionbench-clear .ab-flat-h{display:flex;justify-content:space-between;gap:8px;margin:12px 2px 6px;font:600 10.5px var(--body,inherit);letter-spacing:.1em;text-transform:uppercase;color:#686e64}
+#attentionbench-clear .ab-flat-h[data-flat-section="mine"]{color:#a2361a}
+#attentionbench-clear .ab-flat-task b{color:#48683b}
+#attentionbench-clear .ab-run-sub{display:block;margin:2px 0 4px;font-size:12.5px;color:#4a5048;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #attentionbench-clear .lb-prov code{font:500 12px var(--mono,ui-monospace,monospace);color:#242822}
 #attentionbench-clear .lb-share{display:grid;gap:4px;margin-top:14px;padding-top:12px;border-top:1px solid #e3dfd3}
 #attentionbench-clear .lb-share small{color:#686e64}
@@ -3581,6 +3597,16 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-readonly .lb-readonly-chip{background:none;color:#80acdb}
 #attentionbench-clear[data-theme="dark"] .lb-readonly .lb-readonly-text small:last-child{color:#b1b6bd}
 #attentionbench-clear[data-theme="dark"] .lb-readonly .lb-back{border:0;background:#eb9b84;color:#ffffff}
+#attentionbench-clear[data-theme="dark"] .ab-chip-label{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-chip,#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip{border:1px solid #34383d;background:#23272c;color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] .ab-chip i{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-chip[aria-pressed="true"],#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#15171a}
+#attentionbench-clear[data-theme="dark"] .ab-chip[aria-pressed="true"] i,#attentionbench-clear[data-theme="dark"][data-operator-view="true"] .ab-sidebar .ab-chip[aria-pressed="true"] i{color:#545b63}
+#attentionbench-clear[data-theme="dark"] .ab-list-more{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-flat-h{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .ab-flat-h[data-flat-section="mine"]{color:#e88b72}
+#attentionbench-clear[data-theme="dark"] .ab-flat-task b{color:#58b583}
+#attentionbench-clear[data-theme="dark"] .ab-run-sub{color:#bcbfc3}
 #attentionbench-clear[data-theme="dark"] .lb-prov code{color:#ecebe6}
 #attentionbench-clear[data-theme="dark"] .lb-share{border-top:1px solid #282b2f}
 #attentionbench-clear[data-theme="dark"] .lb-share small{color:#a3a199}
