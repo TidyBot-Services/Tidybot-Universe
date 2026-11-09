@@ -22,8 +22,8 @@ An NVIDIA driver older than 570.124.06 gives a warning, and the planner proof on
 | `bwrap` sandbox | Works by default | Needs the one-time AppArmor change below |
 | Planner chain and GPU build proof | Verified (RTX 5070 Ti, sm_120, driver 580.178.04) | Verified (RTX 5090, sm_120, driver 580.126.09) |
 | `run.sh` agent run | Verified with Codex | Verified with PARCC |
-| Own-key and PARCC routes through `run.sh` | Not verified yet | PARCC verified; own key not verified yet |
-| Docker appendix | Verified on a 22.04 host | Not verified; use the AppArmor 4 profile named there |
+| Own-key and PARCC routes through `run.sh` | PARCC verified in a clean container; own key not verified yet | PARCC verified; own key not verified yet |
+| Docker appendix | Verified on a 22.04 host | Verified on a 24.04 host; use the AppArmor 4 profile named there |
 
 The UI, simulator and cuRobo environments bring their own Python, compiler and CUDA toolchain, so the system Python (3.10 on 22.04, 3.12 on 24.04) only starts `setup.sh`. `uv` must be allowed to download Python 3.10 and 3.11; `setup.sh` checks this.
 
@@ -108,7 +108,7 @@ Keep the path under 90 bytes, without spaces, `:` or `#`; `setup.sh` checks this
 
 Dev needs tool calls and streaming, Eval needs both too, and the Advisor needs plain chat. Eval and Advisor should read images. **A model that cannot read images still runs, with a warning:** `run.sh` prints `Eval did not see images`, the summary lists it under `warnings`, and the run page says so. That agent is sent text in place of each image, so its judgement rests on text alone. If a route's default Eval or Advisor model is down, `run.sh` falls back to Dev's model and says so. Own-key runs have a time limit but no spending limit, so check your provider's billing.
 
-On `parcc`, the first call to `parcc/Qwen` can take over a minute while the model wakes, so a first `verify.sh` may report `advisor parcc/Qwen: failed` with `TimeoutError`. Run it again. `parcc/GLM` runs and records video, but in our 20-minute and 90-minute runs it never submitted a version on its own.
+On `parcc`, the first call to `parcc/Qwen` can take over a minute while the model wakes. If it does not answer, `verify.sh` says so and passes, and `run.sh` uses `parcc/GLM` as the Advisor, which reads text only. `parcc/GLM` runs and records video, but in our 20-minute and 90-minute runs it never submitted a version on its own.
 
 Memory validation runs still need the `codex` route.
 
@@ -155,6 +155,6 @@ Docker is optional. Inside Docker the agent's `bwrap` sandbox needs user namespa
 2. Generate a GPU CDI spec without the `disable-device-node-modification` hook (needs root to install): `nvidia-ctk cdi generate --vendor attentionbench.local --class gpu --disable-hook disable-device-node-modification --output attentionbench-gpu.yaml`, then `sudo mkdir -p /etc/cdi && sudo cp attentionbench-gpu.yaml /etc/cdi/`. NVIDIA Container Toolkit 1.17 has no `--disable-hook` option and no such hook, so leave that option out there. With `--gpus all`, or with the default CDI spec, NVIDIA mounts files over `/proc/driver/nvidia`; the kernel then refuses a new `/proc` inside a user namespace (`bwrap: Can't mount proc on /newroot/proc: Operation not permitted`).
 3. Start the container with `--device attentionbench.local/gpu=all --security-opt seccomp=config/attentionbench/docker/bwrap-seccomp.json --security-opt apparmor=attentionbench-bwrap --security-opt systempaths=unconfined`. The seccomp profile is Docker's default plus `unshare`, `clone`/`clone3` with namespace flags, `mount`, `umount2`, `pivot_root` and `setns`; `systempaths=unconfined` only removes Docker's masking of `/proc` paths. `--privileged` is not needed.
 
-On a 24.04 host, load `config/attentionbench/docker/attentionbench-bwrap-2404.apparmor` in step 1 instead. It adds the AppArmor 4 `userns` rule that the host restriction requires, and it has not been verified yet. The CDI steps are expected to be the same.
+On a 24.04 host, load `config/attentionbench/docker/attentionbench-bwrap-2404.apparmor` in step 1 instead. It adds the AppArmor 4 `userns` rule that the host restriction requires. Verified 2026-11-07 on a 24.04 host (Docker 29.1.1, NVIDIA Container Toolkit 1.17.8) with clean Ubuntu 22.04 and 24.04 containers. The CDI steps are the same.
 
 `doctor` checks this with a `bwrap` namespace probe (`isolation`).
