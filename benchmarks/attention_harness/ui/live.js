@@ -2460,19 +2460,26 @@
   // Run configuration as a wizard (11-10): one step on screen at a time, Next / Back in the footer,
   // Start run only on the last step. Sections keep their markup; a step hides the others with .wz-off.
   const LAUNCH_WIZARD_STEPS=[
-    {key:'task',label:'Task',sections:['what']},
-    {key:'help',label:'Help',sections:['help']},
-    {key:'models',label:'Models',sections:['models','reviewer']},
-    {key:'limits',label:'Limits',sections:['limits','advanced']},
+    {key:'task',label:'Task',note:'Task and starting scene',sections:['what']},
+    {key:'help',label:'Help',note:'Who helps, and when',sections:['help']},
+    {key:'models',label:'Models',note:'Agents, keys and review',sections:['models','reviewer']},
+    {key:'start',label:'Start',note:'Name, limits and queue',sections:['name','limits','advanced']},
   ];
   function bindLaunchWizard(dialog,form){
     const body=form.querySelector('.ab-launch-body'),actions=form.querySelector('.ab-launch-actions');
     if(!body||!actions)return;
+    // Step 1 is the picker alone (11-10): Session type decides who answers help, so it joins Help;
+    // the name suffix joins Start; Robot is set by the task and already shows in the footer summary.
+    const field=name=>form.elements.namedItem(name)?.closest?.('label');
+    const mode=field('v2_mode'),helpCount=field('help_count');if(mode&&helpCount)helpCount.before(mode);
+    field('robot_model')?.classList.add('wz-hide');
+    const suffix=field('name_suffix'),limitsSection=body.querySelector('[data-run-config-section="limits"]');
+    if(suffix&&limitsSection){const sec=document.createElement('section');sec.className='ab-launch-section';sec.dataset.runConfigSection='name';sec.innerHTML='<div class="ab-run-section-head"><h4>Run name</h4><small>How this run is listed. The task name comes first.</small></div><div class="ab-launch-grid"></div>';sec.querySelector('.ab-launch-grid').append(suffix);limitsSection.before(sec);}
     const stepOf=new Map();LAUNCH_WIZARD_STEPS.forEach((step,i)=>step.sections.forEach(name=>stepOf.set(name,i)));
     // Every body child joins a step: a section by its name, anything else (notices, queue) the step before it.
     let current=0;const parts=[...body.children].map(el=>{const i=stepOf.get(el.dataset?.runConfigSection);if(i!==undefined)current=i;return [el,current];});
     const nav=document.createElement('nav');nav.className='wz-steps';nav.setAttribute('aria-label','Run configuration steps');
-    nav.innerHTML=LAUNCH_WIZARD_STEPS.map((step,i)=>`<button type="button" class="wz-step" data-wizard-go="${i}"><span class="wz-num">${i+1}</span><span>${esc(step.label)}</span></button>`).join('<span class="wz-line" aria-hidden="true"></span>');
+    nav.innerHTML=LAUNCH_WIZARD_STEPS.map((step,i)=>`<button type="button" class="wz-step" data-wizard-go="${i}"><span class="wz-bar" aria-hidden="true"></span><span class="wz-k">Step ${i+1}</span><b>${esc(step.label)}</b><small>${esc(step.note)}</small></button>`).join('');
     dialog.querySelector('.ab-launch-header')?.after(nav);
     const back=document.createElement('button');back.type='button';back.className='ab-button-quiet';back.dataset.wizardBack='';back.textContent='Back';
     const next=document.createElement('button');next.type='button';next.className='ab-button-primary';next.dataset.wizardNext='';
