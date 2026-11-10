@@ -90,8 +90,9 @@ class Browser:
         response = connection.getresponse();content = response.read();connection.close()
         return response.status, content, response
 
-    def login(self, code, email='tester@upenn.edu'):
-        status, _, response = self.send('POST', '/login', raw=urlencode(dict(code=code, email=email)).encode(), headers={'Content-Type': 'application/x-www-form-urlencoded'})
+    def login(self, code, email='tester@upenn.edu', name=None):
+        form = dict(code=code, email=email, **({'name': name} if name is not None else {}))
+        status, _, response = self.send('POST', '/login', raw=urlencode(form).encode(), headers={'Content-Type': 'application/x-www-form-urlencoded'})
         cookie = response.getheader('Set-Cookie')
         if cookie:
             self.cookie = cookie.split(';')[0]
@@ -661,3 +662,28 @@ def test_a_finished_agent_run_that_succeeded_reads_solved_in_the_lobby():
     assert (card['state'], card['result']) == ('finished', 'solved')
     card = policy._card(dict(row, reason='budget_exhausted'), nickname='Fox-11', mine=False, position=None, eta=None, limits=Limits())
     assert (card['state'], card['result']) == ('finished', 'failed')
+
+
+def test_login_name_is_optional_unique_and_becomes_the_public_name(world):
+    """11-10 (user): people may put in a name at login so others know who is who."""
+    store = world.gateway.gateway.store
+    _, ada = store.create_invite();_, bob = store.create_invite();_, cy = store.create_invite()
+    status, content, _ = Browser(world.port).send('GET', '/login')
+    assert b'name="name"' in content and b'maxlength="32"' in content
+    for bad in ('<script>', 'x' * 33, '...', 'a\u00b7b'):
+        status, response = Browser(world.port).login(ada, name=bad)
+        assert status == 303 and response.getheader('Location') == '/login?failed=name', bad
+    assert all(row['user_id'] is None for row in store.invites()), 'a refused name binds the code to nobody'
+    assert Browser(world.port).login(ada, name='  Ada   Lovelace ')[1].getheader('Location') == '/ui/home.html'
+    ada_id = next(r['user_id'] for r in store.invites() if r['user_id'])
+    assert store.nicknames()[ada_id] == 'Ada Lovelace'
+    assert Browser(world.port).login(bob, name='ada lovelace')[1].getheader('Location') == '/login?failed=name_taken'
+    assert Browser(world.port).login(bob)[1].getheader('Location') == '/ui/home.html', 'blank keeps the default'
+    bob_id = next(uid for uid in store.nicknames() if uid != ada_id)
+    animal = store.nicknames()[bob_id]
+    assert Browser(world.port).login(cy, name=animal.upper())[1].getheader('Location') == '/login?failed=name_taken', 'nobody takes an existing animal name'
+    assert Browser(world.port).login(ada)[1].getheader('Location') == '/ui/home.html' and store.nicknames()[ada_id] == 'Ada Lovelace', 'blank keeps the chosen name'
+    assert Browser(world.port).login(ada, name='Ada')[1].getheader('Location') == '/ui/home.html' and store.nicknames()[ada_id] == 'Ada'
+    assert any(r['nickname'] == 'Ada' for r in store.emails()), 'the operator email list shows the chosen name'
+    status, content, _ = Browser(world.port).send('GET', '/login?failed=name_taken')
+    assert b'Someone else already uses that name.' in content

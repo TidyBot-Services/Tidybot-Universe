@@ -180,6 +180,16 @@ def valid_email(value):
     return value if len(value) <= 254 and EMAIL.fullmatch(value) else None
 
 
+NAME = re.compile(r"[\w .'-]{1,32}")
+
+
+def valid_name(value):
+    """A public name: 1-32 letters, digits, spaces, . _ ' -, with at least one letter or digit; '' when left blank; None if not allowed."""
+    value = ' '.join(value.split())
+    if not value:return ''
+    return value if NAME.fullmatch(value) and any(ch.isalnum() for ch in value) else None
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = 'gateway'
     sys_version = ''
@@ -295,16 +305,21 @@ class Handler(BaseHTTPRequestHandler):
     def login(self, parts):
         if self.command == 'GET':
             failed = parse_qs(parts.query).get('failed', [''])[0]
-            message = {'1': 'That code is not valid.', 'email': 'Enter a valid email address.'}.get(failed, '')
+            message = {'1': 'That code is not valid.', 'email': 'Enter a valid email address.',
+                       'name': 'Use up to 32 letters, numbers, spaces and . _ \' - for your name.',
+                       'name_taken': 'Someone else already uses that name. Pick another.'}.get(failed, '')
             return self.send_bytes(LOGIN_PAGE.replace('__MESSAGE__', message).encode(), 'text/html; charset=utf-8',
                                    headers={'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
         if self.command != 'POST':raise UNOWNED
         address = self.client_ip()
-        form = parse_qs(self.read_body(1024).decode(errors='replace'), max_num_fields=3)
+        form = parse_qs(self.read_body(1024).decode(errors='replace'), max_num_fields=4)
         code = form.get('code', [''])[0].strip()
         # 11-09 (user): an email is required. It is checked before the code, so a code is never bound to a person without one.
         email = valid_email(form.get('email', [''])[0])
         if email is None:return self.redirect('/login?failed=email')
+        # 11-10 (user): an optional public name, so people know who is who. Blank keeps the current one.
+        name = valid_name(form.get('name', [''])[0])
+        if name is None:return self.redirect('/login?failed=name')
         # Check and record together: concurrent guesses must not all pass the last available failure slot.
         with self.gateway.rate.login_lock:
             if not self.gateway.rate.login_allowed(address, code):raise policy.Refused('too_many_logins', 'Too many attempts. Try again later.', 429)
@@ -312,6 +327,7 @@ class Handler(BaseHTTPRequestHandler):
             if user is None:self.gateway.rate.login_failed(address, code)
         if user is None:
             return self.redirect('/login?failed=1')
+        if name and not self.gateway.store.set_name(user, name):return self.redirect('/login?failed=name_taken')
         self.gateway.store.record_email(user, email)
         self.user = user
         config = self.gateway.config
