@@ -2460,10 +2460,10 @@
   // Run configuration as a wizard (11-10): one step on screen at a time, Next / Back in the footer,
   // Start run only on the last step. Sections keep their markup; a step hides the others with .wz-off.
   const LAUNCH_WIZARD_STEPS=[
-    {key:'task',label:'Task',note:'Task and starting scene',sections:['what']},
-    {key:'help',label:'Help',note:'Who helps, and when',sections:['help']},
-    {key:'models',label:'Models',note:'Agents, keys and review',sections:['models','reviewer']},
-    {key:'start',label:'Start',note:'Name, limits and queue',sections:['name','limits','advanced']},
+    {key:'task',label:'Task',note:'Task and scene',sections:['what']},
+    {key:'help',label:'Help',note:'Who helps, when',sections:['help']},
+    {key:'models',label:'Models',note:'Agents and keys',sections:['models','reviewer']},
+    {key:'start',label:'Start',note:'Name and limits',sections:['name','limits','advanced']},
   ];
   function bindLaunchWizard(dialog,form){
     const body=form.querySelector('.ab-launch-body'),actions=form.querySelector('.ab-launch-actions');
@@ -2479,7 +2479,7 @@
     // Every body child joins a step: a section by its name, anything else (notices, queue) the step before it.
     let current=0;const parts=[...body.children].map(el=>{const i=stepOf.get(el.dataset?.runConfigSection);if(i!==undefined)current=i;return [el,current];});
     const nav=document.createElement('nav');nav.className='wz-steps';nav.setAttribute('aria-label','Run configuration steps');
-    nav.innerHTML=LAUNCH_WIZARD_STEPS.map((step,i)=>`<button type="button" class="wz-step" data-wizard-go="${i}"><span class="wz-bar" aria-hidden="true"></span><span class="wz-k">Step ${i+1}</span><b>${esc(step.label)}</b><small>${esc(step.note)}</small></button>`).join('');
+    nav.innerHTML=LAUNCH_WIZARD_STEPS.map((step,i)=>`<button type="button" class="wz-step" data-wizard-go="${i}"><span class="wz-n" aria-hidden="true" data-n="0${i+1}"></span><span class="wz-t"><b>${esc(step.label)}</b><small>${esc(step.note)}</small></span></button>`).join('');
     dialog.querySelector('.ab-launch-header')?.after(nav);
     const back=document.createElement('button');back.type='button';back.className='ab-button-quiet';back.dataset.wizardBack='';back.textContent='Back';
     const next=document.createElement('button');next.type='button';next.className='ab-button-primary';next.dataset.wizardNext='';
