@@ -784,12 +784,80 @@
   }
   function navigateRecord(id){
     if(!devSessions.some(d=>d.session_id===id)){navigateRun(id);return;}
+    if(runSwitch?.id===id&&!runSwitch.hidden&&!runSwitch.failed)return;  // 11-11: a second press on the run that is already opening does nothing
+    const switching=id!==selectedDev||!currentSnapshot;
     rememberRunView();selectedDev=id;selectedRequest=null;lastRendered='';
     const url=new URL(location.href);url.searchParams.delete('run');url.searchParams.set('dev',id);
     url.hash=devSessions.find(d=>d.session_id===id)?.experiment_id ? `exp=${devSessions.find(d=>d.session_id===id).experiment_id}` : '';
     history.replaceState(null,'',url);
     if(matchMedia('(max-width:760px)').matches){sidebarOpen=false;sidebarLayout();}
-    refresh();
+    if(!switching){refresh();return;}
+    renderSidebar();  // the pressed card is highlighted at once, before any data arrives
+    openRunFast(id);
+  }
+  // 11-11 (user): switching runs showed nothing for ~2 s (the whole run list reloaded first, and a press waited
+  // behind any refresh already going), so people pressed again. Now the card highlights at once, an "Opening run"
+  // layer covers the old run, and only the chosen run's own data loads; the run list refreshes afterwards.
+  let runSwitch=null;
+  function runSwitchLayer(){return document.querySelector('[data-run-switch]');}
+  function showRunSwitch(id){
+    const dev=devSessions.find(d=>d.session_id===id),rec=dev?devNavigationRecord(dev):null;
+    const name=rec?resolvedTask(rec)||rec.title||'':'';
+    clearInterval(runSwitch?.timer);
+    runSwitch={id,started:Date.now(),timer:null};
+    runSwitchLayer()?.remove();
+    const layer=document.createElement('div');layer.className='ab-run-switch';layer.dataset.runSwitch=id;
+    layer.setAttribute('role','status');layer.setAttribute('aria-live','polite');
+    layer.innerHTML=`<div class="ab-boot-scan" aria-hidden="true"></div><i class="ab-boot-corner tl" aria-hidden="true"></i><i class="ab-boot-corner tr" aria-hidden="true"></i><i class="ab-boot-corner bl" aria-hidden="true"></i><i class="ab-boot-corner br" aria-hidden="true"></i><div class="ab-boot-top"><span class="ab-boot-rec"><i aria-hidden="true"></i><span>OPENING RUN</span></span><span data-run-switch-time>0 s</span></div><div class="ab-boot-mid"><span class="ab-run-switch-who"></span><span class="ab-boot-word ab-run-switch-name"></span><span class="ab-boot-sub ab-run-switch-info">Loading run</span><span class="ab-boot-bar" aria-hidden="true"><i></i></span><div class="ab-run-switch-actions"><button type="button" data-run-switch-retry hidden>Retry</button><button type="button" data-run-switch-cancel>Keep browsing · Esc</button></div></div><div class="ab-boot-foot"><div class="ab-boot-lines"><span data-boot-state="ok"><b>ok</b>run selected</span><span data-boot-state="wait" data-run-switch-line><b>..</b>loading attempts, help and replay</span></div></div>`;
+    layer.querySelector('.ab-run-switch-name').textContent=name;
+    // 11-11 (user): the same facts as the run's card on the left: who ran it, its status, scene and progress.
+    const card=sidebar.querySelector(`[data-dev-session="${CSS.escape(id)}"]`)?.closest('article');
+    if(rec){  // same fields as the run card (sidebarFlatCard): who, status, seed, when, versions used/limit, policy
+      const c=rec.lobby,active=recordIsActive(rec);
+      const who=c?`${c.nickname}${c.mine?' (you)':''}`:customRunName(rec)||'';
+      const status=active?(c?.robot?.state==='executing'?'On the robot':c?.state==='waiting_human'?(c.mine?'Needs you':'Needs a person'):'Running'):recordStatus(rec);
+      layer.querySelector('.ab-run-switch-who').textContent=[who,status].filter(Boolean).join(' · ');
+      const ids=(rec.development?rec.policy_ids||[]:[rec.initial_policy]).filter(Boolean);
+      const used=Number(rec.attempts_used)||0,limit=Number(rec.attempts_limit)||0;
+      const when=relativeTime(rec.created_at??rec.started_at,shortRecordTime(rec));
+      layer.querySelector('.ab-run-switch-info').textContent=[rec.seed!=null?`Seed ${rec.seed}`:'',active?'':when,limit?`${used}/${limit} versions`:'',ids.length?policyShort(ids.at(-1)):''].filter(Boolean).join(' · ');
+    }
+    document.body.append(layer);
+    layer.querySelector('[data-run-switch-retry]').addEventListener('click',()=>{runSwitch=null;openRunFast(id,true);});
+    // The layer covers the screen, so it can always be put away: the run keeps loading and appears when it is ready.
+    const putAway=()=>{if(runSwitch?.id===id){clearInterval(runSwitch.timer);runSwitch={...runSwitch,timer:null,hidden:true};}layer.dataset.state='leaving';setTimeout(()=>layer.remove(),300);document.removeEventListener('keydown',onKey);};
+    const onKey=event=>{if(event.key==='Escape'&&layer.isConnected)putAway();};
+    layer.querySelector('[data-run-switch-cancel]').addEventListener('click',putAway);
+    document.addEventListener('keydown',onKey);
+    runSwitch.timer=setInterval(()=>{
+      const l=runSwitchLayer();if(!l||runSwitch?.id!==id){clearInterval(runSwitch?.timer);return;}
+      const sec=Math.round((Date.now()-runSwitch.started)/1000);l.querySelector('[data-run-switch-time]').textContent=`${sec} s`;
+      if(sec>=15&&!l.dataset.slow){l.dataset.slow='1';const line=l.querySelector('[data-run-switch-line]');line.lastChild.textContent='still loading after 15 s · the host may be busy';l.querySelector('[data-run-switch-retry]').hidden=false;}
+    },1000);
+  }
+  function endRunSwitch(id,error){
+    if(runSwitch?.id!==id)return;
+    const layer=runSwitchLayer();
+    if(error){
+      clearInterval(runSwitch.timer);runSwitch={...runSwitch,timer:null,failed:true};
+      if(!layer)return;
+      const line=layer.querySelector('[data-run-switch-line]');line.dataset.bootState='error';line.querySelector('b').textContent='!!';
+      line.lastChild.textContent=`could not open this run: ${error.message||String(error)}`;
+      layer.querySelector('[data-run-switch-retry]').hidden=false;
+      return;
+    }
+    clearInterval(runSwitch.timer);runSwitch=null;if(layer){layer.dataset.state='leaving';setTimeout(()=>layer.remove(),300);}
+  }
+  async function openRunFast(id,retry=false){
+    if(!retry||!runSwitchLayer())showRunSwitch(id);
+    else{runSwitch={id,started:Date.now(),timer:null};showRunSwitch(id);}
+    const dev=devSessions.find(d=>d.session_id===id&&!d.history_deleted_at);
+    try{
+      if(!dev)throw new Error('this run is no longer listed');
+      await updateDevSnapshot(dev);
+      if(selectedDev===id){connectionState(true);endRunSwitch(id);}
+    }catch(error){if(selectedDev===id)endRunSwitch(id,error);}
+    refresh();  // the run list catches up afterwards
   }
   function navigateRun(id){selectedDev=null;selectRun(id);lastRendered='';if(matchMedia('(max-width:760px)').matches){sidebarOpen=false;sidebarLayout();}refresh();}
   async function changeHistory(kind,id,deleted){
@@ -6448,13 +6516,24 @@
     return snapshot;
   }
 
+  // 11-11: one request per run view at a time. The host can take 20+ s to build a view while runs are going;
+  // a run switch and a background refresh share that one answer instead of asking twice.
+  const cellViewFetches=new Map();
+  function fetchCellView(url){
+    if(!cellViewFetches.has(url)){
+      const pending=fetch(url,{cache:'no-store'}).then(async response=>{if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);return response.json();})
+        .finally(()=>cellViewFetches.delete(url));
+      cellViewFetches.set(url,pending);
+    }
+    return cellViewFetches.get(url).then(cell=>structuredClone(cell));
+  }
   async function updateV2Snapshot(s) {
     const cellBase=`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}/cells/${encodeURIComponent(s.key)}`;
     const ended=agentTerminalFetch.get(s.key);
     if(ended && !s.lobby && Date.now()-ended<30000 && currentSnapshot?.agent && currentSnapshot?.dev_v2?.key===s.key)return;
-    const response=await fetch(`${cellBase}/view`,{cache:'no-store'});
-    if(!response.ok)throw new Error(`Dev v2 HTTP ${response.status}`);
-    const cell=await response.json();if(selectedDev!==s.session_id)return;
+    const viewUrl=`${cellBase}/view`;
+    const cell=await (typeof fetchCellView==='function'?fetchCellView(viewUrl):fetch(viewUrl,{cache:'no-store'}).then(async r=>{if(!r.ok)throw new Error(`Dev v2 HTTP ${r.status}`);return r.json();}));
+    if(selectedDev!==s.session_id)return;
     if(cell.dev_mode==='agent' && ['completed','failed','cancelled','needs_review','stopped','condition_invalid','budget_exhausted','not_started'].includes(cell.state))agentTerminalFetch.set(s.key,Date.now());
     else agentTerminalFetch.delete(s.key);
     const experimentResponse=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(s.experiment_id)}`,{cache:'no-store'});
