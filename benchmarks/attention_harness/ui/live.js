@@ -3132,7 +3132,7 @@
           form.seed.disabled=false;
           form.seed.innerHTML=remote.map(seed=>`<option value="${seed}">Seed ${seed}</option>`).join('');
           form.seed.value=String(remote.includes(previous)?previous:remote[0]);
-          form.querySelector('[data-seed-note]').textContent=profile.rules_profile?'fixture rules (R5) · interactive · not compared (scene positions not verified)':v2?runConfigSeedNote(Number(form.seed.value),registered,form.v2_mode.value,!!options?.dev_v2?.memory):'';
+          form.querySelector('[data-seed-note]').textContent=profile.rules_profile?'':v2?runConfigSeedNote(Number(form.seed.value),registered,form.v2_mode.value,!!options?.dev_v2?.memory):'';
           return;
         }
         const fixedSeed=presetSeed(profile);
@@ -3140,14 +3140,14 @@
         if(fixedSeed!==null){
           form.seed.innerHTML=`<option value="${fixedSeed}">Seed ${fixedSeed}</option>`;
           form.seed.value=String(fixedSeed);
-          form.querySelector('[data-seed-note]').textContent='Preset · seed fixed · fixture rules (R5) · interactive · not compared (scene positions not verified)';
+          form.querySelector('[data-seed-note]').textContent='';  // 11-10 (user): no R5 note under the seed
           return;
         }
         if(profile?.rules_profile){
           const previous=Number(form.seed.value);
           form.seed.innerHTML=fixtureSeedOptions(profile);
           form.seed.value=String(profile.seeds.includes(previous)?previous:profile.seeds[0]);
-          form.querySelector('[data-seed-note]').textContent='fixture rules (R5) · interactive · not compared (scene positions not verified) · start_state_collision seeds are disabled';
+          form.querySelector('[data-seed-note]').textContent='';  // 11-10 (user): no R5 note under the seed
           return;
         }
         const seeds=v2?(options?.dev_v2?.tasks?.find(t=>t.task_id===profile.task_id)?.seeds||Array.from({length:25},(_,i)=>101+i)):[profile?.seed??101];

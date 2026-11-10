@@ -50,7 +50,9 @@ test('R5 interactive exclusion label and exact backend refusal are visible',()=>
   const html=fixtureTaskOptions([profile]);
   assert.match(html,/<optgroup label="A · Open and close fixtures · fixture rules \(R5\)"><option value="[^"]+">[^<·]*<\/option><\/optgroup>/);
   assert.doesNotMatch(html,/not compared|scene positions/);
-  assert.match(source,/\[data-seed-note\]'\)\.textContent='fixture rules \(R5\) · interactive · not compared \(scene positions not verified\)/);
+  // 11-10 (user): R5 tasks show no note under the seed (rules, mode and disabled-seed text removed).
+  assert.equal(/\[data-seed-note\]'\)\.textContent='[^']*fixture rules \(R5\)/.test(source),false);
+  assert.match(source,/\[data-seed-note\]'\)\.textContent=profile\.rules_profile\?'':/);
   const reason='R5 fixture runs are interactive only until a measured fixture scene contract exists (scene positions are not verified)';
   assert.equal(launchCreationError(new Error(reason)),'Could not create run: '+reason);
   assert.match(source,/if \(!response.ok\) throw new Error\(result.error/);
