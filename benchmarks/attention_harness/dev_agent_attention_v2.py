@@ -23,6 +23,15 @@ LIMIT = 32 * 1024 * 1024
 MAPS = ('versions', 'executions', 'requests')
 
 
+
+def spread_frames(rows, count):
+    """Pick up to count rows evenly over the sequence, always including the first and the last."""
+    rows = sorted(rows, key=lambda r: (r.get('sim_seconds', 0), r.get('index', 0)))
+    if count <= 0 or not rows: return []
+    if len(rows) <= count: return list(rows)
+    if count == 1: return [rows[-1]]
+    return [rows[round(i*(len(rows)-1)/(count-1))] for i in range(count)]
+
 def digest(raw):
     return hashlib.sha256(raw).hexdigest()
 
@@ -492,7 +501,10 @@ def public_request_view(helper, eid, decision, *, origin=None, question=None):
     selected, localization = select_moments(events, ids, timing, available_views=['external'],
         max_frames=helper.config['advisor_proxy']['max_selected_frames'])
     validate_selected_moments(selected, localization)
-    frames = [external[m['frame_index']] for m in selected] if selected else verified[:helper.config['advisor_proxy']['max_selected_frames']]
+    # 11-11: without a targeted selection, show samples spread over the whole attempt (first to last
+    # overview frame). Taking the first N frames showed only the opening 0.45 s of a ~25 s attempt and
+    # undercounted the video part of hint_human_seconds.
+    frames = [external[m['frame_index']] for m in selected] if selected else spread_frames(external or verified, helper.config['advisor_proxy']['max_selected_frames'])
     # Match dev_agent_attention.request_view's v1 encoding exactly, after selection.
     visual = []
     for frame in frames:

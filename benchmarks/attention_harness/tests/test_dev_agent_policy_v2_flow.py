@@ -364,7 +364,11 @@ def test_request_full_hd_jpeg_size_sha_and_selected_only(tmp_path,monkeypatch,fu
         public={row['filename']:row for row in rows}
         assert len(public)==12
         assert [frame['filename'] for frame in view['frames']]==(
-            [rows[5]['filename']] if targeted else [row['filename'] for row in rows[:10]])
+            [rows[5]['filename']] if targeted else [rows[round(i*11/9)]['filename'] for i in range(10)])
+        if not targeted:
+            # 11-11: the fallback spreads over the whole attempt (0..11 s), not its first 10 frames.
+            assert view['frames'][0]['filename']==rows[0]['filename'] and view['frames'][-1]['filename']==rows[11]['filename']
+            assert view['shown_video_seconds']==11
         for frame,raw in zip(view['frames'],encoded):
             prefix,payload=frame['data_url'].split(',',1)
             assert prefix=='data:image/jpeg;base64'
