@@ -34,3 +34,20 @@ test('8769 shape (dev_loop profiles) still resolves',()=>{
   const resolvedTask=loadResolvedTask({profiles:[],dev_loop:{profiles:[{suite:'robocasa365',task_id:'arrange_tea'}]}});
   assert.equal(resolvedTask(run('arrange_tea')),'Arrange tea');
 });
+
+// 11-11 (user): "以后就不需要archive了" — there is no Archived fold any more; every run stays in the run list.
+test('no Archived fold: a run whose task has no known title stays in the list under its task id',()=>{
+  assert.doesNotMatch(live,/data-unlinked-archive|ab-unlinked-archive|Archived · \$\{|unlinked records<\/summary>/);
+  assert.match(live,/const linked=records;/,'the list takes every record, linked or not');
+  assert.doesNotMatch(live,/records\.filter\(r=>!resolvedTask\(r\)\)/);
+  const css=fs.readFileSync(path.join(__dirname,'../ui/index.html'),'utf8');
+  assert.doesNotMatch(css,/ab-unlinked-archive/);
+  const titles=live.match(/const taskTitles = \{[^\n]*\};/)[0];
+  const body=live.match(/function resolvedTask\(item\)\{[\s\S]*?\n  \}/)[0];
+  const title=live.match(/function taskTitle\(item\)\{[^\n]*\}/)[0];
+  const label=v=>String(v??'—').replaceAll('_',' ');
+  const taskTitle=new Function('launchOptions','label',`${titles}\n${body}\nfunction taskName(value){return taskTitles[value]||label(value);}\n${title}\nreturn taskTitle;`)(remoteOptions,label);
+  assert.equal(taskTitle({suite:'robocasa365',task_id:'weigh_ingredients'}),'weigh ingredients','unknown to the host: its task id, readable');
+  assert.equal(taskTitle({}),'Unknown task','no task id at all');
+  assert.equal(taskTitle(run('open_cabinet')),'Open the cabinet');
+});
