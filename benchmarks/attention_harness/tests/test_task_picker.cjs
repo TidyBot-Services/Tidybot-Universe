@@ -80,10 +80,12 @@ test('cards: family tabs, search, selected card with marks, text card without pi
   assert.match(sink,/src="\.\/tasks\/pick_place_counter_to_sink-102-done\.jpg" alt="Done: [^"]+"/);
   assert.match(sink,/class="tp-mark-object"/);assert.match(sink,/class="tp-mark-region"/);assert.match(sink,/marker-end="url\(#tp-arrow-/);
   assert.match(sink,/<b class="tp-o">[^<]+<\/b>/);assert.match(sink,/<b class="tp-b">sink<\/b>/);
-  assert.match(sink,/1 object · 1 step · seeds 101, 102/);assert.match(sink,/Counts as done:/);
+  // 11-10 (user): only the description; no counts/seeds line, no done rule, no known gap under it.
+  for(const gone of ['tp-meta','Counts as done','1 object','seeds 101, 102','tp-rule'])assert.equal(sink.includes(gone),false,gone);
   const microwave=api.taskCardHtml(cards[1],{seed:101});
-  assert.match(microwave,/aria-checked="false"/);assert.match(microwave,/No object · 1 step/);assert.equal(microwave.includes('Known gap'),false);
-  assert.match(api.taskCardHtml(cards[2],{seed:101}),/Known gap:<\/b> The check’s “inside” margin is loose/);
+  assert.match(microwave,/aria-checked="false"/);assert.equal(microwave.includes('No object'),false);
+  const cabinet=api.taskCardHtml(cards[2],{seed:101});
+  assert.equal(cabinet.includes('Known gap'),false);assert.match(cabinet,/class="tp-sentence"/);
   // A seed without pictures (e.g. main's 25 sink seeds) is a text card: no <img>, never a broken picture.
   const text=api.taskCardHtml(cards[0],{seed:117});
   assert.equal(text.includes('<img'),false);assert.match(text,/No picture for seed 117/);

@@ -327,7 +327,8 @@ def restart_and_check(cfg):
 
 def switch(cfg, args, commit, tree, action):
     was_paused = cfg['stop_file'].exists()
-    cfg['stop_file'].touch()
+    # The gateway shows this line to visitors while the switch runs (11-10: say why, not just "paused").
+    if not was_paused:cfg['stop_file'].write_text('Remote is updating. New runs open again in about a minute; runs already going keep going.\n')
     previous = cfg['live'].resolve()
     try:
         backup = backup_db(cfg);say(f'gateway database backed up: {backup}')

@@ -2385,6 +2385,7 @@
     return (segments||[]).map(s=>s.mark==='o'?`<b class="tp-o">${esc(s.text)}</b>`:s.mark==='b'?`<b class="tp-b">${esc(s.text)}</b>`:esc(s.text)).join('');
   }
   // One card. seed: the seed whose pictures to show (the form's seed for the selected card).
+  // 11-10 (user): only the description under the title; counts, seeds, the done rule and known gaps are not shown.
   function taskCardHtml(card,{selected=false,seed=null}={}) {
     const shown=card.pictures.get(seed)||null;
     const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" decoding="sync" data-tp-img>${marks||''}<span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
@@ -2393,14 +2394,10 @@
     const uid=`${card.value}-${seed}`.replace(/[^A-Za-z0-9_-]/g,'_');
     const pics=shown?`${pic(shown.start,shown.alt_start||`Start of ${card.title}, seed ${seed}`,'START',taskMarksSvg(shown.marks,uid))}<span class="tp-between" aria-hidden="true">→</span>${pic(shown.done,shown.alt_done||`Done: ${card.title}, seed ${seed}`,'DONE','')}`
       :`${none('START')}<span class="tp-between" aria-hidden="true">→</span>${none('DONE')}`;
-    const meta=[shown?`${shown.objects?`${shown.objects} object${shown.objects>1?'s':''}`:'No object'} · ${shown.steps} step${shown.steps>1?'s':''}`:'',seedListText(card.seeds)].filter(Boolean).join(' · ');
     return `<button type="button" class="tp-card${selected?' is-selected':''}${card.defect?' has-defect':''}" role="radio" aria-checked="${selected}" data-task-card="${esc(card.value)}">
       <span class="tp-pics">${pics}</span>
       <span class="tp-body"><span class="tp-title-row"><b class="tp-title">${esc(card.title)}</b>${card.badges.map(b=>`<span class="tp-badge">${esc(b)}</span>`).join('')}${selected?'<span class="tp-selected">Selected</span>':''}</span>
-      <span class="tp-sentence">${taskSentenceHtml(shown?.sentence||card.sentence)}</span>
-      ${meta?`<span class="tp-meta">${esc(meta)}</span>`:''}
-      ${(shown?.rule||card.rule)?`<span class="tp-rule"><b>Counts as done:</b> ${esc(shown?.rule||card.rule)}</span>`:''}
-      ${card.defect?`<span class="tp-defect" role="note"><b>Check defect:</b> ${esc(card.defect)}</span>`:card.note?`<span class="tp-note" role="note"><b>Known gap:</b> ${esc(card.note)}</span>`:''}</span>
+      <span class="tp-sentence">${taskSentenceHtml(shown?.sentence||card.sentence)}</span></span>
     </button>`;
   }
   // 11-10 (user, design H3): a text list on the left; the right shows the pointed (or chosen) task large,

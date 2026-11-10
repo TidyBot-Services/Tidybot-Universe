@@ -218,7 +218,7 @@ def test_disk_check_is_opt_in_and_check_errors_fail_closed(app, monkeypatch, tmp
 def test_paused_notice_uses_same_path_as_disk_notice(app):
     app.gateway.config.pause_file.touch()
     assert request(app, 'GET', '/api/lobby').value['availability']['code'] == 'runs_paused'
-    assert b'New runs are paused right now.' in request(app, 'GET', '/ui/').raw
+    assert b'New runs are paused for now; runs already going keep going.' in request(app, 'GET', '/ui/').raw
 
 
 def test_lab_codex_off_keeps_existing_refusal(app):
@@ -663,3 +663,11 @@ def test_campus_unit_wires_separate_data_credentials_and_hidden_paths():
     assert command[command.index('--key-source') + 1] == 'credential'
     assert 'LoadCredential=parcc-key:__KEY_FILE__' in unit
     assert 'ATTENTION_PREFLIGHT_HIDDEN_PATHS=__DATA__/gateway-state:__DATA__/gateway-state/gateway.secret:%d/parcc-key' in unit
+
+
+def test_paused_notice_says_why_when_the_stop_file_has_a_line(app):
+    # 11-10: abctl writes one plain line while it deploys; visitors see that instead of a bare "paused".
+    app.gateway.config.pause_file.write_text('Remote is updating. New runs open again in about a minute.\n')
+    assert request(app, 'GET', '/api/lobby').value['availability']['message'] == 'Remote is updating. New runs open again in about a minute.'
+    page = request(app, 'GET', '/ui/').raw
+    assert b'Remote is updating.' in page and b'#211a0d' not in page and b'border-radius:999px' in page

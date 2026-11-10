@@ -94,8 +94,16 @@ class Gateway:
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
 
+    def pause_message(self):
+        # A stop file may carry one plain line for visitors (abctl writes one while it deploys).
+        for path in (*self.config.stop_files, self.config.pause_file):
+            try:line = Path(path).read_text(encoding='utf-8').strip().splitlines()[0].strip()
+            except (OSError, UnicodeDecodeError, IndexError):continue
+            if line:return line[:200]
+        return 'New runs are paused for now; runs already going keep going.'
+
     def unavailable(self, *, codex=False):
-        if self.paused():return policy.Refused('runs_paused', 'New runs are paused right now.', 503)
+        if self.paused():return policy.Refused('runs_paused', self.pause_message(), 503)
         if self.config.disk_path is not None:
             try:free = shutil.disk_usage(self.config.disk_path).free / 1024 ** 3
             except OSError:return policy.Refused('disk_low', 'New runs are paused: free disk space could not be checked.', 503)
@@ -319,7 +327,7 @@ class Handler(BaseHTTPRequestHandler):
         page = page.replace('data-mode="live"', f'data-mode="live" {marks} data-gateway="1" data-remote="1"', 1)
         if name != 'index.html':page = page.replace('<body', f'<body data-gateway="1"{"" if session else " data-guest=" + chr(34) + "1" + chr(34)}', 1)
         reason = self.gateway.unavailable(codex=self.gateway.config.lab_codex is not None)
-        notice = f'<p id="gateway-availability" role="status" style="position:fixed;bottom:12px;left:12px;right:12px;z-index:1000;margin:0;padding:12px;background:#211a0d;color:#ffe2a8;border:1px solid #9e7531;text-align:center"{"" if reason else " hidden"}>{escape(reason.message) if reason else ""}</p>'
+        notice = f'<p id="gateway-availability" role="status" style="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:1000;margin:0;padding:10px 18px;max-width:calc(100% - 32px);box-sizing:border-box;width:max-content;background:#242822;color:#f8f6f0;border-radius:999px;box-shadow:0 10px 24px -10px #000000aa;font:500 14px/1.4 DM Sans,system-ui,sans-serif;text-align:center"{"" if reason else " hidden"}>{escape(reason.message) if reason else ""}</p>'
         page = re.sub(r'(<body\b[^>]*>)', lambda match:match[0] + notice, page, count=1)
         page = page.replace('</body>', AVAILABILITY_SCRIPT + '</body>', 1)
         page = page.replace(' media="print" onload="this.media=\'all\'"', '', 1)  # An inline handler would need a looser policy.
