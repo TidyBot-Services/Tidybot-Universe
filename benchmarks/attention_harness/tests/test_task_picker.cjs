@@ -10,7 +10,7 @@ const html=fs.readFileSync(path.join(UI,'index.html'),'utf8');
 const manifest=JSON.parse(fs.readFileSync(path.join(UI,'tasks/manifest.json'),'utf8'));
 const code=source.slice(source.indexOf('  function fixtureTaskKey('),source.indexOf('  function runConfigSeedOptions('));
 const esc=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
-const api=vm.runInNewContext(code+'\n({taskPickerCards,taskPickerFamilies,taskPickerMatches,taskCardHtml,taskMarksSvg,taskPickerToolbarHtml,taskSeedChipsHtml,seedListText,fixtureTaskOptions})',{esc,taskName:v=>v,root:{dataset:{}}});
+const api=vm.runInNewContext(code+'\n({taskSteps,taskCrop,taskPickerCards,taskPickerFamilies,taskPickerMatches,taskCardHtml,taskMarksSvg,taskPickerToolbarHtml,taskSeedChipsHtml,seedListText,fixtureTaskOptions})',{esc,taskName:v=>v,root:{dataset:{}}});
 const PROFILE='r5-fixture-20261031';
 const plain=x=>JSON.parse(JSON.stringify(x));  // arrays from the vm context are another realm's
 const REMOTE={pick_place_counter_to_sink:[101,102],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
@@ -78,7 +78,7 @@ test('cards: family tabs, search, selected card with marks, text card without pi
   assert.match(sink,/role="radio" aria-checked="true" data-task-card="pick_place_counter_to_sink"/);
   assert.match(sink,/src="\.\/tasks\/pick_place_counter_to_sink-102-start\.jpg" alt="Start: [^"]+"/);
   assert.match(sink,/src="\.\/tasks\/pick_place_counter_to_sink-102-done\.jpg" alt="Done: [^"]+"/);
-  assert.match(sink,/class="tp-mark-object"/);assert.match(sink,/class="tp-mark-region"/);assert.match(sink,/marker-end="url\(#tp-arrow-/);
+  assert.match(sink,/class="tp-mark-object"/);assert.match(sink,/class="tp-mark-target"/);assert.match(sink,/class="tp-mark-region tp-step-only"/);assert.match(sink,/marker-end="url\(#tp-arrow-/);
   assert.match(sink,/<b class="tp-o">[^<]+<\/b>/);assert.match(sink,/<b class="tp-b">sink<\/b>/);
   // 11-10 (user): only the description; no counts/seeds line, no done rule, no known gap under it.
   for(const gone of ['tp-meta','Counts as done','1 object','seeds 101, 102','tp-rule'])assert.equal(sink.includes(gone),false,gone);
@@ -94,10 +94,11 @@ test('cards: family tabs, search, selected card with marks, text card without pi
   assert.equal(bare.length,3);assert.equal(api.taskCardHtml(bare[1],{seed:101}).includes('<img'),false);
 });
 
-test('marks are drawn from numbers only; steps are numbered; seed lists read naturally',()=>{
+test('marks are drawn from numbers only; one group per step, no numbers on the picture (11-10, design C)',()=>{
   const svg=api.taskMarksSvg([{circle:{cx:'10"><script>',cy:20,r:5},n:1},{circle:{cx:50,cy:60,r:9},region:{points:[[1,2],[3,4],[5,6]]},arrow:[50,60,300,200],n:2}],'x');
   assert.equal(svg.includes('<script>'),false);
-  assert.match(svg,/<text[^>]*>1<\/text>/);assert.match(svg,/<text[^>]*>2<\/text>/);assert.match(svg,/points="1,2 3,4 5,6"/);
+  assert.match(svg,/data-tp-mark="1"/);assert.match(svg,/data-tp-mark="2"/);assert.equal(/<text/.test(svg),false);
+  assert.match(svg,/points="1,2 3,4 5,6"/);assert.match(svg,/class="tp-mark-arrow tp-step-only"/);
   assert.equal(api.seedListText(Array.from({length:25},(_,i)=>101+i)),'seeds 101–125');
   assert.equal(api.seedListText([101]),'seed 101');assert.equal(api.seedListText([102,101,107]),'seeds 101, 102, 107');
   assert.match(api.taskSeedChipsHtml([101,102],'102',false),/data-task-seed="102" aria-pressed="true"/);
@@ -151,4 +152,17 @@ test('seed chips sit inside the chosen task\'s preview card, not in a loose row 
   assert.match(live,/previewed\.value===form\.task_id\.value\?picker\.chips:''/);
   assert.match(live,/box\.querySelector\('\[data-task-seeds\]'\)\.innerHTML='';/);
   assert.match(html,/\.tp-preview-card \.tp-seeds\{/);
+});
+
+test('design C: steps come from the description words, the crop keeps every mark clear of the DONE inset',()=>{
+  const sentence=[{text:'Put the '},{mark:'o',text:'kebab skewer'},{text:' and '},{mark:'o',text:'baguette'},{text:' in the '},{mark:'b',text:'toaster oven'},{text:'.'}];
+  const four=[{n:1},{n:2},{n:3},{n:4}];
+  assert.deepEqual([...api.taskSteps('heat_kebab_sandwich',sentence,four)],['Put the kebab skewer in the toaster oven','Put the baguette in the toaster oven','Close the door','Set the timer']);
+  assert.equal(api.taskSteps('heat_kebab_sandwich',sentence,four.slice(0,3)),null,'a mark count that does not fit the template shows no list');
+  assert.equal(api.taskSteps('turn_on_microwave',sentence,[{n:1}]),null);
+  const marks=[{circle:{cx:300,cy:330,r:30}},{circle:{cx:520,cy:270,r:16}},{region:{points:[[460,240],[525,240],[525,320],[460,320]]}}];
+  const c=api.taskCrop(marks);
+  assert.ok(c&&c.w<900&&Math.abs(c.h-c.w*9/16)<1e-6&&c.x>=0&&c.y>=0&&c.x+c.w<=960.01&&c.y+c.h<=540.01);
+  assert.ok(270-56>=c.x-1&&(525+56<=c.x+c.w*.62+1||360+56<=c.y+c.h*.56+1),'all marks inside, ending left of or above the inset');
+  assert.equal(api.taskCrop([]),null);
 });

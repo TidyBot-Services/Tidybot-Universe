@@ -2361,25 +2361,72 @@
     if(!q)return true;
     return [card.title,card.task_id,card.family_label,card.rule,...card.sentence.map(s=>s.text)].join(' ').toLowerCase().replaceAll('_',' ').includes(q.replaceAll('_',' '));
   }
-  function taskMarksSvg(marks,uid) {
-    const n=v=>Number(v)||0,parts=[];
-    const arrowId=`tp-arrow-${uid}`;
+  // 11-10 (user, design C): the start picture is zoomed onto the marks; it shows only orange circles (what to
+  // take or touch) and one dashed blue target. A task with several steps lists them under the description;
+  // pointing at a step shows only that step (its circle, arrow and goal outline), the rest fades.
+  // Step words: {o0},{o1} = the description's orange words in order, {b0} = its blue word (same order as the marks).
+  const TASK_STEPS={
+    open_cabinet:['Open the left door','Open the right door'],
+    prepare_coffee:['Put the {o0} under the {b0}','Press the {o1}'],
+    kettle_boiling:['Put the {o0} on a free {b0}','Turn that burner’s {o1} on'],
+    heat_kebab_sandwich:['Put the {o0} in the {b0}','Put the {o1} in the {b0}','Close the door','Set the timer'],
+    categorize_condiments:['Put the {o0} next to its match','Put the {o1} next to its match'],
+    weigh_ingredients:['Put the {o0} on the {b0}','Close the left door','Close the right door'],
+    arrange_tea:['Put the {o0} on the {b0}','Put the {o1} on the {b0}','Close the left door','Close the right door'],
+  };
+  function taskSteps(taskId,sentence,marks) {
+    const t=TASK_STEPS[taskId];if(!t||!marks||marks.length<2||t.length!==marks.length)return null;
+    const words=k=>(sentence||[]).filter(x=>x.mark===k).map(x=>x.text);const o=words('o'),b=words('b');
+    return t.map(step=>step.replace(/\{([ob])(\d)\}/g,(_,k,i)=>(k==='o'?o:b)[Number(i)]||''));
+  }
+  // The part of the 960x540 picture to show: all marks with room around them, 16:9, kept clear of the DONE
+  // inset (bottom right, ~36% x 42%). null = the whole picture.
+  function taskCrop(marks) {
+    const n=v=>Number(v)||0;let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    const add=(x,y)=>{x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);};
     for(const m of marks||[]){
-      if(m.region?.points?.length>2)parts.push(`<polygon class="tp-mark-region" points="${m.region.points.map(p=>`${n(p[0])},${n(p[1])}`).join(' ')}"/>`);
+      if(m.circle){const c=m.circle;add(n(c.cx)-n(c.r),n(c.cy)-n(c.r));add(n(c.cx)+n(c.r),n(c.cy)+n(c.r));}
+      for(const p of m.region?.points||[])add(n(p[0]),n(p[1]));
+      if(m.arrow){add(n(m.arrow[0]),n(m.arrow[1]));add(n(m.arrow[2]),n(m.arrow[3]));}
     }
-    for(const m of marks||[]){
-      const c=m.circle;if(!c)continue;
-      if(m.arrow){
+    if(!isFinite(x0))return null;
+    const pad=56,bx0=x0-pad,by0=y0-pad,bx1=x1+pad,by1=y1+pad;
+    const clear=(x,y,w,h)=>bx1<=x+w*.62||by1<=y+h*.56;  // the marks end left of, or above, the inset
+    for(let w=Math.max(540,bx1-bx0,(by1-by0)*16/9);w<900;w*=1.08){
+      const h=w*9/16,clamp=(v,hi)=>Math.max(0,Math.min(hi,v));
+      for(const [x,y] of [[(bx0+bx1-w)/2,(by0+by1-h)/2],[bx0,by0],[bx0,(by0+by1-h)/2],[(bx0+bx1-w)/2,by0]]){
+        const cx=clamp(x,960-w),cy=clamp(y,540-h);
+        if(bx0>=cx-1&&by0>=cy-1&&bx1<=cx+w+1&&by1<=cy+h+1&&clear(cx,cy,w,h))return {x:cx,y:cy,w,h};
+      }
+    }
+    return null;
+  }
+  function taskMarksSvg(marks,uid) {
+    const n=v=>Number(v)||0,arrowId=`tp-arrow-${uid}`,list=marks||[];
+    const poly=pts=>pts.map(p=>`${n(p[0])},${n(p[1])}`).join(' ');
+    // One dashed blue target: the goal region when one thing moves, else the box around all move goals.
+    const goals=list.filter(m=>m.kind==='move'&&m.region?.points?.length>2);
+    let target='';
+    if(goals.length===1)target=`<polygon class="tp-mark-target" points="${poly(goals[0].region.points)}"/>`;
+    else if(goals.length>1){
+      const xs=goals.flatMap(m=>m.region.points.map(p=>n(p[0]))),ys=goals.flatMap(m=>m.region.points.map(p=>n(p[1])));
+      const x=Math.min(...xs)-8,y=Math.min(...ys)-8;target=`<rect class="tp-mark-target" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(Math.max(...xs)-x+8).toFixed(1)}" height="${(Math.max(...ys)-y+8).toFixed(1)}" rx="8"/>`;
+    } else if(list.length===1&&list[0].region?.points?.length>2)target=`<polygon class="tp-mark-target" points="${poly(list[0].region.points)}"/>`;
+    const groups=list.map((m,i)=>{
+      const parts=[];
+      if(m.region?.points?.length>2)parts.push(`<polygon class="tp-mark-region tp-step-only" points="${poly(m.region.points)}"/>`);
+      const c=m.circle;
+      if(c&&m.arrow){
         const [x1,y1,x2,y2]=m.arrow.map(n),dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
         if(len>n(c.r)+12){
           const sx=x1+dx/len*(n(c.r)+4),sy=y1+dy/len*(n(c.r)+4),ex=x2-dx/len*10,ey=y2-dy/len*10;
-          parts.push(`<path class="tp-mark-arrow" d="M${sx.toFixed(1)} ${sy.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}" marker-end="url(#${arrowId})"/>`);
+          parts.push(`<path class="tp-mark-arrow tp-step-only" d="M${sx.toFixed(1)} ${sy.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}" marker-end="url(#${arrowId})"/>`);
         }
       }
-      parts.push(`<circle class="tp-mark-object" cx="${n(c.cx)}" cy="${n(c.cy)}" r="${n(c.r)}"/>`);
-      if(m.n){const bx=n(c.cx)+n(c.r)*.75,by=n(c.cy)-n(c.r)*.75;parts.push(`<g class="tp-mark-step"><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="22"/><text x="${bx.toFixed(1)}" y="${(by+9).toFixed(1)}" text-anchor="middle">${n(m.n)}</text></g>`);}
-    }
-    return `<svg class="tp-marks" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs><marker id="${arrowId}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>${parts.join('')}</svg>`;
+      if(c)parts.push(`<circle class="tp-mark-object" cx="${n(c.cx)}" cy="${n(c.cy)}" r="${n(c.r)}"/>`);
+      return `<g class="tp-m" data-tp-mark="${i+1}">${parts.join('')}</g>`;
+    }).join('');
+    return `<svg class="tp-marks" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><defs><marker id="${arrowId}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>${target}${groups}</svg>`;
   }
   function taskSentenceHtml(segments) {
     return (segments||[]).map(s=>s.mark==='o'?`<b class="tp-o">${esc(s.text)}</b>`:s.mark==='b'?`<b class="tp-b">${esc(s.text)}</b>`:esc(s.text)).join('');
@@ -2388,7 +2435,10 @@
   // 11-10 (user): only the description under the title; counts, seeds, the done rule and known gaps are not shown.
   function taskCardHtml(card,{selected=false,seed=null}={}) {
     const shown=card.pictures.get(seed)||null;
-    const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" decoding="sync" data-tp-img>${marks||''}<span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
+    const crop=shown?taskCrop(shown.marks):null;
+    const zoom=crop?` style="transform:scale(${(960/crop.w).toFixed(4)}) translate(${(-crop.x/9.6).toFixed(3)}%,${(-crop.y/5.4).toFixed(3)}%)"`:'';
+    const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><span class="tp-zoom"${marks?zoom:''}><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" decoding="sync" data-tp-img>${marks||''}</span><span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
+    const steps=shown?taskSteps(card.task_id,shown.sentence||card.sentence,shown.marks):null;
     const why=card.missing.has(seed)?card.missing.get(seed):'';
     const none=tag=>`<span class="tp-pic tp-nopic"><span>${tag==='START'?`No picture${seed!=null?` for seed ${esc(seed)}`:''}${why?`: ${esc(why)}`:''}`:'Goal picture not available'}</span><span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
     const uid=`${card.value}-${seed}`.replace(/[^A-Za-z0-9_-]/g,'_');
@@ -2397,7 +2447,8 @@
     return `<button type="button" class="tp-card${selected?' is-selected':''}${card.defect?' has-defect':''}" role="radio" aria-checked="${selected}" data-task-card="${esc(card.value)}">
       <span class="tp-pics">${pics}</span>
       <span class="tp-body"><span class="tp-title-row"><b class="tp-title">${esc(card.title)}</b>${card.badges.map(b=>`<span class="tp-badge">${esc(b)}</span>`).join('')}${selected?'<span class="tp-selected">Selected</span>':''}</span>
-      <span class="tp-sentence">${taskSentenceHtml(shown?.sentence||card.sentence)}</span></span>
+      <span class="tp-sentence">${taskSentenceHtml(steps?(shown?.sentence||card.sentence).map(x=>({...x,text:x.text.replace(/[①-⑨]\s*/g,'')})):(shown?.sentence||card.sentence))}</span>
+      ${steps?`<span class="tp-steps">${steps.map((t,i)=>`<span class="tp-step" data-tp-step="${i+1}"><span class="tp-step-n">${i+1}</span>${esc(t)}</span>`).join('')}</span>`:''}</span>
     </button>`;
   }
   // 11-10 (user, design H3): a text list on the left; the right shows the pointed (or chosen) task large,
@@ -3338,6 +3389,17 @@
       form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('pointerleave',()=>{picker.preview=null;previewTask(form.task_id.value);});
+      // 11-10 (user, design C): pointing at a step shows only that step on the picture.
+      const showStep=(card,k)=>{
+        if(!card)return;if(k)card.dataset.step=k;else delete card.dataset.step;
+        card.querySelectorAll('[data-tp-mark]').forEach(g=>g.classList.toggle('is-on',g.dataset.tpMark===k));
+        card.querySelectorAll('[data-tp-step]').forEach(e=>e.classList.toggle('is-on',e.dataset.tpStep===k));
+      };
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const step=event.target.closest?.('[data-tp-step]');if(step)showStep(step.closest('.tp-preview-card'),step.dataset.tpStep);});
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerout',event=>{
+        const step=event.target.closest?.('[data-tp-step]');if(!step||event.relatedTarget?.closest?.('[data-tp-step]'))return;
+        showStep(step.closest('.tp-preview-card'),null);
+      });
       // 11-10 (user): leaving a task row shows the chosen task again at once, unless the pointer went to another row.
       form.querySelector('[data-task-picker]')?.addEventListener('pointerout',event=>{
         const from=event.target.closest?.('.tp-item[data-task-card]');if(!from)return;
