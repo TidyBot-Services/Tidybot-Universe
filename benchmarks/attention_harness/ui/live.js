@@ -2299,10 +2299,15 @@
   // the normal seed list. Other tasks stay registered; they just are not offered for a new run.
   const TASK_PRESETS={turn_on_microwave:101,pick_place_counter_to_cabinet:101};
   const NEW_RUN_TASKS=['pick_place_counter_to_sink',...Object.keys(TASK_PRESETS)];
-  // Remote (11-08, user): two seeds per task. Microwave 101 is the verified one; 102 is fully observable but unrun.
-  // Counter→Cabinet has no verified seed, so 101 (the preset) and 102. The main UI keeps every seed.
-  // Counter→Sink 102 failed on qifei with scene_contract_mismatch (11-09); the pinned host-variant fingerprint (f74d06b) fixed it.
-  const REMOTE_SEEDS={pick_place_counter_to_sink:[101,102],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
+  // Remote (11-10, user): one fixed seed per task, the one we trust most; visitors do not choose a seed.
+  // Evidence, best first: real solved runs (Sink 102: 5 solved on 8769; Cabinet 101: 1 solved; Microwave 101:
+  // pilot v13 native success), then the 10-29 screening data (objects reachable without moving the base,
+  // smallest base shift), then the 11-10 teleport check (Stand mixer 101 fails it). Ties take the lowest seed.
+  // The main UI keeps every seed. Details: docs/PLAN-run-page-order-20261110.md §16.
+  const REMOTE_SEEDS={pick_place_counter_to_sink:[102],pick_place_counter_to_cabinet:[101],turn_on_microwave:[101],
+    open_cabinet:[102],close_blender_lid:[101],open_drawer:[101],turn_off_stove:[102],open_stand_mixer_head:[102],
+    coffee_setup_mug:[101],prepare_coffee:[104],kettle_boiling:[102],heat_kebab_sandwich:[103],
+    categorize_condiments:[102],weigh_ingredients:[102],arrange_tea:[106]};
   function remoteSeeds(profile,available) {
     const wanted=root.dataset.remote==='1'?REMOTE_SEEDS[profile?.task_id]:null;
     return wanted?wanted.filter(seed=>available.includes(seed)):null;
@@ -3332,7 +3337,8 @@
         const previewed=visible.find(c=>c.value===picker.preview)||visible.find(c=>c.value===form.task_id.value)||visible[0];
         picker.showSeed=showSeed;
         const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
-        const chips=taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
+        // Remote: the seed is fixed per task, so there is nothing to choose and no seed chips.
+        const chips=root.dataset.remote==='1'&&seedOptions.length<=1?'':taskSeedChipsHtml(seedOptions,form.seed.value,form.seed.disabled);
         picker.chips=chips;
         const html=visible.length?`<div class="tp-list" role="radiogroup" aria-label="Task">${taskListGroupsHtml(visible,form.task_id.value)}</div><div class="tp-preview" data-task-preview aria-live="polite">${previewed?taskPreviewHtml(previewed,showSeed(previewed),previewed.value===form.task_id.value?picker.chips:''):''}</div>`
           :'<p class="tp-empty">No task matches. Clear the search or choose All.</p>';
