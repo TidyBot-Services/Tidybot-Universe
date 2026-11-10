@@ -2733,14 +2733,22 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear[data-lobby-view="mine"] :is([data-open-run-again],[data-dev-pause],[data-dev-resume],[data-continue-attempt]){display:none!important}
 /* Task picker (11-10, design A2): family tabs, cards with start (marked) -> done pictures, seed chips. */
 #attentionbench-clear .tp{display:grid;gap:12px;margin:0 0 14px}
-#attentionbench-clear .tp-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-#attentionbench-clear .tp-tabs{display:flex;flex-wrap:wrap;gap:6px}
-#attentionbench-clear button.tp-tab,#attentionbench-clear button.tp-seed{appearance:none;box-shadow:none;transform:none;cursor:pointer;min-height:34px;padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:600 13px/1.2 var(--body)}
-#attentionbench-clear button.tp-tab[aria-pressed="true"],#attentionbench-clear button.tp-seed[aria-pressed="true"]{background:#242822;border-color:#242822;color:#f8f6f0}
+#attentionbench-clear .tp-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+/* 11-11 (user, design T1): family tabs = one sunk track, chosen tab = raised white segment. */
+#attentionbench-clear .tp-tabs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:10px;background:#e7e4da}
+#attentionbench-clear button.tp-tab{appearance:none;box-shadow:none;transform:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 11px;border:0;border-radius:8px;background:transparent;color:#4a5048;font:600 12.5px/1.2 var(--body)}
+#attentionbench-clear button.tp-tab .tp-n{font:500 11px/1 var(--mono);font-style:normal;color:#8a8e84}
+#attentionbench-clear button.tp-tab[aria-pressed="true"],#attentionbench-clear button.tp-tab[aria-pressed="true"]:hover:not(:disabled){background:#fdfcf8;color:#242822;box-shadow:0 1px 2px #24282226}
+#attentionbench-clear button.tp-tab[aria-pressed="true"] .tp-n{color:#686e64}
+#attentionbench-clear button.tp-tab:not([aria-pressed="true"]):hover:not(:disabled){color:#242822}
+#attentionbench-clear button.tp-seed{appearance:none;box-shadow:none;transform:none;cursor:pointer;min-height:34px;padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:600 13px/1.2 var(--body)}
+#attentionbench-clear button.tp-seed[aria-pressed="true"]{background:#242822;border-color:#242822;color:#f8f6f0}
 #attentionbench-clear button.tp-tab:focus-visible,#attentionbench-clear button.tp-seed:focus-visible,#attentionbench-clear button.tp-card:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
 #attentionbench-clear button.tp-seed:disabled{cursor:default;opacity:.85}
-#attentionbench-clear .tp-search{display:flex;align-items:center;gap:8px;margin-left:auto;padding:4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--muted);font-size:13px}
-#attentionbench-clear .tp-search input{width:150px;min-height:28px;border:0!important;outline:0;background:transparent!important;color:var(--text);font:inherit;padding:0!important;box-shadow:none!important}
+#attentionbench-clear .tp-search{display:flex;align-items:center;gap:7px;margin-left:auto;flex:0 1 190px;min-width:150px;height:36px;box-sizing:border-box;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:#686e64;font-size:13px}
+#attentionbench-clear .tp-search:focus-within{border-color:var(--orange);outline:2px solid var(--orange);outline-offset:1px}
+#attentionbench-clear .tp-search-icon{flex:none}
+#attentionbench-clear .tp-search input{flex:1;min-width:0;width:auto;min-height:28px;border:0!important;outline:0;background:transparent!important;color:var(--text);font:inherit;padding:0!important;box-shadow:none!important}
 #attentionbench-clear .tp-grid{display:grid;grid-template-columns:minmax(200px,280px) minmax(0,1fr);gap:16px;align-items:stretch}
 /* 11-10 (user, design H3): text list on the left, the pointed/chosen task large on the right. */
 #attentionbench-clear .tp-list{display:flex;flex-direction:column;gap:8px;height:0;min-height:100%;overflow-y:auto;padding-right:4px;overscroll-behavior:contain}
@@ -2765,7 +2773,7 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
 #attentionbench-clear .tp-preview-card .tp-sentence{font-size:14px}
 #attentionbench-clear button.tp-card{appearance:none;box-shadow:none;display:flex;flex-direction:column;align-items:stretch;width:100%;min-width:0;padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel);color:var(--text);text-align:left;cursor:pointer;font:inherit}
 #attentionbench-clear button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #24282299;transform:none}
-#attentionbench-clear button.tp-tab:hover:not(:disabled),#attentionbench-clear button.tp-seed:hover:not(:disabled){box-shadow:none;transform:none}
+#attentionbench-clear button.tp-tab:not([aria-pressed="true"]):hover:not(:disabled),#attentionbench-clear button.tp-seed:hover:not(:disabled){box-shadow:none;transform:none}
 #attentionbench-clear button.tp-card.is-selected,#attentionbench-clear button.tp-card.is-selected:hover:not(:disabled){border-color:var(--orange);box-shadow:0 0 0 2px var(--orange)}
 #attentionbench-clear .tp-pics{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr);align-items:center;width:100%;align-self:stretch;flex:none;background:#0b0d0b}
 #attentionbench-clear .tp-pic{position:relative;display:block;width:100%;aspect-ratio:16/9;overflow:hidden}
@@ -2815,8 +2823,7 @@ html[data-lobby="1"] .ab-shell-top .ab-pages a{min-width:70px;padding:0 10px!imp
   #attentionbench-clear .tp-grid{grid-template-columns:1fr}
   #attentionbench-clear .tp-preview{order:-1}
   #attentionbench-clear .tp-list{height:auto;min-height:0;max-height:none;overflow:visible}
-  #attentionbench-clear .tp-search{margin-left:0;width:100%}
-  #attentionbench-clear .tp-search input{flex:1;width:auto}
+  #attentionbench-clear .tp-search{margin-left:0;flex:1 1 100%;width:100%}
 }
 
 /* 11-10 run page: three parts (01 Replay, 02 Progress & help, 03 Setup & resources). */
@@ -3826,10 +3833,17 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .lb-demo{background:#ecebe6;color:#545b63}
 #attentionbench-clear[data-theme="dark"] .lb-demo i{background:#ec6a43}
 #attentionbench-clear[data-theme="dark"][data-lobby-view="other"] .op-controls[data-ended]::after{color:#a3a199}
-#attentionbench-clear[data-theme="dark"] button.tp-tab,#attentionbench-clear[data-theme="dark"] button.tp-seed{box-shadow:none;border:1px solid var(--line);background:transparent;color:var(--text)}
-#attentionbench-clear[data-theme="dark"] button.tp-tab[aria-pressed="true"],#attentionbench-clear[data-theme="dark"] button.tp-seed[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#1d2024}
+#attentionbench-clear[data-theme="dark"] .tp-tabs{background:#15171a}
+#attentionbench-clear[data-theme="dark"] button.tp-tab{box-shadow:none;border:0;background:transparent;color:#bcbfc3}
+#attentionbench-clear[data-theme="dark"] button.tp-tab .tp-n{color:#7d8288}
+#attentionbench-clear[data-theme="dark"] button.tp-tab[aria-pressed="true"],#attentionbench-clear[data-theme="dark"] button.tp-tab[aria-pressed="true"]:hover:not(:disabled){background:#3a3f45;color:#ecebe6;box-shadow:0 1px 2px #0000004e}
+#attentionbench-clear[data-theme="dark"] button.tp-tab[aria-pressed="true"] .tp-n{color:#a3a199}
+#attentionbench-clear[data-theme="dark"] button.tp-tab:not([aria-pressed="true"]):hover:not(:disabled){color:#ecebe6}
+#attentionbench-clear[data-theme="dark"] button.tp-seed{box-shadow:none;border:1px solid var(--line);background:transparent;color:var(--text)}
+#attentionbench-clear[data-theme="dark"] button.tp-seed[aria-pressed="true"]{background:#ecebe6;border-color:#ecebe6;color:#1d2024}
 #attentionbench-clear[data-theme="dark"] button.tp-tab:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-seed:focus-visible,#attentionbench-clear[data-theme="dark"] button.tp-card:focus-visible{outline:3px solid var(--orange)}
-#attentionbench-clear[data-theme="dark"] .tp-search{border:1px solid var(--line);background:var(--panel);color:var(--muted)}
+#attentionbench-clear[data-theme="dark"] .tp-search{border:1px solid var(--line);background:var(--panel);color:#a3a199}
+#attentionbench-clear[data-theme="dark"] .tp-search:focus-within{border-color:var(--orange);outline:2px solid var(--orange)}
 #attentionbench-clear[data-theme="dark"] .tp-search input{border:0!important;outline:0;background:transparent!important;color:var(--text);box-shadow:none!important}
 #attentionbench-clear[data-theme="dark"] .tp-list-h{color:var(--muted)}
 #attentionbench-clear[data-theme="dark"] button.tp-item{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
@@ -3843,7 +3857,7 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear[data-theme="dark"] .tp-preview-card .tp-pic+.tp-between+.tp-pic{border:2px solid #23272c;box-shadow:0 10px 20px -8px #000000ff}
 #attentionbench-clear[data-theme="dark"] button.tp-card{box-shadow:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 #attentionbench-clear[data-theme="dark"] button.tp-card:hover:not(:disabled){border-color:var(--orange);box-shadow:0 10px 22px -16px #000000ff}
-#attentionbench-clear[data-theme="dark"] button.tp-tab:hover:not(:disabled),#attentionbench-clear[data-theme="dark"] button.tp-seed:hover:not(:disabled){box-shadow:none}
+#attentionbench-clear[data-theme="dark"] button.tp-tab:not([aria-pressed="true"]):hover:not(:disabled),#attentionbench-clear[data-theme="dark"] button.tp-seed:hover:not(:disabled){box-shadow:none}
 #attentionbench-clear[data-theme="dark"] button.tp-card.is-selected,#attentionbench-clear[data-theme="dark"] button.tp-card.is-selected:hover:not(:disabled){border-color:var(--orange);box-shadow:0 0 0 2px var(--orange)}
 #attentionbench-clear[data-theme="dark"] .tp-pics{background:#000000}
 #attentionbench-clear[data-theme="dark"] .tp-nopic{background:repeating-linear-gradient(45deg,#d2d5d7 0 10px,#cfd1d4 10px 20px);color:#545b63}

@@ -22,6 +22,8 @@ TABLE = {
     '242822': 'ecebe6', '686e64': 'a3a199', '0b0d0b': '000000',
     'd94d27': 'ec6a43', 'a23f32': 'e08670', '48683b': '58b583', 'b7791f': 'e0a24a',
     '8a5a12': 'e0a24a', '7a5212': 'd9a55a', '71634a': 'b8a78a',
+    # 11-11 task-family segmented bar: the track sinks below the panel, the chosen segment rises above it
+    'e7e4da': '15171a', 'fdfcf8': '3a3f45',
 }
 MEDIA = re.compile(r'op-loading|op-stage|op-video|ab-station-camera')
 TEXTISH = {'color', 'fill', '-webkit-text-fill-color', 'caret-color', 'text-decoration-color'}

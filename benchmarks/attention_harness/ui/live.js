@@ -2475,8 +2475,10 @@
   }
   function taskPickerToolbarHtml(cards,tab) {
     const tabs=[{id:'all',label:'All',n:cards.length},...taskPickerFamilies(cards)];
-    return `<div class="tp-tabs" role="group" aria-label="Task family">${tabs.map(t=>`<button type="button" class="tp-tab" data-task-tab="${esc(t.id)}" aria-pressed="${t.id===(tab||'all')}">${esc(t.label)} · ${t.n}</button>`).join('')}</div>
-      <label class="tp-search">Search<input type="search" placeholder="e.g. microwave" data-task-search aria-label="Search tasks" autocomplete="off"></label>`;
+    // 11-11 (user, design T1): one segmented bar (chosen tab = raised white segment, count in small grey digits)
+    // and a small magnifier search on the same line.
+    return `<div class="tp-tabs" role="group" aria-label="Task family">${tabs.map(t=>`<button type="button" class="tp-tab" data-task-tab="${esc(t.id)}" aria-pressed="${t.id===(tab||'all')}">${esc(t.label)} <i class="tp-n">${t.n}</i></button>`).join('')}</div>
+      <label class="tp-search"><svg class="tp-search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg><input type="search" placeholder="Search tasks" data-task-search aria-label="Search tasks" autocomplete="off"></label>`;
   }
   function taskSeedChipsHtml(seeds,current,disabled) {
     if(!seeds.length)return '';
