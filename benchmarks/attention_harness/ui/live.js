@@ -698,7 +698,7 @@
     const archived=records.filter(r=>!resolvedTask(r));
     const deleted=deletedNavigationRecords();
     const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
-    const flatView=!DEBUG_VIEW&&runListMode==='flat',listMoreOpen=Boolean(sidebar.querySelector('[data-list-more]')?.open);
+    const flatView=!DEBUG_VIEW&&runListMode==='flat';  // 11-11 (user): the flat list no longer has the status-filter/grouping fold
     const chipRecords=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''} ${r.lobby?.nickname||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches);
     if(sidebarTask&&!chipRecords.some(r=>r.task_id===sidebarTask))sidebarTask='';
     const flatRows=candidates.filter(r=>!sidebarTask||r.task_id===sidebarTask);
@@ -712,7 +712,7 @@
     const pending=request?.state==='Pending'||local?.state==='Requested';
     const executing=navigationRecords().filter(r=>recordIsActive(r)&&window.Lobby.isMine(r));
     sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, name or robot"></span></label>
-      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${flatView?flatControlsHtml(chipRecords)+`<details class="ab-list-more" data-list-more ${listMoreOpen?'open':''}><summary>More: status filter and grouping</summary>${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout">${['flat','grouped'].map(m=>`<button type="button" class="ab-chip" data-sidebar-layout="${m}" aria-pressed="${runListMode===m}">${m==='flat'?'One list':'Grouped'}</button>`).join('')}</div></details>`:''}${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
+      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${flatView?flatControlsHtml(chipRecords):''}${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
       ${historyNotice?`<p class="ab-history-notice" data-history-notice role="status">${esc(historyNotice.message)}${historyNotice.kind?` <button type="button" data-history-undo>Undo</button>`:''}</p>`:''}
       ${DEBUG_VIEW ? `<details class="ab-record-jump"><summary>Jump to a record</summary><label class="live-run-picker">Viewing record<select id="ab-live-run" aria-label="Viewing record">${linked.map(r=>`<option value="${esc(r.run_id)}" ${r.run_id===(selectedDev||selectedRun)?'selected':''}>${esc(displayRun(r))}</option>`).join('')}</select></label></details>` : ''}
       ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${flatView?(flatNavHtml(flatRows)||'<p class="ab-sidebar-empty">No matching runs.<small>Try another task, person or search.</small></p>'):[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows],i,list)=>`${window.Lobby.groupDivider(group,i,list)}<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
@@ -4332,6 +4332,9 @@
     return 'idle';
   }
   function sidebarMatches(r) {
+    // 11-11 (user): the flat list has no status filter any more, so a status picked earlier (still saved in this
+    // browser) must not hide runs there; the grouped/debug list keeps its status chips.
+    if(!DEBUG_VIEW&&runListMode==='flat')return true;
     const tone=recordTone(r);
     return sidebarFilter==='all'||(sidebarFilter==='queued'&&tone==='queued')||(sidebarFilter==='running'&&tone==='running')||(sidebarFilter==='needs'&&tone==='waiting')||(sidebarFilter==='failed'&&tone==='failed')||(sidebarFilter==='succeeded'&&tone==='success');
   }
