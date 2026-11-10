@@ -32,5 +32,5 @@ test('preview pictures are not lazy, and the text area keeps the tallest height'
   assert.match(html,/\.tp-preview-card \.tp-body\{[^}]*min-height:var\(--tp-body-min,0px\)/);
 });
 test('leaving a task row shows the chosen task again at once (11-10, user)',()=>{
-  assert.match(source,/addEventListener\('pointerout',event=>\{\s*const from=event\.target\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(!from\)return;\s*const to=event\.relatedTarget\?\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(to===from\|\|to\)return;\s*picker\.preview=null;previewTask\(form\.task_id\.value\);/);
+  assert.match(source,/addEventListener\('pointerout',event=>\{\s*const from=event\.target\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(!from\)return;\s*const to=event\.relatedTarget\?\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(to===from\|\|to\)return;\s*picker\.preview=null;previewTask\(picker\.rest\|\|form\.task_id\.value\);/);  // 11-11: or the first listed task while a search hides the chosen one
 });
