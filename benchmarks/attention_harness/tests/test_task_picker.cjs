@@ -13,15 +13,18 @@ const esc=v=>String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll
 const api=vm.runInNewContext(code+'\n({taskSteps,taskCrop,taskPickerCards,taskPickerFamilies,taskPickerMatches,taskCardHtml,taskMarksSvg,taskPickerToolbarHtml,taskSeedChipsHtml,seedListText,fixtureTaskOptions})',{esc,taskName:v=>v,root:{dataset:{}}});
 const PROFILE='r5-fixture-20261031';
 const plain=x=>JSON.parse(JSON.stringify(x));  // arrays from the vm context are another realm's
-const REMOTE={pick_place_counter_to_sink:[101,102],turn_on_microwave:[101,102],pick_place_counter_to_cabinet:[101,102]};
+// 11-10 (user): Remote fixes one seed per task; read the table from live.js so this test follows it.
+const REMOTE=vm.runInNewContext('('+source.match(/const REMOTE_SEEDS=(\{[^;]*\});/)[1]+')');
 const remoteOptions=[
   {value:'pick_place_counter_to_sink',label:'Counter → Sink',group:'',seeds:[101,102]},
   {value:'turn_on_microwave@'+PROFILE,label:'turn_on_microwave',group:'',seeds:[101,102]},
   {value:'pick_place_counter_to_cabinet@'+PROFILE,label:'pick_place_counter_to_cabinet',group:'',seeds:[101,102]},
 ];
 
-test('every task Remote offers has verified pictures for both of its seeds',()=>{
+test('every task Remote offers has exactly one fixed seed with verified pictures',()=>{
+  assert.ok(Object.keys(REMOTE).length>=15);
   for(const [task,seeds] of Object.entries(REMOTE)){
+    assert.equal(seeds.length,1,task);
     const entry=manifest.tasks.find(t=>t.task_id===task);
     assert.ok(entry,task);
     for(const seed of seeds){
