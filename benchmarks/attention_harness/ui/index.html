@@ -3897,6 +3897,26 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [hidden]{display:none!important}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form.ab-v2-profile :is(select[name=robot_model],select[name=execution_arm]),#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form:not(.ab-v2-profile) [data-robot-summary]{display:none}
 @media(max-width:560px){#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-run-section-head{align-items:flex-start}}
+/* Run configuration wizard (11-10): step bar under the header, one step at a time. */
+#attentionbench-clear .ab-launch-dialog .wz-off{display:none!important}
+#attentionbench-clear .ab-launch-dialog .wz-steps{display:flex;align-items:center;gap:8px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--panel);flex-shrink:0;overflow-x:auto}
+#attentionbench-clear .ab-launch-dialog .wz-step{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+#attentionbench-clear .ab-launch-dialog .wz-step:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+#attentionbench-clear .ab-launch-dialog .wz-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);font-size:12px;background:var(--panel)}
+#attentionbench-clear .ab-launch-dialog .wz-step.is-on{color:var(--text);background:var(--panel2)}
+#attentionbench-clear .ab-launch-dialog .wz-step.is-on .wz-num{background:var(--text);color:var(--panel);border-color:var(--text)}
+#attentionbench-clear .ab-launch-dialog .wz-step.is-done .wz-num{background:var(--panel2);color:var(--text)}
+#attentionbench-clear .ab-launch-dialog .wz-line{flex:1 1 16px;min-width:12px;max-width:60px;height:1px;background:var(--line)}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form[data-wizard-step] .ab-run-section-head .op-number{display:none}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell form[data-wizard-step] .wz-first{border-top:0}
+#attentionbench-clear .ab-launch-dialog #ab-launch-form[data-wizard-step]{flex:1 1 auto}
+#attentionbench-clear .ab-launch-dialog #ab-launch-form[data-wizard-step]>.ab-launch-body{flex:1 1 auto}
+@media(max-width:760px){
+ #attentionbench-clear .ab-launch-dialog .wz-steps{padding:10px 18px;gap:4px}
+ #attentionbench-clear .ab-launch-dialog .wz-step:not(.is-on)>span:not(.wz-num){display:none}
+ #attentionbench-clear .ab-launch-dialog .wz-step:not(.is-on){padding:6px}
+}
+#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-actions [data-wizard-next]{border-color:var(--text);background:var(--text);color:var(--panel)}
 /* 01 What to run: the fields under the picker share one row (11-10); auto-fit wraps them on narrow screens. */
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell [data-run-config-section=what]>.ab-launch-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 @media(max-width:760px){

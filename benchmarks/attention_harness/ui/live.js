@@ -2457,6 +2457,52 @@
       reason:!matching.length?'The task, robot and arm combination is no longer supported.'
         : !seeded.length?`Scene seed ${source.seed} is unavailable for this task.`:''};
   }
+  // Run configuration as a wizard (11-10): one step on screen at a time, Next / Back in the footer,
+  // Start run only on the last step. Sections keep their markup; a step hides the others with .wz-off.
+  const LAUNCH_WIZARD_STEPS=[
+    {key:'task',label:'Task',sections:['what']},
+    {key:'help',label:'Help',sections:['help']},
+    {key:'models',label:'Models',sections:['models','reviewer']},
+    {key:'limits',label:'Limits',sections:['limits','advanced']},
+  ];
+  function bindLaunchWizard(dialog,form){
+    const body=form.querySelector('.ab-launch-body'),actions=form.querySelector('.ab-launch-actions');
+    if(!body||!actions)return;
+    const stepOf=new Map();LAUNCH_WIZARD_STEPS.forEach((step,i)=>step.sections.forEach(name=>stepOf.set(name,i)));
+    // Every body child joins a step: a section by its name, anything else (notices, queue) the step before it.
+    let current=0;const parts=[...body.children].map(el=>{const i=stepOf.get(el.dataset?.runConfigSection);if(i!==undefined)current=i;return [el,current];});
+    const nav=document.createElement('nav');nav.className='wz-steps';nav.setAttribute('aria-label','Run configuration steps');
+    nav.innerHTML=LAUNCH_WIZARD_STEPS.map((step,i)=>`<button type="button" class="wz-step" data-wizard-go="${i}"><span class="wz-num">${i+1}</span><span>${esc(step.label)}</span></button>`).join('<span class="wz-line" aria-hidden="true"></span>');
+    dialog.querySelector('.ab-launch-header')?.after(nav);
+    const back=document.createElement('button');back.type='button';back.className='ab-button-quiet';back.dataset.wizardBack='';back.textContent='Back';
+    const next=document.createElement('button');next.type='button';next.className='ab-button-primary';next.dataset.wizardNext='';
+    const cancel=actions.querySelector('[data-close-launch]');(cancel?cancel.after(back):actions.prepend(back));actions.append(next);
+    const finals=[...actions.querySelectorAll('[data-start-no],[data-start-yes]')];
+    const last=LAUNCH_WIZARD_STEPS.length-1;let step=0;
+    const show=i=>{
+      step=Math.max(0,Math.min(last,i));form.dataset.wizardStep=LAUNCH_WIZARD_STEPS[step].key;
+      parts.forEach(([el,s])=>el.classList.toggle('wz-off',s!==step));
+      const first=parts.find(([el,s])=>s===step&&!el.hidden);parts.forEach(([el])=>el.classList.toggle('wz-first',!!first&&el===first[0]));
+      nav.querySelectorAll('[data-wizard-go]').forEach(b=>{const n=Number(b.dataset.wizardGo);b.classList.toggle('is-on',n===step);b.classList.toggle('is-done',n<step);b.setAttribute('aria-current',n===step?'step':'false');});
+      back.classList.toggle('wz-off',step===0);next.classList.toggle('wz-off',step===last);
+      next.textContent=step<last?`Next: ${LAUNCH_WIZARD_STEPS[step+1].label}`:'Next';
+      finals.forEach(b=>b.classList.toggle('wz-off',step!==last));
+      body.scrollTop=0;
+    };
+    const stepValid=()=>{const bad=[...form.elements].find(el=>el.willValidate&&!el.disabled&&parts.some(([p,s])=>s===step&&p.contains(el))&&!el.checkValidity());if(bad){bad.reportValidity();return false;}return true;};
+    next.addEventListener('click',()=>{if(stepValid())show(step+1);});
+    back.addEventListener('click',()=>show(step-1));
+    nav.addEventListener('click',event=>{const b=event.target.closest('[data-wizard-go]');if(!b)return;const to=Number(b.dataset.wizardGo);if(to<=step||stepValid())show(to);});
+    // Enter in a field moves on instead of starting the run before the last step.
+    form.addEventListener('submit',event=>{if(step<last){event.preventDefault();event.stopImmediatePropagation();if(stepValid())show(step+1);}},true);
+    // A field that fails on Start run lives on another step: open that step so the browser can point at it.
+    form.addEventListener('invalid',event=>{const hit=parts.find(([p])=>p.contains(event.target));if(hit&&hit[1]!==step)show(hit[1]);},true);
+    show(0);
+    // Keep the dialog as tall as step 1 so Next and Back do not make it jump.
+    const shell=dialog.querySelector('.ab-launch-shell');
+    requestAnimationFrame(()=>{if(shell&&!shell.style.minHeight)shell.style.minHeight=`${Math.round(shell.getBoundingClientRect().height)}px`;});
+  }
+
   function launchSourceNotice(source,profile,reason) {
     return source?`<p class="ab-launch-note ab-launch-source" data-launch-source><span>COPIED FROM</span><strong>${esc(displayRun(source).replace(/\s--\s/g,' · '))}</strong>${profile?'':`<small>The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.</small>`}</p>`:'';
   }
@@ -2989,6 +3035,7 @@
           ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
+      bindLaunchWizard(launchDialog,form);
       // A test host may offer one lab Codex model next to PARCC; the public host never does, and then Codex is not listed.
       const labCodex=hosted&&typeof options?.hosted?.lab_codex?.model==='string'?{...options.hosted.lab_codex,label:`Lab Codex · ${options.hosted.lab_codex.model}`}:null;
       const keys = bindKeys(form,hosted?'parcc':'codex',labCodex);
