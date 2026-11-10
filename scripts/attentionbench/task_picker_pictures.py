@@ -29,9 +29,11 @@ import time
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'benchmarks/attention_harness/ui/tasks'
-WIDTH, HEIGHT = 960, 540
-THUMB = (640, 360)
-QUALITY = 80
+WIDTH, HEIGHT = 960, 540  # the marks' coordinate space (the page draws marks in a 960x540 viewBox)
+# 11-10 (user: pictures too blurry once the preview zooms in): render at 2x and keep 1600x900.
+RENDER_SCALE = 2
+THUMB = (1600, 900)
+QUALITY = 82
 SIDE = dict(azimuth=90.0, elevation=-30.0, distance=2.6)  # extra_views.VIEWS['side']
 SCHEMA = 'attentionbench.task-picker.v1'
 FIXTURE_PROFILE = 'r5-fixture-20261031'
@@ -73,6 +75,15 @@ def lookat(env, task: str, fixture: bool):
     return look_target(env)
 
 
+def render_big(env, **kw):
+    """Render at RENDER_SCALE x the marks' size; the offscreen buffer must be at least that large."""
+    w, h = WIDTH * RENDER_SCALE, HEIGHT * RENDER_SCALE
+    vis = env.sim.model._model.vis.global_ if hasattr(env.sim.model, '_model') else env.sim.model.vis.global_
+    if vis.offwidth < w or vis.offheight < h:
+        vis.offwidth, vis.offheight = max(vis.offwidth, w), max(vis.offheight, h)
+    return env.sim.render(w, h, **({'depth': False} if 'camera_name' in kw else {}), **kw)
+
+
 class Camera:
     def __init__(self, env, target):
         import mujoco
@@ -108,8 +119,8 @@ class Camera:
     def render(self) -> bytes:
         from PIL import Image
         self.aim()
-        raw = self.np.asarray(self.env.sim.render(WIDTH, HEIGHT))
-        if raw.shape != (HEIGHT, WIDTH, 3):
+        raw = self.np.asarray(render_big(self.env))
+        if raw.shape != (HEIGHT * RENDER_SCALE, WIDTH * RENDER_SCALE, 3):
             raise ValueError(f'unexpected render shape {raw.shape}')
         full = Image.fromarray(raw[::-1].copy())  # MuJoCo rows are bottom-up.
         out = io.BytesIO()
@@ -150,7 +161,7 @@ class OverviewCamera:
 
     def render(self) -> bytes:
         from PIL import Image
-        raw = self.np.asarray(self.env.sim.render(WIDTH, HEIGHT, camera_name=self.name, depth=False))
+        raw = self.np.asarray(render_big(self.env, camera_name=self.name))
         out = io.BytesIO()
         Image.fromarray(raw[::-1].copy()).resize(THUMB, Image.LANCZOS).save(out, format='JPEG', quality=QUALITY,
                                                                           optimize=True, progressive=True)
