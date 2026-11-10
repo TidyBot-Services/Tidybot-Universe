@@ -2569,6 +2569,20 @@
     requestAnimationFrame(()=>{if(shell&&!shell.style.minHeight)shell.style.minHeight=`${Math.round(shell.getBoundingClientRect().height)}px`;});
   }
 
+  // 11-11 (user): the read-only limits are one line of plain text under the only editable limit (versions),
+  // not boxes that look like inputs. The original fields stay in the form, hidden, so their values still submit.
+  function updateLimitsNote(form) {
+    const note=form.querySelector('[data-limits-note]');if(!note)return;
+    const text=sel=>form.querySelector(sel)?.textContent.trim()||'';
+    const parts=[];
+    if(form.querySelector('[data-no-time-limit]'))parts.push(`No time limit for the whole run${text('[data-no-time-limit] [data-agent-range]')?' · '+text('[data-no-time-limit] [data-agent-range]').replace(/^No time limit\s*·\s*/i,''):''}`);
+    const robot=text('[data-robot-time]'),versions=Number(form.max_attempts?.value)||1,steps=Math.round((Number(form.sdk_calls?.value)||0)/versions);
+    if(robot||steps)parts.push('Each attempt: up to '+[robot&&robot+' of robot time',steps&&steps+' robot steps'].filter(Boolean).join(' and '));
+    const tokens=text('[data-tokens-unlimited]');
+    if(/own key/i.test(tokens))parts.push('AI tokens are billed to your own key');
+    note.textContent=parts.join('. ')+(parts.length?'.':'');
+    note.hidden=!parts.length;
+  }
   function launchSourceNotice(source,profile,reason) {
     return source?`<p class="ab-launch-note ab-launch-source" data-launch-source><span>COPIED FROM</span><strong>${esc(displayRun(source).replace(/\s--\s/g,' · '))}</strong>${profile?'':`<small>The current configuration is unavailable for a new run: ${esc(reason)} Choose a supported configuration below.</small>`}</p>`:'';
   }
@@ -2804,7 +2818,7 @@
       box.querySelector('[data-keys-status]').hidden=!saved;
       box.querySelector('[data-keys-shared-remove]').dataset.keyRemove=saved?saved.credential_id:'';
       box.querySelector('[data-key-shared-test]').disabled=!!sharedResult?.busy;
-      tokens.textContent=assignments.dev.choice.startsWith('key:')?'Billed to your own key':labTokens;
+      tokens.textContent=assignments.dev.choice.startsWith('key:')?'Billed to your own key':labTokens;if(typeof updateLimitsNote==='function')updateLimitsNote(form);
       drawAddCombo();
       form.dispatchEvent(new CustomEvent('ab-keys-change'));
     }
@@ -3091,10 +3105,10 @@
           <section class="ab-launch-section" data-run-config-section="limits"><div class="ab-run-section-head"><h4><span class="op-number">05</span>Limits</h4><small>Bound versions, elapsed time and robot work.</small></div><div class="ab-launch-grid">
             <label class="ab-launch-field"><span data-iterations-label>Versions per task</span><em class="ab-chip" data-reduced-chip="versions" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.versionsRange}</small><input name="max_attempts" type="number" min="1" max="${limits.versions}" value="${limits.versions}" required><small class="ab-limit-error" data-limit-error="versions" hidden role="alert"></small></label>
             <label class="ab-launch-field"${limits.noTimeLimit?' data-no-time-limit':''}>Whole run time <small class="ab-field-meta" data-wall-description>6 hours · stored in seconds</small><em class="ab-chip" data-reduced-chip="wall" hidden>Reduced budget</em><small class="ab-range" data-agent-range>${limits.wallRange}</small>${limits.noTimeLimit?'<output data-no-time-limit-box>No time limit</output>':''}<span class="ab-launch-unit"${limits.noTimeLimit?' hidden':''}><input name="wall_seconds" type="number" min="1200" max="${limits.wall}" value="${limits.wall}" ${limits.wall===AGENT_MIN_WALL||limits.noTimeLimit?'readonly':''} required><span>seconds</span></span><small class="ab-limit-error" data-limit-error="wall" hidden role="alert"></small></label>
-            <label class="ab-launch-field ab-limits-set">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
-            <label class="ab-launch-field">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
-            <label class="ab-launch-field">AI tokens <small class="ab-field-meta">· Set by model · usage is recorded</small><output data-tokens-unlimited>Not limited · free models</output></label>
-          </div><p class="ab-run-hint" data-official-budget hidden>${limits.note}</p>
+            <label class="ab-launch-field ab-limits-set ab-limit-info">Robot time per attempt <small class="ab-field-meta">· Set by task</small><output data-robot-time>32 min</output><input name="attempt_wall_seconds" type="number" readonly hidden></label>
+            <label class="ab-launch-field ab-limit-info">Robot steps (SDK calls) <small class="ab-field-meta">· Set by task</small><output data-readonly-sdk-calls></output><input name="sdk_calls" type="number" readonly hidden></label>
+            <label class="ab-launch-field ab-limit-info">AI tokens <small class="ab-field-meta">· Set by model · usage is recorded</small><output data-tokens-unlimited>Not limited · free models</output></label>
+          </div><p class="ab-limits-note" data-limits-note></p><p class="ab-run-hint" data-official-budget hidden>${limits.note}</p>
           <p class="ab-reduced" data-reduced-note hidden><b>Reduced budget</b> · <span data-reduced-text></span> Results cannot be compared directly with the official 10-version results; the summary, the run header and exports say so. Limits can be lowered, not raised.</p></section>
           ${root.dataset.remote==='1'?`<input type="hidden" name="goal_id" value="${esc(options?.dev_v2?.goal_key||'set-by-host')}">`:`<details class="ab-launch-section ab-run-advanced" data-run-config-section="advanced"><summary><h4><span class="op-number">06</span>Advanced</h4><small>The budget record this run belongs to.</small><span class="ab-advanced-state" aria-hidden="true"></span></summary><div class="ab-launch-grid">
             <label class="ab-launch-field">New goal ID<input name="goal_id" value="${esc(options?.dev_v2?.goal_key||`daily-v2-${Date.now()}`)}" ${options?.dev_v2?.goal_key?'readonly':''} required></label>
@@ -3235,6 +3249,7 @@
         form.querySelector('[data-robot-summary]').textContent=profile?`${profile.robot} · ${armNames[profile.execution_arm]?.toLowerCase()||profile.execution_arm}`:'';
         // A Remote host with time-share has no time limit; the field keeps its nominal value and says so.
         form.querySelector('[data-wall-description]').textContent=limits.noTimeLimit?'':`${hoursText(Number(form.wall_seconds.value))} · stored in seconds`;
+        updateLimitsNote(form);
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
