@@ -679,7 +679,9 @@ def test_login_name_is_optional_unique_and_becomes_the_public_name(world):
     assert store.nicknames()[ada_id] == 'Ada Lovelace'
     assert Browser(world.port).login(bob, name='ada lovelace')[1].getheader('Location') == '/login?failed=name_taken'
     assert Browser(world.port).login(bob)[1].getheader('Location') == '/ui/home.html', 'blank keeps the default'
-    bob_id = next(uid for uid in store.nicknames() if uid != ada_id)
+    assert Browser(world.port).login(cy)[1].getheader('Location') == '/ui/home.html'
+    # Animal names follow join order, so read one only after everyone in this test has joined.
+    bob_id = next(r['user_id'] for r in store.invites() if r['user_id'] and r['user_id'] != ada_id)
     animal = store.nicknames()[bob_id]
     assert Browser(world.port).login(cy, name=animal.upper())[1].getheader('Location') == '/login?failed=name_taken', 'nobody takes an existing animal name'
     assert Browser(world.port).login(ada)[1].getheader('Location') == '/ui/home.html' and store.nicknames()[ada_id] == 'Ada Lovelace', 'blank keeps the chosen name'
