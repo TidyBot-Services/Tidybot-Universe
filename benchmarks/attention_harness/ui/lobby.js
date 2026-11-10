@@ -252,7 +252,7 @@
   const personOf = c => String(c?.person || c?.nickname || 'Someone').split(' · ')[0];
   const avatar = (c, size = '') => {
     if (!c) return '';
-    const name = personOf(c), n = Number((name.match(/-(\d+)$/) || [])[1]);
+    const name = personOf(c), n = Number((name.match(/-(\d+)$/) || [])[1]) || [...name].reduce((h, ch) => (h * 31 + ch.codePointAt(0)) % 9973, 0) + 1;
     return `<span class="lb-av ${c.mine ? 'me' : `p${n > 0 ? (n - 1) % 8 : 0}`}${size ? ` ${size}` : ''}" aria-hidden="true">${esc(name[0] || '?')}</span>`;
   };
   const groupAvatar = rows => rows?.groupTitle && rows[0]?.lobby ? avatar(rows[0].lobby) : '';

@@ -86,7 +86,7 @@ test('the ended panel says a no-progress stop stopped itself, not a system probl
 test('viewing someone else\'s run: one bar says read-only and carries your own open run (user 11-09)',async()=>{
   const Lobby=await loadLobby(shared);
   const html=Lobby.banner({lobby:Lobby.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key);
-  assert.match(html,/<span class="lb-av p0 lg" aria-hidden="true">F<\/span><span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only<\/small><b>Fox-a's run<\/b>/,'11-09: avatar, then whose run');
+  assert.match(html,/<span class="lb-av p\d lg" aria-hidden="true">F<\/span><span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only<\/small><b>Fox-a's run<\/b>/,'11-09: avatar, then whose run');
   assert.match(html,/lb-mine-label">Your run<\/span><b>Running<\/b>/);
   assert.match(html,/data-lb-back>Back to my run →/);
   const named=await loadLobby({...shared,robot:{...shared.robot,open:[...shared.robot.open.slice(0,2),card('c',{mine:true,task_key:'pick'})]}});
@@ -102,6 +102,10 @@ test('who is who: one avatar per person, own runs first as My runs, Other people
   assert.match(Lobby.avatar({nickname:'Fox-11'}),/class="lb-av p2"/);
   assert.match(Lobby.avatar({nickname:'Fox-12'}),/class="lb-av p3"/,'Fox-1x neighbours differ');
   assert.match(Lobby.avatar({nickname:'Panda-2',mine:true}),/class="lb-av me"/,'you are always orange');
+  // 11-10 (user): a chosen name has no join number; its colour comes from the name, so different names usually differ.
+  const colour=name=>Lobby.avatar({nickname:name}).match(/lb-av (p\d)/)[1];
+  assert.equal(colour('Ada'),colour('Ada'),'the same name keeps its colour');
+  assert.ok(new Set(['Ada','Bob','Yifei','Qifei','Lin'].map(colour)).size>1,'chosen names do not all share one colour');
   assert.match(lobbySource,/c\.mine \? \['My runs', '0me'\]/);
   assert.match(lobbySource,/data-lb-divider>Other people/);
   assert.match(lobbySource,/<span class="lb-me-k">You<\/span>/,'the header names you');

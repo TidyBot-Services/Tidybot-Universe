@@ -13,8 +13,6 @@
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   function dot(kind, pulse) { return el('span', `dot ${kind}${pulse ? ' pulse' : ''}`); }
 
-  // Tasks shows or hides the task drawer, like the main UI's Tasks button; the choice is remembered.
-  shell.drawer({button: $('tasks'), wrap: $('wrap'), key: 'attention.home.tasks', open: true});
   const notices = window.AttentionNotices?.createNotices({mount: $('home-notices'), experiment: () => status?.running?.[0]?.experiment_id || null});
   if (notices) window.AttentionNotices.installFetchCapture(notices);
 
@@ -65,8 +63,6 @@
     }
   }
 
-  function renderSide(s) { shell.taskRail({list: $('recent'), meta: $('side-meta'), status: s}); }
-
   function renderHero(s) {
     const running = s.running[0], go = $('go');
     $('eyebrow').replaceChildren(dot(running ? 'ok' : 'warn', true), document.createTextNode(running ? 'LIVE · A RUN IS GOING' : 'STANDBY · READY FOR THE NEXT RUN'));
@@ -97,7 +93,7 @@
     }
   }
 
-  function render() { if (!status) return; renderHero(status); renderInstruments(status); renderStats(status); renderSide(status); playScenes(status.scenes); firstPaint = false; }
+  function render() { if (!status) return; renderHero(status); renderInstruments(status); renderStats(status); playScenes(status.scenes); firstPaint = false; }
 
   function showError(text) { const e = $('error'); e.textContent = text; e.hidden = !text; }
 

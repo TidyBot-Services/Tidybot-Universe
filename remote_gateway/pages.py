@@ -56,7 +56,8 @@ strong{padding:9px 12px;border:1px solid #e2604f88;border-radius:10px;background
 <form method="post" action="/login"><h2>Invite only</h2><p>Enter your email and invite code to start a run.</p>
 <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" spellcheck="false" required autofocus></label>
 <label>Invite code<input name="code" autocomplete="off" spellcheck="false" required></label>
-<p class="note">We keep your email only to reach you about your runs. Other people never see it.</p>
+<label>Your name <small>(optional, shown to others)</small><input name="name" autocomplete="nickname" maxlength="32" spellcheck="false" placeholder="e.g. Yifei"></label>
+<p class="note">Others see your name next to your runs; leave it blank to keep your current one. We keep your email only to reach you about your runs. Other people never see it.</p>
 <strong role="alert">__MESSAGE__</strong><button type="submit">Continue<span aria-hidden="true">→</span></button>
 <p class="watch">No code yet?<a href="/ui/">Watch the runs →</a></p></form>
 </body></html>

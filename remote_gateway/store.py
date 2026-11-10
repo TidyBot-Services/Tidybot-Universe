@@ -17,6 +17,8 @@ CREATE INDEX IF NOT EXISTS runs_user ON runs(user_id);
 CREATE TABLE IF NOT EXISTS queue(experiment_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, queued_at REAL NOT NULL);
 -- 11-09 (user): every login gives an email; each address a person used is kept with when it was first and last used.
 CREATE TABLE IF NOT EXISTS user_emails(user_id TEXT NOT NULL, email TEXT NOT NULL, first_seen REAL NOT NULL, last_seen REAL NOT NULL, PRIMARY KEY(user_id, email));
+-- 11-10 (user): a person may pick the name others see; name_key keeps it unique regardless of case.
+CREATE TABLE IF NOT EXISTS user_names(user_id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT UNIQUE NOT NULL, updated_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS start_failures(experiment_id TEXT PRIMARY KEY, message TEXT NOT NULL, failed_at REAL NOT NULL);
 '''
 
@@ -153,10 +155,24 @@ class Store:
     def runs_of(self, user_id):
         with self.tx() as db:return {r['experiment_id'] for r in db.execute('SELECT experiment_id FROM runs WHERE user_id=?', (user_id,))}
 
+    @staticmethod
+    def _nicknames(db):
+        rows = db.execute('SELECT id FROM users ORDER BY created_at,id').fetchall()
+        chosen = {r['user_id']: r['name'] for r in db.execute('SELECT user_id,name FROM user_names')}
+        return {r['id']: chosen.get(r['id']) or f'{ANIMALS[i % len(ANIMALS)]}-{i + 1}' for i, r in enumerate(rows)}
+
     def nicknames(self):
-        """A stable public name for each person, from the order they joined. It says nothing about who they are."""
-        with self.tx() as db:rows = db.execute('SELECT id FROM users ORDER BY created_at,id').fetchall()
-        return {r['id']: f'{ANIMALS[i % len(ANIMALS)]}-{i + 1}' for i, r in enumerate(rows)}
+        """The public name for each person: the name they chose at login, else a stable animal name from the order they joined."""
+        with self.tx() as db:return self._nicknames(db)
+
+    def set_name(self, user_id, name):
+        """Give user_id this public name. False when someone else already shows that name (any case), including an animal default."""
+        key = name.casefold()
+        with self.tx() as db:
+            if any(n.casefold() == key for uid, n in self._nicknames(db).items() if uid != user_id):return False
+            db.execute('INSERT INTO user_names VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name, name_key=excluded.name_key, updated_at=excluded.updated_at',
+                       (user_id, name, key, self.clock()))
+            return True
 
     def owners(self):
         with self.tx() as db:return {r['experiment_id']: r['user_id'] for r in db.execute('SELECT experiment_id,user_id FROM runs')}
