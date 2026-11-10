@@ -42,7 +42,7 @@ test('a run in line waits for a slot, with no time estimate',async()=>{
   assert.match(html,/#1 in line for a run slot/);
   assert.match(html,/Up to 3 runs are open at once and take turns on the robot/);
   assert.doesNotMatch(html,/estimate/i);
-  assert.match(Lobby.newRunHtml(),/3 of 3 runs open · 1 waiting for a slot\./);assert.doesNotMatch(Lobby.newRunHtml(),/does not count toward/);
+  assert.match(Lobby.newRunHtml(),/You already have a run open or in line; finish or cancel it first\./);assert.doesNotMatch(Lobby.newRunHtml(),/does not count toward/);
 });
 
 test('a lobby without open runs renders as before',async()=>{

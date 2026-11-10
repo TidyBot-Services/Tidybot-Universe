@@ -3338,6 +3338,12 @@
       form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('pointerleave',()=>{picker.preview=null;previewTask(form.task_id.value);});
+      // 11-10 (user): leaving a task row shows the chosen task again at once, unless the pointer went to another row.
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerout',event=>{
+        const from=event.target.closest?.('.tp-item[data-task-card]');if(!from)return;
+        const to=event.relatedTarget?.closest?.('.tp-item[data-task-card]');if(to===from||to)return;
+        picker.preview=null;previewTask(form.task_id.value);
+      });
       form.querySelector('[data-task-picker]')?.addEventListener('input',event=>{
         if(!event.target.matches('[data-task-search]'))return;
         event.stopPropagation();  // Typing a search is not a configuration change.

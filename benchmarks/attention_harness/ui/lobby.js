@@ -303,12 +303,13 @@
     const place = waiting + running + 1;
     const mineBusy = [...(snap.robot?.open || []), snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
     if (shared()) {
+      // 11-10 (user): no Queue section. Say one line only when it matters: you already have a run, or yours would wait.
       const opened = snap.robot.open.length, slots = snap.robot.slots, free = opened < slots && !waiting;
-      return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun data-lobby-shared><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Up to ${esc(slots)} runs are open at once. They take turns on the one robot, one Try at a time.</small></div>
-      <p class="ab-run-hint" data-lobby-queue-note>${opened} of ${esc(slots)} runs open · ${waiting} waiting for a slot. ${mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? 'Your run would start right away.' : `Your run would be #${waiting + 1} in line.`}</p></section>`;
+      const line = mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? '' : `All ${esc(slots)} run slots are in use; your run would be #${waiting + 1} in line.`;
+      return line ? `<p class="ab-run-hint" data-lobby-newrun data-lobby-shared data-lobby-queue-note>${line}</p>` : '';
     }
-    return `<section class="ab-launch-section ab-lobby-newrun" data-lobby-newrun><div class="ab-run-section-head"><h4><span class="op-number">07</span>Queue</h4><small>Everyone on this machine shares one robot, so runs wait in line.</small></div>
-      <p class="ab-run-hint" data-lobby-queue-note>${running ? '1 running' : 'The robot is free'} · ${waiting} waiting. ${mineBusy ? 'You already have a run in line; finish or cancel it first.' : `Your run would be #${place}; the estimate appears after you join.`} One running and one waiting run per person. ${snap.demo ? 'Demo engine: simulated run, no GPU, no real provider.' : ''}</p></section>`;
+    const line = mineBusy ? 'You already have a run in line; finish or cancel it first.' : place > 1 ? `The robot is busy; your run would be #${place} in line.` : '';
+    return line || snap.demo ? `<p class="ab-run-hint" data-lobby-newrun data-lobby-queue-note>${line}${snap.demo ? `${line ? ' ' : ''}Demo engine: simulated run, no GPU, no real provider.` : ''}</p>` : '';
   }
   function shapeNewRun(form) {
     if (!state.enabled) return;
