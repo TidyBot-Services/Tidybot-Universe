@@ -3884,9 +3884,264 @@
    "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
    "seeds": [
     {
-     "pictures": false,
-     "reason": "goal state is not a native success",
-     "seed": 104
+     "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
+     "alt_start": "Start: Pick the kettle from the counter and place it on the tray. Then pick the mug from the cabinet and place it on the tray. Then close the cabinet doors.",
+     "done": "arrange_tea-104-done.jpg",
+     "marks": [
+      {
+       "arrow": [
+        510.4,
+        480.2,
+        415.0,
+        456.3
+       ],
+       "circle": {
+        "cx": 510.4,
+        "cy": 480.2,
+        "r": 35.5
+       },
+       "kind": "move",
+       "n": 1,
+       "object": "obj2",
+       "region": {
+        "points": [
+         [
+          369.0,
+          498.6
+         ],
+         [
+          379.9,
+          443.3
+         ],
+         [
+          391.5,
+          400.3
+         ],
+         [
+          457.4,
+          414.5
+         ],
+         [
+          453.9,
+          468.9
+         ],
+         [
+          438.4,
+          512.2
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        442.1,
+        359.0,
+        440.6,
+        463.1
+       ],
+       "circle": {
+        "cx": 442.1,
+        "cy": 359.0,
+        "r": 24.2
+       },
+       "kind": "move",
+       "n": 2,
+       "object": "obj",
+       "region": {
+        "points": [
+         [
+          408.4,
+          484.0
+         ],
+         [
+          418.8,
+          431.7
+         ],
+         [
+          447.8,
+          427.7
+         ],
+         [
+          471.6,
+          442.5
+         ],
+         [
+          463.4,
+          495.2
+         ],
+         [
+          433.7,
+          497.5
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        338.9,
+        447.6,
+        475.5,
+        357.5
+       ],
+       "circle": {
+        "cx": 338.9,
+        "cy": 447.6,
+        "r": 31.4
+       },
+       "kind": "part",
+       "n": 3,
+       "part": "cab_1_main_group_hingeleftdoor",
+       "region": {
+        "points": [
+         [
+          473.1,
+          330.9
+         ],
+         [
+          473.3,
+          330.3
+         ],
+         [
+          478.0,
+          330.3
+         ],
+         [
+          478.2,
+          330.9
+         ],
+         [
+          478.3,
+          373.7
+         ],
+         [
+          478.3,
+          379.9
+         ],
+         [
+          478.2,
+          381.9
+         ],
+         [
+          473.5,
+          381.9
+         ],
+         [
+          473.4,
+          379.9
+         ],
+         [
+          473.3,
+          376.0
+         ],
+         [
+          473.1,
+          337.3
+         ]
+        ]
+       }
+      },
+      {
+       "arrow": [
+        639.2,
+        447.4,
+        501.7,
+        352.1
+       ],
+       "circle": {
+        "cx": 639.2,
+        "cy": 447.4,
+        "r": 31.5
+       },
+       "kind": "part",
+       "n": 4,
+       "part": "cab_1_main_group_hingerightdoor",
+       "region": {
+        "points": [
+         [
+          498.6,
+          377.6
+         ],
+         [
+          499.4,
+          335.1
+         ],
+         [
+          499.5,
+          330.9
+         ],
+         [
+          499.7,
+          330.3
+         ],
+         [
+          504.4,
+          330.3
+         ],
+         [
+          504.6,
+          330.9
+         ],
+         [
+          504.7,
+          333.1
+         ],
+         [
+          504.7,
+          333.3
+         ],
+         [
+          503.7,
+          379.9
+         ],
+         [
+          503.5,
+          381.9
+         ],
+         [
+          498.9,
+          381.9
+         ],
+         [
+          498.7,
+          379.9
+         ]
+        ]
+       }
+      }
+     ],
+     "objects": 2,
+     "pictures": true,
+     "rule": "Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",
+     "seed": 104,
+     "sentence": [
+      {
+       "text": "Put the "
+      },
+      {
+       "mark": "o",
+       "text": "kettle non electric"
+      },
+      {
+       "text": " and the "
+      },
+      {
+       "mark": "o",
+       "text": "mug"
+      },
+      {
+       "text": " on the "
+      },
+      {
+       "mark": "b",
+       "text": "tray"
+      },
+      {
+       "text": ", then close the cabinet doors."
+      }
+     ],
+     "start": "arrange_tea-104-start.jpg",
+     "steps": 4,
+     "view": "side"
     },
     {
      "alt_done": "Done: Done when the kettle and the mug are on the tray, the cabinet is shut and both hands have let go of the mug.",

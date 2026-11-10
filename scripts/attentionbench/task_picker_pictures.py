@@ -264,6 +264,27 @@ def blank_view(jpeg: bytes) -> bool:
     return max(ImageStat.Stat(image).stddev) < 12
 
 
+def hands_away(env, step=0.2, lift=0.12):
+    """Move each gripper that is within 0.3 m of a task object away from it (horizontally) and up, by arm IK only
+    (the base stays). Returns what moved; the objects are not touched."""
+    import numpy as np
+    from task_picker_teleport import teleport_lib as T
+    names = [n for n in env.objects if n in ('obj', 'obj2', 'obj1', 'kebab', 'baguette', 'container')]
+    moved = {}
+    for native in ('left', 'right'):
+        p = T.eef(env, native)
+        near = [(np.linalg.norm(T.obj_pos(env, n) - p), n) for n in names]
+        if not near or min(near)[0] > 0.3:
+            continue
+        o = T.obj_pos(env, min(near)[1])
+        away = (p - o)[:2]
+        away = away / (np.linalg.norm(away) or 1)
+        target = p + np.array([away[0] * step, away[1] * step, lift])
+        moved[native] = round(float(T.ik(env, native, target)), 4)
+    T.settle(env)
+    return moved
+
+
 def run_pair(task: str, seed: int, out: Path) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import numpy as np
@@ -287,6 +308,11 @@ def run_pair(task: str, seed: int, out: Path) -> dict:
         with rec:
             detail = spec.goal(env) or {}               # teleport into the goal state (settles inside)
         done_success = verdict(env, fixture)
+        if not done_success and fixture:
+            # 11-10: a gripper still resting near a goal object fails "both hands let go" (ArrangeTea 104: the tray
+            # sits under the left gripper's start pose). A run would move the hand away; do the same here.
+            detail['hands_away'] = hands_away(env)
+            done_success = verdict(env, fixture)
         marks = goals.derive_marks(env, camera, sys.modules[__name__], rec, spec, rec.pressed)
         done = camera.render()
     finally:
