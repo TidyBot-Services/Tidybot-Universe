@@ -132,7 +132,7 @@ test('H3 (user 11-10): text list on the left, pointed task previewed large with 
   assert.match(live,/function taskPreviewHtml\(card,seed,extra=''\)/);
   assert.match(live,/taskCardHtml\(card,\{selected:false,seed\}\)\.replace/,'the preview reuses the card with its marks');
   assert.match(live,/addEventListener\('pointerover'/);
-  assert.match(live,/addEventListener\('pointerleave',\(\)=>\{picker\.preview=null;previewTask\(form\.task_id\.value\);\}\)/,'leaving returns to the chosen task');
+  assert.match(live,/addEventListener\('pointerleave',\(\)=>\{picker\.preview=null;previewTask\(picker\.rest\|\|form\.task_id\.value\);\}\)/,'leaving returns to the chosen task (or the first listed one while a search hides it)');
   assert.match(live,/querySelectorAll\('\.tp-item\[data-task-card\]'\)/,'arrow keys move along the list');
 });
 
@@ -168,4 +168,14 @@ test('design C: steps come from the description words, the crop keeps every mark
   assert.ok(c&&c.w<900&&Math.abs(c.h-c.w*9/16)<1e-6&&c.x>=0&&c.y>=0&&c.x+c.w<=960.01&&c.y+c.h<=540.01);
   assert.ok(270-56>=c.x-1&&(525+56<=c.x+c.w*.62+1||360+56<=c.y+c.h*.56+1),'all marks inside, ending left of or above the inset');
   assert.equal(api.taskCrop([]),null);
+});
+
+test('a family tab lists only its own tasks and moves a filtered-out choice to its first task; a search only filters (user 11-11)',()=>{
+  const live=source;
+  assert.doesNotMatch(live,/c\.value===form\.task_id\.value\|\|taskPickerMatches/,'the chosen task is no longer forced into every tab');
+  assert.match(live,/const visible=cards\.filter\(c=>taskPickerMatches\(c,picker\.tab,picker\.query\)\)/);
+  assert.match(live,/picker\.tab=tab\.dataset\.taskTab;pickFirstListed\(\)/);
+  assert.match(live,/picker\.query=event\.target\.value;renderTaskPicker\(\)/,'typing never changes the chosen task');
+  assert.match(live,/picker\.rest=\(visible\.find\(c=>c\.value===form\.task_id\.value\)\|\|visible\[0\]\)/,'leaving the list shows a listed task');
+  assert.match(live,/if\(listed\.length&&!listed\.some\(c=>c\.value===form\.task_id\.value\)\)\{\s*form\.task_id\.value=listed\[0\]\.value;/);
 });

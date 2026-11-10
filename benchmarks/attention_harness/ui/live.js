@@ -3334,8 +3334,9 @@
           box.querySelector('[data-task-search]').value=picker.query;
         } else box.querySelectorAll('[data-task-tab]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.taskTab===picker.tab)));
         const seed=Number(form.seed.value);
-        const visible=cards.filter(c=>c.value===form.task_id.value||taskPickerMatches(c,picker.tab,picker.query));
+        const visible=cards.filter(c=>taskPickerMatches(c,picker.tab,picker.query));  // 11-11 (user): only the tab's own tasks
         const showSeed=c=>c.value===form.task_id.value&&c.seeds.includes(seed)?seed:(c.seeds.find(s=>c.pictures.has(s))??c.seeds[0]??null);
+        picker.rest=(visible.find(c=>c.value===form.task_id.value)||visible[0])?.value||form.task_id.value;  // shown when the pointer leaves the list
         const previewed=visible.find(c=>c.value===picker.preview)||visible.find(c=>c.value===form.task_id.value)||visible[0];
         picker.showSeed=showSeed;
         const seedOptions=[...form.seed.options].filter(o=>!o.disabled).map(o=>Number(o.value));
@@ -3373,12 +3374,24 @@
         measure.remove();
         if(tallest)box.style.setProperty('--tp-body-min',`${tallest}px`);
       }
+      // 11-11 (user): a family tab lists only its own tasks; the chosen task is no longer kept in the list. When
+      // the tab does not hold the chosen task, its first task becomes the chosen one, so the highlighted row, the
+      // preview and what will run agree. A search only filters (typing never changes the choice: each letter
+      // would pick a different task); while the chosen task is filtered out, the first match is previewed.
+      function pickFirstListed() {
+        const listed=pickerCards().filter(c=>taskPickerMatches(c,picker.tab,picker.query));
+        if(listed.length&&!listed.some(c=>c.value===form.task_id.value)){
+          form.task_id.value=listed[0].value;
+          form.task_id.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        renderTaskPicker();
+      }
       form.querySelector('[data-task-picker]')?.addEventListener('click',event=>{
         const card=event.target.closest('[data-task-card]'),tab=event.target.closest('[data-task-tab]'),chip=event.target.closest('[data-task-seed]');
         if(card&&form.task_id.value!==card.dataset.taskCard){
           form.task_id.value=card.dataset.taskCard;
           form.task_id.dispatchEvent(new Event('change',{bubbles:true}));
-        } else if(tab){picker.tab=tab.dataset.taskTab;renderTaskPicker();}
+        } else if(tab){picker.tab=tab.dataset.taskTab;pickFirstListed();}
         else if(chip&&!chip.disabled&&form.seed.value!==chip.dataset.taskSeed){
           form.seed.value=chip.dataset.taskSeed;
           form.seed.dispatchEvent(new Event('change',{bubbles:true}));
@@ -3397,7 +3410,7 @@
       };
       form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
-      form.querySelector('[data-task-picker]')?.addEventListener('pointerleave',()=>{picker.preview=null;previewTask(form.task_id.value);});
+      form.querySelector('[data-task-picker]')?.addEventListener('pointerleave',()=>{picker.preview=null;previewTask(picker.rest||form.task_id.value);});
       // 11-10 (user, design C): pointing at a step shows only that step on the picture.
       const showStep=(card,k)=>{
         if(!card)return;if(k)card.dataset.step=k;else delete card.dataset.step;
@@ -3413,7 +3426,7 @@
       form.querySelector('[data-task-picker]')?.addEventListener('pointerout',event=>{
         const from=event.target.closest?.('.tp-item[data-task-card]');if(!from)return;
         const to=event.relatedTarget?.closest?.('.tp-item[data-task-card]');if(to===from||to)return;
-        picker.preview=null;previewTask(form.task_id.value);
+        picker.preview=null;previewTask(picker.rest||form.task_id.value);
       });
       form.querySelector('[data-task-picker]')?.addEventListener('input',event=>{
         if(!event.target.matches('[data-task-search]'))return;
