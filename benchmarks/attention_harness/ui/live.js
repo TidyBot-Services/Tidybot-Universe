@@ -3360,8 +3360,9 @@
         if(refocus)box.querySelector(refocus)?.focus();
         steadyTaskPreview(visible,showSeed);
       }
-      // 11-10 flicker fix: preload each listed task's pictures and give the preview text the height of the
-      // tallest one, so pointing at another task never changes the card's height.
+      // 11-10 flicker fix: preload each listed task's pictures and keep the preview column as tall as the tallest
+      // listed task's card, so pointing at another task never moves the list. 11-11 (user): the card itself fits
+      // its own text (no empty box under a short task); on a phone (one column) nothing is reserved.
       function steadyTaskPreview(visible,showSeed) {
         const box=form.querySelector('[data-task-preview]');if(!box||!box.clientWidth)return;  // hidden form: nothing to measure
         const pages=visible.map(c=>taskPreviewHtml(c,showSeed(c),c.value===form.task_id.value?picker.chips||'':''));
@@ -3369,10 +3370,11 @@
         const measure=document.createElement('div');
         measure.style.cssText=`position:absolute;visibility:hidden;pointer-events:none;left:-10000px;top:0;width:${box.clientWidth}px`;
         measure.innerHTML=pages.map(html=>html.replace(/<img [^>]*>/g,'')).join('');
-        box.style.removeProperty('--tp-body-min');box.appendChild(measure);
+        box.style.removeProperty('--tp-preview-min');box.appendChild(measure);
         const tallest=Math.max(0,...[...measure.querySelectorAll('.tp-body')].map(b=>b.offsetHeight));
         measure.remove();
-        if(tallest)box.style.setProperty('--tp-body-min',`${tallest}px`);
+        const card=box.querySelector('[data-task-preview-card]'),body=card?.querySelector('.tp-body');
+        if(tallest&&card&&body)box.style.setProperty('--tp-preview-min',`${card.offsetHeight-body.offsetHeight+tallest}px`);
       }
       // 11-11 (user): a family tab lists only its own tasks; the chosen task is no longer kept in the list. When
       // the tab does not hold the chosen task, its first task becomes the chosen one, so the highlighted row, the

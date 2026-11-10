@@ -26,10 +26,12 @@ test('the preview swaps only after decoding, and only for the latest task pointe
   assert.match(source,/Promise\.all\(taskPictureSources\(html\)\.map\(loadTaskPicture\)\)\.then\(swap\);/);
   assert.equal(/box\.innerHTML=taskPreviewHtml/.test(source),false,'no immediate swap left');
 });
-test('preview pictures are not lazy, and the text area keeps the tallest height',()=>{
+test('preview pictures are not lazy; the column keeps the tallest height but the card fits its text (11-11)',()=>{
   assert.equal(source.includes('loading="lazy" decoding="async" data-tp-img'),false);
   assert.match(source,/steadyTaskPreview\(visible,showSeed\);/);
-  assert.match(html,/\.tp-preview-card \.tp-body\{[^}]*min-height:var\(--tp-body-min,0px\)/);
+  assert.match(html,/\.tp-preview\{min-height:var\(--tp-preview-min,0px\)\}/);
+  assert.equal(/\.tp-preview-card \.tp-body\{[^}]*min-height/.test(html),false,'the card body is never stretched');
+  assert.match(html,/@media \(max-width:760px\)\{[^@]*\.tp-preview\{min-height:0\}/,'one column on a phone: nothing reserved');
 });
 test('leaving a task row shows the chosen task again at once (11-10, user)',()=>{
   assert.match(source,/addEventListener\('pointerout',event=>\{\s*const from=event\.target\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(!from\)return;\s*const to=event\.relatedTarget\?\.closest\?\.\('\.tp-item\[data-task-card\]'\);if\(to===from\|\|to\)return;\s*picker\.preview=null;previewTask\(picker\.rest\|\|form\.task_id\.value\);/);  // 11-11: or the first listed task while a search hides the chosen one
