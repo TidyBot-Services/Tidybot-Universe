@@ -10,9 +10,9 @@ function api(){return vm.runInNewContext(block+'\n({operatorSettings,operatorAIR
 test('Codex run quota line uses recorded first-to-last points only',()=>{
  const snapshot={run:{run_id:'q'},dev_session:{locked:{config:{model_source:'codex'}},versions:[]},
    dev_v2:{experiment_id:'e',quota_usage:{before:12.1,after:15.6}},resources:{tokens:{used:100,limit:1000}},attempts:[]};
- assert.match(api().operatorResources(snapshot),/AI usage:[\s\S]*data-codex-run-quota>Codex quota used by this run: about \+4 points/);
+ assert.doesNotMatch(api().operatorResources(snapshot),/Codex quota used by this run/);  // 11-10: no longer shown
  snapshot.dev_v2.quota_usage.after=12.1;
- assert.match(api().operatorResources(snapshot),/Codex quota used by this run: less than 1 point/);
+ assert.doesNotMatch(api().operatorResources(snapshot),/Codex quota used by this run/);
  snapshot.dev_v2.quota_usage.after=11;
  assert.doesNotMatch(api().operatorResources(snapshot),/Codex quota used by this run/);
  snapshot.dev_v2.quota_usage.after=15;
@@ -21,7 +21,7 @@ test('Codex run quota line uses recorded first-to-last points only',()=>{
 });
 test('EVAL UI 01 enabled Qwen and old disabled task-check text',()=>{
  const snapshot={run:{run_id:'a',suite:'robocasa365',execution_target:'robocasa365_sim',robot:{model:'OpenArm365',execution_arm:'both'},seed:102},task_plan:{},attention_control:{active_policy:'reactive_help',read_only:true},dev_session:{model:'parcc/GLM'},dev_v2:{},dev_eval_enabled:true};
- const on=api().operatorSettings(snapshot);assert.match(on,/Eval agent<\/span><b>Qwen/);assert.match(on,/Reviews the recording and camera views/);assert.match(on,/the simulator still decides success/);
+ const on=api().operatorSettings(snapshot);assert.match(on,/Eval agent<\/span><b>Qwen/);assert.match(on,/Reviews the recording and camera views/);assert.doesNotMatch(on,/the simulator still decides success/);
  delete snapshot.dev_eval_enabled;const off=api().operatorSettings(snapshot);assert.match(off,/Simulator's own task check/);assert.doesNotMatch(off,/Eval agent<\/span><b>Qwen/);
 });
 for(const [status,passed,label] of [['completed',true,'Looks right'],['completed',false,'Problems found'],['failed',false,'Review unavailable'],['timeout',false,'Review unavailable'],['skipped_budget',false,'Review unavailable']]){
@@ -67,7 +67,7 @@ test('EVAL UI 01 and 05 flag the fallback only once a review was text-only',()=>
  assert.doesNotMatch(api().operatorResources(fine),/text-only/);
  const fell={...base,dev_session:{model:'parcc/GLM',versions:[{version:1,evaluator_review:textOnly()},{version:2,evaluator_review:textOnly({fallback_reason:'qwen_skipped_after_vision_timeout'})}]}};
  const s=api().operatorSettings(fell);
- assert.match(s,/Eval agent<\/span><b>GLM · text only/);assert.match(s,/op-field op-warn/);assert.match(s,/Qwen was unavailable, so recordings were not reviewed visually/);assert.match(s,/the simulator still decides success/);
+ assert.match(s,/Eval agent<\/span><b>GLM · text only/);assert.match(s,/op-field op-warn/);assert.match(s,/Qwen was unavailable, so recordings were not reviewed visually/);assert.doesNotMatch(s,/the simulator still decides success/);
  assert.match(api().operatorResources(fell),/data-text-only-note/);assert.match(api().operatorResources(fell),/2 Eval agent reviews were text-only \(Qwen unavailable\)/);
  fell.dev_session.versions.pop();assert.match(api().operatorResources(fell),/1 Eval agent review was text-only/);
  const bare={...base,dev_session:{model:'parcc/GLM'}};                                   // no versions yet: must not throw

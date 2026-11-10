@@ -8,7 +8,7 @@ const v2=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/agent-policy-v
 const harness=fs.readFileSync(path.join(__dirname,'test_dev_workspace.cjs'),'utf8');
 const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.indexOf("test('Current view keeps"))
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
-    '({agentWorkspaceSnapshot,workspaceHTML,agentHelpCard,agentPolicyHelp,attentionLedger,attentionStripModel,agentFullStory,devPolicyChoices,agentLaunchSelection,policyShort})');
+    '({agentWorkspaceSnapshot,workspaceHTML,agentHelpCard,agentPolicyHelp,agentStory,agentPolicyCode,attentionLedger,attentionStripModel,agentFullStory,devPolicyChoices,agentLaunchSelection,policyShort})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
 function apiFor(snapshot=null){
   return rendererAPI(snapshot,false,{crypto:webcrypto,TextDecoder,Uint8Array,HumanReply:{blocks:parts=>Object.values(parts).join(''),skipButton:()=>'<button data-hr-skip></button>'},
@@ -69,12 +69,14 @@ test('v2 help reasons use readable text with original codes on hover',()=>{
  };
  for(const [code,text] of Object.entries(reasons)){
    for(const fields of [{reason:code},{decision:{reason:code}}]){
-     const html=api.agentHelpCard({agent_policy_version:'agent-policy-v2',...fields},1);
+     // 11-10 run page: the help card shows only the reply; the reason stays readable where it is coded.
+     const html=api.agentPolicyCode(fields.reason||fields.decision.reason);
      assert.ok(html.includes(`title="${code}">${text}</span>`),code);
      assert.ok(!html.replace(/<[^>]*>/g,'').includes(code),code);
+     assert.ok(!api.agentHelpCard({agent_policy_version:'agent-policy-v2',...fields},1).includes('Reason:'),code);
    }
  }
- const html=api.agentHelpCard({agent_policy_version:'agent-policy-v2',reason:'future_reason"<&'},1);
+ const html=api.agentPolicyCode('future_reason"<&');
  assert.ok(html.includes('title="future_reason&quot;&lt;&amp;">future_reason&quot;&lt;&amp;</span>'));
 });
 test('a waiting help request offers a reply form and a reply from a person is labelled',async()=>{
@@ -85,19 +87,25 @@ test('a waiting help request offers a reply form and a reply from a person is la
  assert.ok(html.includes('op-reply-live')&&html.includes('YOUR MOVE')&&html.includes('data-seconds="120"')&&!html.includes('HELP &amp; REPLIES'));
  assert.ok(html.includes('data-state="waiting"')&&html.includes('data-agent-reply')&&html.includes('data-execution-id="e000005"'));
  assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
- assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human'},1).includes('Person replied'));
- assert.ok(!api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'advisor'},1).includes('Person replied'));
+ // 11-10 run page: a help card is the reply itself (no try, kind, delivery, fee or reason line).
+ const card=api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human',ask_kind:'forced',execution_id:'e000004',reason:'request_after_each_failure',content:'Lift <slowly>',actual_cost_known:true,hint_human_seconds:356.1,actual_help_count:1},1);
+ assert.ok(card.includes('aria-label="Help #1"')&&card.includes('<b>#1</b>')&&card.includes('Lift &lt;slowly&gt;'));
+ for(const gone of ['Try 4','Forced question','Delivered','Person replied','help charged','Reason:'])assert.ok(!card.includes(gone),gone);
+ assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:false},1).includes('Not delivered'));
 });
+// 11-10 run page: the story strip is no longer drawn in 02 (the attempt pills in 01 and the timeline replace it);
+// agentStory itself is still used by the debug view, so its wording stays covered here.
 test('a few tries are counted on their card, many keep the most common failure as its name',async()=>{
  const s=await snapshot(),api=apiFor(s),tries=n=>Array.from({length:n},(_,i)=>({execution_id:`e${i}`,number:i+1,submitted:false,ok:false,kind:'reach',why:'x'}));
- s.agent.tries=tries(3);assert.ok(api.agentPolicyHelp(s).includes('<b>3 tries'));
- s.agent.tries=tries(1);assert.ok(api.agentPolicyHelp(s).includes('<b>1 try'));
- s.agent.tries=tries(9);assert.ok(api.agentPolicyHelp(s).includes("<b>Can't reach")||api.agentPolicyHelp(s).includes('<b>Can&#39;t reach'));
+ s.agent.tries=tries(3);assert.ok(api.agentStory(s.agent).includes('<b>3 tries'));
+ s.agent.tries=tries(1);assert.ok(api.agentStory(s.agent).includes('<b>1 try'));
+ s.agent.tries=tries(9);assert.ok(api.agentStory(s.agent).includes("<b>Can't reach")||api.agentStory(s.agent).includes('<b>Can&#39;t reach'));
+ assert.ok(!api.agentPolicyHelp(s).includes('data-agent-history'));
 });
 test('the history reads as chapters with plain names, never internal ids',async()=>{
  const s=await snapshot(),api=apiFor(s);
  s.agent.tries=[{execution_id:'e000001',number:1,submitted:false,ok:false,kind:'reach',why:'x'},{execution_id:'e000002',number:2,submitted:false,ok:false,kind:'reach',why:'x',help:{content:'y'}},{execution_id:'e000003',number:3,submitted:true,attempt:1,passed:false,ok:false,kind:'hold',why:'z'},{execution_id:'e000004',number:4,submitted:false,ok:false,kind:'hold',why:'z'}];
- const html=api.agentPolicyHelp(s);
+ const html=api.agentStory(s.agent);
  assert.ok(html.includes('data-agent-history')&&html.includes('Try 1–2')&&html.includes('2 tries')&&html.includes('Help 1')&&html.includes('After Try 2')&&html.includes('Attempt 1')&&html.includes('Not passed'));
  assert.equal((html.match(/data-story-part/g)||[]).length,4);
  assert.ok(!html.includes('Technical details')&&!html.includes('Help replies'));

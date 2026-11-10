@@ -64,7 +64,7 @@ test('agent keeps five regions and selected-attempt evidence without duplicate a
   assert.doesNotMatch(html,/&quot;outcome&quot;|&quot;diagnostics&quot;|data-agent-timeline|\/home\/|\/private\//);
   // 10-30: region 03 has no Attempt details (code, citations, instruments) any more.
   assert.doesNotMatch(html,/data-agent-attempt-details|data-agent-attempt-errors|data-agent-code|data-agent-citations|data-instrument-canvas|>Attempt details<|>Errors \(/);
-  assert.match(html,/\/report"[^>]*>Download agent report \(JSON\)/);
+  assert.doesNotMatch(html,/Download agent report|Download data \(CSV\)/);  // 11-10: no download link on an Agent run
   assert.doesNotMatch(html,/\/export.csv/);
 });
 test('one intended one-call visual change: P3 PLAN row replaces revision; every other golden byte unchanged',()=>{
@@ -174,12 +174,14 @@ test('r6 timeline shows request-sequence dots, short verdicts and clean selected
   assert.doesNotMatch(card,/<p>/);
   sessionStorage.setItem(`attention.efficiency.help:${snapshot.run.run_id}`,snapshot.requests[1].request_id);
   const help=api.agentTimelineDetail(snapshot,api.attentionLedger(snapshot).rows[1]);
-  assert.match(help,/Automatic advisor · delivered/);assert.match(help,/274.8 s/);assert.match(help,/Full reply/);
+  // 11-10 run page: a delivered help card is the reply itself (no provider, seconds or reason line).
+  assert.doesNotMatch(help,/Automatic advisor · delivered|274.8 s|Full reply|delivered a hint/);
   // Delivered despite an invalid_usage bookkeeping error: never 'could not deliver'.
-  assert.doesNotMatch(help,/could not deliver/);assert.match(help,/delivered a hint/);
+  assert.doesNotMatch(help,/could not deliver|Not delivered/);
   assert.ok(help.includes('banana'));
+  // A help that never arrived still says so, and why.
   const refused=api.agentTimelineDetail(snapshot,api.attentionLedger(snapshot).rows[0]);
-  assert.match(refused,/refused before reaching the advisor/);assert.match(refused,/0 s · not charged/);
+  assert.match(refused,/Not delivered/);assert.match(refused,/refused before reaching the advisor/);
 });
 test('02 attempt click and 03 replay click share selection and clear a selected help',async()=>{
   const snapshot=await timelineSnapshot(),sessionStorage=memoryStorage();
@@ -211,7 +213,7 @@ test('full story follows Start, explore, attempt, help, completion and closes wi
   const {api}=apiFor(snapshot,{sessionStorage,view,render:()=>rendered++});
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const html=api.agentFullStory(snapshot),text=visibleText(html);
-  assert.match(text,/Start[^]*Explore &amp; try[^]*Attempt 1[^]*Help #1[^]*Explore &amp; try[^]*Attempt 2[^]*Help #2[^]*Explore &amp; try[^]*Attempt 3[^]*Completed/);
+  assert.match(text,/Start[^]*Explore &amp; try[^]*Attempt 1[^]*Help\s*#1[^]*Explore &amp; try[^]*Attempt 2[^]*Help\s*#2[^]*Explore &amp; try[^]*Attempt 3[^]*Completed/);
   assert.doesNotMatch(text,/e000|v000|stdout|state_log|RuntimeError/);
   assert.match(html,/<dialog[^>]*aria-labelledby="agent-story-title"/);
   api.bindAgentStory(snapshot);events.get('open:click')();assert.equal(dialog.open,true);

@@ -241,13 +241,13 @@ test('Selecting an attempt presses its tab without a Current view replay note',(
  assert.match(html,/data-history-replay[^>]*src="\/replay\.mp4"/);
  assert.doesNotMatch(html,/data-current-replay-note|data-starting-scene/);
 });
-test('Current view explains the starting scene when the run has ended',()=>{
+// 11-10 run page (user decision): an ended run has no Live entry and opens on the attempt that decided it.
+test('An ended run opens on its deciding attempt instead of the starting scene',()=>{
  const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';
  const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
- assert.match(html,/data-history-select="live" aria-pressed="true"/);
- assert.match(html,/data-history-select="a1" aria-pressed="false"/);
- assert.match(html,/data-current-replay-note>The run has ended\. This is the starting scene of the last attempt\./);
- assert.match(html,/data-starting-scene><video data-starting-video/);
+ assert.doesNotMatch(html,/data-history-select="live"/);
+ assert.match(html,/data-history-select="a1" aria-pressed="true"/);
+ assert.doesNotMatch(html,/data-current-replay-note|data-starting-scene/);
 });
 for(const kind of ['formal','dev1','dev2'])test(`OPERATOR real renderer entries: ${kind} has five clean modules`,()=>{
  const snap=rendererSnapshot(kind),api=rendererAPI(snap);
