@@ -1229,7 +1229,7 @@
         if(event.ctrlKey||event.metaKey||event.altKey)return;
         const t=event.target;if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;
         if(event.key==='t'||event.key==='T'){sidebarOpen=!sidebarOpen;preference('attention.sidebar-open',String(sidebarOpen));sidebarLayout();return;}
-        const tabs=[...view.querySelectorAll('.op-tabs [data-history-select]')];
+        const tabs=[...view.querySelectorAll('.op-tabs [data-history-select]:not([role=option]):not(.op-link)')];
         if((event.key==='ArrowLeft'||event.key==='ArrowRight')&&tabs.length){
           const at=Math.max(0,tabs.findIndex(b=>b.getAttribute('aria-pressed')==='true')),next=tabs[Math.min(tabs.length-1,Math.max(0,at+(event.key==='ArrowRight'?1:-1)))];
           if(next&&next!==tabs[at]){event.preventDefault();next.click();}
@@ -1627,6 +1627,7 @@
     return `<button class="${cls}" type="button" data-open-launch ${launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) ? '' : 'disabled'}>${label}</button>`;
   }
   // New run only makes Agent runs, so an older One call run has no same settings to repeat.
+  // 11-10 run page: no longer placed on the run page (the user found it out of place); kept for the launch code path.
   function runAgainButton(snapshot) {
     return snapshot?.dev_v2 && isTerminal(snapshot) && snapshot.dev_v2_selection?.dev_mode==='agent'
       ? '<button type="button" data-open-run-again>Run again with the same settings</button>' : '';
@@ -3850,6 +3851,12 @@
     const explicitView = stored(key);
     let selected = explicitView || 'live';
     if (selected !== 'live' && !attempts.some(a => a.attempt_id === selected)) selected = 'live';
+    // 11-10 run page: an ended run opens on the attempt that decided it, not on the starting scene.
+    if (!DEBUG_VIEW && selected === 'live' && isTerminal(snapshot)) {
+      const real = attempts.filter(a => !a.try_number);
+      const decided = real.find(a => snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success === true || a.status === 'succeeded') || real.at(-1);
+      if (decided) selected = decided.attempt_id;
+    }
     const latestRecorded = Object.values(snapshot.traces).find(t => t.attempt_id === latest?.attempt_id && (t.evidence || []).some(e => e.media_url && (e.mime_type?.startsWith('video/') || e.mime_type?.startsWith('image/') && ['camera_initial','recording_frame'].includes(e.kind))));
     // Between tries the current view holds the last frame; a saved try is one click away on its tab.
     const phase = snapshot.dev_v2?.lifecycle?.phase;
@@ -4506,7 +4513,7 @@
       ${field('Where it runs',simulator?`${benchmark} simulator`:'Real robot',run.seed == null?'Scene seed not recorded':`Scene seed ${run.seed}`)}
       ${field('Help strategy',policyTitle(policy),`${operatorPolicy(snapshot)} · ${snapshot.dev_v2 || (snapshot.dev_session && !snapshot.attention_control?.binding) || run.assistance_mode !== 'live_human_first' ? 'an automatic advisor answers' : 'a person answers'}`,true,changeable?'<details class="op-strategy" data-persist-detail="operator-strategy"><summary>Change</summary><div data-policy-host></div></details>':'')}
       ${field('Dev agent',snapshot.dev_session?(model&&!/^formal-|-policy$/.test(model)?model:'AI-written plan'):'Fixed plan',snapshot.dev_session?'AI rewrites its plan after each attempt':'Uses an approved fixed plan')}
-      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('Eval agent','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually · the simulator still decides success').replace('class="op-field','class="op-field op-warn'):field('Eval agent',config.model_source==='codex'?'gpt-6-astra':'Qwen',"Reviews the recording and camera views · the simulator still decides success")):field('Eval agent',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
+      ${snapshot.dev_eval_enabled?(textOnlyReviews(snapshot).length?field('Eval agent','GLM · text only','Qwen was unavailable, so recordings were not reviewed visually').replace('class="op-field','class="op-field op-warn'):field('Eval agent',config.model_source==='codex'?'gpt-6-astra':'Qwen',"Reviews the recording and camera views")):field('Eval agent',"Simulator's own task check",'Success is decided by the simulator, not by an AI model')}</div></section>`;
   }
   function operatorWaiting(snapshot) {
     const control = snapshot.attention_control;
@@ -4634,7 +4641,7 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     // A run in line has not started, so the harness offers no Stop; its owner may still leave the line.
     const canStop = snapshot.lobby?.mine && snapshot.lobby.state === 'queued' ? true : snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`${runAgainButton(snapshot)}<span class="op-controls-sp"></span>`:''}<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${isTerminal(snapshot)?'':launchButton(snapshot)+runAgainButton(snapshot)}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -4714,10 +4721,42 @@
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch ${attemptName(attempt)}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}<nav class="ab-history-tabs op-tabs" aria-label="Attempt selection"><button type="button" data-history-select="live" aria-pressed="${currentReplay || !attempt}" class="op-tab-live"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Current view</button>${attempts.map(a=>`<button type="button" data-history-select="${esc(a.attempt_id)}" aria-pressed="${!currentReplay && a.attempt_id===attempt?.attempt_id}">${a.try_number?(a.status==='succeeded'?'○':'✕'):snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true || a.status==='succeeded'?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕'} ${attemptName(a)}</button>`).join('')}</nav>${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo):live}${attempt?.try_number?(currentReplay?'':`<p class="op-hint" data-agent-try-label>${esc(attempt.try_label)}</p>`):snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${operatorAttemptPills(snapshot,attempts,attempt,currentReplay,active)}${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo):live}${attempt?.try_number?'':snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><h4>${heading}</h4>${trimBar}<p class="op-hint">${attempt&&!currentReplay&&videos.length?'Click a step to jump to that moment in the video.':attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p><div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || '<p>No recorded actions yet.</p>'}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   function attemptName(a) {return a.try_number?`Try ${a.try_number}`:`Attempt ${a.index+1}`;}
+  // 11-10 run page (design C2): one pill per attempt. The left half plays the attempt; the right half
+  // lists the trial runs that led up to it. Tries without a saved recording are listed but cannot play.
+  function operatorAttemptPills(snapshot,attempts,attempt,currentReplay,active) {
+    const shown=currentReplay?null:attempt?.attempt_id;
+    const solved=a=>snapshot.eval?.native_outcomes?.[a.attempt_id]?.native_success===true||a.status==='succeeded';
+    const mark=a=>solved(a)?'✓':a.status==='running'?'●':neverStarted(snapshot)?'⚠':'✕';
+    const tone=a=>solved(a)?'ok':a.status==='running'?'run':'fail';
+    const real=attempts.filter(a=>!a.try_number).sort((a,b)=>a.index-b.index);
+    const playable=new Map(attempts.filter(a=>a.try_number).map(a=>[a.try_number,a]));
+    const groups=[];let pending=[];
+    const tries=[...(snapshot.agent?.tries||[])].sort((a,b)=>a.number-b.number);
+    for(const t of tries){
+      if(t.submitted){const a=real.find(r=>r.index===t.attempt-1);if(a&&!groups.some(g=>g.attempt===a)){groups.push({attempt:a,tries:pending});pending=[];}continue;}
+      pending.push(t);
+    }
+    real.filter(a=>!groups.some(g=>g.attempt===a)).forEach(a=>groups.push({attempt:a,tries:[]}));
+    groups.sort((a,b)=>a.attempt.index-b.attempt.index);
+    if(pending.length)groups.push({attempt:null,tries:pending});
+    const helpBefore=index=>index>0?`after Help #${index}`:'from the start';
+    const pill=(g,n)=>{
+      const pickedTry=g.tries.find(t=>playable.get(t.number)?.attempt_id===shown);
+      const on=g.attempt&&g.attempt.attempt_id===shown;
+      const where=g.attempt?`${helpBefore(n)} · before ${attemptName(g.attempt)}`:`${helpBefore(n)} · no attempt yet`;
+      const list=g.tries.length?`<button type="button" class="op-pill-tries" data-tries-toggle aria-haspopup="listbox" aria-expanded="false"${pickedTry?' aria-pressed="true"':''}>${pickedTry?`Try ${pickedTry.number} · ${g.tries.indexOf(pickedTry)+1} of ${g.tries.length}`:`${g.tries.length} ${g.tries.length===1?'try':'tries'}`} <span aria-hidden="true">▾</span></button><div class="op-tries-list" role="listbox" aria-label="Trial runs ${esc(where)}" hidden><small>${esc(where)}</small>${g.tries.map(t=>{const a=playable.get(t.number);return `<button type="button" role="option" ${a?`data-history-select="${esc(a.attempt_id)}"`:'disabled title="No recording was saved for this try"'} aria-selected="${a?.attempt_id===shown}"><b>Try ${esc(t.number)}</b><i data-kind="${esc(t.kind||'other')}" aria-hidden="true"></i><span>${esc(t.why||'')}${a?'':' · no recording'}</span></button>`;}).join('')}</div>`:'';
+      const head=g.attempt?`<button type="button" class="op-pill-attempt" data-history-select="${esc(g.attempt.attempt_id)}" aria-pressed="${on}">${mark(g.attempt)} ${attemptName(g.attempt)}</button>`:'<span class="op-pill-attempt op-pill-none">Trial runs</span>';
+      return `<span class="op-pill" data-tone="${g.attempt?tone(g.attempt):'none'}" data-on="${on?'attempt':pickedTry?'try':'no'}">${head}${list}</span>`;
+    };
+    let helps=0;
+    const pills=groups.map(g=>{const html=pill(g,helps);if(g.attempt)helps++;return html;}).join('');
+    const live=isTerminal(snapshot)?'':`<button type="button" class="op-pill-live" data-history-select="live" aria-pressed="${currentReplay||!attempt}"><i class="op-live-dot${active?' on':''}" aria-hidden="true"></i>Live</button>`;
+    return `<nav class="ab-history-tabs op-tabs op-pills" aria-label="Attempt selection">${live}${pills}</nav>`;
+  }
 
   function operatorPlanRow(version,agent=false) {
     const full=agent?(version.plan?.note||version.plan?.summary||'No plan recorded.'):(version.reason||'No change description recorded.');
@@ -4958,15 +4997,14 @@
     const tokens=resources.tokens;
     const textOnlyCount=textOnlyReviews(snapshot).length;
     const reviewNote=snapshot.dev_eval_enabled && textOnlyCount?`<strong class="op-warn-text" data-text-only-note>${textOnlyCount} Eval agent review${textOnlyCount===1?' was':'s were'} text-only (Qwen unavailable)</strong> `:'';
-    const quotaLine=codexRunQuotaText(snapshot);
-    const ledger=snapshot.dev_v2?.ledger;
+        const ledger=snapshot.dev_v2?.ledger;
     const exportLink=snapshot.dev_v2?`<a href="/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/export.csv" target="_blank" rel="noopener">Download data (CSV)</a>`:'';
     // Wall-clock time keeps running after a run has ended; it only matters when it is why the run ended.
     const shown=fields.filter(([key])=>!(key==='wall_seconds' && isTerminal(snapshot) && endedKey!=='wall_seconds'));
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${quotaLine?`<small data-codex-run-quota>${quotaLine}</small>`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -5275,9 +5313,30 @@
     const agentRecords = snapshot ? `<section class="panel" data-agent-debug><h3>Agent records</h3><dl class="ab-settings-list"><dt>Developer record</dt><dd><code>${esc(snapshot.run.developer_model || 'Not recorded')}</code></dd><dt>Evaluator record</dt><dd><code>${esc(snapshot.run.evaluator_model || 'Not recorded')}</code></dd><dt>Diagnostic model</dt><dd><code>${esc(snapshot.eval?.model || 'Not recorded')}</code></dd></dl></section>` : '';
     return `<aside class="ab-secondary" aria-label="Developer tools"><details data-secondary="debug" data-persist-detail="debug"><summary>Developer debug</summary>${agentRecords}${snapshot ? `<section class="panel"><h3>Agent work & scheduling</h3><div class="work-list">${(orchestrator?.agents || []).map(agent=>`<button class="work-card" type="button" data-dag-skill="${esc(agent.skill)}"><strong>${esc(agent.skill)}</strong><p>${esc(agent.agent_id)} · ${esc(agent.model)} · ${esc(agent.status)}</p></button>`).join('')}${(snapshot.work_items || []).map(item=>`<div class="work-card"><strong>${esc(label(item.resource))} · ${esc(item.state)}</strong><p>Requires ${esc(number(item.required))}, remaining ${esc(number(item.remaining))} · ${esc(item.reason)}</p></div>`).join('') || '<p>No active work records.</p>'}</div></section>` : ''}${dagPanel()}${sessionPanel()}<p class="minor">The live projection reads the persisted SQLite AttentionStore. Requests, budgets, executions and traces survive restarts.</p></details></aside>`;
   }
+  // 11-10 run page: three parts instead of five. 01 Replay, 02 Progress & help (old status + help),
+  // 03 Setup & resources (old setup + resources). The old sections stay inside, untitled, so their
+  // selectors and handlers keep working. A pending reply goes to the top of 02.
+  function operatorThreeParts(regions,snapshot) {
+    if(DEBUG_VIEW)return regions.join('');
+    let [settings,overview,execution,request,resources]=regions;
+    // A heading is one <div class="panel-title op-heading"> with no nested div; its question slot is the last <span>.
+    const HEAD=/<div class="panel-title op-heading">[\s\S]*?<\/h3>([\s\S]*?)<\/div>/;
+    const untitle=html=>html.replace(HEAD,'');
+    const extra=html=>((html.match(HEAD)||[])[1]||'').replace(/^[\s\S]*<span>([\s\S]*)<\/span>$/,'$1');
+    // The page title (task name, New run) is written in front of the setup section; it stays on top of the page.
+    const title=(settings.match(/^<header class="op-page-title"[\s\S]*?<\/header>/)||[''])[0];
+    settings=settings.slice(title.length);
+    const waiting=/data-state="waiting"/.test(request)&&/data-agent-reply|data-request-reply|<textarea/.test(request);
+    const story=(overview.match(/<button type="button" class="op-agent-story-entry" data-agent-story-open>[\s\S]*?<\/button>/)||[''])[0];
+    const replyExtra=waiting?extra(request):'';
+    execution=execution.replace(operatorHeading('03','REPLAY &amp; ATTEMPTS',''),operatorHeading('01','REPLAY',''));
+    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}</section>`;
+    const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
+    return title+execution+progress+setup;
+  }
   function workspaceHTML(snapshot,chosen) {
-    // One-call keeps the original five-module composition unchanged.
-    if(!snapshot.agent)return `${runSettings(snapshot)}${runOverview(snapshot)}${executionViewer(snapshot)}${requestPanel(snapshot,chosen)}${resourceDetails(snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
+    // One-call keeps the original five-module content (11-10: shown in three parts).
+    if(!snapshot.agent)return `${operatorThreeParts([runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)],snapshot)}<p class="minor" id="ab-live-message" aria-live="polite"></p>`;
     const append=(html,extra)=>{const end=html.lastIndexOf('</section>');return html.slice(0,end)+extra+html.slice(end);};
     const regions=[runSettings(snapshot),runOverview(snapshot),executionViewer(snapshot),requestPanel(snapshot,chosen),resourceDetails(snapshot)];
       if(snapshot.memory_visibility==='validation_override')regions[0]=append(regions[0],'<p data-memory-visibility>Memory visibility override · validation</p>');
@@ -5289,9 +5348,10 @@
       regions[1]=regions[1].replace('</h3><span>', '</h3><button type="button" class="op-agent-story-entry" data-agent-story-open>See the full story <span aria-hidden="true">→</span></button><span>');
       regions[1]=append(regions[1],agentFullStory(snapshot));
       regions[3]=regions[3].replace('This run has ended. Recorded work and replies remain available.','This run has ended. The help the robot received is listed below.');
-      regions[4]=regions[4].replace('/export.csv"','/report"').replace('Download data (CSV)','Download agent report (JSON)');
+      // 11-10 run page: no download link on an Agent run (user); the report stays at /api/dev-v2/experiments/<id>/report.
+      regions[4]=regions[4].replace(/<a href="[^"]*\/export\.csv"[^>]*>Download data \(CSV\)<\/a>/,'');
     }
-    return regions.join('')+'<p class="minor" id="ab-live-message" aria-live="polite"></p>';
+    return operatorThreeParts(regions,snapshot)+'<p class="minor" id="ab-live-message" aria-live="polite"></p>';
   }
   function render(snapshot) {
     stopGuidancePreview(); activeGuidancePreview = null;
@@ -5768,7 +5828,7 @@
     view.innerHTML = `${DEBUG_VIEW ? `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${launch ? 'launching' : 'empty'}" aria-label="Task Status & Progress"><div class="ab-status-panel-heading" aria-hidden="true">Task Status & Progress</div><div class="ab-status-head"><h2>${title}</h2>${!launch ? launchButton() : '<button data-dismiss-launch>View existing runs</button>'}${moreButton()}<button id="ab-cancel-run" type="button" disabled>Cancel run</button><button class="danger" id="ab-emergency-interrupt" disabled title="No executing run">■ Emergency stop</button></div><div class="ab-status-main"><div class="ab-action-needed" data-action-needed data-needed="no" role="status" data-connected-needed="no" data-connected-text="✓ No action required">✓ No action required</div></div><p>${launch ? `${esc(pendingLaunch)} · ${esc(launch.reason || 'Launch request accepted; waiting for the executor to create the run.')}` : 'Use New run to choose a robot, task and Dev iteration budgets.'}</p></section>
       <section class="panel" data-core-region="execution"><h3>Execution & History</h3><p class="minor">Waiting for a run and execution frames.</p></section>
       <section class="panel ab-current-request" data-core-region="request" data-state="idle"><div class="panel-title"><h3>Current Request & Reply</h3></div><p class="ab-idle-request">No action required</p></section>
-      ${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>` : `${runSettings(null,launch)}<section class="panel ab-run-overview" data-core-region="status" data-phase="${phase}">${operatorHeading('02','STATUS &amp; PROGRESS','')}${launch?(launch.state==='failed'?'<div class="op-outcome failed" role="status"><strong>✕ NOT STARTED</strong><div><p>The run could not be started.</p><p>Nothing was run. You can try again.</p></div></div>':'<div class="op-outcome running" role="status"><strong>● STARTING</strong><div><p>Setting up the simulator. This usually takes a few seconds.</p><p>Waiting for run registration</p></div></div>'):'<div class="op-outcome" role="status"><strong>○ NO RUN SELECTED</strong><div><p>Choose a task from the list on the left, or start a new run.</p></div></div>'}<div class="op-controls">${!launch?launchButton():'<button data-dismiss-launch>View existing runs</button>'}</div></section><section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer>${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${launch&&launch.state!=='failed'?`<div class="op-stage op-launch-stage" data-op-stage="launch" data-state="loading">${loadingOverlay('live')}</div>`:`<div class="op-idle"><b>${launch?'The run could not start':'Nothing to show yet'}</b><p>${launch?'Close this message and try again, or pick another task.':'Pick a task on the left, or start a new run to watch the robot live.'}</p></div>`}</section><section class="panel ab-current-request" data-core-region="request">${operatorHeading('04','HELP &amp; REPLIES','')}<p>✓ Nothing to do</p></section>${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>`}`;
+      ${resourceDetails()}<p id="ab-live-message" class="minor" aria-live="polite"></p>` : `${operatorThreeParts([runSettings(null,launch),`<section class="panel ab-run-overview" data-core-region="status" data-phase="${phase}">${operatorHeading('02','STATUS &amp; PROGRESS','')}${launch?(launch.state==='failed'?'<div class="op-outcome failed" role="status"><strong>✕ NOT STARTED</strong><div><p>The run could not be started.</p><p>Nothing was run. You can try again.</p></div></div>':'<div class="op-outcome running" role="status"><strong>● STARTING</strong><div><p>Setting up the simulator. This usually takes a few seconds.</p><p>Waiting for run registration</p></div></div>'):'<div class="op-outcome" role="status"><strong>○ NO RUN SELECTED</strong><div><p>Choose a task from the list on the left, or start a new run.</p></div></div>'}<div class="op-controls">${!launch?launchButton():'<button data-dismiss-launch>View existing runs</button>'}</div></section>`,`<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer>${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${launch&&launch.state!=='failed'?`<div class="op-stage op-launch-stage" data-op-stage="launch" data-state="loading">${loadingOverlay('live')}</div>`:`<div class="op-idle"><b>${launch?'The run could not start':'Nothing to show yet'}</b><p>${launch?'Close this message and try again, or pick another task.':'Pick a task on the left, or start a new run to watch the robot live.'}</p></div>`}</section>`,`<section class="panel ab-current-request" data-core-region="request">${operatorHeading('04','HELP &amp; REPLIES','')}<p>✓ Nothing to do</p></section>`,resourceDetails()],null)}<p id="ab-live-message" class="minor" aria-live="polite"></p>`}`;
     view.querySelector('[data-dismiss-launch]')?.addEventListener('click', () => { pendingLaunch = null; stored('attention.pending-launch', null); lastRendered = ''; refresh(); });
     view.querySelectorAll('[data-persist-detail]').forEach(e => { e.open = expanded.includes(e.dataset.persistDetail); });
     mountPolicyController();
@@ -5924,6 +5984,31 @@
       render(currentSnapshot);
       view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});
     }));
+    // 11-10 run page: "5 tries ▾" opens the list of trial runs that led up to an attempt.
+    view.querySelectorAll('[data-tries-toggle]').forEach(toggle => {
+      const list=toggle.nextElementSibling;
+      const close=()=>{list.hidden=true;toggle.setAttribute('aria-expanded','false');};
+      toggle.addEventListener('click',event=>{
+        event.stopPropagation();
+        const open=list.hidden;
+        view.querySelectorAll('[data-tries-toggle][aria-expanded="true"]').forEach(other=>{if(other!==toggle){other.nextElementSibling.hidden=true;other.setAttribute('aria-expanded','false');}});
+        list.hidden=!open;toggle.setAttribute('aria-expanded',String(open));
+        if(open)(list.querySelector('[aria-selected="true"]')||list.querySelector('button:not([disabled])'))?.focus();
+      });
+      list.addEventListener('keydown',event=>{
+        const options=[...list.querySelectorAll('button:not([disabled])')],at=options.indexOf(document.activeElement);
+        if(event.key==='Escape'){event.preventDefault();close();toggle.focus();}
+        else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();event.stopPropagation();options[(at+(event.key==='ArrowDown'?1:-1)+options.length)%options.length]?.focus();}
+        else if(event.key==='ArrowLeft'||event.key==='ArrowRight')event.stopPropagation();
+      });
+    });
+    if(!bindHistorySelection.outside&&typeof document!=='undefined'){
+      bindHistorySelection.outside=true;
+      document.addEventListener('click',event=>view.querySelectorAll('[data-tries-toggle][aria-expanded="true"]').forEach(toggle=>{
+        const list=toggle.nextElementSibling;if(list.contains(event.target)||toggle.contains(event.target))return;
+        list.hidden=true;toggle.setAttribute('aria-expanded','false');
+      }));
+    }
   }
   function selectAgentAttempt(snapshot,id) {
     if(!snapshot.agent)return;
@@ -6007,14 +6092,15 @@
     const text=blocked?`Automatic ask skipped: ${agentPolicyText(blocked)} (no charge)`:`Asked automatically${trigger?' · '+agentPolicyText(trigger):''}`;
     return `<span title="${esc(raw)}">${esc(text)}</span>`;
   }
+  // 11-10 run page: a help card is the reply itself. Try, ask kind, delivery, fee and reason are dropped;
+  // a help that never reached the robot still says so, so a failure cannot hide behind an empty card.
   function agentHelpCard(help,number) {
-    const delivered=help.delivered===true,content=String(help.content||''),seconds=Number(help.hint_human_seconds)||0;
-    if(help.agent_policy_version==='agent-policy-v2'){
-      const kind={forced:'Forced question',agent_initiated:'Agent initiated question',system_injected:'System injected hint'}[help.ask_kind]||'Help request';
-      const fee=help.actual_cost_known?`${seconds.toFixed(1)} s · ${help.actual_help_count||0} help charged`:help.charged?'Cost pending settlement':'0 s · not charged';
-      return `<div data-agent-help-card data-agent-help-id="${esc(help.help_id)}"><div class="op-agent-card-head"><b>Help #${number}</b><small>${esc(tryName(help.execution_id))}</small><span>${esc(kind)}</span><span>${delivered?(help.provider==='human'?'Person replied':'Delivered'):'Not delivered'}</span><span>${esc(fee)}</span></div><p>Reason: ${agentPolicyCode(help.reason||help.decision?.reason||help.status)}</p>${help.forced_fallback||help.forced_fallback_blocked?`<p>${agentFallbackNotice(help)}</p>`:''}${content?`<p class="op-agent-hint">${esc(content)}</p>`:''}</div>`;
-    }
-    return `<div data-agent-help-card><div class="op-agent-card-head"><b>Help #${number}</b><span class="op-agent-chip ${delivered?'advisor':'refused'}">${delivered?'Automatic advisor · delivered':'Not delivered · no advisor reply'}</span><span>${delivered?`${seconds.toFixed(1)} s`:'0 s · not charged'}</span></div><p>${esc(agentPlainHelpReason(help))}</p>${content?`<p class="op-agent-hint">${esc(agentHintPreview(content)||'Open the full reply to read the hint.')}</p><details data-persist-detail="agent-full-reply:${number}"><summary>Full reply</summary><p>${esc(content)}</p></details>`:''}</div>`;
+    const delivered=help.delivered===true,content=String(help.content||'');
+    const v2=help.agent_policy_version==='agent-policy-v2';
+    const why=help.forced_fallback_blocked?agentFallbackNotice(help):v2?((help.reason||help.decision?.reason||help.status)?agentPolicyCode(help.reason||help.decision?.reason||help.status):''):esc(agentPlainHelpReason(help));
+    const missing=delivered?'':`<p class="op-agent-undelivered" data-agent-help-undelivered>Not delivered${why?` · ${why}`:''}</p>`;
+    // Design Q1 (11-10): a quiet number column ("HELP / #1"), a thin rule, then the reply at reading width.
+    return `<div class="op-help-q" data-agent-help-card${v2?` data-agent-help-id="${esc(help.help_id)}"`:''} aria-label="Help #${number}"><div class="op-help-q-num" aria-hidden="true"><span>Help</span><b>#${number}</b></div><div class="op-help-q-body">${missing}${content?`<p class="op-agent-hint">${esc(content)}</p>`:delivered?'<p class="op-agent-hint op-help-q-empty">No reply text was recorded.</p>':''}</div></div>`;
   }
   // Few tries read better as sentences; many fit only as ticks.
   function storyListed(tries) {return tries.length<=8;}
@@ -6109,7 +6195,7 @@
       fallback?`${agentFallbackNotice(fallback)} <small>${esc(tryName(fallback.execution_id))}</small>`:''].filter(Boolean);
     // On Remote everyone can read a run; only its owner is asked. The reply form also decides the page-wide alert.
     const wait=root.dataset.remote==='1'&&snapshot.lobby?.mine!==true?null:agent.human_wait,heading=wait?operatorHeading('04','YOUR MOVE',`<b data-agent-reply-countdown data-deadline="${wait.deadline_at}" data-seconds="${wait.seconds}"></b>`):operatorHeading('04','HELP &amp; REPLIES','');
-    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${agentStory(agent)}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${!rows.length&&!(agent.tries||[]).length?'<p>No help requests recorded.</p>':''}</section>`;
+    return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${DEBUG_VIEW?agentStory(agent):''}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${!rows.length&&!(agent.tries||[]).length?'<p>No help requests recorded.</p>':''}</section>`;
   }
   function agentAttemptCard(version,before=true) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
