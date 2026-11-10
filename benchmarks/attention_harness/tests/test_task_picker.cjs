@@ -73,7 +73,7 @@ test('cards: family tabs, search, selected card with marks, text card without pi
   // Only families with offered tasks get a tab; Counter → Sink goes with cabinet/sink.
   assert.deepEqual(plain(api.taskPickerFamilies(cards).map(f=>[f.id,f.n])),[['B',1],['D',2]]);
   const toolbar=api.taskPickerToolbarHtml(cards,'all');
-  assert.match(toolbar,/All · 3/);assert.match(toolbar,/Buttons &amp; knobs · 1/);assert.match(toolbar,/Cabinet &amp; sink · 2/);
+  assert.match(toolbar,/All <i class="tp-n">3<\/i>/);assert.match(toolbar,/Buttons &amp; knobs <i class="tp-n">1<\/i>/);assert.match(toolbar,/Cabinet &amp; sink <i class="tp-n">2<\/i>/);
   assert.equal(toolbar.includes('Open &amp; close'),false);
   assert.deepEqual(plain(cards.filter(c=>api.taskPickerMatches(c,'D','')).map(c=>c.task_id)),['pick_place_counter_to_sink','pick_place_counter_to_cabinet']);
   assert.deepEqual(plain(cards.filter(c=>api.taskPickerMatches(c,'all','microwave')).map(c=>c.task_id)),['turn_on_microwave']);
