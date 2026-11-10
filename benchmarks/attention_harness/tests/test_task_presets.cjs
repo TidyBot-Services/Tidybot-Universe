@@ -19,18 +19,19 @@ const certified={task_id:'open_cabinet',channel:'certified_v2'};
 const all=[pickPlace,legacyCabinet,cabinet,microwave,stove,mixer,cabinetPick];
 const values=html=>[...html.matchAll(/<option value="([^"]+)"/g)].map(m=>m[1]);
 
-test('New run offers exactly Counter to Sink, TurnOnMicrowave and Counter to Cabinet',()=>{
+test('New run offers Counter to Sink plus every R5 fixture task the server lists (11-10, user)',()=>{
   const html=fixtureTaskOptions(newRunProfiles(all,null));
-  assert.deepEqual(values(html),['pick_place_counter_to_sink','turn_on_microwave@'+PROFILE,'pick_place_counter_to_cabinet@'+PROFILE]);
-  assert.match(html,/^<option value="pick_place_counter_to_sink">pick_place_counter_to_sink<\/option><optgroup label="Presets · seed 101 · fixture rules \(R5\)"><option value="turn_on_microwave@r5-fixture-20261031">turn_on_microwave<\/option><option value="pick_place_counter_to_cabinet@r5-fixture-20261031">pick_place_counter_to_cabinet<\/option><\/optgroup>$/);
-  for(const gone of ['turn_off_stove','open_cabinet','open_drawer','open_stand_mixer_head'])assert.equal(html.includes(gone),false,gone);
+  // The server leaves out set-aside tasks (OpenStandMixerHead); the UI shows whatever R5 tasks it lists.
+  assert.deepEqual(values(html),['pick_place_counter_to_sink','turn_on_microwave@'+PROFILE,'pick_place_counter_to_cabinet@'+PROFILE,'open_cabinet@'+PROFILE,'turn_off_stove@'+PROFILE,'open_stand_mixer_head@'+PROFILE]);
+  assert.match(html,/^<option value="pick_place_counter_to_sink">pick_place_counter_to_sink<\/option><optgroup label="Presets · seed 101 · fixture rules \(R5\)">/);
+  // A Dev v2 record without the fixture rules (legacy open_cabinet) stays hidden.
+  assert.equal(values(html).includes('open_cabinet'),false);
 });
 test('only Dev v2 profiles are narrowed; fixed run types keep their tasks',()=>{
   assert.deepEqual(newRunProfiles([certified,legacyCabinet,pickPlace],null),[certified,pickPlace]);
 });
 test('a copied run keeps its own older task selectable, with or without the fixture rules',()=>{
-  assert.deepEqual(values(fixtureTaskOptions(newRunProfiles(all,legacyCabinet))),['pick_place_counter_to_sink','open_cabinet','turn_on_microwave@'+PROFILE,'pick_place_counter_to_cabinet@'+PROFILE]);
-  assert.deepEqual(values(fixtureTaskOptions(newRunProfiles(all,stove))),['pick_place_counter_to_sink','turn_on_microwave@'+PROFILE,'pick_place_counter_to_cabinet@'+PROFILE,'turn_off_stove@'+PROFILE]);
+  assert.deepEqual(values(fixtureTaskOptions(newRunProfiles([pickPlace,legacyCabinet,microwave],legacyCabinet))),['pick_place_counter_to_sink','open_cabinet','turn_on_microwave@'+PROFILE]);
   // The older task is only added to the list, never locked to a preset seed.
   assert.equal(presetSeed(stove),null);assert.equal(presetSeed(legacyCabinet),null);
 });
@@ -46,6 +47,12 @@ test('the fixture seed lists are untouched; presets pin 101 only while it is ena
   assert.match(fixtureTaskOptions([excluded]),/B · Buttons and knobs/);
   assert.equal(fixtureTaskOptions([excluded]).includes('Presets ·'),false);
   assert.equal(presetSeed({task_id:'turn_on_microwave',seed_options:rows([[101]])}),null,'a legacy profile without rules is never a preset');
+});
+test('Remote lists every R5 task by family, with no Presets heading',()=>{
+  const {fixtureTaskOptions:remoteOptions,newRunProfiles:remoteProfiles}=vm.runInNewContext(code+'\n({fixtureTaskOptions,newRunProfiles})',{esc:escape,taskName:v=>v,root:{dataset:{remote:'1'}}});
+  const html=remoteOptions(remoteProfiles(all,null));
+  assert.equal(html.includes('Presets ·'),false);
+  assert.deepEqual(values(html),['pick_place_counter_to_sink','open_cabinet@'+PROFILE,'turn_on_microwave@'+PROFILE,'turn_off_stove@'+PROFILE,'open_stand_mixer_head@'+PROFILE,'pick_place_counter_to_cabinet@'+PROFILE]);
 });
 test('the form locks the preset seed, shows Seed N, and every other path unlocks it',()=>{
   assert.match(source,/const fixedSeed=presetSeed\(profile\);\s*form\.seed\.disabled=fixedSeed!==null;/);

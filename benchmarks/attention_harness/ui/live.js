@@ -2296,8 +2296,10 @@
     return wanted?wanted.filter(seed=>available.includes(seed)):null;
   }
   // A copied run keeps its own task selectable, so an older task still opens without an error.
+  // 11-10 (user): every R5 fixture task the server offers is a New run task (the server already leaves out
+  // set-aside tasks such as OpenStandMixerHead); legacy Dev v2 records without the fixture rules stay hidden.
   function newRunProfiles(profiles,source=null) {
-    const keep=p=>p.channel!=='dev_v2'||NEW_RUN_TASKS.includes(p.task_id)||(source!==null&&fixtureTaskKey(p)===fixtureTaskKey(source));
+    const keep=p=>p.channel!=='dev_v2'||NEW_RUN_TASKS.includes(p.task_id)||!!p.rules_profile||(source!==null&&fixtureTaskKey(p)===fixtureTaskKey(source));
     return profiles.filter(keep);
   }
   function presetSeed(profile) {
@@ -2307,9 +2309,10 @@
   function fixtureTaskOptions(profiles) {
     const option=p=>`<option value="${esc(fixtureTaskKey(p))}">${esc(taskName(p.task_id))}${p.rules_profile&&p.held_out?' · held-out':''}</option>`;
     const unique=[...new Map(profiles.map(p=>[fixtureTaskKey(p),p])).values()];
-    const presets=Object.keys(TASK_PRESETS).map(id=>unique.find(p=>p.task_id===id&&presetSeed(p)!==null)).filter(Boolean);
+    // Remote has no Presets heading: it offers seeds 101 and 102 for those tasks, so 'seed 101' would be wrong (c5abdce).
+    const remote=typeof root!=='undefined'&&root.dataset?.remote==='1';  // tests load this function alone
+    const presets=remote?[]:Object.keys(TASK_PRESETS).map(id=>unique.find(p=>p.task_id===id&&presetSeed(p)!==null)).filter(Boolean);
     const presetGroup=presets.length?`<optgroup label="Presets · seed ${esc([...new Set(presets.map(presetSeed))].join('/'))} · fixture rules (R5)">${presets.map(option).join('')}</optgroup>`:'';
-    if(typeof root!=='undefined'&&root.dataset?.remote==='1')return [...unique.filter(p=>!p.rules_profile),...presets].map(option).join('');  // tests load this function alone
     return unique.filter(p=>!p.rules_profile).map(option).join('')+presetGroup+['A','B','C','D'].map(family=>{
       const rows=unique.filter(p=>p.family===family&&!presets.includes(p));
       return rows.length?`<optgroup label="${esc(family+' · '+rows[0].family_label)} · fixture rules (R5)">${rows.map(option).join('')}</optgroup>`:'';
