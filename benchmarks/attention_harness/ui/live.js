@@ -1764,6 +1764,17 @@
     }).catch(error=>{taskPickerManifestLoad=null;throw error;});
     return taskPickerManifestLoad;
   }
+  // 11-10 flicker fix: a task picture is fetched and decoded once per page; the preview swaps only when the
+  // new pictures are ready, so the old card stays on screen instead of a blank frame.
+  const taskPictureReady=new Map();
+  function loadTaskPicture(src) {
+    if(!taskPictureReady.has(src)){
+      const img=new Image();img.src=src;
+      taskPictureReady.set(src,(img.decode?img.decode():new Promise((ok,bad)=>{img.onload=ok;img.onerror=bad;})).then(()=>img).catch(()=>null));
+    }
+    return taskPictureReady.get(src);
+  }
+  function taskPictureSources(html) {return [...String(html).matchAll(/<img src="([^"]+)"[^>]*data-tp-img/g)].map(m=>m[1].replaceAll('&amp;','&'));}
   // 11-09: a stopped run says in plain words what happened and what to do; the internal code stays at the end for the lab.
   function fatalStopMessage(snapshot) {
     const cause=snapshot.agent?.fatal_cause;
@@ -2376,7 +2387,7 @@
   // One card. seed: the seed whose pictures to show (the form's seed for the selected card).
   function taskCardHtml(card,{selected=false,seed=null}={}) {
     const shown=card.pictures.get(seed)||null;
-    const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" loading="lazy" decoding="async" data-tp-img>${marks||''}<span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
+    const pic=(file,alt,tag,marks)=>`<span class="tp-pic"><img src="./tasks/${esc(file)}" alt="${esc(alt)}" width="640" height="360" decoding="sync" data-tp-img>${marks||''}<span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
     const why=card.missing.has(seed)?card.missing.get(seed):'';
     const none=tag=>`<span class="tp-pic tp-nopic"><span>${tag==='START'?`No picture${seed!=null?` for seed ${esc(seed)}`:''}${why?`: ${esc(why)}`:''}`:'Goal picture not available'}</span><span class="tp-tag${tag==='DONE'?' tp-tag-done':''}">${tag}</span></span>`;
     const uid=`${card.value}-${seed}`.replace(/[^A-Za-z0-9_-]/g,'_');
@@ -3235,6 +3246,21 @@
           const note=document.createElement('span');note.textContent=`Picture could not load (${img.getAttribute('src')})`;img.replaceWith(note);
         },{once:true}));
         if(refocus)box.querySelector(refocus)?.focus();
+        steadyTaskPreview(visible,showSeed);
+      }
+      // 11-10 flicker fix: preload each listed task's pictures and give the preview text the height of the
+      // tallest one, so pointing at another task never changes the card's height.
+      function steadyTaskPreview(visible,showSeed) {
+        const box=form.querySelector('[data-task-preview]');if(!box||!box.clientWidth)return;  // hidden form: nothing to measure
+        const pages=visible.map(c=>taskPreviewHtml(c,showSeed(c),c.value===form.task_id.value?picker.chips||'':''));
+        pages.forEach(html=>taskPictureSources(html).forEach(loadTaskPicture));
+        const measure=document.createElement('div');
+        measure.style.cssText=`position:absolute;visibility:hidden;pointer-events:none;left:-10000px;top:0;width:${box.clientWidth}px`;
+        measure.innerHTML=pages.map(html=>html.replace(/<img [^>]*>/g,'')).join('');
+        box.style.removeProperty('--tp-body-min');box.appendChild(measure);
+        const tallest=Math.max(0,...[...measure.querySelectorAll('.tp-body')].map(b=>b.offsetHeight));
+        measure.remove();
+        if(tallest)box.style.setProperty('--tp-body-min',`${tallest}px`);
       }
       form.querySelector('[data-task-picker]')?.addEventListener('click',event=>{
         const card=event.target.closest('[data-task-card]'),tab=event.target.closest('[data-task-tab]'),chip=event.target.closest('[data-task-seed]');
@@ -3250,8 +3276,13 @@
       // Pointing at (or tabbing to) a task previews it; leaving the list returns to the chosen task.
       const previewTask=value=>{
         const box=form.querySelector('[data-task-preview]');if(!box||!picker.manifest)return;
-        const card=pickerCards().find(c=>c.value===value);if(!card||box.firstElementChild?.dataset.taskPreviewCard===value)return;
-        picker.preview=value;box.innerHTML=taskPreviewHtml(card,picker.showSeed?picker.showSeed(card):null,value===form.task_id.value?picker.chips||'':'');
+        const card=pickerCards().find(c=>c.value===value);if(!card)return;
+        picker.preview=value;  // set first, so a slower earlier request never swaps in after this one
+        if(box.firstElementChild?.dataset.taskPreviewCard===value)return;
+        const html=taskPreviewHtml(card,picker.showSeed?picker.showSeed(card):null,value===form.task_id.value?picker.chips||'':'');
+        const swap=()=>{if(picker.preview===value&&box.isConnected)box.innerHTML=html;};
+        // Keep the current card until the new pictures are decoded; a failed picture still swaps (its error card shows).
+        Promise.all(taskPictureSources(html).map(loadTaskPicture)).then(swap);
       };
       form.querySelector('[data-task-picker]')?.addEventListener('pointerover',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});
       form.querySelector('[data-task-picker]')?.addEventListener('focusin',event=>{const item=event.target.closest?.('.tp-item[data-task-card]');if(item)previewTask(item.dataset.taskCard);});

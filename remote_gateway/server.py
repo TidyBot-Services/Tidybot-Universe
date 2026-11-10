@@ -332,7 +332,8 @@ class Handler(BaseHTTPRequestHandler):
         kind = policy.ui_asset(name)
         file = self.gateway.config.ui_dir / name
         if kind is None or not file.is_file():raise UNOWNED
-        self.send_bytes(file.read_bytes(), kind)
+        # Task picker JPEGs may be cached briefly so switching tasks does not re-download them (11-10 flicker fix).
+        self.send_bytes(file.read_bytes(), kind, headers={'Cache-Control': 'private, max-age=300'} if kind == 'image/jpeg' else None)
 
     def session_route(self, session, token):
         if self.command == 'GET':

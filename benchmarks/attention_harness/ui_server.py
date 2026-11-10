@@ -53,6 +53,7 @@ from .notices import NoticeReader
 
 
 UI_DIR = Path(__file__).with_name("ui")
+TASK_PICTURE_CACHE = "private, max-age=300"  # task picker JPEGs only; everything else stays no-store
 TASK_PICTURE = re.compile(r"/ui/tasks/(?:[a-z_]{1,64}-\d{3,4}-(?:start|done)\.jpg|manifest\.json)")
 GRAPH_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
 
@@ -628,9 +629,10 @@ def create_server(
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
+            extra_headers = dict(extra_headers or {})
+            self.send_header("Cache-Control", extra_headers.pop("Cache-Control", "no-store"))
             self.send_header("X-Content-Type-Options", "nosniff")
-            for name, value in (extra_headers or {}).items():
+            for name, value in extra_headers.items():
                 self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
@@ -864,7 +866,10 @@ def create_server(
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
             elif TASK_PICTURE.fullmatch(path) and (UI_DIR / path[4:]).is_file():
                 # Task picker pictures + manifest (scripts/attentionbench/task_picker_pictures.py).
-                self._send((UI_DIR / path[4:]).read_bytes(), "image/jpeg" if path.endswith(".jpg") else "application/json; charset=utf-8")
+                # Pictures may be cached briefly so switching tasks does not re-download them (11-10 flicker fix);
+                # the manifest stays no-store so regenerated text shows at once.
+                self._send((UI_DIR / path[4:]).read_bytes(), "image/jpeg" if path.endswith(".jpg") else "application/json; charset=utf-8",
+                           extra_headers={"Cache-Control": TASK_PICTURE_CACHE} if path.endswith(".jpg") else None)
             elif path == "/api/codex-quota":
                 self._json(public_codex_quota())
             elif path in {"/ui/home.html", "/ui/home.js", "/ui/home.css"}:

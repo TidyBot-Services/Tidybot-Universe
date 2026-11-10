@@ -140,8 +140,12 @@ def test_anyone_can_watch_but_only_an_invite_can_act(world):
     # Task picker pictures are public like the page; files outside the pattern, or missing, are not served.
     status, body, response = anonymous.send('GET', '/ui/tasks/manifest.json')
     assert status == 200 and response.getheader('Content-Type').startswith('application/json') and json.loads(body)['tasks']
+    assert response.getheader('Cache-Control') == 'no-store'  # regenerated text shows at once
     status, body, response = anonymous.send('GET', '/ui/tasks/turn_on_microwave-101-start.jpg')
     assert status == 200 and response.getheader('Content-Type') == 'image/jpeg' and body[:2] == b'\xff\xd8'
+    # 11-10 flicker fix: pictures are cached briefly so switching tasks does not re-download them; pages are not.
+    assert response.getheader('Cache-Control') == 'private, max-age=300'
+    assert anonymous.send('GET', '/ui/live.js')[2].getheader('Cache-Control') == 'no-store'
     for path in ('/ui/tasks/render-log.jsonl', '/ui/tasks/turn_on_microwave-999-start.jpg'):assert anonymous.send('GET', path)[0] == 404
     before = len(world.harness.calls)
     for method, path in (('POST', '/api/dev-v2/experiments'), (('POST'), f'/api/dev-v2/experiments/{OWN}/run'), ('POST', f'/api/dev-v2/experiments/{OWN}/cancel'), ('GET', '/api/provider/presets'),
