@@ -364,7 +364,8 @@
     const saved=item.task_name||item.task_display_name;
     if(typeof saved==='string'&&saved.trim()&&!/^unknown\b/i.test(saved))return saved.trim();
     if(Object.hasOwn(taskTitles,item.task_id))return taskTitles[item.task_id];
-    const profiles=[...(launchOptions?.profiles||[]),...(launchOptions?.dev_loop?.profiles||[])];
+    // 11-11 (user): Remote lists its tasks only under dev_v2; without it every newer task fell into "Archived · unlinked".
+    const profiles=[...(launchOptions?.profiles||[]),...(launchOptions?.dev_loop?.profiles||[]),...(launchOptions?.dev_v2?.profiles||[])];
     return profiles.some(p=>p.suite===item.suite&&(p.task_id||p.task)===item.task_id)?label(item.task_id):null;
   }
   // Operator headline, 01 Task and tab title show the task alone; the launch name suffix stays in the run list (10-30).
