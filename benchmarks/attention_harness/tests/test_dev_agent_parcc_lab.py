@@ -26,9 +26,9 @@ from benchmarks.attention_harness.tests.test_dev_agent_d2 import CONFIG
 from benchmarks.attention_harness.tests.test_dev_agent_d4 import eval_factory, fake_view, seed_record
 
 
-def lab(advisor_model='parcc/GLM'):
+def lab(advisor_model='parcc/GLM',eval_model='parcc/GLM'):
     role=lambda model:dict(credential='lab',provider='parcc',model=model)
-    return dict(roles=dict(dev=role('parcc/GLM'),eval=role('parcc/GLM'),advisor=role(advisor_model)))
+    return dict(roles=dict(dev=role('parcc/GLM'),eval=role(eval_model),advisor=role(advisor_model)))
 
 
 def lab_key(monkeypatch):
@@ -47,13 +47,23 @@ def test_all_three_roles_can_run_on_the_lab_key():
 @pytest.mark.parametrize('role,change,error',[
     ('dev',dict(model='parcc/Qwen'),'unsupported_agent_model'),
     ('dev',dict(model='gpt-6.1-sol'),'unsupported_agent_model'),
-    ('eval',dict(model='parcc/Qwen'),'unsupported_agent_model'),
+    ('dev',dict(model='openai/gpt-oss-120b'),'unsupported_agent_model'),
+    ('eval',dict(model='openai/gpt-oss-120b'),'unsupported_agent_model'),
     ('eval',dict(model='anything-else'),'unsupported_agent_model'),
     ('eval',dict(provider='openai'),'unsupported_agent_model'),
     ('advisor',dict(provider='deepseek'),'lab_provider_not_supported')])
 def test_the_lab_key_serves_only_the_lab_models(role,change,error):
     value=lab();value['roles'][role].update(change)
     with pytest.raises(ValueError,match=error):config.normalize(dict(BASE,agent_provider=value))
+
+
+def test_eval_may_run_on_qwen_and_the_advisor_on_gpt_oss_dev_stays_on_glm():
+    # 2026-11-11 (user): Eval may use Qwen (it reads the frames); gpt-oss-120b is a text-only Advisor.
+    chosen=config.normalize(dict(BASE,agent_provider=lab('openai/gpt-oss-120b',eval_model='parcc/Qwen')))
+    roles=chosen['agent_provider']['roles']
+    assert [roles[r]['model'] for r in ('dev','eval','advisor')]==['parcc/GLM','parcc/Qwen','openai/gpt-oss-120b']
+    assert not config.text_only(roles['eval']) and config.text_only(roles['advisor'])
+    assert config.display_source(chosen)=='parcc'
 
 
 def test_only_three_lab_parcc_roles_are_labelled_parcc():
@@ -95,7 +105,7 @@ def test_lab_codex_roles_still_take_no_key():
     assert vault.ProviderKeyVault().take_for_run('owner',roles).roles=={}
 
 
-@pytest.mark.parametrize('model,vision',[('parcc/GLM',False),('parcc/Qwen',True)])
+@pytest.mark.parametrize('model,vision',[('parcc/GLM',False),('parcc/Qwen',True),('openai/gpt-oss-120b',False)])
 def test_the_image_flag_follows_the_model(monkeypatch,model,vision):
     key=Secret(lab_key(monkeypatch));roles=config.normalize(dict(BASE,agent_provider=lab(model)))['agent_provider']['roles']
     monkeypatch.setattr(vault,'_RUN_KEYS',{'lab':key});monkeypatch.setattr(vault,'_RUN_ROLES',{r:dict(row,base_url=None) for r,row in roles.items()})
@@ -138,7 +148,8 @@ def test_only_eval_or_advisor_can_declare_text_only(role,value):
     with pytest.raises(ValueError,match='vision'):config.normalize(dict(BASE,agent_provider=dict(roles=roles)))
 
 
-@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','advisor-text']),(lab('parcc/Qwen'),['dev','dev','advisor'])])
+@pytest.mark.parametrize('roles,expected',[(lab(),['dev','dev','advisor-text']),(lab('parcc/Qwen'),['dev','dev','advisor']),
+    (lab('openai/gpt-oss-120b',eval_model='parcc/Qwen'),['dev','eval','advisor-text'])])
 def test_preflight_asks_only_a_reader_of_images_to_read_one(monkeypatch,roles,expected):
     lab_key(monkeypatch);seen=[]
     def probe(spec,secret,model,*,role):
@@ -191,6 +202,24 @@ def test_the_advisor_never_sends_qwen_the_effort_it_rejects(monkeypatch,model,ef
     transport=FakeTransport(resolved.secret,None);monkeypatch.setattr(provider_module,'open_request',transport)
     ByokChatClient(resolved).chat(model=model,messages=[dict(role='user',content='Go')],max_tokens=8,reasoning_effort=effort)
     assert transport.fake.requests[-1][1].get('reasoning_effort')==sent
+
+
+@pytest.mark.parametrize('model,sent',[('parcc/Qwen',None),('parcc/GLM','high'),('openai/gpt-oss-120b','high')])
+def test_the_bridge_never_sends_qwen_the_effort_it_rejects(model,sent):
+    # Real 2026-11-11: PARCC answers 400 "Unexpected reasoning effort high" for Qwen; every agent role asks for high.
+    body=dict(model=model,input=[dict(role='user',content='Go')],reasoning=dict(effort='high'))
+    assert bridge_module.to_chat(body,provider_module.presets()['parcc']).get('reasoning_effort')==sent
+
+
+@pytest.mark.parametrize('model,systems',[('parcc/Qwen',1),('parcc/GLM',2)])
+def test_qwen_gets_one_leading_system_message_other_models_are_unchanged(model,systems):
+    # Real 2026-11-11: Qwen answered 400 "System message must be at the beginning" to Codex's instructions + developer message.
+    body=dict(model=model,instructions='Be the Eval.',input=[dict(role='developer',content=[dict(type='input_text',text='Sandbox rules.')]),
+        dict(role='user',content=[dict(type='input_text',text='Review it.')])])
+    messages=bridge_module.to_chat(body,provider_module.presets()['parcc'])['messages']
+    assert [m['role'] for m in messages].count('system')==systems and messages[0]['role']=='system'
+    if model=='parcc/Qwen':
+        assert messages[0]['content'].startswith('Be the Eval.\n\nSandbox rules.') and messages[1]=={'role':'user','content':'Review it.'}
 
 
 def parcc_selection(**choices):

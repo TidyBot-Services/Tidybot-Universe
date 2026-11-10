@@ -2,7 +2,8 @@
 
 # User decisions, 2026-10-18/19: parcc/GLM (Dev and legacy Advisor)
 # and parcc/Qwen (Eval and visual Advisor) are free. Usage is still recorded.
-FREE_MODELS = frozenset({'parcc/GLM', 'parcc/Qwen'})
+# 2026-11-11 (user): PARCC's openai/gpt-oss-120b (text-only Advisor) is free on the same lab key.
+FREE_MODELS = frozenset({'parcc/GLM', 'parcc/Qwen', 'openai/gpt-oss-120b'})
 TOKEN_RESOURCES = ('provider_tokens', 'input_tokens', 'output_tokens')
 
 

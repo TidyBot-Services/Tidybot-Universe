@@ -44,6 +44,29 @@ def validate(value):
     return value
 
 
+# 2026-11-11 (user): PARCC's Qwen may run Eval. It often ended on prose instead of the JSON (real check 2026-11-05: 1 of 6
+# sessions), so a routed Eval's final message is read leniently and, failing that, rewritten once by the same model.
+REPAIR_PROMPT = ('Your review of this attempt ended with the text below instead of the required JSON verdict. Do not run '
+    'commands, open files or view images again. Using only this text, reply with the verdict as one JSON object that '
+    'matches the output schema and nothing else: passed (true or false), reason, evidence (each item a claim and the '
+    'file or frame it came from as source) and advice.\n\n<review>\n{review}\n</review>')
+REPAIR_SECONDS = 120
+REPAIR_REVIEW_CHARS = 20000
+
+
+def embedded_verdict(text):
+    """The last schema-valid JSON object inside a message (in a code fence or between sentences), else None."""
+    if not isinstance(text,str):return None
+    decoder=json.JSONDecoder();found=None;i=text.find('{');tries=0
+    while i!=-1 and tries<2000:
+        tries+=1
+        try:value,end=decoder.raw_decode(text,i)
+        except ValueError:i=text.find('{',i+1);continue
+        try:found=validate(value);i=text.find('{',end)
+        except ValueError:i=text.find('{',i+1)
+    return found
+
+
 def build_workspace(workspace, execution, success_condition=None):
     vid,eid = execution['version_id'],execution['execution_id']
     root = workspace.private/'eval'/vid
@@ -143,8 +166,7 @@ class Evaluator:
                     if event.get('type')=='item.completed' and item.get('type')=='agent_message':answer=item.get('text')
                 if self.process.wait(timeout=max(.01,deadline-time.monotonic())) or error or not completed:
                     raise RuntimeError('process_failed')
-                try:verdict=validate(json.loads(answer))
-                except (ValueError,TypeError):raise ValueError('schema_invalid')
+                verdict=self.read_verdict(ws,root,answer,deadline,options)
                 if self.success_condition and self.redact:
                     # Raw verdict stays private; Dev gets the conclusion without the rule's numbers or names.
                     from .dev_agent_success import dev_view
@@ -168,6 +190,67 @@ class Evaluator:
             self.cancel()
             if root.exists():atomic_write(root,'usage.json',encode(dict(usage=self.usage if self.usage is not None else 'unknown',error=error)))
         return result
+
+    def read_verdict(self,ws,root,answer,deadline,options):
+        """The final message as a verdict. Codex lab models keep the strict reading. For a routed model (PARCC, a user's
+        key), JSON inside a code fence or a sentence is taken as is, and a prose ending gets one short repair turn of
+        the same model through the same bridge, logged and charged like the review. repair.json records either."""
+        try:return validate(json.loads(answer))
+        except (ValueError,TypeError):pass
+        if self.bridge is None:raise ValueError('schema_invalid')
+        found=embedded_verdict(answer)
+        if found is not None:
+            atomic_write(root,'repair.json',encode(dict(method='extracted')))
+            return found
+        if not isinstance(answer,str) or not answer.strip():raise ValueError('schema_invalid')
+        found=self.repair_turn(ws,root,answer,deadline,options)
+        if found is None:raise ValueError('schema_invalid')
+        atomic_write(root,'repair.json',encode(dict(method='rewritten')))
+        return found
+
+    def repair_turn(self,ws,root,answer,deadline,options):
+        """One ephemeral turn that turns the review's own prose into the verdict; None when it cannot."""
+        from .dev_agent_parcc_bridge import provider_args
+        spent=None;found=None
+        try:
+            limit=min(deadline,time.monotonic()+REPAIR_SECONDS)
+            if self.reader is not None:self.reader.join()
+            if self.process.stdout:self.process.stdout.close()
+            command=list(self.command_factory(ws,REPAIR_PROMPT.format(review=answer[-REPAIR_REVIEW_CHARS:])))
+            command[command.index('-m')+1]=self.model
+            i=command.index('-m')
+            command[i:i]=provider_args(self.bridge.base_url,token_env=self.provider.token_env)
+            i=next(i for i,v in enumerate(command) if v.startswith('model_reasoning_effort='))
+            command[i]='model_reasoning_effort="high"'
+            command[command.index('exec')+1:command.index('exec')+1]=['--ephemeral','--output-schema',str(root/'schema.json')]
+            text=None
+            with (root/'repair-events.jsonl').open('wb') as logs,(root/'repair-stderr.txt').open('wb') as errors:
+                with self._bridge_lock:
+                    if self.cancelled.is_set():raise TimeoutError('timeout')
+                    self.process=subprocess.Popen(command,cwd=ws,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
+                                                  stderr=errors,start_new_session=True,**options)
+                    self.reader=None
+                timer=threading.Timer(max(.01,limit-time.monotonic()),self.process.kill);timer.start()
+                try:
+                    for line in self.process.stdout:
+                        logs.write(line)
+                        event=json.loads(line)
+                        if self.quota:self.quota.event(event)
+                        if event.get('type')=='turn.completed' and isinstance(event.get('usage'),dict):spent=event['usage']
+                        item=event.get('item',{})
+                        if event.get('type')=='item.completed' and item.get('type')=='agent_message':text=item.get('text')
+                    self.process.wait(timeout=max(.01,limit-time.monotonic()))
+                finally:timer.cancel()
+            try:found=validate(json.loads(text))
+            except (ValueError,TypeError):found=embedded_verdict(text)
+            if found is None:atomic_write(root,'repair-error.json',encode(dict(error_class='unreadable_answer')))
+        except TimeoutError:raise
+        except Exception as exc:
+            atomic_write(root,'repair-error.json',encode(dict(error_class=type(exc).__name__)))
+        if isinstance(spent,dict) and all(type(v) is int and v>=0 for v in spent.values()):
+            atomic_write(root,'repair-usage.json',encode(spent))
+            if self.usage is not None:self.usage={k:self.usage.get(k,0)+spent.get(k,0) for k in {*self.usage,*spent}}
+        return found
 
     def write_plain_review(self,ws,root,result,deadline,options):
         """For the page only, and never read by Dev. One more turn of the same model through the same route, so it is

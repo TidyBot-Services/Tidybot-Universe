@@ -21,7 +21,7 @@ import urllib.request
 import uuid
 
 from .dev_agent_secret import Secret, scrub
-from .dev_agent_provider import presets
+from .dev_agent_provider import presets, reasoning_effort
 
 PARCC_CHAT_URL = presets()['parcc'].chat_url
 PARCC_DEV_MODELS = frozenset({'parcc/GLM'})
@@ -116,6 +116,19 @@ def _response_format(body, chat, provider):
     else:raise BridgeError('unsupported_text_format')
 
 
+# 2026-11-11: PARCC's Qwen template takes one system message, first ("System message must be at the beginning"), while
+# Codex sends its instructions and developer messages as several. Other models get the messages exactly as before.
+ONE_SYSTEM_MODELS = frozenset({'parcc/Qwen'})
+
+
+def one_system(messages):
+    """Every system message merged, in order, into one leading system message."""
+    texts = [m['content'] if isinstance(m['content'], str) else '\n'.join(p.get('text', '') for p in m['content'] if p.get('type') == 'text')
+             for m in messages if m['role'] == 'system']
+    rest = [m for m in messages if m['role'] != 'system']
+    return ([dict(role='system', content='\n\n'.join(t for t in texts if t))] if texts else []) + rest
+
+
 def to_chat(body, provider=None, *, vision=False):
     """Responses request body -> chat/completions body. Fail closed on unknown items/tools."""
     messages = []
@@ -152,6 +165,7 @@ def to_chat(body, provider=None, *, vision=False):
         else:
             raise BridgeError('unsupported_input_item:' + str(kind))
     flush_images()
+    if body.get('model') in ONE_SYSTEM_MODELS: messages = one_system(messages)
     tools = []
     for tool in body.get('tools', []):
         if tool.get('type') != 'function': raise BridgeError('unsupported_tool:' + str(tool.get('type')))
@@ -166,6 +180,8 @@ def to_chat(body, provider=None, *, vision=False):
     if provider is not None:
         chat[provider.token_param] = chat.pop('max_tokens')
     reasoning_param = provider.reasoning_param if provider is not None else 'reasoning_effort'
+    # 2026-11-11: PARCC's Qwen answers 400 to the "high" every agent role asks for; send its default instead.
+    if effort and provider is not None: effort = reasoning_effort(provider, chat['model'], effort)
     if effort and reasoning_param: chat[reasoning_param] = effort
     _response_format(body,chat,provider)
     if provider is not None:chat.update(json.loads(json.dumps(provider.extra_body)))

@@ -105,13 +105,13 @@ for (const width of [1280, 390]) test(`MODEL-SOURCE-PARCC-AGENT: PARCC is a norm
   assert.equal(await source.inputValue(), 'parcc');
   assert.equal(await radio(), 'lab');
   assert.equal(await form.locator('[data-bill-name]').innerText(), 'PARCC (free)');
-  assert.match(await form.locator('[data-source-help]').innerText(), /GLM reads text only/);
+  assert.match(await form.locator('[data-source-help]').innerText(), /Dev runs on GLM\. GLM and gpt-oss-120b read text only; choose Qwen for Eval or the Advisor/);
   assert.doesNotMatch(await form.locator('[data-agent-reason]').innerText(), /quota/);
   assert.equal(await form.locator('[data-codex-quota]').isVisible(), false);
   assert.deepEqual(await models(form), {
     dev: {value: 'parcc/GLM', options: ['parcc/GLM']},
-    eval: {value: 'parcc/GLM', options: ['parcc/GLM']},
-    advisor: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
+    eval: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen']},
+    advisor: {value: 'parcc/GLM', options: ['parcc/GLM', 'parcc/Qwen', 'openai/gpt-oss-120b']},
   });
   // Other controls repaint the form; the choice has to survive them.
   await form.locator('input[name="max_attempts"]').fill('3');

@@ -2585,9 +2585,10 @@
   const BYOK_ALL_ROLES = true; // Dev, Eval and Advisor can each use a saved key; the server preflights every role.
   const KEYS_API='/api/provider/credentials';
   const KEY_ROLES=[['dev','Dev agent','Writes and revises the robot program'],['eval','Eval agent','Reviews each attempt'],['advisor','Advisor','Answers help requests']];
-  // What each lab source offers per role. PARCC runs Dev and Eval on GLM; the Advisor can use Qwen, which reads images.
+  // What each lab source offers per role. PARCC runs Dev on GLM only; Eval may use Qwen, which reads images (11-11, user);
+  // the Advisor may also use gpt-oss-120b, which reads text only and cannot call tools on PARCC.
   const LAB_MODELS={codex:{dev:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],eval:['gpt-6.1-sol','gpt-6-astra','gpt-6-sol'],advisor:['gpt-6.1-sol','gpt-6-astra']},
-    parcc:{dev:['parcc/GLM'],eval:['parcc/GLM'],advisor:['parcc/GLM','parcc/Qwen']}};
+    parcc:{dev:['parcc/GLM'],eval:['parcc/GLM','parcc/Qwen'],advisor:['parcc/GLM','parcc/Qwen','openai/gpt-oss-120b']}};
   const KEY_CHECKS=[['auth','Key accepted'],['chat','Chat works'],['streaming','Streaming'],['tools','Tool calls'],['vision','Images']];
   // Eval and Advisor may use a model that cannot read images; the run then says so, and is sent none.
   const TEXT_ONLY_NOTE='<span class="ab-keys-warn">This model reads text only, so this agent will not see images.</span>';
@@ -3151,7 +3152,7 @@
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
         }else if(select.value==='parcc'){
-          help.textContent='Free lab models. GLM reads text only; choose Qwen for the Advisor to include camera frames. Results are not comparable with Codex results.';
+          help.textContent='Free lab models. Dev runs on GLM. GLM and gpt-oss-120b read text only; choose Qwen for Eval or the Advisor to include camera frames. Results are not comparable with Codex results.';
           name.textContent='PARCC (free)';note.textContent='No quota. Usage is still recorded.';
         }else if(select.value==='all'){
           help.textContent='One provider, model and key for Dev, Eval and Advisor.';

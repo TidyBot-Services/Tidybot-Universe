@@ -13,10 +13,12 @@ DEFAULT_MODEL='gpt-6.1-sol'
 ADVISOR_MODELS={'gpt-6-astra','gpt-6.1-sol'}
 # Lab Dev also supports PARCC GLM through the text-only loopback Responses bridge.
 DEV_MODELS=MODELS|{'parcc/GLM'}
-# PARCC is the free lab source for all three roles. GLM reads text only. Qwen reads images, but as Eval it rarely ends on the
-# required JSON (real check 2026-11-05: 1 of 6 sessions), so only the Advisor, a single call, can use it.
-PARCC_MODELS={'dev':{'parcc/GLM'},'eval':{'parcc/GLM'},'advisor':{'parcc/GLM','parcc/Qwen'}}
-TEXT_ONLY_MODELS={'parcc/GLM'}
+# PARCC is the free lab source for all three roles. GLM reads text only. Qwen reads images and calls tools; as Eval it often
+# ended on prose instead of the JSON verdict (real check 2026-11-05: 1 of 6), so since 2026-11-11 (user) it may run Eval
+# with the verdict repair in dev_agent_eval. gpt-oss-120b reads text only and PARCC runs no tool calls for it
+# (2026-11-11), so it is offered only to the Advisor, a single call. Dev stays on GLM (user, 2026-11-11).
+PARCC_MODELS={'dev':{'parcc/GLM'},'eval':{'parcc/GLM','parcc/Qwen'},'advisor':{'parcc/GLM','parcc/Qwen','openai/gpt-oss-120b'}}
+TEXT_ONLY_MODELS={'parcc/GLM','openai/gpt-oss-120b'}
 
 
 def lab_parcc(desc):
