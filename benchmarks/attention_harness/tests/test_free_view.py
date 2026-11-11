@@ -194,3 +194,24 @@ def test_live_followers_are_capped(tmp_path, running, monkeypatch):
     monkeypatch.setattr(free_view, '_FOLLOWERS', {tmp_path/str(i): Proc() for i in range(free_view.MAX_FOLLOWERS)})
     with pytest.raises(FileNotFoundError, match='busy'):dev_agent_view.artifact(cell, 'free-view/live/scene.json')
     assert started == []
+
+
+# ---------------------------------------------------------------- 11-12 user reports
+def test_live_3d_button_is_offered_on_every_camera_view():
+    """Other camera views poll .../live?view=<name>; the live 3D button must match those too, not only Overview."""
+    import re as _re
+    js = (Path(__file__).resolve().parents[1] / 'ui' / 'live.js').read_text(encoding='utf-8')
+    body = js[js.index('function liveFreeViewButton'):][:900]
+    start = body.index('station.camera_monitor_v2&&/') + len('station.camera_monitor_v2&&/')
+    rx = _re.compile(body[start:body.index('/.exec(station.camera_state_url')].replace('\\/', '/'))
+    cell = '/api/dev-v2/experiments/devexp-' + 'a' * 24 + '/cells/' + 'b' * 64
+    for url in (cell + '/live', cell + '/live?view=side', cell + '/live?view=left_wrist'):
+        assert rx.match(url), url
+
+
+def test_close_stays_above_the_loading_and_waiting_screen():
+    """While the page shows LOADING / WAITING / NO 3D VIEW, the Close button must stay clickable."""
+    import re as _re
+    html = (Path(__file__).resolve().parents[1] / 'ui' / 'free_view.html').read_text(encoding='utf-8')
+    z = lambda sel: int(_re.search(_re.escape(sel) + r'\{[^}]*z-index:(\d+)', html)[1])
+    assert z('#close') > z('#loading')
