@@ -130,6 +130,7 @@ def main():
             held_contact_only=c.get('test_fixture',{}).get('held_reference')=='contact_only',
             handoff_receiver_fingers=c.get('test_fixture',{}).get('handoff_receiver_fingers') is True,
             bimanual_collaboration=c.get('bimanual_collaboration','none'),
+            **({} if c.get('arm_motion')!='long' else dict(arm_motion='long')),
             **({} if execution_settings is None else dict(execution_settings=execution_settings)))
         capture(0)
         def observe():

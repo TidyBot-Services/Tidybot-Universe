@@ -186,6 +186,21 @@ def finger_object_contact_measurements(env,side,bid):
             break
     return forces,{finger:sorted(values) for finger,values in distances.items()}
 
+ADAPTIVE_TRACKING_BOUND=.008   # rad, arm_motion long
+ADAPTIVE_STILL_SPEED=.01       # rad/s: slower than this on every arm joint counts as still
+ADAPTIVE_STILL_STEPS=3         # consecutive control steps (20 Hz)
+ADAPTIVE_MIN_STEPS=4
+
+
+def arm_joint_speed(env):
+    """Largest absolute arm joint speed, or None when it cannot be read (the pause then runs its full length)."""
+    try:
+        robot=env.robots[0]
+        qvel=np.asarray(env.sim.data.qvel[robot._ref_arm_joint_vel_indexes],float)
+    except (AttributeError,IndexError,KeyError,TypeError):return None
+    return float(np.max(abs(qvel))) if qvel.size and np.all(np.isfinite(qvel)) else None
+
+
 def diagnostic_tracking_bound():
     raw=os.environ.get('ATTN_DIAG_TRACKING_BOUND','0.004')
     if not re.fullmatch(r'\+?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?',raw):
@@ -228,8 +243,12 @@ def gripper_open_confirmed(q,limits):
 
 
 class NativeExecutor:
-    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none',handoff_receiver_fingers=False):
+    def __init__(self,env,planner,*,evidence,deadline,cancel_check,frame_callback=None,held_reference_configured='fixed',held_reference_per_motion=False,held_contact_only=False,execution_settings=None,bimanual_collaboration='none',handoff_receiver_fingers=False,arm_motion='short'):
         if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
+        if arm_motion not in ('short','long'):raise ValueError('arm_motion must be short or long')
+        # 2026-11-12: long = up to 0.30 m per coordinate in one planned motion, pause ends once the arm is still,
+        # endpoint checked at 8 mrad. short = the earlier fixed values. All other checks are the same in both.
+        self.arm_motion=arm_motion;self.arm_delta_limit=.30 if arm_motion=='long' else .05
         self.bimanual_collaboration=bimanual_collaboration
         self.handoff_receiver_fingers=handoff_receiver_fingers
         self.held_reference_per_motion=held_reference_per_motion or held_contact_only
@@ -686,6 +705,8 @@ class NativeExecutor:
     def apply(self,response,*,request_id):
         self.check_live()
         settle_steps=diagnostic_settle_steps();bound=diagnostic_tracking_bound()
+        adaptive=getattr(self,'arm_motion','short')=='long'
+        if adaptive:bound=max(bound,ADAPTIVE_TRACKING_BOUND)
         plan_id=response['plan_id']
         response=self.planner.claim(plan_id,self.epoch)
         dt=float(self.env.control_timestep)
@@ -714,7 +735,16 @@ class NativeExecutor:
         self.moving=True
         try:
             for target in samples[1:]:self.goals=target.copy();self.control_step()
-            for _ in range(settle_steps):self.control_step()
+            still=0
+            for done in range(settle_steps):
+                self.control_step()
+                if not adaptive:continue
+                # Stop waiting once every arm joint has been slower than the threshold for a few steps in a row
+                # and the endpoint is inside the bound; otherwise use the whole fixed pause as before.
+                speed=arm_joint_speed(self.env)
+                still=still+1 if speed is not None and speed<ADAPTIVE_STILL_SPEED else 0
+                if (done+1>=ADAPTIVE_MIN_STEPS and still>=ADAPTIVE_STILL_STEPS
+                        and float(np.max(abs(self.planner.state()-samples[-1])))<=bound):break
             current=self.planner.state()
             error=float(np.max(abs(current-samples[-1])))
             fixture_contact=(fixture_enabled(getattr(self,'execution_settings',None)) and
@@ -728,7 +758,7 @@ class NativeExecutor:
                 event=tracking_error_event(request_id,settle_steps,bound,self.planner.names,samples[-1],current,qvel)
                 if fixture_contact:event.update(fixture_contact=True,mode='record_only',endpoint_bound_enforced=False)
                 self.log(self.journal,event)
-                if not fixture_contact:raise RuntimeError('Native joint tracking exceeds 4mrad endpoint bound')
+                if not fixture_contact:raise RuntimeError(f'Native joint tracking exceeds {bound*1000:g}mrad endpoint bound')
             receipt=dict(status='completed',request_id=request_id,epoch=self.epoch,start_sequence=start,
                 sequence=self.sequence,physics_steps=self.physics_steps,before_qpos=before.tolist(),
                 after_qpos=self.planner.state().tolist(),maximum_endpoint_joint_error_rad=error)
@@ -919,8 +949,8 @@ class NativeExecutor:
         from scipy.spatial.transform import Rotation
         delta=np.array([dx,dy,dz],float);rotation=np.array(rotation_delta if rotation_delta is not None else [0,0,0],float)
         if (delta.shape!=(3,) or rotation.shape!=(3,) or not np.isfinite(np.r_[delta,rotation]).all()
-                or np.any(abs(delta)>.05) or np.any(abs(rotation)>.5)):
-            raise ValueError('World-frame deltas limited to .05m/.5rad per coordinate')
+                or np.any(abs(delta)>getattr(self,'arm_delta_limit',.05)) or np.any(abs(rotation)>.5)):
+            raise ValueError(f"World-frame deltas limited to {getattr(self,'arm_delta_limit',.05):.2f}m/.5rad per coordinate".replace('0.','.',1))
         if getattr(self,'bimanual_collaboration','none') in ('c1','handoff'):
             if self.unheld_object_contact(side):raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')
         elif self.any_object_contact() and not self.held:raise PlanningRejected('Object contact requires confirmed bilateral grasp before arm motion')

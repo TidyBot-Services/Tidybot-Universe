@@ -161,7 +161,7 @@ def validate_test_fixture(spec):
         if abs(math.sqrt(sum(v*v for v in pose[3:]))-1.)>1e-6:raise ValueError('test_fixture quaternion must be normalised')
     return spec
 
-def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None,bimanual_collaboration='none',test_fixture=None):
+def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',planner_source=None,execution_settings=None,bimanual_collaboration='none',test_fixture=None,arm_motion='short'):
     if test_fixture is not None:
         if budget_boundary!='dev_loop' or budget_tier!='dev':raise ValueError('test_fixture requires dev_loop boundary and dev tier')
         validate_test_fixture(test_fixture)
@@ -178,13 +178,15 @@ def make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source
         if budget_tier!='dev' or budget_boundary!='dev_loop':raise ValueError('execution_settings requires dev_loop boundary and dev tier')
     # The frozen constructor seals r4 only; legacy/r3 retain their exact bytes.
     c=_make_dev_config(task_id,seed,lock,layout_id,style_id,expected_source_root=expected_source_root,
-        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source,bimanual_collaboration=bimanual_collaboration)
+        budget_boundary=budget_boundary,budget_tier=budget_tier,execution_settings=settings,planner_source=planner_source,bimanual_collaboration=bimanual_collaboration,arm_motion=arm_motion)
     if test_fixture is not None:c['test_fixture']=copy.deepcopy(test_fixture)
     return c
 
 
-def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None,bimanual_collaboration='none'):
+def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_source_root=None,budget_boundary='dev_loop',budget_tier='dev',execution_settings=None,planner_source=None,bimanual_collaboration='none',arm_motion='short'):
     if bimanual_collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
+    if arm_motion not in ('short','long'):raise ValueError('arm_motion must be short or long')
+    if arm_motion=='long' and (budget_tier!='dev' or budget_boundary!='dev_loop'):raise ValueError('arm_motion long requires dev tier and dev_loop boundary')
     from curobo_v2.fixture_interaction import enabled,PILOT_TASKS
     fixture=enabled(execution_settings)
     if fixture and (task_id not in PILOT_TASKS or budget_tier!='dev' or budget_boundary!='dev_loop' or planner_source is None):
@@ -233,13 +235,14 @@ def _make_dev_config(task_id,seed,lock,layout_id=11,style_id=34,*,expected_sourc
     if budget_tier=='dev':c['budget_tier']='dev'
     if execution_settings is not None:c['execution_settings']=execution_settings.to_dict()
     if bimanual_collaboration in ('c1','handoff'):c['bimanual_collaboration']=bimanual_collaboration
+    if arm_motion=='long':c['arm_motion']='long'  # absent = short: every earlier config keeps its exact bytes
     if planner_source is not None:c['planner_source']=dict(planner_source)
     if fixture:
         from .fixture_contract import contract_ref,success_ref
         c.update(scene_reset_seed=seed,fixture_scene_contract=contract_ref(task_id),fixture_success_condition=success_ref(task_id))
         if hasattr(execution_settings,'fixture_telemetry_hz'):c['scene_verification']='fixture_contract_only'
     from benchmarks.attention_harness.dev_tasks import base_description_enabled,dev_sdk_seal
-    if base_description_enabled(c) or bimanual_collaboration in ('c1','handoff'):c.update(dev_sdk_seal(c))
+    if base_description_enabled(c) or bimanual_collaboration in ('c1','handoff') or arm_motion=='long':c.update(dev_sdk_seal(c))
     return c
 def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'):
     if not isinstance(c,dict):raise ValueError('Dev config required')
@@ -262,7 +265,9 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         settings=from_config(c['execution_settings'])
     collaboration=c.get('bimanual_collaboration','none')
     if collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
-    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'),bimanual_collaboration=collaboration)
+    expected=_make_dev_config(c.get('task_id'),c.get('seed'),c.get('dev_lock'),c.get('layout_id'),c.get('style_id'),expected_source_root=expected_source_root,budget_boundary=budget_boundary,budget_tier=tier,execution_settings=settings,planner_source=c.get('planner_source'),bimanual_collaboration=collaboration,
+        arm_motion='long' if c.get('arm_motion')=='long' else 'short')
+    if 'arm_motion' in c and c['arm_motion']!='long':raise ValueError('arm_motion: only long is recorded')
     if 'test_fixture' in c:expected['test_fixture']=copy.deepcopy(c['test_fixture'])
     if 'bimanual_collaboration' in c:expected['bimanual_collaboration']=collaboration
     if source=='codex':expected['model_source']='codex'
