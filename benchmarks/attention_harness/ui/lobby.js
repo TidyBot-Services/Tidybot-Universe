@@ -290,8 +290,8 @@
 
   // Remote's New run is main's form. Four things differ: no Codex (live.js), the shared host's limits, a goal ID the host
   // sets, and, until real runs are connected, a join that replays a recording instead of Start run.
-  const NEW_RUN_LIMITS = {versions: 3, wall: 3600, help: 3, maxHelp: 3, versionsRange: '1–3 · Remote limit', wallRange: '1 hour · Remote limit',
-    note: 'Remote limit: 3 versions · 1 hour · 3 help requests, because everyone shares one robot. Results are not comparable with the official 10-version runs.'};
+  const NEW_RUN_LIMITS = {versions: 3, wall: 3600, help: 5, maxHelp: 5, versionsRange: '1–3 · Remote limit', wallRange: '1 hour · Remote limit',
+    note: 'Remote limit: 3 versions · 1 hour · 5 help requests, because everyone shares one robot. Results are not comparable with the official 10-version runs.'};
   const newRunLimits = () => state.enabled ? NEW_RUN_LIMITS : null;
   function newRunNotice() {
     return state.enabled && state.snap?.demo ? '<p class="ab-launch-note ab-launch-source" data-remote-note><span>REMOTE</span><strong>Real runs are not connected yet.</strong><small>Set everything as in the main UI. Join demo replays a recording of this task and does not use these settings.</small></p>' : '';

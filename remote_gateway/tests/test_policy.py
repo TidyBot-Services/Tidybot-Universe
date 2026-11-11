@@ -66,7 +66,7 @@ def test_limits_default_to_the_ceiling_and_cannot_be_raised():
     assert rebuilt(body(agent_limits=None))['agent_limits'] == dict(versions=3, wall_seconds=21600)
     assert rebuilt(body(agent_limits=dict(versions=2, wall_seconds=7200)))['agent_limits'] == dict(versions=2, wall_seconds=21600)
     for change, code in ((dict(agent_limits=dict(versions=4, wall_seconds=3600)), 'invalid_versions'),
-                         (dict(agent_limits=dict(versions=True, wall_seconds=3600)), 'invalid_versions'), (dict(help_budget=4), 'invalid_help_requests'), (dict(seeds=['1']), 'invalid_seed')):
+                         (dict(agent_limits=dict(versions=True, wall_seconds=3600)), 'invalid_versions'), (dict(help_budget=6), 'invalid_help_requests'), (dict(seeds=['1']), 'invalid_seed')):
         with pytest.raises(policy.Refused) as refused:rebuilt(body(**change))
         assert refused.value.code == code
 

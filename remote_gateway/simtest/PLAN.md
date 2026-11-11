@@ -60,7 +60,7 @@
 |---|---|---|
 | `runs_per_day` | 3 | 100000 |
 | `versions` | 3 | 10（harness 硬上限） |
-| `help_requests` | 3 | 10（harness 硬上限） |
+| `help_requests` | 5 | 10（harness 硬上限） |
 | `wall_seconds` | 3600 | 21600（harness 硬上限） |
 | `active_runs` | 1 | 1000 |
 | 请求频率（普通、实时） | 10/秒、30/秒 | 100000/秒 |

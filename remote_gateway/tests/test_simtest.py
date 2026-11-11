@@ -88,7 +88,7 @@ def test_no_limit_lives_in_the_test_instance_and_nowhere_else(tmp_path):
     limits = load(path).limits
     assert (limits.runs_per_day, limits.versions, limits.help_requests, limits.wall_seconds, limits.active_runs, limits.run_slots) == (100000, 10, 10, 21600, 1000, 3)
     assert limits.requests_per_second >= 100000 and limits.live_requests_per_second >= 100000 and limits.logins_per_hour >= 100000
-    assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=3, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
+    assert Limits() == Limits(versions=3, wall_seconds=3600, help_requests=5, runs_per_day=3, active_runs=1, requests_per_second=10, request_burst=60, live_requests_per_second=30, live_request_burst=120, logins_per_hour=10)
 
 
 CODEX = dict(credential='lab', provider='openai', model='gpt-6.1-sol')

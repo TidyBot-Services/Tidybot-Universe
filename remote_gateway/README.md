@@ -60,7 +60,7 @@ That prints an invite id and the code. The code is shown once and stored only as
 
 `deploy/` holds systemd user unit templates, so the gateway and harness can outlive a shell. Replace `__SRC__` (the checkout), `__PY__` (its Python) and `__DATA__` (the data folder). Restarting the harness ends a run in progress. Nothing in this repository installs or enables a unit automatically.
 
-`deploy/campus/` is the S0 package for a gateway and harness on the same run host. It includes a config example (Secure cookies, trusted loopback nginx, 3 versions/run, 3 runs/person/day, 3 help requests, 3 open slots, 10 login failures/address/hour, 150 GiB disk floor, 7-day retention, 6 Codex starts/UTC day and a 77% stop line), two user units with `LimitCORE=0` and `Restart=on-failure`, and nginx/ufw templates. Replace every placeholder before review. `__SRC__` must be the installed `__WORKSPACE__`'s checkout. Use the host's shared `__SIM_LOCK__`.
+`deploy/campus/` is the S0 package for a gateway and harness on the same run host. It includes a config example (Secure cookies, trusted loopback nginx, 3 versions/run, 3 runs/person/day, 5 help requests, 3 open slots, 10 login failures/address/hour, 150 GiB disk floor, 7-day retention, 6 Codex starts/UTC day and a 77% stop line), two user units with `LimitCORE=0` and `Restart=on-failure`, and nginx/ufw templates. Replace every placeholder before review. `__SRC__` must be the installed `__WORKSPACE__`'s checkout. Use the host's shared `__SIM_LOCK__`.
 
 For a separate campus harness, replace the unit's `__PORT__` and the gateway example's `__HARNESS_PORT__` with **8870**, so it can run beside the existing public harness on 8860. For example, the gateway value is:
 

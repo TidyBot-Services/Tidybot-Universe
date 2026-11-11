@@ -15,7 +15,7 @@ class Limits:
     versions: int = 3
     # No longer a limit: Remote runs have no time limit (2026-11-08). Kept so older gateway.json files still load.
     wall_seconds: int = 3600
-    help_requests: int = 3
+    help_requests: int = 5
     human_reply_seconds: int = 120  # How long an interactive run waits for its owner before the Advisor answers.
     runs_per_day: int = 3
     active_runs: int = 1
