@@ -4834,6 +4834,36 @@
     const label=(src||recording)&&latest?`<span class="op-held-label">Last frame · ${esc(attemptName(latest))}</span>`:'';
     return `<div class="op-stage" data-op-held data-lifecycle="${esc(phase)}">${frame}${label}<div class="op-held-note" role="status"><b>${esc(title)}</b><p>${esc(copy?.text||'The robot is not moving.')}</p></div></div>`;
   }
+  // 3D view (test): a view-only replay of one attempt drawn in the browser. The frame it opens has no way to send
+  // anything to the simulation; it only reads three files of the finished attempt.
+  function freeViewButton(trace) {
+    const video=(trace?.evidence||[]).find(e=>/\/agent\/files\/replays\/e\d+\//.test(e.media_url||''));
+    const m=video&&/^(.*\/cells\/[a-f0-9]{64})\/agent\/files\/replays\/(e\d+)\//.exec(video.media_url);
+    return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/free-view/${m[2]}`)}" aria-pressed="false" title="Rotate, zoom and pan a 3D replay of this attempt. View only.">3D view</button>`:'';
+  }
+  function openFreeView(base,title) {
+    document.querySelector('[data-free-view-dialog]')?.remove();
+    const dark=document.getElementById('attentionbench-clear')?.dataset.theme==='dark';
+    const box=document.createElement('div');
+    box.dataset.freeViewDialog='';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','3D view');
+    box.style.cssText='position:fixed;inset:0;z-index:9000;background:#0b0d10cc;display:flex;align-items:center;justify-content:center;padding:max(12px,2vmin)';
+    const card=document.createElement('div');
+    card.style.cssText=`display:flex;flex-direction:column;width:min(1400px,100%);height:min(900px,100%);border-radius:14px;overflow:hidden;background:${dark?'#15181d':'#fff'};color:${dark?'#e6e9ee':'#242822'};box-shadow:0 20px 60px -20px #000`;
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 14px;font:600 13px system-ui,sans-serif';
+    const name=document.createElement('span');name.style.cssText='flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    name.textContent=`3D view · ${title} · view only`;
+    const close=document.createElement('button');close.type='button';close.textContent='Close';
+    close.style.cssText='font:inherit;padding:5px 14px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer';
+    const frame=document.createElement('iframe');
+    frame.title='3D replay, view only';frame.setAttribute('sandbox','allow-scripts allow-same-origin');
+    frame.style.cssText='flex:1 1 auto;min-height:0;width:100%;border:0;background:#0e1116';
+    frame.src=`/ui/free_view.html?embed=1&data=${encodeURIComponent(base)}`;
+    const shut=()=>{box.remove();document.removeEventListener('keydown',onKey);};
+    const onKey=event=>{if(event.key==='Escape')shut();};
+    close.addEventListener('click',shut);box.addEventListener('click',event=>{if(event.target===box)shut();});document.addEventListener('keydown',onKey);
+    head.append(name,close);card.append(head,frame);box.append(card);document.body.append(box);close.focus();
+  }
   function operatorExecution(snapshot, data) {
     const {attempt,selected,currentReplay,startingStill,attempts,trace,recording,videos,images,recordingViews,viewOptions,chosenView,streaming,active,flipStaticRows,cameraSuite,cameraLabel}=data;
     const run=snapshot.run;
@@ -4845,7 +4875,7 @@
     const trimBar=attempt&&!currentReplay&&videos.length&&trace?.trim?operatorTrimBar(trace.trim):'';
     const failed=attempt && !neverStarted(snapshot) && snapshot.eval?.native_outcomes?.[attempt.attempt_id]?.native_success !== true && ['failed','timed_out'].includes(attempt.status);
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
-    const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}</div>`:'';
+    const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}${attempt&&!currentReplay?freeViewButton(trace):''}</div>`:'';
     const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
     // Saved still frames are not shown under the replay (user 11-08): the video already shows the attempt.
     const station=cameraStation(snapshot);
@@ -5663,6 +5693,7 @@
     bindOperatorEnhancements(snapshot,previousRun!==run.run_id);
     const replayForPolicy=view.querySelector('video[data-history-replay]');if(replayForPolicy)updateReplayPolicy(snapshot,replayForPolicy);
     view.querySelectorAll('[data-policy-marker-seconds]').forEach(b=>b.addEventListener('click',()=>{const v=view.querySelector('video[data-history-replay]');if(v&&b.dataset.policyMarkerSeconds!==''){v.pause();v.currentTime=Number(b.dataset.policyMarkerSeconds);}}));
+    view.querySelectorAll('[data-free-view]').forEach(button=>button.addEventListener('click',()=>openFreeView(button.dataset.freeView,view.querySelector('.ab-history-tabs [aria-pressed="true"],.ab-history-tabs [aria-selected="true"]')?.textContent.trim()||'attempt')));
     view.querySelectorAll('[data-camera-view]').forEach(button=>{
       button.addEventListener('pointerdown',event=>event.preventDefault());
       button.addEventListener('click',()=>{cameraChoices.set(cameraContext(snapshot),button.dataset.cameraView);render(snapshot);});
