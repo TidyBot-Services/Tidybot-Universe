@@ -267,3 +267,7 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-heading-row>.panel-title.op-heading::after{content:"";flex:1 1 auto;height:1px;background:var(--sh-line)}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-heading-row>.panel-title.op-heading>span:last-child:empty{display:none}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-heading-row>nav.op-pills{flex:0 1 auto;margin:0!important}
+/* 11-12: a long code-like reason in the tries list (start_state_collision_or_constraint_violation) breaks inside its row */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>button{text-align:left!important;white-space:normal!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>button>*{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list{min-width:min(412px,calc(100vw - 48px))!important}
