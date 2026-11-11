@@ -46,7 +46,8 @@ def attempts_limit(row):
         for source in ((row.get('agent') or {}).get('limits'), (row.get('agent_resources') or {}).get('limits')):
             limit = (source or {}).get('formal_versions')
             if isinstance(limit, int):return limit
-        return 10
+        limit = row.get('agent_versions_limit')  # from the run's manifest, before its ledger starts
+        return limit if isinstance(limit, int) else 10
     limit = (row.get('budget') or {}).get('executions')
     return limit if isinstance(limit, int) else None
 

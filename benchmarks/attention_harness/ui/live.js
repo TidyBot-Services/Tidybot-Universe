@@ -408,7 +408,7 @@
       created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
-      attempts_used:agent?(counts?.formal_versions??versions.length):session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??session.agent_resources?.limits?.formal_versions??10):session.budget?.executions,
+      attempts_used:agent?(counts?.formal_versions??versions.length):session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??session.agent_resources?.limits?.formal_versions??session.agent_versions_limit??10):session.budget?.executions,
       agent_solved:agent&&(versions.some(v=>v.native_success===true)||session.reason==='native_success'),
       // Ran to the boundary with every execution failed: "completed" alone says nothing about the task outcome.
       all_attempts_failed:session.state==='completed'&&(()=>{const e=(session.jobs||[]).filter(j=>j.kind==='execute');return e.length>0&&e.every(j=>j.receipt?.execution_status==='failed');})()};
@@ -1839,7 +1839,7 @@
   function loadTaskPicture(src) {
     if(!taskPictureReady.has(src)){
       const img=new Image();img.src=src;
-      taskPictureReady.set(src,(img.decode?img.decode():new Promise((ok,bad)=>{img.onload=ok;img.onerror=bad;})).then(()=>img).catch(()=>null));
+      taskPictureReady.set(src,(img.decode?img.decode():new Promise((ok,bad)=>{img.onload=ok;img.onerror=bad;})).then(()=>img).catch(()=>{taskPictureReady.delete(src);return null;}));
     }
     return taskPictureReady.get(src);
   }

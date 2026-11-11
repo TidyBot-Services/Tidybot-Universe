@@ -175,7 +175,10 @@ class DailyDevV2:
         if config.get('dev_mode')=='agent':
             from .dev_agent_human_reply import pending
             from .dev_agent_view import clean
+            versions_limit=(config.get('agent_budget') or {}).get('formal_versions')
             for row in rows:
+                # The run's own version limit, known before its ledger starts (11-11: cards fell back to 10).
+                if type(versions_limit) is int:row['agent_versions_limit']=versions_limit
                 # The list is all the shared lobby reads, so it has to say when a run is waiting for a person.
                 wait=pending(Path(row['artifact_dir'])/'agent/private',cell=row['key']) if row.get('state')=='running' and row.get('artifact_dir') else None
                 if wait:row['human_wait']=wait
