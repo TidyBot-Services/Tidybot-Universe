@@ -108,6 +108,7 @@ def test_long_accepts_6_mrad_and_refuses_9(monkeypatch):
     obj, _, _, _ = fake_apply(monkeypatch, position=[.016, .02]); obj.arm_motion = 'long'
     obj.env.sim.data.qvel = np.array([0., 0.])
     assert executor.NativeExecutor.apply(obj, {'plan_id': 'p'}, request_id='req')['status'] == 'completed'
+    assert obj.sequence == 22            # still but 6 mrad away: accepted, yet the pause runs its full length (no early exit)
     obj, _, events, _ = fake_apply(monkeypatch, position=[.019, .02]); obj.arm_motion = 'long'
     obj.env.sim.data.qvel = np.array([0., 0.])
     with pytest.raises(RuntimeError, match='exceeds 8mrad endpoint bound'):
