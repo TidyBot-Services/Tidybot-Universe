@@ -226,6 +226,10 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-heading{bor
 /* 02 · one verdict line instead of the hatched banner; numbers at the cover's size */
 html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome{display:flex!important;align-items:baseline;gap:12px;flex-wrap:wrap;min-height:0!important;padding:0 0 12px!important;margin:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important}
 html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome::before,html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome::after{display:none!important}
+/* 11-12 user: bring back the moving light under the line while the run is working (hidden by 1c18cb5) */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome.running{position:relative;overflow:hidden}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome.running::after{display:block!important;content:"";position:absolute;left:0;bottom:0;height:3px;width:40%;background:linear-gradient(90deg,transparent,var(--op-amber,#b7791f),transparent);animation:op-sweep 1.8s linear infinite;pointer-events:none}
+@media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome.running::after{animation:none;width:100%;opacity:.5}}
 html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome strong{font:700 20px/1 "Barlow Condensed",sans-serif!important;letter-spacing:.06em!important}
 html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome>div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome p{margin:0!important;font-size:14px!important}
@@ -305,3 +309,9 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 @keyframes ab-start-rise{to{opacity:1;transform:none}}
 @keyframes ab-start-run{0%{transform:translateX(-105%)}100%{transform:translateX(270%)}}
 @media (prefers-reduced-motion:reduce){.ab-start-word span{animation:none;opacity:1;transform:none}.ab-start-rule i{animation:none;width:100%;opacity:.5}}
+
+/* 11-12 user: dialog Close buttons and Sign out are round pills like the other controls (were square, beveled) */
+#attentionbench-clear :is([data-agent-story-close],[data-close-attempt-dag],[data-close-flow-detail],[data-close-more],[data-sign-out]),
+dialog :is([data-agent-story-close],[data-close-attempt-dag],[data-close-flow-detail],[data-close-more],[data-sign-out]){display:inline-flex!important;align-items:center;justify-content:center;gap:6px;height:36px!important;min-height:0!important;padding:0 16px!important;border:1px solid var(--sh-line,#d8d4c8)!important;border-radius:999px!important;background:var(--sh-chip,#ebe8df)!important;color:var(--sh-ink,#23251f)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;box-shadow:none!important;outline-offset:2px;cursor:pointer}
+#attentionbench-clear :is([data-agent-story-close],[data-close-attempt-dag],[data-close-flow-detail],[data-close-more],[data-sign-out]):hover,
+dialog :is([data-agent-story-close],[data-close-attempt-dag],[data-close-flow-detail],[data-close-more],[data-sign-out]):hover{border-color:var(--sh-ink,#23251f)!important}
