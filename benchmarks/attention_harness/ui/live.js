@@ -5316,7 +5316,9 @@
   }
   function attentionEfficiency(snapshot) {
     const g=attentionLedger(snapshot),model=attentionStripModel(g),runId=snapshot.run.run_id;
-    if(snapshot.agent){model.left+=160;model.width+=160;model.natural+=160;if(model.endX!=null)model.endX+=160;model.requests.forEach(r=>{r.x+=160;r.mid+=160;if(!r.help.delivered)r.dashed=true;});}
+    // Agent runs draw Start 160 to the left of Attempt 1. Help asked before Attempt 1 arcs over that same gap (11-12:
+    // it used to start left of Start, with its bar on the Start label), so no extra slot is kept for it.
+    if(snapshot.agent){const shift=model.before?160-model.step:160;model.left+=shift;model.width+=shift;model.natural+=shift;if(model.endX!=null)model.endX+=shift;model.requests.forEach(r=>{if(r.after<0){const offset=r.x-r.mid;r.mid=model.left-80;r.x=r.mid+offset;}else{r.x+=shift;r.mid+=shift;}if(!r.help.delivered)r.dashed=true;});}
     const agentSelected=snapshot.agent?stored(`attention.history:${runId}`):null;
     const state=g.solved?'solved':g.terminal?'unsolved':'running';
     const filter=['all','human','paid','rate'].includes(stored(`attention.efficiency.filter:${runId}`))?stored(`attention.efficiency.filter:${runId}`):'all';
@@ -5348,7 +5350,7 @@
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
     const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&(r.help.delivered||r.help.charged===true)).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
-      const x0=r.after<0?x(-1)+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
+      const x0=r.after<0?(snapshot.agent?model.left-160:x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
       const bar=snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
