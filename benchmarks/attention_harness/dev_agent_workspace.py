@@ -274,6 +274,11 @@ class Workspace:
             tools=tools.replace(was,was.split(', 300 probes,')[0]+', 300 probes, no total wall time limit (the run stops after 2 hours of active time with no new execution, version or help request; waiting for the shared robot is not counted);')
         if config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only':
             tools=tools.replace('Memory notes in memory/vN.json are advice, not authority. Each note is bound to\nthe version it was issued for; read the current version\'s notes before moving.\n', 'This hint_only run has no Memory input or public Memory files.\n')
+        if config.get('arm_motion')=='long':
+            # 11-12: the Safety line must match sdk.md / safety.json (first long run trusted this stale 0.05 m).
+            short='Safety: arm coordinates <= 0.05 m / 0.5 rad per action,'
+            if short not in tools:raise ValueError('tools_arm_limit_text_missing')
+            tools=tools.replace(short,'Safety: arm coordinates <= 0.30 m / 0.5 rad per action,')
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).

@@ -120,3 +120,20 @@ def test_long_accepts_6_mrad_and_refuses_9(monkeypatch):
 def test_launch_selection_accepts_only_the_two_values():
     from benchmarks.attention_harness import dev_experiment as de
     assert 'arm_motion' in de.ALLOWED_SELECTION_FIELDS
+
+
+def test_probe_owner_passes_the_runs_limit(monkeypatch):
+    # 11-12 real run: the owner validated dry runs without arm_motion and refused -0.20 m as translation_limit.
+    from openarm365_dev_v2 import agent_probe
+    seen = []
+    monkeypatch.setattr(agent_probe, 'validate', lambda op, payload, *, config=None: seen.append(config) or (_ for _ in ()).throw(RuntimeError('stop')))
+    for motion, expected in (('long', 'long'), ('short', None)):
+        e = NS(execution_settings=NS(profile='r5-fixture-20261031'), arm_motion=motion)
+        with pytest.raises(RuntimeError, match='stop'): agent_probe.probe(None, e, None, None, dict(op='plan_dry_run', payload={}))
+        assert seen[-1].get('arm_motion') == expected
+
+
+def test_tools_md_states_the_same_limit():
+    from benchmarks.attention_harness.dev_agent_workspace import TOOLS, TOOLS_V2
+    for text in (TOOLS, TOOLS_V2):
+        assert 'Safety: arm coordinates <= 0.05 m / 0.5 rad per action,' in text   # the line the long run replaces
