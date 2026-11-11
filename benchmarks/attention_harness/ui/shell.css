@@ -271,3 +271,16 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>button{text-align:left!important;white-space:normal!important}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>button>*{min-width:0;overflow-wrap:anywhere;word-break:break-word}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list{min-width:min(412px,calc(100vw - 48px))!important}
+/* 11-12 phone width: numbers 2 x 2 at a size that fits, wrapped attempt track with soft corners, stage names not split mid-word */
+@media (max-width:760px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters>.op-attn-filter{flex:none!important;width:auto!important;min-width:0!important;margin:0!important;padding:12px 8px 12px 0!important;border:0!important;border-radius:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters>.op-attn-filter:nth-child(even){padding-left:14px!important;border-left:1px solid var(--sh-line2)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters>.op-attn-filter:nth-child(n+3){border-top:1px solid var(--sh-line2)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters>.op-attn-filter b{font-size:27px!important;white-space:normal!important;overflow-wrap:anywhere}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-attn-filters>.op-attn-filter span{font-size:10px!important;letter-spacing:.1em!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs{border-radius:20px!important;width:100%!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-heading-row>.panel-title.op-heading{flex:1 1 100%}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-eval-stages .op-eval-stage b{font-size:9.5px!important;letter-spacing:0!important;word-break:normal!important;overflow-wrap:normal!important;hyphens:none!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list{min-width:0!important;width:min(412px,calc(100vw - 56px))!important}
+}
