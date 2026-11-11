@@ -23,6 +23,7 @@ Usage: free_view_export.py <execution_dir> <out_dir>
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -325,10 +326,45 @@ def load_motion(m, exe: Path):
     return xpos, xquat, info
 
 
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def load_model(exe: Path, out: Path):
+    """Compile the saved scene.  It names its model files by absolute path inside the release that ran it;
+    when that release has been removed, the same file of the release running this script is used instead."""
+    text = (exe / "scene.xml").read_text(encoding="utf-8")
+    moved = 0
+
+    def fix(match):
+        nonlocal moved
+        path = Path(match[2])
+        if not path.is_absolute() or path.exists():
+            return match[0]
+        parts = path.parts
+        for i in range(1, len(parts)):
+            here = ROOT.joinpath(*parts[i:])
+            if here.is_file():
+                moved += 1
+                return match[1] + str(here) + '"'
+        return match[0]
+
+    patched = re.sub(r'(\bfile=")([^"]+)"', fix, text)
+    if not moved:
+        return mujoco.MjModel.from_xml_path(str(exe / "scene.xml")), 0
+    copy = out / "scene.patched.xml"
+    copy.write_text(patched, encoding="utf-8")
+    try:
+        return mujoco.MjModel.from_xml_path(str(copy)), moved
+    finally:
+        copy.unlink(missing_ok=True)
+
+
 # ---------------------------------------------------------------- bundle
 def export(exe: Path, out: Path):
     out.mkdir(parents=True, exist_ok=True)
-    m = mujoco.MjModel.from_xml_path(str(exe / "scene.xml"))
+    m, moved = load_model(exe, out)
+    if moved:
+        print(f"{moved} model files read from {ROOT} (the run's own release is gone)", file=sys.stderr)
     xpos, xquat, info = load_motion(m, exe)
     moving = np.where((np.ptp(xpos, axis=0).max(axis=1) > 1e-5) | (np.ptp(xquat, axis=0).max(axis=1) > 1e-5))[0]
     moving_index = {int(b): i for i, b in enumerate(moving)}
