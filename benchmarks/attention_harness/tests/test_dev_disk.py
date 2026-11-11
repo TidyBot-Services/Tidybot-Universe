@@ -203,3 +203,27 @@ def test_agent_run_page_shows_disk_pause_and_resume_state(ws,tmp_path,monkeypatc
     assert not rc['can_resume'] and value['dev_v2_compat']['lifecycle'] is None
     space['free']=100
     assert projection(store,store.cell(key))['dev_v2_compat']['run_controls']['can_resume']
+
+
+def test_a_running_agent_run_can_be_paused_from_its_page(ws,tmp_path,monkeypatch,space):
+    """11-11: a real Remote agent run paused and resumed; the page had offered no Pause (can_pause was fixed at False)."""
+    import os
+    from benchmarks.attention_harness.dev_agent_view import projection
+    from benchmarks.attention_harness.dev_loop import process_identity
+    (tmp_path/'run').mkdir()
+    store,exp,_=_loop_setup(tmp_path/'run',monkeypatch);eid=exp['experiment_id'];key=exp['cells'][0]['key']
+    store.update_cell(key,dev_mode='agent',artifact_dir=str(ws.private.parent.parent),state='running')
+    def put(**fields):
+        with store.tx() as db:
+            current=store.get(db,'experiments',eid);current.update(fields);store.put(db,'experiments',eid,current)
+    put(state='running',owner=process_identity(os.getpid()))
+    compat=projection(store,store.cell(key))['dev_v2_compat'];rc=compat['run_controls']
+    assert rc['state']=='running' and rc['can_pause'] and not rc['can_resume'] and not rc['can_keep_running']
+    assert compat['lifecycle'] and compat['lifecycle']['can_stop']  # Stop run stays.
+    put(pause_requested_at=1)
+    rc=projection(store,store.cell(key))['dev_v2_compat']['run_controls']
+    assert rc['state']=='pausing' and rc['can_keep_running'] and not rc['can_pause']
+    put(owner=None)  # A worker that is gone cannot be paused.
+    put(pause_requested_at=None)
+    rc=projection(store,store.cell(key))['dev_v2_compat']['run_controls']
+    assert not rc['can_pause']

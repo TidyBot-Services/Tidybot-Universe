@@ -288,11 +288,14 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
             run_controls=dict(state='created',can_start=True,can_pause=False,can_resume=False,
                 can_keep_running=False,resume_blocked_reason=None,current_step=None,
                 paused_since=None,paused_seconds_total=0,interrupted_by_stop=None))
-    if experiment.get('pause_requested_at') or experiment.get('state')=='paused':
+    pausing=bool(experiment.get('pause_requested_at') or experiment.get('state')=='paused')
+    if pausing or (experiment.get('state')=='running' and not experiment.get('cancelled')):
+        # An agent run pauses like a one-call run (the loop stops with operator_paused after its
+        # current step), so a running one gets the real controls: Pause for a live worker.
         from .daily_dev_v2 import DailyDevV2
         bridge=object.__new__(DailyDevV2);bridge.workers={};bridge.root=Path(experiment.get('disk_root') or experiment.get('artifact_dir','/missing'))
         result['dev_v2_compat']['run_controls']=bridge.run_controls(store,cell)
-        result['dev_v2_compat']['lifecycle']=None
+        if pausing:result['dev_v2_compat']['lifecycle']=None
     # The UI needs only identity, status and links per timeline row; full probe
     # results (about 90% of the r6 payload) stay behind each row's links.
     result['agent']['timeline']=[r if r.get('kind')=='help' else {k:v for k,v in r.items() if k!='result'}|({'version_id':r['result']['version_id']}

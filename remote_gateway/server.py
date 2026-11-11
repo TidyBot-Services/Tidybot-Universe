@@ -146,8 +146,10 @@ class Gateway:
     def start_next(self):
         line = self.store.queue()
         listing = self.listing()
-        if len(self.open_runs(listing)) >= self.config.limits.run_slots or not line:return None
+        if not line:return None
         head = line[0]
+        # A paused run still holds its own slot, so resuming it needs no free one.
+        if len(self.open_runs(listing) - {head['experiment_id']}) >= self.config.limits.run_slots:return None
         reason = self.unavailable(codex=self.store.codex_run(head['experiment_id']))
         if reason:return None
         status, value = self.upstream.json(head['user_id'], 'POST', f'/api/dev-v2/experiments/{head["experiment_id"]}/run', {})
@@ -402,8 +404,9 @@ class Handler(BaseHTTPRequestHandler):
         reason = self.gateway.unavailable(codex=self.gateway.store.codex_run(experiment_id) if experiment_id else False)
         if reason:raise reason
         limits = self.gateway.config.limits
-        queued = sum(row['user_id'] == self.user for row in self.gateway.store.queue())
-        if policy.active_runs(self.gateway.listing(), self.gateway.store.runs_of(self.user)) + queued >= limits.active_runs:
+        # Resuming your own paused run is not a second run: the run itself is left out of the count.
+        queued = sum(row['user_id'] == self.user and row['experiment_id'] != experiment_id for row in self.gateway.store.queue())
+        if policy.active_runs(self.gateway.listing(), self.gateway.store.runs_of(self.user) - {experiment_id}) + queued >= limits.active_runs:
             raise policy.Refused('run_active', 'You already have a run going. Finish or cancel it first.', 409)
 
     def create(self):

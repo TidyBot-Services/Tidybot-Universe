@@ -689,3 +689,20 @@ def test_login_name_is_optional_unique_and_becomes_the_public_name(world):
     assert any(r['nickname'] == 'Ada' for r in store.emails()), 'the operator email list shows the chosen name'
     status, content, _ = Browser(world.port).send('GET', '/login?failed=name_taken')
     assert b'Someone else already uses that name.' in content
+
+
+def test_the_owner_can_resume_their_own_paused_run(world):
+    """11-11: Resume answered run_active, because the paused run counted as the run its owner already had going."""
+    owner, other = world.person(), world.person()
+    a = start(owner, 'client-key-a')[1]['experiment_id']
+    world.harness.rows = [row(a, 'running')]
+    assert owner.send('POST', f'/api/dev-v2/experiments/{a}/pause', {})[0] == 200
+    world.harness.rows = [row(a, 'paused')];world.now[0] += 31
+    before = sum(p.endswith(f'{a}/run') for p in world.harness.paths())
+    status, value = owner.json('POST', f'/api/dev-v2/experiments/{a}/run', {})   # One run slot, held by the paused run itself.
+    assert status == 200 and value == dict(experiment_id=a, queued=True)
+    assert sum(p.endswith(f'{a}/run') for p in world.harness.paths()) == before + 1 and world.gateway.gateway.store.queue() == []
+    # Still one run each: a paused run blocks a new one, and nobody else can resume it.
+    world.harness.rows = [row(a, 'paused')]
+    assert start(owner, 'client-key-b')[1]['code'] == 'run_active'
+    assert other.send('POST', f'/api/dev-v2/experiments/{a}/run', {})[0] == 404

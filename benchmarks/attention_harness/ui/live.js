@@ -4586,10 +4586,13 @@
     });
   }
   function devStartButton(snapshot) {
-    if(snapshot.lobby)return '';
+    // Remote: only the owner of a real run gets Pause / Resume (the gateway refuses everyone else); starts go through the line.
+    if(snapshot.lobby&&!(snapshot.lobby.real&&snapshot.lobby.mine))return '';
     const l=snapshot.dev_v2?.lifecycle;
-    if(l)return `<button type="button" data-dev-resume ${l.can_start?'':'disabled'}>${esc(l.start_label)}</button><small>Schedules the existing experiment · all ${l.scope_count} cells</small>`;
+    // A running agent run has a lifecycle with no Start button of its own: it uses the run controls below.
+    if(l&&l.start_label&&!snapshot.lobby)return `<button type="button" data-dev-resume ${l.can_start?'':'disabled'}>${esc(l.start_label)}</button><small>Schedules the existing experiment · all ${l.scope_count} cells</small>`;
     const rc=snapshot.dev_v2?.run_controls;
+    if(snapshot.lobby&&!(rc?.can_pause||rc?.can_resume||rc?.can_keep_running))return '';
     if(rc){
       // Pause waits for the current step; Resume while pausing means "keep running".
       const pause=rc.can_pause?'<button type="button" data-dev-pause>⏸ Pause</button>':'';
