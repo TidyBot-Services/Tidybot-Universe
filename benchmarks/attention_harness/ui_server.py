@@ -53,6 +53,8 @@ from .notices import NoticeReader
 
 
 UI_DIR = Path(__file__).with_name("ui")
+FREE_VIEW_CSP = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
+                 "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 TASK_PICTURE_CACHE = "private, max-age=300"  # task picker JPEGs only; everything else stays no-store
 TASK_PICTURE = re.compile(r"/ui/tasks/(?:[a-z_]{1,64}-\d{3,4}-(?:start|done)\.jpg|manifest\.json)")
 GRAPH_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
@@ -864,6 +866,9 @@ def create_server(
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/ui/shell.css":
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
+            elif path == "/ui/free_view.html":
+                # Look-only 3D replay page; it only ever sends GETs for one attempt's three files.
+                self._send((UI_DIR / "free_view.html").read_bytes(), "text/html; charset=utf-8", extra_headers={"Content-Security-Policy": FREE_VIEW_CSP})
             elif TASK_PICTURE.fullmatch(path) and (UI_DIR / path[4:]).is_file():
                 # Task picker pictures + manifest (scripts/attentionbench/task_picker_pictures.py).
                 # Pictures may be cached briefly so switching tasks does not re-download them (11-10 flicker fix);

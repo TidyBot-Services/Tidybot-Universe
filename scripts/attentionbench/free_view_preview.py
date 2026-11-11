@@ -4,9 +4,10 @@ Usage: python3 -I free_view_preview.py <ui dir> <port> <dev-v2 root> <sim python
 
 - /ui/* comes from <ui dir> (the worktree), everything else is fetched from 8769 with GET.
 - POST, PUT, PATCH and DELETE are refused, so nothing here can start, stop or change a run.
-- One extra GET route stands in for the route the harness would get on a merge:
-    /api/dev-v2/experiments/<experiment>/cells/<cell>/agent/free-view/<eNNNNNN>/<scene.json|geom.bin|poses.bin>
-  The first request for an attempt exports its 3D bundle into <cache dir> (a few seconds), later ones read the cache.
+- One GET route is answered here instead of by 8769:
+    /api/dev-v2/experiments/<experiment>/cells/<cell>/agent/files/free-view/<eNNNNNN>/<scene.json|geom.bin.gz|poses.bin.gz>
+  It is the harness's own route (benchmarks/attention_harness/free_view.py) with one difference: the built files
+  go to <cache dir> instead of into the run's folder, so this port never writes to the run store.
 """
 import gzip, http.server, json, re, subprocess, sys, threading, urllib.request, urllib.error
 from pathlib import Path
@@ -23,43 +24,30 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=u
          '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json',
          '.bin': 'application/octet-stream'}
 ROOT_TAG = re.compile(r'<div id="attentionbench-clear"[^>]*>')
-FREE = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/cells/([a-f0-9]{64})/agent/free-view/(e\d{6})/(scene\.json|geom\.bin|poses\.bin)')
-LOCK = threading.Lock()
+FREE = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/cells/([a-f0-9]{64})/agent/files/free-view/(e\d{6})/(scene\.json|geom\.bin\.gz|poses\.bin\.gz)')
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmarks.attention_harness import free_view
+
+
+def export(episode, out):
+    """Same build as the harness, but with the sim Python given on the command line."""
+    try:
+        run = subprocess.run([SIM_PYTHON, str(EXPORT), str(episode), str(out)], capture_output=True, text=True, timeout=180, env={'MUJOCO_GL': 'egl', 'PATH': '/usr/bin:/bin'})
+    except subprocess.TimeoutExpired:
+        return 'the build took longer than 180 s'
+    return None if run.returncode == 0 and (out / 'scene.json').is_file() else (run.stderr.strip().splitlines() or ['the build failed'])[-1]
 
 
 def bundle(experiment, cell, execution):
-    """Return (directory, None) or (None, reason)."""
-    out = CACHE / experiment / cell / execution
-    if (out / 'scene.json').is_file():
-        return out, None
-    if (out / 'error.txt').is_file():
-        return None, (out / 'error.txt').read_text()
+    """Return (directory, None) or (None, reason). The built files go to <cache dir>, never into the run's own folder."""
     base = ROOT / experiment / 'artifacts' / experiment / 'cells' / cell / 'agent' / 'private' / 'executions' / execution
-    sources = [d for d in base.glob('*') if (d / 'native-physics.jsonl').is_file() and (d / 'scene.xml').is_file()] if base.is_dir() else []
-    if not sources:
-        return None, 'This attempt has no per-step physics log or scene file on this machine, so it cannot be shown in 3D.'
-    with LOCK:
-        if (out / 'scene.json').is_file():
-            return out, None
-        tmp = out.with_name(out.name + '.tmp')
-        tmp.mkdir(parents=True, exist_ok=True)
-        try:
-            run = subprocess.run([SIM_PYTHON, str(EXPORT), str(sources[0]), str(tmp)], capture_output=True, text=True, timeout=180,
-                                 env={'MUJOCO_GL': 'egl', 'PATH': '/usr/bin:/bin'})
-            problem = None if run.returncode == 0 and (tmp / 'scene.json').is_file() else (run.stderr.strip().splitlines() or ['export failed'])[-1]
-        except subprocess.TimeoutExpired:
-            problem = 'export took longer than 180 s'
-        if problem:
-            out.mkdir(parents=True, exist_ok=True)
-            (out / 'error.txt').write_text('3D export failed: ' + problem)
-            for f in tmp.glob('*'):
-                f.unlink()
-            tmp.rmdir()
-            return None, '3D export failed: ' + problem
-        if out.exists():
-            out.rmdir()
-        tmp.rename(out)
-    return out, None
+    sources = [d for d in base.glob('openarm365-dev-*') if d.is_dir()] if base.is_dir() else []
+    if len(sources) != 1:
+        return None, 'This attempt has no recording on this machine, so it cannot be shown in 3D.'
+    try:
+        return free_view.build(sources[0], CACHE / experiment / cell / execution, export), None
+    except FileNotFoundError as error:
+        return None, str(error)
 
 
 class H(http.server.BaseHTTPRequestHandler):
@@ -79,6 +67,14 @@ class H(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def plain(self, body, ctype):
+        self.send_response(200)
+        self.send_header('Content-Type', ctype)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(body)
+
     def deny(self):
         self.send(403, b'{"error":"read-only preview: only GET is allowed"}', 'application/json')
 
@@ -92,7 +88,7 @@ class H(http.server.BaseHTTPRequestHandler):
             if not folder:
                 return self.send(404, json.dumps({'error': reason}).encode(), 'application/json')
             f = folder / free.group(4)
-            return self.send(200, f.read_bytes(), TYPES[f.suffix])
+            return self.plain(f.read_bytes(), 'application/json' if f.suffix == '.json' else 'application/octet-stream')
         if url.path in ('/ui', '/ui/', '/ui/index.html'):
             html = (UI / 'index.html').read_text()
             try:

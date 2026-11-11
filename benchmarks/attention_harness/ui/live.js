@@ -4839,7 +4839,7 @@
   function freeViewButton(trace) {
     const video=(trace?.evidence||[]).find(e=>/\/agent\/files\/replays\/e\d+\//.test(e.media_url||''));
     const m=video&&/^(.*\/cells\/[a-f0-9]{64})\/agent\/files\/replays\/(e\d+)\//.exec(video.media_url);
-    return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/free-view/${m[2]}`)}" aria-pressed="false" title="Rotate, zoom and pan a 3D replay of this attempt. View only.">3D view</button>`:'';
+    return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/files/free-view/${m[2]}`)}" aria-pressed="false" title="Rotate, zoom and pan a 3D replay of this attempt. View only.">3D view</button>`:'';
   }
   function openFreeView(base,attempt) {
     // Full-window, look-only 3D replay. The page inside draws its own header, controls and waiting screen.
