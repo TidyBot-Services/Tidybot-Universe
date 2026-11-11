@@ -71,6 +71,14 @@
   #speed{flex:none;height:30px;min-width:46px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:transparent;font:500 12px/1 var(--mono);color:var(--paper)}
   #speed:hover{border-color:#ffffff66}
 
+  #live{display:inline-flex;align-items:center;gap:6px;color:var(--paper);background:#ffffff1f;padding:2px 8px 1px;border-radius:3px}
+  #live::before{content:"";width:7px;height:7px;border-radius:50%;background:#ff3b2f;box-shadow:0 0 8px #ff3b2f;animation:pulse 1.4s ease-in-out infinite}
+  #live[data-state="behind"]::before{background:var(--faint);box-shadow:none;animation:none}
+  #live[data-state="ended"]::before{background:var(--faint);box-shadow:none;animation:none}
+  #golive{flex:none;height:30px;padding:0 12px;border-radius:999px;border:1px solid #ff3b2f99;background:transparent;font:600 12px/1 var(--heading);letter-spacing:.12em;text-transform:uppercase;color:#ffb3a8}
+  #golive:hover{background:#ff3b2f22}
+  #livemsg{font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#ffb3a8}
+  @keyframes pulse{50%{opacity:.35}}
   #notes{right:max(20px,env(safe-area-inset-right));bottom:96px;width:min(380px,calc(100vw - 40px));max-height:min(60vh,420px);overflow:auto;padding:16px 18px;border-radius:14px;background:#f8f6f0;color:#242822;box-shadow:0 20px 60px -20px #000}
   #notes h2{margin:0 0 8px;font:700 20px/1 var(--heading);letter-spacing:.06em;text-transform:uppercase}
   #notes ul{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-size:13px;color:#4b5047}
@@ -111,7 +119,7 @@
 <div class="shade t"></div><div class="shade b"></div>
 
 <div id="head" class="ui">
-  <div class="eyebrow"><b>3D view</b><span id="attempt"></span><span>· Look only · nothing here can move the robot</span></div>
+  <div class="eyebrow"><b>3D view</b><span id="live" hidden data-state="live">Live</span><span id="attempt"></span><span>· Look only · nothing here can move the robot</span></div>
   <h1 id="title">Replay</h1>
   <div id="src"></div>
 </div>
@@ -133,11 +141,12 @@
 <div id="notes" class="ui" hidden><h2>What is real here</h2><ul id="noteList"></ul></div>
 
 <div id="bar" class="ui">
-  <div id="row0"><span id="phase" role="status"></span><span id="hint">Drag to rotate · Wheel to zoom · Right-drag to move</span></div>
+  <div id="row0"><span id="phase" role="status"></span><span id="livemsg" role="status" hidden></span><span id="hint">Drag to rotate · Wheel to zoom · Right-drag to move</span></div>
   <div id="row1">
     <button id="play" type="button" aria-label="Pause"><svg viewBox="0 0 16 16" aria-hidden="true"><path id="playIcon" d="M3 2h4v12H3zM9 2h4v12H9z"/></svg></button>
     <span id="clock">0:00 <i>/ 0:00</i></span>
     <div id="track"><div id="holds"></div><div id="done"></div><input id="seek" type="range" min="0" max="1" step="0.01" value="0" aria-label="Replay position"></div>
+    <button id="golive" type="button" hidden title="Jump to what the robot is doing now">Back to live</button>
     <button id="speed" type="button" title="Playback speed" aria-label="Playback speed">1×</button>
   </div>
 </div>
@@ -238,6 +247,7 @@ const cam = {target: [0,0,1], yaw: 0, pitch: 0, dist: 3};
 const setCam = c => { cam.target = c.target.slice(); cam.yaw = c.yaw; cam.pitch = c.pitch; cam.dist = c.dist; };
 const eyeOf = c => { const cp = Math.cos(c.pitch); return [c.target[0] + c.dist*cp*Math.cos(c.yaw), c.target[1] + c.dist*cp*Math.sin(c.yaw), c.target[2] + c.dist*Math.sin(c.pitch)]; };
 const scratch = new Float32Array(16), P = [0,0,0], Q = [1,0,0,0];
+let live = false, liveFollow = true, liveEnded = false, liveAttempt = '', holds = [], nMovingLive = 0;
 let followIndex = -1, followOffset = [0,0,0], shownClock = '', shownPhase = null, intro = 0;
 
 function poseAt(i, t, p, q) {
@@ -254,7 +264,14 @@ function draw(now) {
   requestAnimationFrame(draw);
   if (!scene) return;
   const step = Math.min(0.1, (now - last) / 1000); last = now;
-  if (playing) { time += step * speed / dt; if (time >= frames - 1) { time = frames - 1; setPlaying(false); } $('seek').value = time; }
+  if (live && liveFollow) {
+    // Chase the newest frame: play at real speed, but never fall more than a second and a half behind.
+    time = Math.min(frames - 1, Math.max(time + step / dt, frames - 1 - 1.5 / dt)); $('seek').value = time;
+  } else if (playing) {
+    time += step * speed / dt;
+    if (time >= frames - 1) { time = frames - 1; if (live && !liveEnded) setLiveFollow(true); else setPlaying(false); }
+    $('seek').value = time;
+  }
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -281,7 +298,7 @@ function draw(now) {
   if (stamp !== shownClock) { shownClock = stamp; $('clock').firstChild.textContent = stamp + ' '; }
   $('done').style.width = (frames > 1 ? time / (frames - 1) * 100 : 0) + '%';
   const f = Math.round(time); let ph = '';
-  for (const hd of scene.motion.holds || []) if (hd.object && f >= hd.start && f <= hd.end) ph = hd.arm + ' hand carries ' + hd.object;
+  for (const hd of holds) if (hd.object && f >= hd.start && f <= hd.end) ph = hd.arm + ' hand carries ' + hd.object;
   if (ph !== shownPhase) { shownPhase = ph; $('phase').textContent = ph; }
 }
 
@@ -313,8 +330,20 @@ canvas.addEventListener('wheel', e => { e.preventDefault(); used(); zoom(Math.ex
 
 const ICON = {pause: 'M3 2h4v12H3zM9 2h4v12H9z', play: 'M4 2l10 6-10 6z', again: 'M8 2a6 6 0 1 0 6 6h-2a4 4 0 1 1-4-4v3l4-4-4-4z'};
 function setPlaying(v) { playing = v; const k = v ? 'pause' : (time >= frames - 1 ? 'again' : 'play'); $('playIcon').setAttribute('d', ICON[k]); $('play').setAttribute('aria-label', {pause: 'Pause', play: 'Play', again: 'Play again'}[k]); }
-$('play').onclick = () => { if (!playing && time >= frames - 1) time = 0; setPlaying(!playing); };
-$('seek').oninput = e => { time = +e.target.value; if (!playing) setPlaying(false); };
+$('play').onclick = () => {
+  if (live && liveFollow) { setLiveFollow(false); setPlaying(false); return; }
+  if (!playing && time >= frames - 1 && !(live && !liveEnded)) time = 0;
+  setPlaying(!playing);
+};
+$('seek').oninput = e => { time = +e.target.value; if (live) setLiveFollow(time >= frames - 2 && !liveEnded); if (!playing) setPlaying(false); };
+$('golive').onclick = () => setLiveFollow(true);
+function setLiveFollow(v) {
+  liveFollow = v && live && !liveEnded;
+  if (liveFollow) { time = frames - 1; setPlaying(true); }
+  $('golive').hidden = !live || liveEnded || liveFollow;
+  $('live').dataset.state = liveEnded ? 'ended' : liveFollow ? 'live' : 'behind';
+  $('live').textContent = liveEnded ? 'Ended' : liveFollow ? 'Live' : 'Live · paused view';
+}
 const SPEEDS = [1, 2, 4, 0.25, 0.5];
 $('speed').onclick = () => { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; $('speed').textContent = speed + '×'; };
 $('reset').onclick = () => { used(); press('follow', false); setCam(home); };
@@ -336,11 +365,58 @@ window.addEventListener('keydown', e => {
   else if (e.key === 'f' || e.key === 'F') $('full').click();
 });
 
+/* ---------- timeline marks ---------- */
+function drawTimeline() {
+  $('seek').max = Math.max(0, frames - 1);
+  $('clock').lastChild.textContent = '/ ' + clockText(Math.max(0, frames - 1) * dt);
+  $('holds').replaceChildren();
+  for (const hd of holds) if (hd.object && frames > 1) { const i = document.createElement('i'); i.style.left = hd.start / (frames - 1) * 100 + '%'; i.style.width = Math.max(.4, (hd.end - hd.start) / (frames - 1) * 100) + '%'; i.title = hd.arm + ' hand carries ' + hd.object; $('holds').append(i); }
+}
+
+/* ---------- live: GET the newest frames about once a second (still nothing is ever sent the other way) ---------- */
+async function liveStatus(base) {
+  const r = await fetch(base + '/status.json', {credentials: 'same-origin', cache: 'no-store'});
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('status.json: HTTP ' + r.status);
+  return r.json();
+}
+async function livePoses(base, st) {
+  if (st.frames > frames) {
+    const r = await fetch(base + '/poses-' + frames + '.bin', {credentials: 'same-origin', cache: 'no-store'});
+    if (!r.ok) throw new Error('poses: HTTP ' + r.status);
+    const add = new Float32Array(await r.arrayBuffer()), have = frames * nMoving * 7;
+    const got = Math.floor(add.length / (nMoving * 7));
+    if (got > 0) { const grown = new Float32Array(have + got * nMoving * 7); grown.set(poses.subarray(0, have)); grown.set(add.subarray(0, got * nMoving * 7), have); poses = grown; frames += got; }
+  }
+  holds = st.holds || holds; liveEnded = !!st.ended;
+  drawTimeline();
+}
+async function liveTick(base) {
+  let wait = 900;
+  try {
+    const st = await liveStatus(base);
+    if (!st || st.attempt !== liveAttempt) {
+      // The attempt shown has ended. Keep its last frame; when the next attempt starts, load that one.
+      if (!liveEnded) { liveEnded = true; setLiveFollow(false); setPlaying(false); }
+      $('livemsg').hidden = false;
+      $('livemsg').textContent = st ? 'The next attempt has started · loading it' : 'This attempt has ended · waiting for the next one';
+      if (st) { location.reload(); return; }
+      wait = 3000;
+    } else {
+      await livePoses(base, st);
+      if (st.ended) { setLiveFollow(false); $('livemsg').hidden = false; $('livemsg').textContent = 'This attempt has ended · its full replay (with doors moving) is on the run page'; }
+    }
+  } catch (e) { wait = 3000; }
+  setTimeout(() => liveTick(base), wait);
+}
+
 /* ---------- load (three GETs, then the page is on its own) ---------- */
 async function load() {
   // Only this site's own attempt route is ever read; anything else in ?data= is refused.
   const base = new URLSearchParams(location.search).get('data') || '';
-  if (!/^\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64}\/agent\/files\/free-view\/e\d+$/.test(base)) throw new Error('this link does not name an attempt');
+  if (!/^\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64}\/agent\/files\/free-view\/(e\d+|live)$/.test(base)) throw new Error('this link does not name an attempt');
+  live = base.endsWith('/live');
+  if (live) $('ltext').textContent = 'Starting the live 3D view';
   const get = async (name, kind) => {
     const r = await fetch(base + '/' + name, {credentials: 'same-origin'});
     if (!r.ok) { let why = ''; try { const e = (await r.json()).error; why = typeof e === 'string' ? e : (e && e.message) || ''; } catch (e) {} throw new Error(why || name + ': HTTP ' + r.status); }
@@ -349,7 +425,9 @@ async function load() {
     if (typeof DecompressionStream !== 'function') throw new Error('this browser is too old to unpack the scene (it needs DecompressionStream)');
     return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   };
-  const [sc, geom, pose] = await Promise.all([get('scene.json', 'json'), get('geom.bin.gz', 'arrayBuffer'), get('poses.bin.gz', 'arrayBuffer')]);
+  const [sc, geom, pose] = live
+    ? await Promise.all([get('scene.json', 'json'), get('geom.bin.gz', 'arrayBuffer'), new ArrayBuffer(0)])
+    : await Promise.all([get('scene.json', 'json'), get('geom.bin.gz', 'arrayBuffer'), get('poses.bin.gz', 'arrayBuffer')]);
   const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geom, 0, sc.vertex_bytes), gl.STATIC_DRAW);
@@ -358,8 +436,17 @@ async function load() {
   gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, 20, 16);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(geom, sc.vertex_bytes), gl.STATIC_DRAW);
-  poses = new Float32Array(pose); nMoving = sc.moving_bodies.length; frames = sc.motion.frames; dt = sc.motion.seconds_per_frame;
-  if (poses.length !== frames * nMoving * 7) throw new Error('poses.bin does not match scene.json');
+  nMoving = sc.moving_bodies.length; dt = sc.motion.seconds_per_frame; holds = sc.motion.holds || [];
+  if (live) {
+    // Live: poses arrive while the attempt runs (see liveTick); start with the frames written so far.
+    liveAttempt = sc.source.attempt || ''; poses = new Float32Array(0); frames = 0;
+    const st = await liveStatus(base); if (!st) throw new Error('This attempt has ended.');
+    await livePoses(base, st);
+    if (!frames) throw new Error('no frames yet');
+  } else {
+    poses = new Float32Array(pose); frames = sc.motion.frames;
+    if (poses.length !== frames * nMoving * 7) throw new Error('poses.bin does not match scene.json');
+  }
   $('seek').max = frames - 1;
   followIndex = sc.moving_bodies.findIndex(n => n.startsWith('mobilebase0'));
   home.target = [sc.focus[0], sc.focus[1], Math.max(0.9, sc.focus[2])];
@@ -370,10 +457,9 @@ async function load() {
   const cut = name.search(/→|->/);
   if (cut > 0) { const em = document.createElement('em'); em.textContent = name.slice(cut).replace('->', '→'); $('title').replaceChildren(name.slice(0, cut), em); } else $('title').textContent = name;
   $('attempt').textContent = (qs0.get('attempt') || '').replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
-  $('src').textContent = 'Seed ' + sc.source.seed + ' · ' + sc.source.execution + ' · ' + clockText((sc.motion.frames - 1) * sc.motion.seconds_per_frame) + ' · ' + (sc.indices / 3).toLocaleString() + ' triangles';
-  $('clock').lastChild.textContent = '/ ' + clockText((sc.motion.frames - 1) * sc.motion.seconds_per_frame);
-  for (const hd of sc.motion.holds || []) if (hd.object && frames > 1) { const i = document.createElement('i'); i.style.left = hd.start / (frames - 1) * 100 + '%'; i.style.width = Math.max(.4, (hd.end - hd.start) / (frames - 1) * 100) + '%'; i.title = hd.arm + ' hand carries ' + hd.object; $('holds').append(i); }
-  const labels = {robot: 'Robot', fixtures: 'Doors and drawers', objects: 'Objects', colours: 'Look'};
+  $('src').textContent = 'Seed ' + sc.source.seed + ' · ' + sc.source.execution + (live ? ' · running now' : ' · ' + clockText((frames - 1) * dt)) + ' · ' + (sc.indices / 3).toLocaleString() + ' triangles';
+  drawTimeline();
+  const labels = {robot: 'Robot', fixtures: 'Doors and drawers', objects: 'Objects', colours: 'Look', live: 'Live'};
   for (const k of Object.keys(sc.notes)) { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = (labels[k] || k) + ': '; li.append(b, sc.notes[k]); $('noteList').append(li); }
   // optional start state for checks: ?t=<seconds>&paused=1&yaw=&pitch=&dist=
   const qs = new URLSearchParams(location.search);
@@ -382,11 +468,15 @@ async function load() {
   $('seek').value = time;
   if (qs.get('paused') === '1') setPlaying(false);
   introDist = cam.dist; if (!qs.has('dist') && !matchMedia('(prefers-reduced-motion:reduce)').matches) intro = 1;
+  if (live) { $('live').hidden = false; time = frames - 1; setLiveFollow(true); setTimeout(() => liveTick(base), 700); }
   scene = sc; last = performance.now(); clearTimeout(slow);
   document.body.dataset.state = 'ready'; setTimeout(() => { if (document.body.dataset.state === 'ready') $('loading').hidden = true; }, 700);
 }
 const slow = setTimeout(() => { if (document.body.dataset.state !== 'loading') return; $('lhint').hidden = false; $('lhint').textContent = 'Still working · the first time an attempt is opened its scene is built on the host, later it opens at once'; }, 6000);
-if (gl) { load().catch(e => fail('Could not load the scene: ' + e.message)); requestAnimationFrame(draw); }
+// Live: between attempts, or before the robot's first step, there is nothing to show yet; look again in a few seconds.
+const retryLive = () => { if (live) { $('ltext').textContent += ' The live view comes back by itself when the robot is moving again.'; setTimeout(() => location.reload(), 5000); } };
+if (gl) load().catch(e => { fail((live ? '' : 'Could not load the scene: ') + e.message); if (live) $('word').textContent = 'WAITING'; retryLive(); });
+if (gl) requestAnimationFrame(draw);
 </script>
 </body>
 </html>

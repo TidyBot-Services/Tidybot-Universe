@@ -122,5 +122,75 @@ def test_run_page_and_viewer_use_the_route():
     ui = Path(free_view.__file__).with_name('ui')
     assert '/agent/files/free-view/${m[2]}' in (ui/'live.js').read_text()
     page = (ui/'free_view.html').read_text()
-    assert "get('geom.bin.gz'" in page and "get('poses.bin.gz'" in page and 'free-view\\/e\\d+$/.test(base)' in page
+    assert "get('geom.bin.gz'" in page and "get('poses.bin.gz'" in page and 'free-view\\/(e\\d+|live)$/.test(base)' in page
+    assert '/agent/files/free-view/live' in (ui/'live.js').read_text() and "'/poses-' + frames + '.bin'" in page
     assert 'method:' not in page and 'XMLHttpRequest' not in page and 'WebSocket' not in page  # GET only
+
+
+# ---------------------------------------------------------------- live
+class Proc:
+    def __init__(self):self.code = None
+    def poll(self):return self.code
+
+
+def follower(started):
+    """Stands in for free_view_export.py --live: writes what it would write, into `out` only."""
+    def start(episode, out):
+        started.append((episode, out))
+        (out/'scene.json').write_text('{"moving_bodies":["a","b"]}')
+        (out/'geom.bin.gz').write_bytes(gzip.compress(b'G'*100))
+        (out/'poses.bin').write_bytes(bytes(range(3*2*28)))
+        (out/'status.json').write_text('{"frames":3}')
+        return Proc()
+    return start
+
+
+@pytest.fixture
+def running(tmp_path, monkeypatch):
+    monkeypatch.setattr(free_view, 'LIVE_ROOT', tmp_path/'cache')
+    monkeypatch.setattr(free_view, 'MIN_FREE_BYTES', 0)
+    monkeypatch.setattr(free_view, '_FOLLOWERS', {})
+    started = []
+    monkeypatch.setattr(free_view, '_start_follower', follower(started))
+    cell, episode = make_cell(tmp_path, video=False)
+    return dict(cell, key='k'*64, state='running', active_episode=str(episode)), episode, started
+
+
+def test_live_starts_one_follower_and_serves_new_frames_only(tmp_path, running):
+    cell, episode, started = running
+    path, kind = dev_agent_view.artifact(cell, 'free-view/live/scene.json')
+    assert kind == 'application/json' and path.read_text() == '{"moving_bodies":["a","b"]}'
+    assert dev_agent_view.artifact(cell, 'free-view/live/status.json')[0].read_text() == '{"frames":3}'
+    assert dev_agent_view.artifact(cell, 'free-view/live/poses-0.bin')[0] == bytes(range(168))
+    assert dev_agent_view.artifact(cell, 'free-view/live/poses-2.bin')[0] == bytes(range(112, 168))
+    assert dev_agent_view.artifact(cell, 'free-view/live/poses-3.bin')[0] == b''
+    assert len(started) == 1 and started[0][0] == episode
+    # The live files sit in the cache, not in the run store, and are marked as watched.
+    out = started[0][1]
+    assert out.is_relative_to(tmp_path/'cache') and not out.is_relative_to(tmp_path/'cell') and (out/'wanted').is_file()
+    assert list((tmp_path/'cell/agent/ws').rglob('*')) == []
+    assert not dev_agent_view._public_name('free-view/live/scene.json')
+
+
+def test_live_needs_a_running_attempt(tmp_path, running):
+    cell, episode, started = running
+    for other in (dict(cell, state='completed'), dict(cell, active_episode=None), dict(cell, active_episode=str(tmp_path))):
+        with pytest.raises(FileNotFoundError):dev_agent_view.artifact(other, 'free-view/live/scene.json')
+    (episode/'native_result.json').write_text('{}')  # ended, nothing left running for it
+    with pytest.raises(FileNotFoundError, match='ended'):dev_agent_view.artifact(cell, 'free-view/live/scene.json')
+    assert started == []
+
+
+@pytest.mark.parametrize('name', ['free-view/live/poses.bin', 'free-view/live/poses-x.bin', 'free-view/live/wanted', 'free-view/live/../scene.json',
+                                  'free-view/live/geom.bin', 'free-view/live/scene.json/x', 'free-view/live/poses-12345678.bin'])
+def test_live_has_only_its_own_names(running, name):
+    cell, _, started = running
+    with pytest.raises(FileNotFoundError):dev_agent_view.artifact(cell, name)
+    assert started == []
+
+
+def test_live_followers_are_capped(tmp_path, running, monkeypatch):
+    cell, _, started = running
+    monkeypatch.setattr(free_view, '_FOLLOWERS', {tmp_path/str(i): Proc() for i in range(free_view.MAX_FOLLOWERS)})
+    with pytest.raises(FileNotFoundError, match='busy'):dev_agent_view.artifact(cell, 'free-view/live/scene.json')
+    assert started == []
