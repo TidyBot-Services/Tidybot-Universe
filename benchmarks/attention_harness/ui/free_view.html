@@ -343,6 +343,7 @@ function setLiveFollow(v) {
   $('golive').hidden = !live || liveEnded || liveFollow;
   $('live').dataset.state = liveEnded ? 'ended' : liveFollow ? 'live' : 'behind';
   $('live').textContent = liveEnded ? 'Ended' : liveFollow ? 'Live' : 'Live · paused view';
+  if (liveEnded) $('src').textContent = $('src').textContent.replace('running now', 'ended');
 }
 const SPEEDS = [1, 2, 4, 0.25, 0.5];
 $('speed').onclick = () => { speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]; $('speed').textContent = speed + '×'; };
