@@ -27,8 +27,13 @@ EXTERNAL = dict(label='Overview', name='robot0_agentview_left', width=1920, heig
 VIEWS = {
     'side': dict(label='Side', free=dict(azimuth=90.0, elevation=-30.0, distance=2.6)),
     'top': dict(label='Top-down', free=dict(azimuth=90.0, elevation=-75.0, distance=3.2)),
-    'left_wrist': dict(label='Left wrist', camera='gripper0_left_eye_in_hand'),
-    'right_wrist': dict(label='Right wrist', camera='gripper0_right_eye_in_hand'),
+    # 2026-11-12: left/right here are the task arms, the ones the SDK, the trace and the step list name
+    # (left_arm / right_arm). The model mounts the task's right arm on the physical-left chain
+    # (openarm365/model.py: "Physical left is first; the logical right task arm maps to this chain"), and the
+    # wrist cameras are named after the physical side, so each label takes the camera with the other name.
+    # Checked on real frames: while right_arm moved and held the object, gripper0_left_eye_in_hand showed it.
+    'left_wrist': dict(label='Left wrist', camera='gripper0_right_eye_in_hand'),
+    'right_wrist': dict(label='Right wrist', camera='gripper0_left_eye_in_hand'),
 }
 VIDEO_NAMES = {key: f'advisor_replay_{key}.mp4' for key in VIEWS}
 

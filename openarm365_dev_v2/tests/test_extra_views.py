@@ -31,7 +31,7 @@ def test_each_step_renders_every_view_and_writes_recording_and_live_frames(tmp_p
     env,views,ev=make(tmp_path)
     for seq in range(5):views.capture(seq)
     labels=[c['label'] for c in env.sim.calls]
-    assert labels[:4]==['free:az90','free:az90','gripper0_left_eye_in_hand','gripper0_right_eye_in_hand'] and len(labels)==20
+    assert labels[:4]==['free:az90','free:az90','gripper0_right_eye_in_hand','gripper0_left_eye_in_hand'] and len(labels)==20  # left_wrist, right_wrist: task arms (11-12)
     assert 'robot0_agentview_left' not in labels                       # the original recording's camera is never touched
     assert all(c['size']==(xv.WIDTH,xv.HEIGHT) for c in env.sim.calls)
     for key in xv.VIEWS:
@@ -52,7 +52,7 @@ def test_free_cameras_look_at_the_target_without_changing_the_scene(tmp_path):
     assert all(c['type']==mujoco.mjtCamera.mjCAMERA_FREE for c in free)
 
 def test_one_failing_view_never_disables_the_others_or_raises(tmp_path):
-    env,views,ev=make(tmp_path,fail_on='right_eye')
+    env,views,ev=make(tmp_path,fail_on='left_eye')   # the camera behind right_wrist (task arm, 11-12)
     for seq in range(3):views.capture(seq)                                  # must not raise
     assert views.counts=={'side':3,'top':3,'left_wrist':3,'right_wrist':0}
     errors=json.loads((ev/'recording_views/error.json').read_text())['errors']
