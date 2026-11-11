@@ -579,27 +579,36 @@ def create_server(
     if public_gateway:allow_private_hosts = ()
     quota_cache = {'until': 0.0, 'value': {'available': False}}
     quota_lock = threading.Lock()
+    quota_first = threading.Lock()
+
+    def refresh_codex_quota():
+        try:
+            raw = read_quota()
+            used = raw.get('used_percent')
+            window = raw.get('window_minutes')
+            reset = raw.get('resets_at')
+            plan = raw.get('plan_type')
+            value = ({'used_percent': used,
+                      'window_minutes': window if type(window) is int and window > 0 else None,
+                      'resets_at': reset if type(reset) in (int, float) and math.isfinite(reset) else None,
+                      'plan_type': plan if isinstance(plan, str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,31}', plan) else None,
+                      'read_at': datetime.now(timezone.utc).isoformat()}
+                     if isinstance(used, (int, float)) and not isinstance(used, bool) and math.isfinite(used) and 0 <= used <= 100
+                     else {'available': False})
+        except Exception:
+            value = {'available': False}
+        with quota_lock:
+            quota_cache.update(until=time.monotonic() + 10, value=value, loaded=True, refreshing=False)
 
     def public_codex_quota():
+        """Return the last reading at once; an expired reading is refreshed in the background."""
+        with quota_first:
+            if not quota_cache.get('loaded'):refresh_codex_quota()
         with quota_lock:
-            now = time.monotonic()
-            if now >= quota_cache['until']:
-                try:
-                    raw = read_quota()
-                    used = raw.get('used_percent')
-                    window = raw.get('window_minutes')
-                    reset = raw.get('resets_at')
-                    plan = raw.get('plan_type')
-                    value = ({'used_percent': used,
-                              'window_minutes': window if type(window) is int and window > 0 else None,
-                              'resets_at': reset if type(reset) in (int, float) and math.isfinite(reset) else None,
-                              'plan_type': plan if isinstance(plan, str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,31}', plan) else None,
-                              'read_at': datetime.now(timezone.utc).isoformat()}
-                             if isinstance(used, (int, float)) and not isinstance(used, bool) and math.isfinite(used) and 0 <= used <= 100
-                             else {'available': False})
-                except Exception:
-                    value = {'available': False}
-                quota_cache.update(until=now + 10, value=value)
+            start = time.monotonic() >= quota_cache['until'] and not quota_cache.get('refreshing')
+            if start:quota_cache['refreshing'] = True
+        if start:threading.Thread(target=refresh_codex_quota, name='codex-quota', daemon=True).start()
+        with quota_lock:
             return quota_cache['value']
     human_token = os.environ.get('ATTENTION_HUMAN_APPROVAL_TOKEN','')
     if human_token and len(human_token)<24:raise ValueError('separate human capability must have at least 24 characters')

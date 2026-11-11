@@ -1,3 +1,4 @@
+import threading
 import json
 import os
 import subprocess
@@ -54,6 +55,10 @@ def test_public_quota_route_is_cached_and_never_leaks_credits(tmp_path, monkeypa
     path.write_text('garbled\n'+json.dumps(row)+'\n')
     assert get() == {'available': False}
     clock[0] += 11
+    # An expired reading is served once more while the new one is read in the background.
+    assert get() == {'available': False}
+    for thread in threading.enumerate():
+        if thread.name == 'codex-quota':thread.join(5)
     value = get()
     assert set(value) == {'used_percent', 'window_minutes', 'resets_at', 'plan_type', 'read_at'}
     assert value['used_percent'] == 72
@@ -77,3 +82,27 @@ def test_run_quota_usage_uses_first_and_last_codex_marks_only():
     assert run_quota_usage({'versions': [{'model_output': 'parcc'}]}, records.get) is None
     records['early'] = {'model_source': 'codex', 'quota_after': {'timestamp': '2026-10-19T01:00:00Z', 'used_percent': 8}}
     assert run_quota_usage({'versions': [{'model_output': 'early'}, {'model_output': 'v1'}]}, records.get) is None
+
+
+def test_recent_logs_give_the_same_reading_as_all_logs(tmp_path):
+    import time
+    from benchmarks.attention_harness import codex_quota
+    now=time.time()
+    root=tmp_path/'.codex/sessions/2026/10/20';root.mkdir(parents=True)
+    def log(name,used,reset,seen,age):
+        path=root/f'rollout-{name}.jsonl'
+        stamp=__import__('datetime').datetime.fromtimestamp(seen,__import__('datetime').timezone.utc).isoformat()
+        path.write_text(json.dumps({'timestamp':stamp,'payload':{'rate_limits':{'primary':{'used_percent':used,'window_minutes':10080,'resets_at':reset}}}})+'\n')
+        os.utime(path,(now-age,now-age));return path
+    old=log('old',91,now-86400,now-9*86400,9*86400)
+    assert read_quota(tmp_path)['used_percent']==91          # only an old log: the full read still finds it
+    log('new',17,now+5*86400,now-60,60)
+    assert read_quota(tmp_path)==codex_quota._read_quota(tmp_path)
+    assert read_quota(tmp_path)['used_percent']==17
+    opened=[]
+    real=type(old).open
+    def spy(self,*a,**k):opened.append(self.name);return real(self,*a,**k)
+    type(old).open=spy
+    try:read_quota(tmp_path)
+    finally:type(old).open=real
+    assert opened==['rollout-new.jsonl']                      # the old log is not parsed again
