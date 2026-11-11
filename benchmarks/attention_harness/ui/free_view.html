@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free view (test)</title>
+<style>
+  :root{--bg:#0e1116;--panel:rgba(18,22,29,.86);--line:#2a313c;--fg:#e6e9ee;--dim:#98a2b3;--accent:#6ea8fe;--warn:#f5b84b}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  canvas.drag{cursor:grabbing}
+  .panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px)}
+  #top{left:12px;top:12px;padding:10px 12px;max-width:min(430px,calc(100vw - 24px))}
+  #top h1{font-size:14px;margin:0 0 2px;font-weight:600}
+  #top .sub{color:var(--dim)}
+  .tag{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;margin-left:6px;font-size:11px;color:var(--warn)}
+  #tools{right:12px;top:12px;padding:8px;display:flex;flex-direction:column;gap:6px;align-items:stretch}
+  button,select{font:inherit;color:var(--fg);background:#1a2029;border:1px solid var(--line);border-radius:7px;padding:5px 10px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  label.chk{display:flex;gap:6px;align-items:center;color:var(--dim);padding:2px 4px}
+  #bar{left:12px;right:12px;bottom:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  #bar input[type=range]{flex:1 1 220px;min-width:0;accent-color:var(--accent)}
+  #clock{font-variant-numeric:tabular-nums;color:var(--dim);min-width:15ch}
+  #phase{color:var(--dim)}
+  details{margin-top:6px}
+  summary{cursor:pointer;color:var(--accent)}
+  details ul{margin:6px 0 0;padding-left:18px;color:var(--dim)}
+  details b{color:var(--fg);font-weight:600}
+  #err{left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 18px;color:#ff9a9a;max-width:80vw}
+  #hint{color:var(--dim);margin-top:4px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="top" class="panel">
+  <h1>Free view <span class="tag">test · view only</span></h1>
+  <div class="sub" id="src">Loading scene…</div>
+  <div id="hint">Drag: rotate · Wheel / pinch: zoom · Right-drag or Shift-drag: move · Nothing here can change the simulation.</div>
+  <details>
+    <summary>What is real in this replay</summary>
+    <ul id="notes"></ul>
+  </details>
+</div>
+
+<div id="tools" class="panel">
+  <button id="reset">Reset view</button>
+  <button id="vtop">Top</button>
+  <button id="vfront">Front</button>
+  <button id="vside">Side</button>
+  <label class="chk"><input type="checkbox" id="walls" checked> Hide near walls</label>
+  <label class="chk"><input type="checkbox" id="follow"> Follow robot</label>
+</div>
+
+<div id="bar" class="panel">
+  <button id="play">Pause</button>
+  <input id="seek" type="range" min="0" max="1" step="0.01" value="0">
+  <span id="clock">0.0 s</span>
+  <select id="speed" title="Playback speed">
+    <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+  </select>
+  <span id="phase"></span>
+</div>
+
+<div id="err" class="panel" hidden></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fail = msg => { const e = $('err'); e.hidden = false; e.textContent = msg; };
+window.addEventListener('error', e => fail('Viewer error: ' + e.message));
+window.addEventListener('unhandledrejection', e => fail('Viewer error: ' + (e.reason && e.reason.message || e.reason)));
+
+/* ---------- tiny matrix helpers (column-major) ---------- */
+const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+const norm = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0]/l, a[1]/l, a[2]/l]; };
+function perspective(fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+  return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+}
+function lookAt(eye, target, up) {
+  const z = norm(sub(eye, target)), x = norm(cross(up, z)), y = cross(z, x);
+  return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0, -dot(x,eye),-dot(y,eye),-dot(z,eye),1]);
+}
+function mul(a, b) {
+  const o = new Float32Array(16);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++)
+    o[c*4+r] = a[r]*b[c*4] + a[4+r]*b[c*4+1] + a[8+r]*b[c*4+2] + a[12+r]*b[c*4+3];
+  return o;
+}
+function poseMatrix(out, p, q) {            // q = w,x,y,z
+  const w=q[0], x=q[1], y=q[2], z=q[3];
+  out[0]=1-2*(y*y+z*z); out[1]=2*(x*y+w*z);   out[2]=2*(x*z-w*y);   out[3]=0;
+  out[4]=2*(x*y-w*z);   out[5]=1-2*(x*x+z*z); out[6]=2*(y*z+w*x);   out[7]=0;
+  out[8]=2*(x*z+w*y);   out[9]=2*(y*z-w*x);   out[10]=1-2*(x*x+y*y);out[11]=0;
+  out[12]=p[0]; out[13]=p[1]; out[14]=p[2]; out[15]=1;
+  return out;
+}
+const IDENTITY = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+
+/* ---------- GL ---------- */
+const canvas = $('gl');
+const gl = canvas.getContext('webgl2', {antialias: true});
+if (!gl) fail('This browser has no WebGL2, so the 3D view cannot be drawn.');
+
+const VS = `#version 300 es
+layout(location=0) in vec3 aPos; layout(location=1) in vec4 aNor; layout(location=2) in vec4 aCol;
+uniform mat4 uVP, uM; out vec3 vN; out vec4 vC; out vec3 vW;
+void main(){ vec4 w = uM*vec4(aPos,1.0); vW = w.xyz; vN = mat3(uM)*aNor.xyz; vC = aCol; gl_Position = uVP*w; }`;
+const FS = `#version 300 es
+precision highp float; in vec3 vN; in vec4 vC; in vec3 vW; uniform vec3 uEye; out vec4 o;
+void main(){
+  vec3 n = normalize(vN); vec3 v = normalize(uEye - vW);
+  if (dot(n, v) < 0.0) n = -n;
+  vec3 base = pow(vC.rgb, vec3(2.2));
+  float sky = 0.5 + 0.5*n.z;
+  vec3 amb = mix(vec3(0.20,0.19,0.18), vec3(0.50,0.53,0.58), sky);
+  float key = max(dot(n, normalize(vec3(0.35,-0.45,0.82))), 0.0);
+  float fill = max(dot(n, normalize(vec3(-0.6,0.5,0.3))), 0.0);
+  float head = max(dot(n, v), 0.0);
+  vec3 lit = base*(amb + 0.62*key + 0.18*fill + 0.14*head);
+  vec3 h = normalize(v + normalize(vec3(0.35,-0.45,0.82)));
+  lit += 0.05*pow(max(dot(n,h),0.0), 32.0);
+  o = vec4(pow(lit, vec3(1.0/2.2)), 1.0);
+}`;
+function shader(type, src) {
+  const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+let prog, uVP, uM, uEye;
+if (gl) {
+  prog = gl.createProgram();
+  gl.attachShader(prog, shader(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  uVP = gl.getUniformLocation(prog, 'uVP'); uM = gl.getUniformLocation(prog, 'uM'); uEye = gl.getUniformLocation(prog, 'uEye');
+}
+
+/* ---------- state ---------- */
+let scene = null, poses = null, nMoving = 0, frames = 1, dt = 0.05;
+let time = 0, playing = true, speed = 1, last = performance.now();
+const home = {target: [0,0,1], yaw: -1.25, pitch: 0.42, dist: 3.4};
+const cam = {target: [0,0,1], yaw: 0, pitch: 0, dist: 3};
+const setCam = c => { cam.target = c.target.slice(); cam.yaw = c.yaw; cam.pitch = c.pitch; cam.dist = c.dist; };
+const eyeOf = c => { const cp = Math.cos(c.pitch); return [c.target[0] + c.dist*cp*Math.cos(c.yaw), c.target[1] + c.dist*cp*Math.sin(c.yaw), c.target[2] + c.dist*Math.sin(c.pitch)]; };
+const scratch = new Float32Array(16), P = [0,0,0], Q = [1,0,0,0];
+let followIndex = -1, followOffset = [0,0,0];
+
+function poseAt(i, t, p, q) {
+  const f0 = Math.min(frames - 1, Math.floor(t)), f1 = Math.min(frames - 1, f0 + 1), u = t - f0;
+  const a = (f0*nMoving + i)*7, b = (f1*nMoving + i)*7;
+  for (let k = 0; k < 3; k++) p[k] = poses[a+k]*(1-u) + poses[b+k]*u;
+  let d = 0; for (let k = 3; k < 7; k++) d += poses[a+k]*poses[b+k];
+  const s = d < 0 ? -1 : 1; let l = 0;
+  for (let k = 0; k < 4; k++) { q[k] = poses[a+3+k]*(1-u) + s*poses[b+3+k]*u; l += q[k]*q[k]; }
+  l = Math.sqrt(l) || 1; for (let k = 0; k < 4; k++) q[k] /= l;
+}
+
+function draw(now) {
+  requestAnimationFrame(draw);
+  if (!scene) return;
+  const step = Math.min(0.1, (now - last) / 1000); last = now;
+  if (playing) { time += step * speed / dt; if (time >= frames - 1) { time = frames - 1; setPlaying(false); } $('seek').value = time; }
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  if ($('follow').checked && followIndex >= 0) { poseAt(followIndex, time, P, Q); cam.target = [P[0]+followOffset[0], P[1]+followOffset[1], cam.target[2]]; }
+  gl.viewport(0, 0, w, h);
+  gl.clearColor(0.055, 0.067, 0.086, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+  const eye = eyeOf(cam);
+  const vp = mul(perspective(45*Math.PI/180, w/h, Math.max(0.02, cam.dist*0.02), 80), lookAt(eye, cam.target, [0,0,1]));
+  gl.useProgram(prog); gl.uniformMatrix4fv(uVP, false, vp); gl.uniform3fv(uEye, eye);
+  const hideWalls = $('walls').checked;
+  for (const r of scene.ranges) {
+    if (r.kind === 'wall' && hideWalls) {
+      const a = dot(sub(eye, r.centre), r.normal), b = dot(sub(cam.target, r.centre), r.normal);
+      if (a * b < 0) continue;
+    }
+    if (r.kind === 'body') { poseAt(r.pose, time, P, Q); gl.uniformMatrix4fv(uM, false, poseMatrix(scratch, P, Q)); }
+    else gl.uniformMatrix4fv(uM, false, IDENTITY);
+    gl.drawElements(gl.TRIANGLES, r.count, gl.UNSIGNED_INT, r.first * 4);
+  }
+  const sec = time * dt;
+  $('clock').textContent = sec.toFixed(1) + ' s / ' + ((frames - 1) * dt).toFixed(1) + ' s';
+  const f = Math.round(time); let ph = '';
+  for (const hd of scene.motion.holds || []) if (hd.object && f >= hd.start && f <= hd.end) ph = hd.arm + ' hand carries ' + hd.object;
+  $('phase').textContent = ph;
+}
+
+/* ---------- view controls (camera only; no request ever leaves this page after loading) ---------- */
+const pointers = new Map(); let pinch = null;
+function pan(dx, dy) {
+  const eye = eyeOf(cam), z = norm(sub(eye, cam.target)), x = norm(cross([0,0,1], z)), y = cross(z, x);
+  const k = cam.dist * 2 * Math.tan(22.5*Math.PI/180) / canvas.clientHeight;
+  for (let i = 0; i < 3; i++) cam.target[i] += (-dx * x[i] + dy * y[i]) * k;
+  $('follow').checked = false;
+}
+function rotate(dx, dy) { cam.yaw -= dx * 0.006; cam.pitch = Math.max(-1.5, Math.min(1.5, cam.pitch + dy * 0.006)); }
+function zoom(f) { cam.dist = Math.max(0.15, Math.min(25, cam.dist * f)); }
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, {x: e.clientX, y: e.clientY, pan: e.button === 2 || e.button === 1 || e.shiftKey}); canvas.classList.add('drag'); pinch = null; });
+canvas.addEventListener('pointermove', e => {
+  const p = pointers.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (pointers.size === 1) { if (p.pan) pan(dx, dy); else rotate(dx, dy); return; }
+  const [a, b] = [...pointers.values()];
+  const d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+  if (pinch) { if (d > 0 && pinch.d > 0) zoom(pinch.d / d); pan(cx - pinch.cx, cy - pinch.cy); }
+  pinch = {d, cx, cy};
+});
+const up = e => { pointers.delete(e.pointerId); pinch = null; if (!pointers.size) canvas.classList.remove('drag'); };
+canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+canvas.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(e.deltaY * (e.deltaMode ? 0.05 : 0.0012))); }, {passive: false});
+
+function setPlaying(v) { playing = v; $('play').textContent = v ? 'Pause' : (time >= frames - 1 ? 'Replay' : 'Play'); }
+$('play').onclick = () => { if (!playing && time >= frames - 1) time = 0; setPlaying(!playing); };
+$('seek').oninput = e => { time = +e.target.value; if (time < frames - 1 && !playing) $('play').textContent = 'Play'; };
+$('speed').onchange = e => { speed = +e.target.value; };
+$('reset').onclick = () => { $('follow').checked = false; setCam(home); };
+$('vtop').onclick = () => { cam.pitch = 1.5; cam.yaw = home.yaw; };
+$('vfront').onclick = () => { cam.pitch = 0.12; cam.yaw = home.yaw; };
+$('vside').onclick = () => { cam.pitch = 0.12; cam.yaw = home.yaw + Math.PI / 2; };
+$('follow').onchange = () => { if (followIndex >= 0) { poseAt(followIndex, time, P, Q); followOffset = [cam.target[0]-P[0], cam.target[1]-P[1], 0]; } };
+window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); $('play').click(); } });
+
+/* ---------- load (three GETs, then the page is on its own) ---------- */
+async function load() {
+  const base = new URLSearchParams(location.search).get('data') || 'data';
+  const get = async (name, kind) => { const r = await fetch(base + '/' + name); if (!r.ok) throw new Error(name + ': HTTP ' + r.status); return r[kind](); };
+  const [sc, geom, pose] = await Promise.all([get('scene.json', 'json'), get('geom.bin', 'arrayBuffer'), get('poses.bin', 'arrayBuffer')]);
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geom, 0, sc.vertex_bytes), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 20, 0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 4, gl.BYTE, true, 20, 12);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, 20, 16);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint8Array(geom, sc.vertex_bytes), gl.STATIC_DRAW);
+  poses = new Float32Array(pose); nMoving = sc.moving_bodies.length; frames = sc.motion.frames; dt = sc.motion.seconds_per_frame;
+  if (poses.length !== frames * nMoving * 7) throw new Error('poses.bin does not match scene.json');
+  $('seek').max = frames - 1;
+  followIndex = sc.moving_bodies.findIndex(n => n.startsWith('mobilebase0'));
+  home.target = [sc.focus[0], sc.focus[1], Math.max(0.9, sc.focus[2])];
+  if (sc.view) Object.assign(home, sc.view);
+  setCam(home);
+  $('src').textContent = (sc.source.task_id || 'run') + ' · seed ' + sc.source.seed + ' · ' + sc.source.execution + ' · ' + (sc.indices / 3).toLocaleString() + ' triangles';
+  const labels = {robot: 'Robot', fixtures: 'Doors and drawers', objects: 'Objects', colours: 'Look'};
+  for (const k of Object.keys(sc.notes)) { const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = (labels[k] || k) + ': '; li.append(b, sc.notes[k]); $('notes').append(li); }
+  // optional start state for checks: ?t=<seconds>&paused=1&yaw=&pitch=&dist=
+  const qs = new URLSearchParams(location.search);
+  if (qs.has('t')) time = Math.max(0, Math.min(frames - 1, +qs.get('t') / dt));
+  for (const k of ['yaw', 'pitch', 'dist']) if (qs.has(k) && isFinite(+qs.get(k))) cam[k] = +qs.get(k);
+  $('seek').value = time;
+  if (qs.get('paused') === '1') setPlaying(false);
+  scene = sc; last = performance.now();
+}
+if (gl) { load().catch(e => fail('Could not load the scene: ' + e.message)); requestAnimationFrame(draw); }
+</script>
+</body>
+</html>
