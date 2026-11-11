@@ -298,11 +298,16 @@ def load_motion(m, exe: Path):
                         d.qpos[a: a + 3] = carried_p * (1 - w) + target * w
                         d.qpos[a + 3: a + 7] = carried_q
                         hold["release_q"] = carried_q
+                        hold["release_p"] = carried_p * (1 - w) + target * w
         # after release keep the orientation the object was let go with
         for hold in holds:
             if hold["object"] and seq > hold["released"] and "release_q" in hold:
                 a = free[hold["object"]]
                 d.qpos[a + 3: a + 7] = hold["release_q"]
+                # Until the object is seen again it stays where it was let go; an observation made
+                # while it was still in the hand must not pull it back.
+                if not any(hold["released"] <= o[0] <= seq for o in observed[hold["object"]]):
+                    d.qpos[a: a + 3] = hold["release_p"]
         mujoco.mj_kinematics(m, d)
         xpos[seq], xquat[seq] = d.xpos, d.xquat
 
