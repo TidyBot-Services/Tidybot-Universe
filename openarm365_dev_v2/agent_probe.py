@@ -110,7 +110,9 @@ def probe(env, executor, planner, observe, request):
     from openarm365_dev.base_motion import BasePathRejected
     settings=getattr(executor,'execution_settings',None)
     op, payload = request['op'],request['payload'];validate(op,payload,config=(
-        {'execution_settings':{'profile':getattr(settings,'profile',None)}}))
+        {'execution_settings':{'profile':getattr(settings,'profile',None)},
+         # 11-12: the run's arm limit; without it a long-move run's dry runs were held to 0.05 m.
+         **({'arm_motion':'long'} if getattr(executor,'arm_motion','short')=='long' else {})}))
     if executor.sequence != 0 or executor.physics_steps != 0:raise ValueError('probe_owner_must_be_reset')
     base = dict(state_basis='reset_scene', physics_steps=0)
     held=executor.held
