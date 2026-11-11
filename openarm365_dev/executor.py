@@ -190,6 +190,7 @@ ADAPTIVE_TRACKING_BOUND=.008   # rad, arm_motion long
 ADAPTIVE_STILL_SPEED=.01       # rad/s: slower than this on every arm joint counts as still
 ADAPTIVE_STILL_STEPS=3         # consecutive control steps (20 Hz)
 ADAPTIVE_MIN_STEPS=4
+ADAPTIVE_SETTLED_ERROR=.004   # rad: the pause ends early only once the arm has also arrived this closely
 
 
 def arm_joint_speed(env):
@@ -740,11 +741,12 @@ class NativeExecutor:
                 self.control_step()
                 if not adaptive:continue
                 # Stop waiting once every arm joint has been slower than the threshold for a few steps in a row
-                # and the endpoint is inside the bound; otherwise use the whole fixed pause as before.
+                # and the arm has arrived within the earlier 4 mrad; otherwise use the whole fixed pause as before.
+                # (First real run, 11-12: ending the pause at the looser 8 mrad bound left 5-8 mrad at the hand.)
                 speed=arm_joint_speed(self.env)
                 still=still+1 if speed is not None and speed<ADAPTIVE_STILL_SPEED else 0
                 if (done+1>=ADAPTIVE_MIN_STEPS and still>=ADAPTIVE_STILL_STEPS
-                        and float(np.max(abs(self.planner.state()-samples[-1])))<=bound):break
+                        and float(np.max(abs(self.planner.state()-samples[-1])))<=min(bound,ADAPTIVE_SETTLED_ERROR)):break
             current=self.planner.state()
             error=float(np.max(abs(current-samples[-1])))
             fixture_contact=(fixture_enabled(getattr(self,'execution_settings',None)) and
