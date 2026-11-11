@@ -9,6 +9,9 @@ WEEKLY_READING_MAX_AGE = 10 * 60
 # Concurrent sessions can report slightly lagging usage. Take a conservative
 # maximum only within ten minutes of the newest observation, even if all are stale.
 QUOTA_OBSERVATION_LAG_SECONDS = 10 * 60
+# The window is one week, so a log untouched for longer cannot hold the current reading.
+# Logs older than this are skipped first and read only when the recent ones hold no reading.
+RECENT_LOG_SECONDS = 8 * 24 * 3600
 
 
 def latest_quota_readings(readings):
@@ -38,7 +41,18 @@ def current_window_readings(readings,*,now=None):
 
 
 def read_quota(home=None,*,newest_session=False,now=None,include_observed_at=False):
+    if not newest_session:
+        recent=_read_quota(home,now=now,include_observed_at=True,recent_only=True)
+        # Accept the short read only for a reading with a known time; anything else gets the full read.
+        if valid_reset(recent.get('resets_at')) and recent.get('observed_at') is not None:
+            if not include_observed_at:recent.pop('observed_at')
+            return recent
+    return _read_quota(home,newest_session=newest_session,now=now,include_observed_at=include_observed_at)
+
+
+def _read_quota(home=None,*,newest_session=False,now=None,include_observed_at=False,recent_only=False):
     root = Path(home).expanduser() if home is not None else Path.home()
+    cutoff = min(time.time(),now if now is not None else math.inf)-RECENT_LOG_SECONDS
     newest = None
     readings=[]
     result = {"used_percent": None, "window_minutes": None, "resets_at": None,
@@ -49,6 +63,7 @@ def read_quota(home=None,*,newest_session=False,now=None,include_observed_at=Fal
             paths=list(paths);paths=[max(paths,key=lambda p:(p.stat().st_mtime_ns,str(p)))] if paths else []
         for path in paths:
             try:
+                if recent_only and path.stat().st_mtime<cutoff:continue
                 with path.open() as stream:
                     for line in stream:
                         try:
