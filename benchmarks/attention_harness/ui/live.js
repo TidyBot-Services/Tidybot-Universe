@@ -4844,7 +4844,7 @@
   function liveFreeViewButton(snapshot) {
     // Live 3D of the attempt running now (agent runs only). Same look-only page; it follows the attempt as it runs.
     const station=cameraStation(snapshot);
-    const m=snapshot.agent&&station.camera_monitor_v2&&/^(\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64})\/live$/.exec(station.camera_state_url||'');
+    const m=snapshot.agent&&station.camera_monitor_v2&&/^(\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64})\/live(?:\?view=[a-z_]+)?$/.exec(station.camera_state_url||'');
     return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/files/free-view/live`)}" data-free-view-label="" aria-pressed="false" title="Rotate, zoom and pan a live 3D view of the attempt running now. View only.">3D view</button>`:'';
   }
   function openFreeView(base,attempt) {
