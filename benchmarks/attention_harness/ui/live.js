@@ -6118,6 +6118,15 @@
         const open=list.hidden;
         view.querySelectorAll('[data-tries-toggle][aria-expanded="true"]').forEach(other=>{if(other!==toggle){other.nextElementSibling.hidden=true;other.setAttribute('aria-expanded','false');}});
         list.hidden=!open;toggle.setAttribute('aria-expanded',String(open));
+        // 11-12: the track now sits at the right of the heading, so a list that opened to the right was cut off by the
+        // panel. Keep it inside the panel: slide it left by what sticks out, never past the panel's left edge.
+        if(open&&list.getBoundingClientRect){
+          list.style.left='0px';list.style.maxWidth='';
+          const frame=(toggle.closest('.panel')||view).getBoundingClientRect(),pad=12,box=list.getBoundingClientRect();
+          list.style.maxWidth=`${Math.max(200,Math.floor(frame.width-2*pad))}px`;
+          const over=list.getBoundingClientRect().right-(frame.right-pad);
+          if(over>0)list.style.left=`${-Math.min(over,Math.max(0,box.left-(frame.left+pad)))}px`;
+        }
         if(open)(list.querySelector('[aria-selected="true"]')||list.querySelector('button:not([disabled])'))?.focus();
       });
       list.addEventListener('keydown',event=>{
