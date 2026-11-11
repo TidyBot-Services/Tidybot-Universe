@@ -253,10 +253,10 @@ def main():
                         gripper_receipt=executor.gripper(group.split('_')[0],-1. if operation=='open' else 1.,request_id=rid)
                         if fixture_enabled(execution_settings):empty_close=gripper_receipt['empty_close']
                 elif group=='bimanual':
-                    if len(request['args'])!=1 or request['kwargs']:raise ValueError('bimanual.move_joints requires one full 14-joint vector')
+                    if len(request['args'])!=1 or set(request['kwargs'])-({'speed'} if c.get('arm_motion')=='long' else set()):raise ValueError('bimanual.move_joints requires one full 14-joint vector')
                     target=np.asarray(request['args'][0],float)
                     if target.shape!=(14,) or not np.isfinite(target).all():raise ValueError('Finite 14-joint vector required')
-                    executor.move_joints(target,side='both',request_id=rid)
+                    executor.move_joints(target,side='both',request_id=rid,**request['kwargs'])
                 response={'kind':'response','request_id':rid,'ok':True,'value':value,
                     'sequence':executor.sequence,'start_sequence':before}
                 if empty_close is not None:response['empty_close']=empty_close

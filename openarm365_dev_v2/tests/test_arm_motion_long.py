@@ -35,8 +35,10 @@ def test_long_is_recorded_sealed_and_described(monkeypatch, settings):
     assert c['dev_sdk_prompt_sha256'] != plain['dev_sdk_prompt_sha256'] and c['dev_sdk_sha256'] != plain['dev_sdk_sha256']
     text = dev_sdk_prompt(c)
     assert '<=0.30m' in text and '<=0.05m' not in text and 'ONE call' in text
-    assert 'the 8 mrad endpoint bound' in text and 'the 4 mrad endpoint bound' not in text
-    assert dev_sdk(c)['arm_motion'] == dict(mode='long', translation_limit_m=.30, endpoint_bound_rad=.008, settle='adaptive')
+    assert 'the 12 mrad endpoint bound' in text and 'the 4 mrad endpoint bound' not in text and '10 mm/3 mrad uncommanded base drift' in text
+    assert 'Optional speed=s (0.25..1.0' in text
+    assert dev_sdk(c)['arm_motion'] == dict(mode='long', translation_limit_m=.30, endpoint_bound_rad=.012, settle='adaptive', speed_range=[.25, 1.0],
+                                             base_drift_m=.010, held_object_m=.025, held_object_rad=.25)
     assert {k: v for k, v in c.items() if k not in ('arm_motion', 'dev_sdk_sha256', 'dev_sdk_prompt_sha256', 'dev_sdk_metadata_sha256')} == \
            {k: v for k, v in plain.items() if k not in ('dev_sdk_sha256', 'dev_sdk_prompt_sha256', 'dev_sdk_metadata_sha256')}
 
@@ -104,17 +106,20 @@ def test_short_keeps_the_fixed_pause_and_4_mrad(monkeypatch):
     assert obj.sequence == 22
 
 
-def test_long_accepts_6_mrad_and_refuses_9(monkeypatch):
+def test_long_accepts_9_mrad_and_refuses_13(monkeypatch):
     obj, _, _, _ = fake_apply(monkeypatch, position=[.016, .02]); obj.arm_motion = 'long'
     obj.env.sim.data.qvel = np.array([0., 0.])
     assert executor.NativeExecutor.apply(obj, {'plan_id': 'p'}, request_id='req')['status'] == 'completed'
     assert obj.sequence == 22            # still but 6 mrad away: accepted, yet the pause runs its full length (no early exit)
-    obj, _, events, _ = fake_apply(monkeypatch, position=[.019, .02]); obj.arm_motion = 'long'
+    obj, _, _, _ = fake_apply(monkeypatch, position=[.019, .02]); obj.arm_motion = 'long'
     obj.env.sim.data.qvel = np.array([0., 0.])
-    with pytest.raises(RuntimeError, match='exceeds 8mrad endpoint bound'):
+    assert executor.NativeExecutor.apply(obj, {'plan_id': 'p'}, request_id='req')['status'] == 'completed'
+    obj, _, events, _ = fake_apply(monkeypatch, position=[.023, .02]); obj.arm_motion = 'long'
+    obj.env.sim.data.qvel = np.array([0., 0.])
+    with pytest.raises(RuntimeError, match='exceeds 12mrad endpoint bound'):
         executor.NativeExecutor.apply(obj, {'plan_id': 'p'}, request_id='req')
     assert obj.sequence == 22                                                        # out of bound: the pause was not cut short
-    assert any(row['event'] == 'tracking_error' and row['bound'] == .008 for row in events)
+    assert any(row['event'] == 'tracking_error' and row['bound'] == .012 for row in events)
 
 
 def test_launch_selection_accepts_only_the_two_values():
@@ -137,3 +142,32 @@ def test_tools_md_states_the_same_limit():
     from benchmarks.attention_harness.dev_agent_workspace import TOOLS, TOOLS_V2
     for text in (TOOLS, TOOLS_V2):
         assert 'Safety: arm coordinates <= 0.05 m / 0.5 rad per action,' in text   # the line the long run replaces
+
+
+def test_long_executor_uses_the_looser_physical_bounds(settings):
+    from curobo_v2.attachment import effective_held_envelope
+    from openarm365_dev.base_motion import base_drift_limits
+    import inspect
+    assert 'execution_settings=long_motion_settings(execution_settings)' in inspect.getsource(executor.NativeExecutor.__init__)
+    long_ = executor.long_motion_settings(settings)
+    assert base_drift_limits(settings) == (.003, .003) and effective_held_envelope(settings) == (.010, .10)
+    assert base_drift_limits(long_) == (.010, .003) and effective_held_envelope(long_) == (.025, .25)
+    assert type(long_) is type(settings) and long_.profile == settings.profile
+    assert settings.base_hold_drift_m == .003 and settings.held_envelope_m == .010          # the shared profile object is untouched
+
+
+def test_speed_slows_the_same_path(monkeypatch):
+    obj, calls, events, _ = fake_apply(monkeypatch, position=[.011, .02], travel_seconds=.04)
+    obj.arm_motion = 'long'; obj.env.sim.data.qvel = np.array([.05, 0.])
+    executor.NativeExecutor.apply(obj, {'plan_id': 'p'}, request_id='req', speed=.5)
+    assert calls[0]['dt'] == pytest.approx(.005) and calls[0]['step_budget'] == 8 + 20     # 0.04 s at half speed: 8 steps
+    intent = next(row for row in events if row['event'] == 'intent')
+    assert intent['command_curve']['time_scale'] == .5
+
+
+@pytest.mark.parametrize('motion,speed,ok', [('long', .25, True), ('long', 1, True), ('long', .2, False), ('long', 1.5, False), ('short', .5, False), ('short', 1., True)])
+def test_speed_is_checked(motion, speed, ok):
+    e = NS(arm_motion=motion)
+    if ok: assert executor.NativeExecutor.checked_speed(e, speed) == float(speed)
+    else:
+        with pytest.raises(ValueError, match='speed'): executor.NativeExecutor.checked_speed(e, speed)

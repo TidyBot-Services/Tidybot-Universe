@@ -186,7 +186,17 @@ def finger_object_contact_measurements(env,side,bid):
             break
     return forces,{finger:sorted(values) for finger,values in distances.items()}
 
-ADAPTIVE_TRACKING_BOUND=.008   # rad, arm_motion long
+ADAPTIVE_TRACKING_BOUND=.012   # rad, arm_motion long (8 mrad on 11-12 morning, 12 mrad after the user's OK the same day)
+LONG_BASE_DRIFT_M=.010
+LONG_HELD_TRANSLATION_M=.025
+LONG_HELD_ROTATION_RAD=.25
+def long_motion_settings(settings):
+    """The executor's copy of the run's profile with the long-move physical bounds."""
+    from dataclasses import replace
+    return replace(settings,base_hold_drift_m=LONG_BASE_DRIFT_M,held_envelope_m=LONG_HELD_TRANSLATION_M,held_envelope_rad=LONG_HELD_ROTATION_RAD)
+
+
+SPEED_MIN=.25                  # arm_motion long: the Dev may slow a move down to a quarter of the planned speed
 ADAPTIVE_STILL_SPEED=.01       # rad/s: slower than this on every arm joint counts as still
 ADAPTIVE_STILL_STEPS=3         # consecutive control steps (20 Hz)
 ADAPTIVE_MIN_STEPS=4
@@ -250,6 +260,11 @@ class NativeExecutor:
         # 2026-11-12: long = up to 0.30 m per coordinate in one planned motion, pause ends once the arm is still,
         # endpoint checked at 8 mrad. short = the earlier fixed values. All other checks are the same in both.
         self.arm_motion=arm_motion;self.arm_delta_limit=.30 if arm_motion=='long' else .05
+        if arm_motion=='long' and execution_settings is not None:
+            # 2026-11-12 (user, in person: "可以，按建议改"): long runs loosen three physical checks on the executor's own
+            # copy: uncommanded base drift 3 -> 10 mm, held object vs hand 10 mm/0.1 rad -> 25 mm/0.25 rad. The planner
+            # keeps its own settings (and their hash) unchanged. Receipts record the values actually used.
+            execution_settings=long_motion_settings(execution_settings)
         self.bimanual_collaboration=bimanual_collaboration
         self.handoff_receiver_fingers=handoff_receiver_fingers
         self.held_reference_per_motion=held_reference_per_motion or held_contact_only
@@ -703,7 +718,7 @@ class NativeExecutor:
         self.check_live();self.env.step(self.action());self.sequence+=1
         if self.frame_callback:self.frame_callback(self.sequence)
 
-    def apply(self,response,*,request_id):
+    def apply(self,response,*,request_id,speed=1.):
         self.check_live()
         settle_steps=diagnostic_settle_steps();bound=diagnostic_tracking_bound()
         adaptive=getattr(self,'arm_motion','short')=='long'
@@ -713,10 +728,15 @@ class NativeExecutor:
         dt=float(self.env.control_timestep)
         count=math.ceil(response['time_from_start_seconds'][-1]/dt)+settle_steps
         if official_timing_exceeds_ceiling(count,settle_steps):raise PlanningRejected('Official timing exceeds 100-control-step action ceiling')
+        # speed<1 (long runs only): the same planned path, sampled more slowly, so speed and acceleration only drop.
+        # The 100-step ceiling above applies to the planned time; the slowed travel may last up to 1/speed as long.
+        if speed!=1.:
+            dt=dt*speed;count=math.ceil(response['time_from_start_seconds'][-1]/dt)+settle_steps
         kin=self.planner.spec['robot_cfg']['kinematics']['cspace']
         samples,certificate=sample_for_original_drive(response,joint_names=self.planner.names,
             maximum_speed=self.max_speed,position_limits=self.limits,max_acceleration=kin['max_acceleration'],
             max_jerk=kin['max_jerk'],dt=dt,step_budget=count,settle_steps=settle_steps)
+        if speed!=1.:certificate=dict(certificate,time_scale=speed,dt=float(self.env.control_timestep),sample_dt=dt)
         self.active_request=request_id;start=self.sequence;before=self.planner.state().copy()
         intent=dict(event='intent',request_id=request_id,epoch=self.epoch,
             plan_id=plan_id,start_sequence=start,command_curve=certificate)
@@ -813,8 +833,9 @@ class NativeExecutor:
             includes_commanded_motion=False)
 
     @record_base_drift
-    def move_joints(self,target,*,side,request_id):
+    def move_joints(self,target,*,side,request_id,speed=1.):
         self.check_live()
+        speed=NativeExecutor.checked_speed(self,speed)
         NativeExecutor.handoff_motion_gate(self)
         # Held-object transport needs its own measured attachment model. Until
         # that adapter is available this entry fails closed, never ignores it.
@@ -827,7 +848,7 @@ class NativeExecutor:
         NativeExecutor.begin_receiver_exemption(self,NativeExecutor.joint_motion_side(self,target,side),request_id,'receiver_approach')
         try:
             response=self.planner.plan_joints(target,side=side,epoch=self.epoch)
-            return self.apply(response,request_id=request_id)
+            return self.apply(response,request_id=request_id,**({} if speed==1. else dict(speed=speed)))
         finally:self._receiver_exemption=None
 
     @record_base_drift
@@ -944,9 +965,17 @@ class NativeExecutor:
             if any(is_descendant(sim.model,b,self.robot_root) for b in bodies) and any(any(is_descendant(sim.model,b,obj) for obj in objects) for b in bodies):return True
         return False
 
+    def checked_speed(self,speed):
+        if speed==1. or speed==1:return 1.
+        if getattr(self,'arm_motion','short')!='long':raise ValueError('speed requires arm_motion long')
+        if type(speed) not in (int,float) or not math.isfinite(speed) or not SPEED_MIN<=speed<=1:
+            raise ValueError(f'speed must be between {SPEED_MIN} and 1')
+        return float(speed)
+
     @record_base_drift
-    def move_delta(self,side,dx,dy,dz,rotation_delta=None,*,request_id,grasp_search=None):
+    def move_delta(self,side,dx,dy,dz,rotation_delta=None,*,request_id,grasp_search=None,speed=1.):
         self.check_live()
+        speed=NativeExecutor.checked_speed(self,speed)
         NativeExecutor.handoff_motion_gate(self)
         from scipy.spatial.transform import Rotation
         delta=np.array([dx,dy,dz],float);rotation=np.array(rotation_delta if rotation_delta is not None else [0,0,0],float)
@@ -965,10 +994,10 @@ class NativeExecutor:
             check_sdk_request(grasp_search, getattr(self.env, 'obj_body_id', {}))
         NativeExecutor.rebase_held_references(self,request_id)
         NativeExecutor.begin_receiver_exemption(self,side,request_id,'receiver_approach')
-        try:return NativeExecutor._move_delta_planned(self,side,delta,rotation,request_id,grasp_search)
+        try:return NativeExecutor._move_delta_planned(self,side,delta,rotation,request_id,grasp_search,*(() if speed==1. else (speed,)))
         finally:self._receiver_exemption=None
 
-    def _move_delta_planned(self,side,delta,rotation,request_id,grasp_search):
+    def _move_delta_planned(self,side,delta,rotation,request_id,grasp_search,speed=1.):
         from scipy.spatial.transform import Rotation
         current=tcp_pose(self.env,side)
         before=self.planner.state().copy() if fixture_enabled(getattr(self,'execution_settings',None)) else None
@@ -981,7 +1010,7 @@ class NativeExecutor:
                 diagnostics=dict(max_joint_step_rad=maximum,position_tolerance=.004,orientation_tolerance=.03)
                 if hasattr(self,'reject'):self.reject('motion_below_planner_tolerance',diagnostics)
                 raise PlanningRejected('motion_below_planner_tolerance')
-        return self.apply(response,request_id=request_id)
+        return self.apply(response,request_id=request_id,**({} if speed==1. else dict(speed=speed)))
 
     @record_base_drift
     def gripper(self,side,command,*,request_id):
