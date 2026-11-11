@@ -137,15 +137,37 @@ def live_folder(episode, out, start=None, wait=LIVE_WAIT, sleep=time.sleep):
     return out
 
 
+TERMINAL = {'completed', 'failed', 'cancelled', 'needs_review', 'stopped'}
+
+
+def running_episode(cell):
+    """The execution folder of the attempt this cell runs now.  A dev-v2 cell names it (active_episode); an Agent
+    cell does not, so it is found the way its live camera finds it (the newest try without a public result)."""
+    if cell.get('state') in TERMINAL:raise FileNotFoundError('No attempt is running right now.')
+    root = Path(cell['artifact_dir']).resolve()
+    if cell.get('active_episode'):
+        episode = Path(cell['active_episode']).resolve()
+    elif cell.get('dev_mode') == 'agent':
+        from .dev_agent_try_story import active_execution
+        private = root/'agent/private'
+        eid = active_execution(private)
+        found = [d for d in (private/'executions'/eid).glob('openarm365-dev-*') if d.is_dir()] if eid else []
+        if len(found) != 1:raise FileNotFoundError('No attempt is running right now.')
+        episode = found[0].resolve()
+    else:
+        raise FileNotFoundError('No attempt is running right now.')
+    if not episode.is_relative_to(root) or not episode.is_dir() or not re.fullmatch(r'e\d+', episode.parent.name):
+        raise FileNotFoundError('3D view unavailable')
+    if not ((episode/'scene.xml').is_file() and (episode/'reset_receipt.json').is_file()):
+        raise FileNotFoundError('The robot has not taken its first step yet.')
+    return episode
+
+
 def live_file(cell, name, start=None):
     """Content and type of one live file of the attempt this cell is running now (display only)."""
     match = LIVE.fullmatch(name)
     if not match:raise FileNotFoundError('Not a 3D view file')
-    if cell.get('state') != 'running' or not cell.get('active_episode'):
-        raise FileNotFoundError('No attempt is running right now.')
-    episode, root = Path(cell['active_episode']).resolve(), Path(cell['artifact_dir']).resolve()
-    if not episode.is_relative_to(root) or not episode.is_dir() or not re.fullmatch(r'e\d+', episode.parent.name):
-        raise FileNotFoundError('3D view unavailable')
+    episode = running_episode(cell)
     out = LIVE_ROOT/cell['key']/f'{episode.parent.name}-{episode.name}'
     live_folder(episode, out, start)
     if match[2] is not None:
