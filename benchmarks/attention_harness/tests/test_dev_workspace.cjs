@@ -282,3 +282,14 @@ test('OPERATOR a still picture while the planner thinks is explained, not report
  assert.doesNotMatch(stale('planner_prepare',39.6)+stale('x',1),/Frame not updated|phase:|unavailable|error/i);
  assert.match(source,/DEBUG_VIEW \? `Frame not updated · \$\{seconds\}; phase: \$\{phase\}`/,'technical wording stays in the debug view');
 });
+test('Live 3D view: the running attempt of an Agent run gets a 3D button that names its live route, a finished one keeps its replay route',()=>{
+ const cell=`/api/dev-v2/experiments/devexp-${'a'.repeat(24)}/cells/${'b'.repeat(64)}`;
+ const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';snap.agent={tries:[]};
+ Object.assign(snap.station,{camera_url:cell+'/live/frame',camera_preview_url:cell+'/live/frame',camera_state_url:cell+'/live',camera_monitor_v2:true,
+  camera_views:{external:{name:'Overview',preview_url:cell+'/live/frame',state_url:cell+'/live'},side:{name:'Side',preview_url:cell+'/live/frame?view=side',state_url:cell+'/live?view=side'}}});
+ const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
+ assert.match(html,new RegExp(`data-free-view="${cell}/agent/files/free-view/live" data-free-view-label=""`));
+ // Not for a run that is not an Agent run, and not once the live camera is gone.
+ delete snap.agent;
+ assert.doesNotMatch(rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap),/free-view\/live/);
+});
