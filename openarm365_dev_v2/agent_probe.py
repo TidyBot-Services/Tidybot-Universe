@@ -87,7 +87,7 @@ def validate(op, payload, *, config=None):
             if len(args) not in (3,4):raise ValueError('invalid_delta')
             vector(args[:3],3)
             if len(args)==4:vector(args[3],3)
-            if any(abs(v)>.05 for v in args[:3]):raise ValueError('translation_limit')
+            if any(abs(v)>(.30 if (config or {}).get('arm_motion')=='long' else .05) for v in args[:3]):raise ValueError('translation_limit')
             if len(args)==4 and any(abs(v)>.5 for v in args[3]):raise ValueError('rotation_limit')
 
 

@@ -18,7 +18,7 @@ class AgentExecutor(NativeExecutor):
         if (not isinstance(rotation,(tuple,list)) or len(rotation)!=3
                 or any(type(x) not in (int,float) or not math.isfinite(x) for x in [dx,dy,dz,*rotation])):
             return self.reject('invalid_delta')
-        if any(abs(v)>.05 for v in (dx,dy,dz)) or any(abs(v)>.5 for v in rotation):
+        if any(abs(v)>getattr(self,'arm_delta_limit',.05) for v in (dx,dy,dz)) or any(abs(v)>.5 for v in rotation):
             return self.reject('action_delta_limit')
         return super().move_delta(side,dx,dy,dz,rotation_delta=rotation,request_id=request_id,grasp_search=grasp_search)
 

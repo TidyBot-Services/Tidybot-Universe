@@ -255,7 +255,7 @@ class Workspace:
         if FORBIDDEN.search(prompt):raise ValueError('sdk_doc_forbidden_term')
         self.publish('docs/sdk.md', (prompt if trusted else screen_text(prompt)).encode())
         self.publish('docs/sdk.json', dev_sdk(config))
-        self.publish('docs/safety.json', dict(translation_coordinate_m=.05, rotation_rad=.5,
+        self.publish('docs/safety.json', dict(translation_coordinate_m=.30 if config.get('arm_motion')=='long' else .05, rotation_rad=.5,
             joint_margin_rad=.02, base_clearance_m=.010, sdk_calls=320, control_steps=9600,
             execution_seconds=1920, versions=budget['versions'] if budget else 10, executions=40, probes=300,
             wall_seconds=None if wall_unlimited else budget['wall_seconds'] if budget else 21600,

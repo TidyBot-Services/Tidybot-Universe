@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','bimanual_collaboration','rules_profile'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','bimanual_collaboration','rules_profile','arm_motion'}|FIELDS
 def validate_selection_fields(selection):
     if isinstance(selection,dict) and 'test_fixture' in selection:raise ValueError('product run creation rejects test_fixture')
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
@@ -124,6 +124,8 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     planner_args={} if planner_source is None else dict(planner_source=planner_source)
     collaboration=selection.get('bimanual_collaboration','none')
     if collaboration not in ('none','c1','handoff'):raise ValueError('bimanual_collaboration must be none, c1 or handoff')
+    motion=selection.get('arm_motion','short')
+    if motion not in ('short','long'):raise ValueError('arm_motion must be short or long')
     task_limits(budget_tier)
     # Run notes are local metadata, also supported by the daily legacy budget
     # envelope without changing its runtime, budget or accounting rules.
@@ -189,6 +191,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     if fixture:normalized['rules_profile']=PROFILE
     if planner_source is not None:normalized['planner_source']=dict(planner_source)
     if 'bimanual_collaboration' in selection:normalized['bimanual_collaboration']=collaboration
+    if motion=='long':normalized['arm_motion']='long'
     if 'run_notes' in selection:normalized['run_notes']=selection['run_notes']
     if 'memory_family' in selection:normalized['memory_family']=selection['memory_family']
     if fork_record is not None:normalized['fork']=dict(selection['fork'])
@@ -265,7 +268,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
             **({} if settings is None else dict(execution_settings=settings)),**planner_args)
     if validation_origin is not None:verify_lock(ref,expected_source_root=json.loads(Path(ref['path']).read_bytes())['source_root'])
     else:verify_lock(ref)
-    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,execution_settings=settings,**planner_args,**({} if 'bimanual_collaboration' not in selection else dict(bimanual_collaboration=collaboration))) for t in tasks for s in seeds}
+    configs=copy.deepcopy(original['configs']) if validation_origin is not None else {f'{t}:{s}':make_dev_config(t,s,ref,budget_tier=budget_tier,execution_settings=settings,**planner_args,**({} if 'bimanual_collaboration' not in selection else dict(bimanual_collaboration=collaboration)),**({} if motion!='long' else dict(arm_motion='long'))) for t in tasks for s in seeds}
     if any('test_fixture' in config for config in configs.values()):raise ValueError('product run creation rejects test_fixture')
     records={t:task_record(t) if fixture else get_task(t) for t in tasks}
     sources={t:{'source':Path(records[t].initial_policy).read_text(),'sha256':sha(records[t].initial_policy)} for t in tasks}
