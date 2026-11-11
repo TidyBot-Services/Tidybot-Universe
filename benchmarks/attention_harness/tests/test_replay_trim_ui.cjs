@@ -80,9 +80,10 @@ test('skipped spans read as plain words with the real time range',()=>{
   saved.delete('attention.replay-trim');
   const bar=api.operatorTrimBar(trim);
   assert.match(bar,/data-trim-mode="trimmed" aria-pressed="true"/);
-  assert.match(bar,/Skipped 46 s of waiting · 0:05 of 0:51/);
+  assert.doesNotMatch(bar,/op-trim-note|of waiting ·/);  // 11-12 user: no summary line beside the toggle
   saved.set('attention.replay-trim','original');
-  assert.match(api.operatorTrimBar(trim),/data-trim-mode="original" aria-pressed="true"[\s\S]*Full recording · 0:51/);
+  assert.match(api.operatorTrimBar(trim),/data-trim-mode="original" aria-pressed="true"/);
+  assert.doesNotMatch(api.operatorTrimBar(trim),/Full recording/);
   saved.delete('attention.replay-trim');
 });
 
