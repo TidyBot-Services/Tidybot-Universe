@@ -174,7 +174,7 @@ def test_live_starts_one_follower_and_serves_new_frames_only(tmp_path, running):
 
 def test_live_needs_a_running_attempt(tmp_path, running):
     cell, episode, started = running
-    for other in (dict(cell, state='completed'), dict(cell, active_episode=None), dict(cell, active_episode=str(tmp_path))):
+    for other in (dict(cell, state='completed'), dict(cell, state='stopped'), dict(cell, active_episode=str(tmp_path))):
         with pytest.raises(FileNotFoundError):dev_agent_view.artifact(other, 'free-view/live/scene.json')
     (episode/'native_result.json').write_text('{}')  # ended, nothing left running for it
     with pytest.raises(FileNotFoundError, match='ended'):dev_agent_view.artifact(cell, 'free-view/live/scene.json')
@@ -215,3 +215,23 @@ def test_close_stays_above_the_loading_and_waiting_screen():
     html = (Path(__file__).resolve().parents[1] / 'ui' / 'free_view.html').read_text(encoding='utf-8')
     z = lambda sel: int(_re.search(_re.escape(sel) + r'\{[^}]*z-index:(\d+)', html)[1])
     assert z('#close') > z('#loading')
+
+
+def test_live_finds_the_running_try_of_an_agent_run(tmp_path, running):
+    """Agent runs do not fill active_episode; the try in progress is the newest one without a public result."""
+    cell, episode, started = running
+    agent = dict(cell, active_episode=None)
+    for name in ('scene.xml', 'reset_receipt.json'):(episode/name).write_text('{}')
+    assert dev_agent_view.artifact(agent, 'free-view/live/status.json')[0].read_text() == '{"frames":3}'
+    assert started[0][0] == episode
+    # Once the try has its public result it is no longer the running one.
+    result = tmp_path/'cell/agent/private/public/executions'/EID/'result.json'
+    result.parent.mkdir(parents=True);result.write_text('{}')
+    with pytest.raises(FileNotFoundError, match='No attempt is running'):dev_agent_view.artifact(agent, 'free-view/live/scene.json')
+
+
+def test_live_waits_until_the_try_has_its_scene(tmp_path, running):
+    cell, episode, started = running
+    (episode/'scene.xml').unlink()
+    with pytest.raises(FileNotFoundError, match='first step'):dev_agent_view.artifact(dict(cell, active_episode=None), 'free-view/live/scene.json')
+    assert started == []
