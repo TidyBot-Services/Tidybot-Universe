@@ -299,6 +299,7 @@ class Handler(BaseHTTPRequestHandler):
         if path in ('/', '/ui'):return self.redirect('/ui/home.html', 302)
         if path == '/ui/' and self.command == 'GET':return self.page(session)
         if path in policy.UI_PAGES and self.command == 'GET':return self.page(session, policy.UI_PAGES[path])
+        if path == '/ui/free_view.html' and self.command == 'GET':return self.free_view()
         if path.startswith('/ui/') and self.command == 'GET':return self.asset(path[4:])
         if path == '/api/session':return self.session_route(session, token)
         if path == '/api/home/status' and self.command == 'GET':
@@ -368,7 +369,15 @@ class Handler(BaseHTTPRequestHandler):
         inline = ' '.join("'sha256-%s'" % b64encode(sha256(script.encode()).digest()).decode() for script in SCRIPT.findall(page))
         self.send_bytes(page.encode(), 'text/html; charset=utf-8', headers={'Content-Security-Policy':
             f"default-src 'none'; script-src 'self' {inline}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
-            "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+            "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; frame-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"})
+
+    def free_view(self):
+        """The look-only 3D replay page. It runs inside the run page (same site only) and may read this site, nothing else."""
+        page = (self.gateway.config.ui_dir / 'free_view.html').read_text(encoding='utf-8')
+        inline = ' '.join("'sha256-%s'" % b64encode(sha256(script.encode()).digest()).decode() for script in SCRIPT.findall(page))
+        self.send_bytes(page.encode(), 'text/html; charset=utf-8', headers={'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy':
+            f"default-src 'none'; script-src {inline}; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
+            "connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"})
 
     def asset(self, name):
         kind = policy.ui_asset(name)

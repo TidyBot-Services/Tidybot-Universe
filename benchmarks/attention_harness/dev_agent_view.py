@@ -76,6 +76,10 @@ def artifact(cell,name):
     if name.startswith(('compat/','replays/')):
         from .dev_agent_ui_projection import evidence
         return evidence(cell,name)
+    if name.startswith('free-view/'):
+        # 3D replay of a finished attempt, for people only; built on first use (free_view.py).
+        from .free_view import bundle_file
+        return bundle_file(cell,name)
     if not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
     root=Path(cell['artifact_dir'])/'agent'
     try:

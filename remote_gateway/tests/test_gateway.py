@@ -233,6 +233,25 @@ def test_the_page_is_the_main_ui_without_any_harness_token(world):
     for name in ('memory.js', 'memory.css', 'fixed.html', 'index.html', 'remote'):assert browser.send('GET', '/ui/' + name)[0] == 404
 
 
+def test_the_3d_view_page_runs_inside_the_run_page_only(world):
+    browser = world.person()
+    status, content, response = browser.send('GET', '/ui/free_view.html?embed=1&data=x')
+    rule = response.getheader('Content-Security-Policy')
+    assert status == 200 and b'DecompressionStream' in content
+    assert response.getheader('X-Frame-Options') == 'SAMEORIGIN' and "frame-ancestors 'self'" in rule and "connect-src 'self'" in rule
+    assert "script-src 'sha256-" in rule and "script-src 'self'" not in rule and "default-src 'none'" in rule
+    main = browser.send('GET', '/ui/')[2].getheader('Content-Security-Policy')
+    assert "frame-src 'self'" in main and "frame-ancestors 'none'" in main
+    assert browser.send('POST', '/ui/free_view.html', {})[0] in (403, 404, 405)
+
+
+def test_the_3d_files_are_readable_like_videos_and_nothing_else_is():
+    from remote_gateway import policy as rules
+    cell = 'cells/' + 'a' * 64 + '/agent/files/free-view/e000003/'
+    for name in ('scene.json', 'geom.bin.gz', 'poses.bin.gz'):assert rules.readable(cell + name)
+    assert not rules.readable(cell + '../scene.json') and not rules.readable('cells/' + 'a' * 64 + '/agent/free-view/e000003/scene.json')
+
+
 @pytest.mark.parametrize('method,path', [
     ('GET', '/api/orchestrator/snapshot'), ('POST', '/api/orchestrator/dispatch'), ('POST', '/api/runs/start'), ('POST', '/api/fixed/start'), ('GET', '/api/fixed'), ('GET', '/api/traces/x'),
     ('GET', '/api/codex-quota'), ('GET', '/api/home/scene'), ('GET', '/api/memories'), ('GET', '/api/dev-memories'), ('POST', '/api/history/delete'),

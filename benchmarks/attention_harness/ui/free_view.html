@@ -338,9 +338,18 @@ window.addEventListener('keydown', e => {
 
 /* ---------- load (three GETs, then the page is on its own) ---------- */
 async function load() {
-  const base = new URLSearchParams(location.search).get('data') || 'data';
-  const get = async (name, kind) => { const r = await fetch(base + '/' + name); if (!r.ok) { let why = ''; try { why = (await r.json()).error || ''; } catch (e) {} throw new Error(why || name + ': HTTP ' + r.status); } return r[kind](); };
-  const [sc, geom, pose] = await Promise.all([get('scene.json', 'json'), get('geom.bin', 'arrayBuffer'), get('poses.bin', 'arrayBuffer')]);
+  // Only this site's own attempt route is ever read; anything else in ?data= is refused.
+  const base = new URLSearchParams(location.search).get('data') || '';
+  if (!/^\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64}\/agent\/files\/free-view\/e\d+$/.test(base)) throw new Error('this link does not name an attempt');
+  const get = async (name, kind) => {
+    const r = await fetch(base + '/' + name, {credentials: 'same-origin'});
+    if (!r.ok) { let why = ''; try { const e = (await r.json()).error; why = typeof e === 'string' ? e : (e && e.message) || ''; } catch (e) {} throw new Error(why || name + ': HTTP ' + r.status); }
+    if (kind === 'json') return r.json();
+    // The two big files travel gzip-packed (about 6 MB instead of 15) and are unpacked here.
+    if (typeof DecompressionStream !== 'function') throw new Error('this browser is too old to unpack the scene (it needs DecompressionStream)');
+    return new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  };
+  const [sc, geom, pose] = await Promise.all([get('scene.json', 'json'), get('geom.bin.gz', 'arrayBuffer'), get('poses.bin.gz', 'arrayBuffer')]);
   const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(geom, 0, sc.vertex_bytes), gl.STATIC_DRAW);
