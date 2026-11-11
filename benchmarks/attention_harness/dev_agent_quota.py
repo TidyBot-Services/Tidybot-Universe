@@ -51,7 +51,7 @@ class QuotaUnavailable(RuntimeError): pass
 
 
 # User 11-08: one run may use at most this many points of the weekly Codex quota, counted from the first reading
-# this run sees in the same weekly window. Runs open at the same time share the one weekly counter, so each sees the
+# made during this run in the same weekly window (11-11: not from an older reading found on disk at the start). Runs open at the same time share the one weekly counter, so each sees the
 # others' use too: the cap then stops runs earlier, never later.
 RUN_CAP_POINTS = 5
 
@@ -63,6 +63,7 @@ class QuotaMonitor:
         self.private,self.ledger,self.stop_percent=private,ledger,stop_percent
         self.reader=reader or read_weekly_quota
         self.clock=clock; self.latest=None; self.stopped=False; self.failure=None
+        self.started=clock()
         self.run_cap_points=run_cap_points; self.capped=False
         base=self.private/'quota-baseline.json'
         self.baseline=json.loads(base.read_bytes()) if base.exists() else None
@@ -112,7 +113,15 @@ class QuotaMonitor:
                 observed=max(r['observed_at'] for r in window)
                 if self.baseline is None or abs(self.baseline['resets_at']-reset)>RESET_JITTER_SECONDS:
                     # A new weekly window starts the count again.
-                    self.baseline=dict(used_percent=used,resets_at=reset,at=now)
+                    # A reading taken before this run began (the newest one on disk can be hours old) only holds the
+                    # place: the count starts again at the first reading made during the run (11-11: a run opened on a
+                    # 26 % reading from the morning, saw the real 34 % twenty seconds later and was stopped for "8 points").
+                    self.baseline=dict(used_percent=used,resets_at=reset,at=now,observed_at=observed,provisional=observed<self.started)
+                    from .dev_agent_workspace import atomic_write,encode
+                    atomic_write(self.private,'quota-baseline.json',encode(self.baseline))
+                elif self.baseline.get('provisional') and observed>=self.started:
+                    self.baseline=dict(used_percent=used,resets_at=reset,at=now,observed_at=observed,provisional=False,
+                                       replaced_used_percent=self.baseline['used_percent'])
                     from .dev_agent_workspace import atomic_write,encode
                     atomic_write(self.private,'quota-baseline.json',encode(self.baseline))
                 run_points=used-self.baseline['used_percent']
