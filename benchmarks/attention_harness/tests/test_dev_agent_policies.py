@@ -460,8 +460,22 @@ def test_exception_chain_double_stream_priority_and_broker_error():
 def test_forbidden_is_screened_before_normalization(text):
     with pytest.raises(ValueError):
         p.failure_signature("unknown", stderr=text)
+    # 2026-11-12: in the Dev's own program output the line is withheld; the run is not ended for it.
+    evidence = execution(stdout="ok line\n" + text, stderr=text)
+    assert p.WITHHELD_LINE in evidence.log_tail and "ok line" in evidence.log_tail
+    assert text not in evidence.log_tail and evidence.signature.exception is None
+
+
+def test_dev_program_may_print_a_reserved_word_without_ending_the_run():
+    line = "Full cabinet containment requires evaluator geometry; target centre alone is insufficient."
+    evidence = execution(stdout="start\n" + line + "\nRuntimeError: grasp lost 3", stderr="")
+    assert "evaluator" not in evidence.log_tail and p.WITHHELD_LINE in evidence.log_tail
+    assert evidence.signature.exception == {"type": "RuntimeError", "normalized_message": "grasp lost <number>"}
+    clean = execution(stdout="start\nRuntimeError: grasp lost 3", stderr="")
+    assert clean.signature.signature_id == evidence.signature.signature_id and p.WITHHELD_LINE not in clean.log_tail
+    # What the Dev did not write is still refused.
     with pytest.raises(ValueError):
-        execution(stdout=text)
+        execution(trace=(dict(status="failed", error={"note": "evaluator said no"}),))
 
 
 def test_all_input_and_output_boundaries_screen_public_fields():

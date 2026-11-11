@@ -56,6 +56,32 @@ def _screen(value: Any) -> None:
     public_screen(unicodedata.normalize("NFKC", json.dumps(value, ensure_ascii=False, allow_nan=False)))
 
 
+WITHHELD_LINE = "[line withheld: reserved word]"
+
+
+def _withhold(stream: str) -> str:
+    """The Dev's own program output, with every line the screen refuses replaced by a marker.
+
+    2026-11-12 (user): a Dev program printed "... requires evaluator geometry ..." and the screen ended the
+    whole run (broker_invariant). The Dev wrote that line itself and can already read it, so nothing leaks;
+    the line is withheld from what is derived here (failure signature, log tail) and the run goes on.
+    Everything not written by the Dev (trace, planner, result, artifacts) is still screened and still raises.
+    """
+    try:
+        _screen(stream)
+        return stream
+    except ValueError:
+        pass
+    lines = []
+    for line in stream.splitlines():
+        try:
+            _screen(line)
+            lines.append(line)
+        except ValueError:
+            lines.append(WITHHELD_LINE)
+    return "\n".join(lines)
+
+
 def _digest(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
                                      separators=(",", ":"), allow_nan=False).encode()).hexdigest()
@@ -222,6 +248,7 @@ def summarize_execution(execution_id: str, public: PublicExecution) -> Execution
         raise ValueError("invalid execution identity")
     if type(public.sequence) is not int or public.sequence < 0:
         raise ValueError("nonnegative acceptance sequence required")
+    public = replace(public, stdout=_withhold(public.stdout), stderr=_withhold(public.stderr))
     _screen(asdict(public))
     events = list(public.trace)
     failed = next((e for e in events if e.get("status") in _FAILED or e.get("error")), None)
