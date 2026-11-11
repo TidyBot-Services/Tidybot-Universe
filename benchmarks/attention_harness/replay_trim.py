@@ -1,6 +1,7 @@
 """Derived replay sidecars. Source recordings and evidence are always read-only."""
 import argparse
 import bisect
+import contextlib
 import hashlib
 import json
 import math
@@ -19,8 +20,11 @@ from .ffmpeg_hold import final_hold
 
 SCHEMA = 'attentionbench.replay-trim.v1'
 VIEWS = ('overview','side','top','left_wrist','right_wrist')
+# 11-12 (user): all_views=1 keeps a frame when ANY recorded view changed. With only the overview deciding, a run whose
+# overview camera barely sees the arm lost 309 of 352 frames of real motion, so side/wrist replays jumped ("teleport").
+# The new key also makes every sidecar built by the overview-only rule fail verification until it is rebuilt.
 PARAMS = dict(gap_s=1.,hold_s=1.,dedupe_tau=.0002,min_break_s=1.,
-              analysis_width=320,analysis_height=180,pixel_threshold=10)
+              analysis_width=320,analysis_height=180,pixel_threshold=10,all_views=1)
 HOOK_TIMEOUT = 300
 
 
@@ -69,6 +73,46 @@ def _gray(path, params):
     return np.frombuffer(raw,dtype=np.uint8).reshape(-1,h*w)
 
 
+def _gray_frames(paths, params):
+    """Yield, per source frame, one gray analysis frame of every view; decodes all views side by side so memory
+    stays at one frame per view however long the recording is."""
+    w,h=params['analysis_width'],params['analysis_height'];size=w*h
+    with contextlib.ExitStack() as stack:
+        processes=[]
+        for path in paths:
+            error=stack.enter_context(tempfile.TemporaryFile())
+            process=subprocess.Popen(['nice','-n','19','ffmpeg','-nostdin','-v','error','-i',str(path),'-vsync','0',
+                '-vf',f'scale={w}:{h},format=gray','-f','rawvideo','-pix_fmt','gray','pipe:1'],
+                stdout=subprocess.PIPE,stderr=error)
+            stack.callback(_reap,process);processes.append((process,error))
+        while True:
+            frames=[process.stdout.read(size) for process,_ in processes]
+            if not any(frames):break
+            if any(len(frame)!=size for frame in frames):raise ValueError('recording_frame_count_mismatch')
+            yield [np.frombuffer(frame,dtype=np.uint8).astype(np.int16) for frame in frames]
+        for process,error in processes:
+            if process.wait(timeout=120):
+                error.seek(0);raise ValueError(error.read().decode(errors='replace')[-1600:])
+
+
+def _reap(process):
+    if process.poll() is None:process.kill()
+    process.stdout.close();process.wait()
+
+
+def _analysis_views(root, count, params):
+    """The views that decide what is cut: the overview, plus (all_views) every other view the builder will encode."""
+    views=[('overview',_file(root,'advisor_replay.mp4'))]
+    if not params['all_views']:return views
+    for view in VIEWS[1:]:
+        try:
+            path=_file(root,f'advisor_replay_{view}.mp4')
+            if _probe(path)[0]!=count:continue  # build() skips this view too (recording_frame_count_mismatch)
+        except (OSError,ValueError):continue
+        views.append((view,path))
+    return views
+
+
 def _metadata(root):
     value=json.loads(_file(root,'camera_recording.json').read_bytes())
     if not isinstance(value,dict):raise ValueError('invalid_camera_recording')
@@ -101,11 +145,11 @@ def analyze(exec_dir, **params):
     for key,value in params.items():
         if type(value) not in (int,float) or not math.isfinite(value) or value<0:raise ValueError('invalid_trim_parameter')
         if key in ('analysis_width','analysis_height') and (type(value) is not int or value<1):raise ValueError('invalid_analysis_size')
-    if params['hold_s']<1/60 or params['dedupe_tau']>1:raise ValueError('invalid_trim_parameter')
+    if params['hold_s']<1/60 or params['dedupe_tau']>1 or params['all_views'] not in (0,1):raise ValueError('invalid_trim_parameter')
     root=Path(exec_dir);metadata,traces,original=_metadata(root)
-    source=_file(root,'advisor_replay.mp4');pixels=_gray(source,params)
+    source=_file(root,'advisor_replay.mp4')
     count,video_end=_probe(source)
-    if count!=len(pixels) or count not in (len(original),len(original)+1):raise ValueError('recording_frame_count_mismatch')
+    if count not in (len(original),len(original)+1):raise ValueError('recording_frame_count_mismatch')
     if video_end and video_end<original[-1]:raise ValueError('video_shorter_than_timing')
     if count>len(original):
         # The optional terminal hold has no trace row. Extend both clocks by the
@@ -113,10 +157,16 @@ def analyze(exec_dir, **params):
         tail=max(0,video_end-original[-1]) if video_end else 0
         original.append(original[-1]+tail);traces.append(traces[-1]+tail)
     video_end=max(video_end,original[-1])
-    kept=[0]
-    for index in range(1,count):
-        changed=np.count_nonzero(np.abs(pixels[index].astype(np.int16)-pixels[kept[-1]])>params['pixel_threshold'])/pixels.shape[1]
-        if index==count-1 or changed>params['dedupe_tau']:kept.append(index)
+    views=_analysis_views(root,count,params)
+    kept=[0];last=None;decoded=0
+    for index,frames in enumerate(_gray_frames([path for _,path in views],params)):
+        decoded=index+1
+        if index==0:last=frames;continue
+        # Compare with the last KEPT frame of the same view; one view that changed is enough to keep the frame.
+        changed=max(np.count_nonzero(np.abs(frame-previous)>params['pixel_threshold'])/frame.size
+                    for frame,previous in zip(frames,last))
+        if index==count-1 or changed>params['dedupe_tau']:kept.append(index);last=frames
+    if decoded!=count:raise ValueError('recording_frame_count_mismatch')
     frames=[];durations=[];breaks=[];elapsed=0.
     for k,index in enumerate(kept):
         start=original[index];end=original[kept[k+1]] if k+1<len(kept) else video_end
@@ -136,7 +186,7 @@ def analyze(exec_dir, **params):
         frames_manifest_sha256=metadata['frame_manifest_sha256'],frame_count=count,duration_seconds=video_end),
         original_duration_seconds=video_end,trimmed_duration_seconds=elapsed,
         skipped_seconds=max(0,video_end-elapsed),frames=frames,breaks=breaks,
-        durations=durations,videos={},skipped_views={},tool='replay_trim/1')
+        durations=durations,videos={},skipped_views={},analysis_views=[view for view,_ in views],tool='replay_trim/1')
 
 
 def _encode(source, target, plan, temporary):
