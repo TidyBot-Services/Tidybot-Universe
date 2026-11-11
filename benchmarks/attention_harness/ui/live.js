@@ -5863,8 +5863,11 @@
 
   function updateAgentClock() {
     const clock=view.querySelector('[data-agent-reply-countdown]');if(!clock)return;
-    const left=Math.max(0,Number(clock.dataset.deadline)-Date.now()/1000),whole=Math.ceil(left),panel=clock.closest('.op-reply-live');
+    // 11-12: since the run page has three parts (11-10) a waiting reply's countdown sits in the 02 heading, outside
+    // .op-reply-live; reading .style of null threw during every refresh, and the page showed "could not load run data".
+    const left=Math.max(0,Number(clock.dataset.deadline)-Date.now()/1000),whole=Math.ceil(left),panel=clock.closest('.op-reply-live')||view.querySelector('.op-reply-live');
     clock.textContent=`${Math.floor(whole/60)}:${String(whole%60).padStart(2,'0')}`;
+    if(!panel)return;
     panel.style.setProperty('--reply-left',Math.min(1,left/Number(clock.dataset.seconds)).toFixed(3));
     panel.dataset.urgent=String(left<=20);
   }
