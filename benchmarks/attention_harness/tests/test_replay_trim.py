@@ -485,3 +485,18 @@ def test_terminal_projection_cache_sees_a_sidecar_published_later(tmp_path,monke
     (episode/'replay_trim').mkdir();(episode/'replay_trim/segments.json').write_text('{}')
     assert dev_agent_view.projection(store,cell)=={'n':2},'publishing a sidecar must invalidate the cached view'
     dev_agent_view._CACHE.clear()
+
+
+def test_hook_skips_an_execution_the_recorder_kept_no_video_for(tmp_path,monkeypatch):
+    # 11-11 (Cora's run, e000007): base move refused at once -> 1 frame -> video_saved false. Not a trim failure.
+    (tmp_path/'camera_recording.json').write_text(json.dumps({'video_saved':False,'error':'ValueError: Fewer than two real control-step frames were saved'}))
+    logs=[];monkeypatch.setattr(trim.subprocess,'Popen',lambda *a,**kw:pytest.fail('spawned a builder for an execution with no video'))
+    trim.build_safe(tmp_path,logs.append);assert not logs
+    # A receipt that does not say so (missing, unreadable, or video_saved true) still goes to the builder.
+    def fail(*a,**kw):raise RuntimeError('builder reached')
+    monkeypatch.setattr(trim.subprocess,'Popen',fail)
+    for text in (None,'not json',json.dumps({'video_saved':True})):
+        receipt=tmp_path/'camera_recording.json'
+        if text is None:receipt.unlink(missing_ok=True)
+        else:receipt.write_text(text)
+        trim.build_safe(tmp_path,logs.append);assert 'builder reached' in logs[-1]

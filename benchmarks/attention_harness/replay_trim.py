@@ -258,9 +258,21 @@ def _log(log, message):
     except Exception:pass
 
 
+def _no_video(exec_dir):
+    """True when the recorder deliberately kept no video (e.g. an execution that stopped before its second
+    control step): there is nothing to trim, so this is not a failure. A missing or unreadable receipt is not
+    this case and still goes to the builder, which reports it."""
+    try:value=json.loads((Path(exec_dir)/'camera_recording.json').read_bytes())
+    except (OSError,ValueError):return False
+    return isinstance(value,dict) and value.get('video_saved') is False
+
+
 def build_safe(exec_dir, log):
     """Bound the complete builder, including decoding, and kill its process group."""
     if os.environ.get('ATTENTIONBENCH_REPLAY_TRIM','1')=='0':return
+    # 11-11: a run log said "replay_trim failed: video_not_saved" for an execution that ended at its first move;
+    # the recorder correctly kept no video there, so skip it quietly instead of logging a failure.
+    if _no_video(exec_dir):return
     process=None
     try:
         process=subprocess.Popen([sys.executable,'-m','benchmarks.attention_harness.replay_trim','build',str(Path(exec_dir).absolute())],
