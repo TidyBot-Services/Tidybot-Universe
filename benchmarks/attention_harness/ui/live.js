@@ -4841,28 +4841,24 @@
     const m=video&&/^(.*\/cells\/[a-f0-9]{64})\/agent\/files\/replays\/(e\d+)\//.exec(video.media_url);
     return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/free-view/${m[2]}`)}" aria-pressed="false" title="Rotate, zoom and pan a 3D replay of this attempt. View only.">3D view</button>`:'';
   }
-  function openFreeView(base,title) {
+  function openFreeView(base,attempt) {
+    // Full-window, look-only 3D replay. The page inside draws its own header, controls and waiting screen.
     document.querySelector('[data-free-view-dialog]')?.remove();
-    const dark=document.getElementById('attentionbench-clear')?.dataset.theme==='dark';
     const box=document.createElement('div');
     box.dataset.freeViewDialog='';box.setAttribute('role','dialog');box.setAttribute('aria-modal','true');box.setAttribute('aria-label','3D view');
-    box.style.cssText='position:fixed;inset:0;z-index:9000;background:#0b0d10cc;display:flex;align-items:center;justify-content:center;padding:max(12px,2vmin)';
-    const card=document.createElement('div');
-    card.style.cssText=`display:flex;flex-direction:column;width:min(1400px,100%);height:min(900px,100%);border-radius:14px;overflow:hidden;background:${dark?'#15181d':'#fff'};color:${dark?'#e6e9ee':'#242822'};box-shadow:0 20px 60px -20px #000`;
-    const head=document.createElement('div');
-    head.style.cssText='display:flex;gap:12px;align-items:center;padding:10px 14px;font:600 13px system-ui,sans-serif';
-    const name=document.createElement('span');name.style.cssText='flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    name.textContent=`3D view · ${title} · view only`;
-    const close=document.createElement('button');close.type='button';close.textContent='Close';
-    close.style.cssText='font:inherit;padding:5px 14px;border-radius:8px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer';
+    box.style.cssText='position:fixed;inset:0;z-index:9000;background:#070907;opacity:0;transition:opacity .25s ease';
     const frame=document.createElement('iframe');
-    frame.title='3D replay, view only';frame.setAttribute('sandbox','allow-scripts allow-same-origin');
-    frame.style.cssText='flex:1 1 auto;min-height:0;width:100%;border:0;background:#0e1116';
-    frame.src=`/ui/free_view.html?embed=1&data=${encodeURIComponent(base)}`;
-    const shut=()=>{box.remove();document.removeEventListener('keydown',onKey);};
+    frame.title='3D replay, look only';frame.setAttribute('sandbox','allow-scripts allow-same-origin');frame.setAttribute('allow','fullscreen');
+    frame.style.cssText='display:block;width:100%;height:100%;border:0;background:#070907';
+    const title=document.querySelector('[data-page-title] h1')?.textContent.replace(/\s+/g,' ').trim()||'';
+    frame.src=`/ui/free_view.html?embed=1&data=${encodeURIComponent(base)}&title=${encodeURIComponent(title)}&attempt=${encodeURIComponent(attempt)}`;
+    const back=document.activeElement,scroll=document.documentElement.style.overflow;
+    const shut=()=>{box.remove();document.documentElement.style.overflow=scroll;document.removeEventListener('keydown',onKey);window.removeEventListener('message',onMessage);back?.focus?.();};
     const onKey=event=>{if(event.key==='Escape')shut();};
-    close.addEventListener('click',shut);box.addEventListener('click',event=>{if(event.target===box)shut();});document.addEventListener('keydown',onKey);
-    head.append(name,close);card.append(head,frame);box.append(card);document.body.append(box);close.focus();
+    const onMessage=event=>{if(event.origin===location.origin&&event.source===frame.contentWindow&&event.data?.source==='attentionbench-free-view'&&event.data.type==='close')shut();};
+    document.addEventListener('keydown',onKey);window.addEventListener('message',onMessage);
+    document.documentElement.style.overflow='hidden';
+    box.append(frame);document.body.append(box);requestAnimationFrame(()=>{box.style.opacity='1';});frame.focus();
   }
   function operatorExecution(snapshot, data) {
     const {attempt,selected,currentReplay,startingStill,attempts,trace,recording,videos,images,recordingViews,viewOptions,chosenView,streaming,active,flipStaticRows,cameraSuite,cameraLabel}=data;
