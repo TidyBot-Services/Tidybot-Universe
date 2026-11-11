@@ -234,3 +234,12 @@ def test_task_picker_pictures_and_manifest_are_the_only_new_ui_files():
     for name in ('tasks/render-log.jsonl', 'tasks/../index.html', 'tasks/x-101-start.png', 'tasks/X-101-start.jpg',
                  'tasks/a/b-101-done.jpg', 'tasks/manifest.json.bak', 'index.html', 'tasks/'):
         assert policy.ui_asset(name) is None, name
+
+
+def test_arm_motion_long_passes_and_nothing_else_does():
+    # 11-12 (user): long arm moves on Remote too.
+    assert 'arm_motion' not in rebuilt(body())
+    assert 'arm_motion' not in rebuilt(body(arm_motion='short'))
+    assert rebuilt(body(arm_motion='long'))['arm_motion'] == 'long'
+    with pytest.raises(policy.Refused):
+        rebuilt(body(arm_motion='fast'))

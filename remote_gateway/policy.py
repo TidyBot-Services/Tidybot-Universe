@@ -225,6 +225,10 @@ def rebuild(body, *, user, options, limits, credentials, lab_codex=None):
                   agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'), wall_seconds=NOMINAL_WALL_SECONDS))
     if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', human_reply_seconds=limits.human_reply_seconds)
     if rules:result['rules_profile'] = rules
+    # 11-12 (user): long arm moves on Remote too. Only the two named values; anything else is refused.
+    motion = selection.get('arm_motion', 'short')
+    if motion not in ('short', 'long'):raise Refused('invalid_body', 'Arm motion must be short or long.', 400)
+    if motion == 'long':result['arm_motion'] = 'long'
     suffix = selection.get('name_suffix')
     if isinstance(suffix, str) and suffix.strip():result['name_suffix'] = suffix.strip()[:80]
     if lab_codex is not None and uses_lab_codex(result):result.update(dev_reasoning_effort=lab_codex['effort'], quota_stop_percent=lab_codex['stop_percent'])

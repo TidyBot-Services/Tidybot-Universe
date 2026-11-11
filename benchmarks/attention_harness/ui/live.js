@@ -3170,7 +3170,7 @@
             <label class="ab-launch-field">Scene seed<select name="seed" aria-label="Scene seed"></select><small data-seed-note role="status"></small></label>
             <label class="ab-launch-field">Session type<select name="v2_mode"><option value="experiment">Frozen policy comparison</option><option value="interactive">Interactive · excluded from comparison</option></select></label>
             <label class="ab-launch-field">Robot <small class="ab-field-meta">· Set by task</small><output data-robot-summary>OpenArm365 · both arms</output><select name="robot_model" aria-label="Robot" required></select><select name="execution_arm" aria-label="Execution mode" required></select></label>
-            <label class="ab-launch-field" data-arm-motion-field${root.dataset.remote==='1'?' hidden':''}>Arm motion<select name="arm_motion" aria-label="Arm motion"><option value="long">Long moves · smoother (up to 30 cm at once)</option><option value="short">Short steps · 5 cm at a time (as before)</option></select><small>Long moves let the arm cover a transfer in one motion and pause less between moves.</small></label>
+            <label class="ab-launch-field" data-arm-motion-field>Arm motion<select name="arm_motion" aria-label="Arm motion"><option value="long">Long moves · smoother (up to 30 cm at once)</option><option value="short">Short steps · 5 cm at a time (as before)</option></select><small>Long moves let the arm cover a transfer in one motion and pause less between moves.</small></label>
             <label class="ab-launch-field">Name suffix (optional)<input name="name_suffix" aria-label="Name suffix" maxlength="80" placeholder="e.g. lower-grasp-v2"><small data-launch-name-preview aria-live="polite"></small></label>
           </div></section>
           <section class="ab-launch-section" data-run-config-section="help"><div class="ab-run-section-head"><h4><span class="op-number">02</span>Help and attention</h4><small>Each request uses one unit of human attention.</small></div><div class="ab-launch-grid">
@@ -3631,8 +3631,8 @@
             help_budget:Number(form.help_count.value),goal_key:form.goal_id.value};
           if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
           selection=agentLaunchSelection(selection,{limits:budget.limits,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
-          // 11-12 (user): long arm moves are the default on this host; Remote keeps the earlier short steps until it is deployed there.
-          if(root.dataset.remote!=='1'&&form.arm_motion?.value==='long')selection.arm_motion='long';
+          // 11-12 (user): long arm moves are the default, here and on Remote; Short steps stays selectable.
+          if(form.arm_motion?.value==='long')selection.arm_motion='long';
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled&&window.Lobby.snap?.demo){
