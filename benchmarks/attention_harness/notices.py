@@ -233,14 +233,16 @@ class NoticeReader:
             add('auto-'+n['title'],'warning' if 'paused' in n['title'].lower() else 'info','memory',n['title'],'','',n['at'])
         for error in auto['errors']:add('auto-error-'+error,'error','memory',error,'','',stamp)
         for event in auto['events']:
-            kind=event['event'];title=safe_text(event['title'],'Note')
+            # Operator bookkeeping entries (an origin check reopened, abandoned or retried) carry no note title and are not shown.
+            kind=event.get('event');title=safe_text(event.get('title'),'Note')
+            if kind not in {'promoted','rejected','inconclusive','demoted'}:continue
             wording={'promoted':f'Note checked and trusted: {title} — the failure stopped when Dev had the note.',
                      'rejected':f'Note rejected after check: {title}.',
                      'inconclusive':safe_text(event.get('reason'),'Could not finish the check')+' — '+title,
                      'demoted':f'Note moved back to Unvalidated: {title} — the failure came back in 3 of its last 5 uses.'}
             if kind=='promoted' and event.get('trust_scope')=='task_scoped':wording[kind]=f'Trusted for this task: {title} — checks on other seeds passed.'
             if kind=='demoted' and event.get('trust_scope')=='scene_scoped':wording[kind]=f'Note moved back to trusted on its origin scene: {title} — the failure came back in 3 of its last 5 uses.'
-            if kind in wording:add('memory-event-'+str(event['seq']),'info','memory',wording[kind],'','',event.get('time') or stamp)
+            add('memory-event-'+str(event.get('seq',f"{kind}-{event.get('memory_id')}-{event.get('time')}")),'info','memory',wording[kind],'','',event.get('time') or stamp)
         priority = {'error': 0, 'warning': 1, 'info': 2}
         rows.sort(key=lambda n: (priority[n['level']], n['since']), reverse=False)
         rows = sorted(rows, key=lambda n: (priority[n['level']], -datetime.fromisoformat(n['since']).timestamp()))[:20]
