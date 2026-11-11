@@ -500,3 +500,39 @@ def test_hook_skips_an_execution_the_recorder_kept_no_video_for(tmp_path,monkeyp
         if text is None:receipt.unlink(missing_ok=True)
         else:receipt.write_text(text)
         trim.build_safe(tmp_path,logs.append);assert 'builder reached' in logs[-1]
+
+
+# 11-12 (user): only the overview decided what was cut. Zhuohan's run (devexp-6b21c287…, e000012) had an overview that
+# barely saw the arm, so one cut dropped 309 of 352 frames of real motion and the side/wrist replays jumped ("teleport").
+def test_a_frame_that_changed_only_in_another_view_is_kept(tmp_path):
+    times=(0.,.2,.4,.6,.8)
+    root=execution(tmp_path/'episode',times,(20,)*5)                 # overview: nothing visible moves
+    moving=execution(tmp_path/'moving',times,(20,60,100,140,180))    # side: the arm moves on every frame
+    shutil.copyfile(moving/'advisor_replay.mp4',root/'advisor_replay_side.mp4')
+    shutil.copyfile(root/'advisor_replay.mp4',root/'advisor_replay_top.mp4')
+    short=execution(tmp_path/'short',(0.,.2),(20,180))
+    shutil.copyfile(short/'advisor_replay.mp4',root/'advisor_replay_left_wrist.mp4')
+    # Negative control first: the overview-only rule keeps just the first and the last frame.
+    assert [f['src_index'] for f in trim.analyze(root,all_views=0)['frames']]==[0,4]
+    plan=trim.analyze(root)
+    assert [f['src_index'] for f in plan['frames']]==[0,1,2,3,4]
+    assert plan['analysis_views']==['overview','side','top'], 'a view with another frame count never decides'
+    value=trim.build(root)
+    assert value['skipped_views']['left_wrist']=='recording_frame_count_mismatch'
+    side=trim._gray(root/value['videos']['side']['file'],trim.PARAMS)
+    assert len(side)==5 and all(np.abs(b-a).mean()>10 for a,b in zip(side.astype(int),side[1:].astype(int)))
+
+
+def test_a_sidecar_cut_by_the_overview_only_rule_is_not_served_and_gets_rebuilt(tmp_path):
+    root=execution(tmp_path/'episode',views=('side',))
+    trim.build(root)
+    marker=root/'replay_trim/segments.json';value=json.loads(marker.read_text())
+    del value['params']['all_views'];value.pop('analysis_views');marker.write_text(json.dumps(value))
+    assert trim.load_verified(root) is None and trim.public_trim(root) is None   # the UI falls back to the full video
+    assert trim.build(root)['params']['all_views']==1
+    assert trim.load_verified(root)
+
+
+def test_invalid_all_views_value_refused(tmp_path):
+    root=execution(tmp_path/'episode')
+    with pytest.raises(ValueError,match='invalid_trim_parameter'):trim.analyze(root,all_views=2)
