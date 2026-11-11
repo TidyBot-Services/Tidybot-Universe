@@ -301,14 +301,17 @@
     if (!state.enabled) return '';
     const snap = state.snap, waiting = (snap.queue || []).length, running = snap.robot?.running ? 1 : 0;
     const place = waiting + running + 1;
-    const mineBusy = [...(snap.robot?.open || []), snap.robot?.running, ...(snap.queue || [])].some(c => c?.mine);
+    // 11-11 (user): a person may have more than one run at once; the gateway says how many (limits.active_runs).
+    const mineIds = new Set([...(snap.robot?.open || []), snap.robot?.running, ...(snap.queue || [])].filter(c => c?.mine).map(c => c.experiment_id || c.id || c));
+    const mineLimit = Number(snap.limits?.active_runs) > 0 ? Number(snap.limits.active_runs) : 1, mineBusy = mineIds.size >= mineLimit;
+    const mineMany = `You already have ${mineLimit} runs open or in line; finish or cancel one first.`;
     if (shared()) {
       // 11-10 (user): no Queue section. Say one line only when it matters: you already have a run, or yours would wait.
       const opened = snap.robot.open.length, slots = snap.robot.slots, free = opened < slots && !waiting;
-      const line = mineBusy ? 'You already have a run open or in line; finish or cancel it first.' : free ? '' : `All ${esc(slots)} run slots are in use; your run would be #${waiting + 1} in line.`;
+      const line = mineBusy ? mineLimit > 1 ? mineMany : 'You already have a run open or in line; finish or cancel it first.' : free ? '' : `All ${esc(slots)} run slots are in use; your run would be #${waiting + 1} in line.`;
       return line ? `<p class="ab-run-hint" data-lobby-newrun data-lobby-shared data-lobby-queue-note>${line}</p>` : '';
     }
-    const line = mineBusy ? 'You already have a run in line; finish or cancel it first.' : place > 1 ? `The robot is busy; your run would be #${place} in line.` : '';
+    const line = mineBusy ? mineLimit > 1 ? mineMany : 'You already have a run in line; finish or cancel it first.' : place > 1 ? `The robot is busy; your run would be #${place} in line.` : '';
     return line || snap.demo ? `<p class="ab-run-hint" data-lobby-newrun data-lobby-queue-note>${line}${snap.demo ? `${line ? ' ' : ''}Demo engine: simulated run, no GPU, no real provider.` : ''}</p>` : '';
   }
   function shapeNewRun(form) {

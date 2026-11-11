@@ -12,7 +12,7 @@ Environment="ATTENTION_PREFLIGHT_HIDDEN_PATHS=__DATA__/gateway-state:__DATA__/ga
 # __SIM_LOCK__ must be the host's shared lock, outside gateway-state; its queue lives beside it.
 # Optional PARCC credential: omit LoadCredential and use --key-source none without a key.
 LoadCredential=parcc-key:__KEY_FILE__
-ExecStart=__PY__ -B -u __SRC__/remote_gateway/deploy/run_host_harness.py __WORKSPACE__ __HARNESS_DATA__ __PORT__ --secret __DATA__/gateway-state/gateway.secret --key-source credential --sim-lock __SIM_LOCK__ --run-slots 3
+ExecStart=__PY__ -B -u __SRC__/remote_gateway/deploy/run_host_harness.py __WORKSPACE__ __HARNESS_DATA__ __PORT__ --secret __DATA__/gateway-state/gateway.secret --key-source credential --sim-lock __SIM_LOCK__ --run-slots 5
 UMask=0077
 LimitCORE=0
 Restart=on-failure

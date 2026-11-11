@@ -17,11 +17,12 @@ class Limits:
     wall_seconds: int = 3600
     help_requests: int = 5
     human_reply_seconds: int = 120  # How long an interactive run waits for its owner before the Advisor answers.
-    runs_per_day: int = 3
-    active_runs: int = 1
+    # 11-11 (user): two runs a person at once, five a day, five open on the host (qifei GPU: about 3.4 G a run, 25 G free).
+    runs_per_day: int = 5
+    active_runs: int = 2
     # Runs open at once on the host (Dev writing code, waiting for a model or a person). The robot itself is one token,
     # taken by the harness for one execution at a time. Set from measured GPU memory and disk; see the time-share plan.
-    run_slots: int = 3
+    run_slots: int = 5
     # Opening one run page makes dozens of calls (views, evidence, video ranges); 5 a second with a burst of 20 broke the page.
     requests_per_second: float = 10
     request_burst: int = 60

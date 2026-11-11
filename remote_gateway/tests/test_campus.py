@@ -512,7 +512,7 @@ def test_prune_cli_uses_config_retention_and_requires_explicit_delete(retention,
 def test_campus_example_loads_with_frozen_limits():
     config = load(DEPLOY / 'gateway.json.example')
     assert config.cookie_secure and config.trusted_proxy and config.listen_host == '127.0.0.1'
-    assert (config.limits.versions, config.limits.runs_per_day, config.limits.help_requests, config.limits.run_slots, config.limits.logins_per_hour) == (3, 3, 5, 3, 10)
+    assert (config.limits.versions, config.limits.runs_per_day, config.limits.help_requests, config.limits.active_runs, config.limits.run_slots, config.limits.logins_per_hour) == (3, 5, 5, 2, 5, 10)
     assert config.upstream == 'http://127.0.0.1:__HARNESS_PORT__'
     assert config.disk_path == Path('__HARNESS_DATA__') and config.min_free_gb == 150 and config.retention_days == 7
     assert config.lab_codex == dict(CODEX, runs_per_day=6)

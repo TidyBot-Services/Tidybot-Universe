@@ -129,7 +129,7 @@ def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, 
     recent = [make(row) for row in done[:40]]
     return dict(demo=False, robot=dict(running=live, open=opened, slots=limits.run_slots, waiting=sum(c['robot']['state'] == 'waiting' for c in opened)), queue=line, recent=recent,
                 me=dict(nickname=nicknames.get(viewer)) if viewer else None, clock=dict(speed=1), events=[],
-                counts=dict(needs_you=sum(c['mine'] and c['state'] == 'waiting_human' for c in opened), queued=len(line), running=len(opened)), limits=dict(help_wait_seconds=limits.human_reply_seconds))
+                counts=dict(needs_you=sum(c['mine'] and c['state'] == 'waiting_human' for c in opened), queued=len(line), running=len(opened)), limits=dict(help_wait_seconds=limits.human_reply_seconds, active_runs=limits.active_runs))
 
 
 def filter_options(options, limits, *, lab_codex=None):

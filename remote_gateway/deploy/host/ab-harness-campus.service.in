@@ -7,7 +7,7 @@ Environment=CODEX_HOME=@WS@/codex-home
 Environment=PATH=@WS@/tools/bin:@WS@/tools/codex/bin:@WS@/tools/conda/condabin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Agents never see the gateway state or the key folder.
 Environment=ATTENTION_PREFLIGHT_HIDDEN_PATHS=@DATA@/gateway-state:@DATA@/gateway-state/gateway.secret:@DATA@/secrets:@DATA@/secrets/parcc.key
-ExecStart=/bin/bash -c 'exec /usr/bin/python3 @WS@/repos/attentionbench/remote_gateway/deploy/run_host_harness.py @WS@ @DATA@/harness @PORT_CAMPUS@ --secret @DATA@/gateway-state/gateway.secret --key-source stdin --sim-lock @TEST_DATA@/sim.lock --run-slots 3 < @DATA@/secrets/parcc.key'
+ExecStart=/bin/bash -c 'exec /usr/bin/python3 @WS@/repos/attentionbench/remote_gateway/deploy/run_host_harness.py @WS@ @DATA@/harness @PORT_CAMPUS@ --secret @DATA@/gateway-state/gateway.secret --key-source stdin --sim-lock @TEST_DATA@/sim.lock --run-slots 5 < @DATA@/secrets/parcc.key'
 Restart=always
 RestartSec=10
 [Install]

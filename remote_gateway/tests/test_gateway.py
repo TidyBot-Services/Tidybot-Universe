@@ -108,7 +108,7 @@ class Browser:
 @pytest.fixture
 def world(tmp_path, loopback):
     harness = Harness()
-    config = Config(state_dir=tmp_path / 'state', upstream=harness.url, ui_dir=UI, listen_port=0, cookie_secure=True, limits=Limits(requests_per_second=1000, request_burst=1000, logins_per_hour=5, run_slots=1))  # One slot: the line tests below need a full host.
+    config = Config(state_dir=tmp_path / 'state', upstream=harness.url, ui_dir=UI, listen_port=0, cookie_secure=True, limits=Limits(requests_per_second=1000, request_burst=1000, logins_per_hour=5, run_slots=1, active_runs=1, runs_per_day=3))  # One slot and one run a person: the line tests below need a full host.
     config.state_dir.mkdir()
     now = [1000000.0]
     gateway = gateway_server.create_server(config, secret=SECRET, clock=lambda: now[0])
@@ -608,6 +608,19 @@ def test_one_place_in_line_per_person(world):
     a = start(first, 'client-key-a')[1]['experiment_id'];world.harness.rows = [row(a, 'running')]
     assert start(second, 'client-key-b')[0] == 200
     assert start(second, 'client-key-c')[0] == 409
+
+
+def test_two_runs_a_person_when_the_limit_says_two(world):
+    """11-11 (user): a person may have two runs at once; the third is refused and the lobby is told the limit."""
+    from dataclasses import replace
+    gateway = world.gateway.gateway;gateway.config = replace(gateway.config, limits=replace(gateway.config.limits, active_runs=2, run_slots=5, runs_per_day=5))
+    person = world.person()
+    a = start(person, 'client-key-a')[1]['experiment_id'];world.harness.rows = [row(a, 'running')]
+    status, value = start(person, 'client-key-b');assert status == 200
+    world.harness.rows.append(row(value['experiment_id'], 'running'))
+    status, value = start(person, 'client-key-c')
+    assert status == 409 and value['code'] == 'run_active' and '2 runs' in json.dumps(value)
+    assert person.json('GET', '/api/lobby')[1]['limits']['active_runs'] == 2
 
 
 def test_nothing_starts_while_runs_are_paused_and_the_line_keeps_its_order(world):

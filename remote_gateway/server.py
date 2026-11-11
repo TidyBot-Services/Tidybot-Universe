@@ -423,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
         # Resuming your own paused run is not a second run: the run itself is left out of the count.
         queued = sum(row['user_id'] == self.user and row['experiment_id'] != experiment_id for row in self.gateway.store.queue())
         if policy.active_runs(self.gateway.listing(fresh=True), self.gateway.store.runs_of(self.user) - {experiment_id}) + queued >= limits.active_runs:
-            raise policy.Refused('run_active', 'You already have a run going. Finish or cancel it first.', 409)
+            raise policy.Refused('run_active', 'You already have a run going. Finish or cancel it first.' if limits.active_runs == 1 else f'You already have {limits.active_runs} runs going. Finish or cancel one first.', 409)
 
     def create(self):
         body = self.read_json()

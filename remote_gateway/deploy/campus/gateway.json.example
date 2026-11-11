@@ -12,5 +12,5 @@
   "retention_days": 7,
   "stop_files": ["__DATA__/stop-new-runs"],
   "lab_codex": {"model": "gpt-6.1-sol", "effort": "high", "runs_per_day": 6, "stop_percent": 77},
-  "limits": {"versions": 3, "runs_per_day": 3, "help_requests": 5, "run_slots": 3, "logins_per_hour": 10}
+  "limits": {"versions": 3, "runs_per_day": 5, "active_runs": 2, "help_requests": 5, "run_slots": 5, "logins_per_hour": 10}
 }
