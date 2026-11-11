@@ -330,6 +330,44 @@ def test_the_daily_limit_and_a_run_in_progress_are_refused(world):
     assert browser.json('POST', f'/api/dev-v2/experiments/{second}/run', {})[1]['code'] == 'run_active'
 
 
+def test_many_readers_share_one_run_list_and_a_write_refreshes_it(world):
+    """11-11: every page refresh and lobby poll used to ask the host for its whole run list; a few open pages kept the host at 100% CPU."""
+    browser, other = world.person(), world.person()
+    lists = lambda: sum(p == '/api/runs' for p in world.harness.paths())
+    before = lists()
+    for _ in range(6):
+        assert browser.json('GET', '/api/lobby')[0] == 200 and other.json('GET', '/api/runs')[0] == 200
+    assert lists() - before <= 1
+    a = start(browser, 'client-key-a')[1]['experiment_id']  # a write: the next reader must see the host's new state
+    world.harness.rows = [row(a, 'running')];world.gateway.gateway.forget_listing()
+    assert [c['experiment_id'] for c in other.json('GET', '/api/lobby')[1]['robot']['open']] == [a]
+    world.gateway.gateway.listing_cache = (world.gateway.gateway.listing_cache[0] - 60, world.gateway.gateway.listing_cache[1])
+    before = lists();other.json('GET', '/api/lobby');assert lists() - before == 1  # an old answer is not reused
+
+
+def test_a_write_to_the_host_drops_the_shared_run_list(world):
+    browser = world.person();gateway = world.gateway.gateway
+    browser.json('GET', '/api/lobby');assert gateway.listing_cache is not None
+    start(browser, 'client-key-a');writes = gateway.listing_writes
+    assert writes >= 1
+    gateway.listing();gateway.upstream.on_write();assert gateway.listing_cache is None and gateway.listing_writes == writes + 1
+
+
+def test_the_owner_can_resume_their_own_paused_run(world):
+    # 11-11 (Remote, Ava and Ben): a paused run counted as the owner's active run, so Resume got 409 run_active.
+    browser = world.person()
+    assert browser.send('POST', '/api/dev-v2/experiments', dict(selection=SELECTION, start=False))[0] == 200
+    user = browser.json('GET', '/api/session')[1]['user'];mine = next(iter(world.gateway.gateway.store.runs_of(user)))
+    world.harness.rows = [dict(experiment_id=mine, experiment_state='paused')]
+    status, value = browser.json('POST', f'/api/dev-v2/experiments/{mine}/run', {})
+    assert value.get('code') != 'run_active' and status != 409
+    # It goes on: straight to the host, or into the robot queue when the robot is busy.
+    assert f'/api/dev-v2/experiments/{mine}/run' in world.harness.paths() or any(row['experiment_id'] == mine for row in world.gateway.gateway.store.queue())
+    # A second run of the same person is still refused while the first is paused.
+    status, value = browser.json('POST', '/api/dev-v2/experiments', dict(selection={**SELECTION, 'request_key': 'another'}, start=False))
+    assert status == 409 and value['code'] == 'run_active'
+
+
 @pytest.mark.parametrize('how', ['pause', 'stop'])
 def test_paused_means_no_new_run_anywhere(world, how, tmp_path):
     browser = world.person();owned(world, browser)
@@ -507,6 +545,7 @@ def test_a_slow_start_does_not_hold_up_whoever_joins_the_line(world):
     assert gateway.dispatch()[:2] == (made['experiment_id'], 200) and gateway.store.queue() == []
 
 def test_the_second_person_waits_in_line_and_starts_when_the_robot_is_free(world):
+    world.gateway.gateway.listing_ttl = 0  # the test changes the fake host behind the gateway's back, so the shared run list must not be reused
     first, second = world.person(), world.person()
     a = start(first, 'client-key-a')[1]['experiment_id']
     world.harness.rows = [row(a, 'running')]

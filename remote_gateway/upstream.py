@@ -27,6 +27,7 @@ class Upstream:
         if url.scheme != 'http' or not url.hostname or url.path not in ('', '/') or url.query:raise ValueError('upstream must be http://host:port')
         self.host, self.port = url.hostname, url.port or 80
         self.secret, self.clock, self.timeout = secret, clock, timeout
+        self.on_write = None  # called after every request that may change the host's state (anything but GET/HEAD)
 
     def open(self, owner, method, target, body=b'', headers=None):
         """One signed request. The caller reads the response, then closes the connection."""
@@ -36,7 +37,9 @@ class Upstream:
         if method in ('POST', 'PUT'):send['Content-Type'] = 'application/json'
         try:
             connection.request(method, target, body=body if method in ('POST', 'PUT') else None, headers=send)
-            return connection, connection.getresponse()
+            response = connection.getresponse()
+            if self.on_write and method not in ('GET', 'HEAD'):self.on_write()
+            return connection, response
         except OSError:
             connection.close()
             raise UpstreamError('the run host is not reachable') from None

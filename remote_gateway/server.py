@@ -90,6 +90,12 @@ class Gateway:
 
         # Runs started in the last 30 seconds, which the host may not list as running yet: they hold their slot meanwhile.
         self.dispatching = threading.Lock();self.settling_until = 0.0;self.starting = {}
+        # 11-11: every page refresh, lobby poll and notice check asked the host for its whole run list (2-4 s of host CPU
+        # each); with a few pages open the harness ran at 100% and pages took 30-50 s. One shared answer serves all
+        # readers for LISTING_TTL seconds, and only one request to the host is in flight at a time. Decisions (starting,
+        # resuming, dispatching) still read fresh.
+        self.listing_ttl = self.LISTING_TTL;self.listing_lock = threading.Lock();self.listing_cache = None;self.listing_writes = 0
+        self.upstream.on_write = self.forget_listing  # someone's own Start / Pause / Stop must show at once
 
     def paused(self):
         return self.config.pause_file.exists() or any(Path(path).exists() for path in self.config.stop_files)
@@ -116,11 +122,21 @@ class Gateway:
             return policy.Refused('codex_daily_limit', f'Lab Codex has reached its UTC daily limit of {lab["runs_per_day"]} runs. PARCC and your own keys remain available.', 429)
         return None
 
-    def listing(self):
-        status, value = self.upstream.json(PUBLIC, 'GET', '/api/runs')
-        if status != 200:raise UpstreamError('the run host did not list its runs')
-        self.store.observe_finished(value, policy.ENDED_STATES)
-        return value
+    LISTING_TTL = 2.0
+
+    def forget_listing(self):self.listing_writes += 1;self.listing_cache = None
+
+    def listing(self, fresh=False):
+        with self.listing_lock:  # concurrent readers wait for the one request in flight instead of sending their own
+            cached = self.listing_cache
+            if not fresh and cached and time.monotonic() - cached[0] < self.listing_ttl:return json.loads(cached[1])
+            writes = self.listing_writes
+            status, value = self.upstream.json(PUBLIC, 'GET', '/api/runs')
+            if status != 200:raise UpstreamError('the run host did not list its runs')
+            self.store.observe_finished(value, policy.ENDED_STATES)
+            # an answer that was already on its way when someone pressed Start / Pause may predate it: do not keep it
+            if writes == self.listing_writes:self.listing_cache = (time.monotonic(), json.dumps(value))
+            return value
 
     def board(self, viewer, listing=None):
         listing = listing if listing is not None else self.listing()
@@ -145,7 +161,7 @@ class Gateway:
 
     def start_next(self):
         line = self.store.queue()
-        listing = self.listing()
+        listing = self.listing(fresh=True)
         if not line:return None
         head = line[0]
         # A paused run still holds its own slot, so resuming it needs no free one.
@@ -406,7 +422,7 @@ class Handler(BaseHTTPRequestHandler):
         limits = self.gateway.config.limits
         # Resuming your own paused run is not a second run: the run itself is left out of the count.
         queued = sum(row['user_id'] == self.user and row['experiment_id'] != experiment_id for row in self.gateway.store.queue())
-        if policy.active_runs(self.gateway.listing(), self.gateway.store.runs_of(self.user) - {experiment_id}) + queued >= limits.active_runs:
+        if policy.active_runs(self.gateway.listing(fresh=True), self.gateway.store.runs_of(self.user) - {experiment_id}) + queued >= limits.active_runs:
             raise policy.Refused('run_active', 'You already have a run going. Finish or cancel it first.', 409)
 
     def create(self):

@@ -171,6 +171,7 @@ def test_concurrent_failures_cannot_overrun_global_cap(app):
 
 
 def test_gateway_nicknames_follow_store_order_even_when_listing_is_reversed_or_missing_first(app):
+    app.gateway.listing_ttl = 0  # the test changes the fake host behind the gateway's back, so the shared run list must not be reused
     headers, user = person(app)
     first = request(app, 'POST', '/api/dev-v2/experiments', dict(body(), start=False), headers=headers).value['experiment_id']
     second = request(app, 'POST', '/api/dev-v2/experiments', dict(body('request-2'), start=False), headers=headers).value['experiment_id']
@@ -466,6 +467,7 @@ def test_prune_refuses_escaping_paths_root_symlink_and_nested_symlinks(retention
 
 
 def test_listing_persists_completion_but_never_moves_an_observed_end_later(app):
+    app.gateway.listing_ttl = 0  # the test changes the fake host behind the gateway's back, so the shared run list must not be reused
     eid = 'devexp-' + 'a' * 24
     app.gateway.store.record_run(eid, 'u', 'local')
     app.rows.append(dict(experiment_id=eid, state='completed'))
