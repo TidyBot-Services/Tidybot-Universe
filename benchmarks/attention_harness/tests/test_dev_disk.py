@@ -202,6 +202,7 @@ def test_agent_run_page_shows_disk_pause_and_resume_state(ws,tmp_path,monkeypatc
     assert rc['state']=='paused' and rc['pause_reason']=='disk_low' and '磁盘不足' in rc['pause_detail']
     assert not rc['can_resume'] and value['dev_v2_compat']['lifecycle'] is None
     space['free']=100
+    monkeypatch.setattr('benchmarks.attention_harness.dev_agent_view.LIVE_TTL',0)  # free disk is not part of the shared view's key; the page sees it within LIVE_TTL
     assert projection(store,store.cell(key))['dev_v2_compat']['run_controls']['can_resume']
 
 
@@ -227,3 +228,26 @@ def test_a_running_agent_run_can_be_paused_from_its_page(ws,tmp_path,monkeypatch
     put(pause_requested_at=None)
     rc=projection(store,store.cell(key))['dev_v2_compat']['run_controls']
     assert not rc['can_pause']
+
+
+def test_tabs_of_a_running_agent_run_share_one_view_and_its_controls_show_at_once(ws,tmp_path,monkeypatch,space):
+    """11-11: every tab rebuilt the whole view of a running run every 3 s; the Remote host sat at 100% CPU."""
+    import os
+    from benchmarks.attention_harness import dev_agent_view as view
+    from benchmarks.attention_harness.dev_loop import process_identity
+    (tmp_path/'run').mkdir()
+    store,exp,_=_loop_setup(tmp_path/'run',monkeypatch);eid=exp['experiment_id'];key=exp['cells'][0]['key']
+    store.update_cell(key,dev_mode='agent',artifact_dir=str(ws.private.parent.parent),state='running')
+    def put(**fields):
+        with store.tx() as db:
+            current=store.get(db,'experiments',eid);current.update(fields);store.put(db,'experiments',eid,current)
+    put(state='running',owner=process_identity(os.getpid()))
+    built=[];real=view._projection
+    monkeypatch.setattr(view,'_projection',lambda *a,**k:(built.append(1),real(*a,**k))[1])
+    first=view.projection(store,store.cell(key));first['dev_v2_compat']['run_controls']['state']='changed by a caller'
+    for _ in range(5):assert view.projection(store,store.cell(key))['dev_v2_compat']['run_controls']['state']=='running'
+    assert len(built)==1
+    put(pause_requested_at=1)
+    assert view.projection(store,store.cell(key))['dev_v2_compat']['run_controls']['state']=='pausing' and len(built)==2
+    monkeypatch.setattr(view,'LIVE_TTL',0)
+    view.projection(store,store.cell(key));assert len(built)==3

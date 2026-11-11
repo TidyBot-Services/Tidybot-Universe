@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import re
 import sqlite3
+import threading
 import time
 from urllib.parse import quote
 from .dev_agent_workspace import read_beneath, stat_beneath
@@ -309,9 +310,34 @@ _CACHE={}
 TERMINAL=('completed','failed','cancelled','needs_review','stopped','condition_invalid','budget_exhausted','not_started')
 
 
+LIVE_TTL=3.0  # the page asks every 3 s; every open tab of one run shares the answer built for the first
+_LIVE={}
+_LIVE_GUARD=threading.Lock()
+
+
+def _live_projection(store,cell,api):
+    """11-11: a run that is still going was rebuilt in full for every tab on every refresh, several at once; with a few
+    pages open the host sat at 100% CPU and one view took up to 28 s. One answer per run is now built at a time and
+    kept for LIVE_TTL seconds. The run's own controls (pause asked, paused, resumed, stopped) are part of the key, so
+    pressing Pause, Resume or Stop shows at once; anything else (new steps, free disk) shows within LIVE_TTL."""
+    with sqlite3.connect('file:'+str(Path(store.path).resolve())+'?mode=ro',uri=True) as db:
+        row=db.execute('SELECT payload FROM v2_experiments WHERE id=?',(cell['experiment_id'],)).fetchone()
+    run=json.loads(row[0]) if row else {}
+    key=(str(store.path),cell['key'],api,cell.get('state'),cell.get('reason'))+tuple(run.get(k) for k in ('state','pause_requested_at','paused_at','cancelled','pause_reason'))+(json.dumps(run.get('owner'),sort_keys=True),)
+    with _LIVE_GUARD:
+        if len(_LIVE)>32:
+            for old in [k for k,v in _LIVE.items() if not v['lock'].locked() and time.monotonic()-v['at']>60]:del _LIVE[old]
+        slot=_LIVE.setdefault(key,dict(lock=threading.Lock(),at=float('-inf'),value=None))
+    with slot['lock']:  # later readers wait for the one being built instead of building their own
+        if time.monotonic()-slot['at']>=LIVE_TTL:
+            slot['value']=_projection(store,cell,api=api);slot['at']=time.monotonic()
+        return copy.deepcopy(slot['value'])
+
+
 def projection(store,cell,*,api='/api/dev-v2',now=None):
     """Terminal agent cells are immutable: reuse the projection while the ledger is unchanged."""
-    if cell.get('state') not in TERMINAL or now is not None:return _projection(store,cell,api=api,now=now)
+    if now is not None:return _projection(store,cell,api=api,now=now)
+    if cell.get('state') not in TERMINAL:return _live_projection(store,cell,api)
     stat=Path(store.path).stat()
     # Publishing is atomic rename, so any rewrite of display evidence changes a
     # directory mtime under these roots; include them all in the key.
