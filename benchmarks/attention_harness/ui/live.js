@@ -4834,6 +4834,12 @@
     const m=video&&/^(.*\/cells\/[a-f0-9]{64})\/agent\/files\/replays\/(e\d+)\//.exec(video.media_url);
     return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/files/free-view/${m[2]}`)}" aria-pressed="false" title="Rotate, zoom and pan a 3D replay of this attempt. View only.">3D view</button>`:'';
   }
+  function liveFreeViewButton(snapshot) {
+    // Live 3D of the attempt running now (agent runs only). Same look-only page; it follows the attempt as it runs.
+    const station=cameraStation(snapshot);
+    const m=snapshot.agent&&station.camera_monitor_v2&&/^(\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64})\/live$/.exec(station.camera_state_url||'');
+    return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/files/free-view/live`)}" data-free-view-label="" aria-pressed="false" title="Rotate, zoom and pan a live 3D view of the attempt running now. View only.">3D view</button>`:'';
+  }
   function openFreeView(base,attempt) {
     // Full-window, look-only 3D replay. The page inside draws its own header, controls and waiting screen.
     document.querySelector('[data-free-view-dialog]')?.remove();
@@ -4864,7 +4870,7 @@
     const trimBar=attempt&&!currentReplay&&videos.length&&trace?.trim?operatorTrimBar(trace.trim):'';
     const failed=attempt && !neverStarted(snapshot) && snapshot.eval?.native_outcomes?.[attempt.attempt_id]?.native_success !== true && ['failed','timed_out'].includes(attempt.status);
     const version=snapshot.dev_session?.versions.find(v=>v.version === ((attempt||last)?.dev_version ?? ((attempt||last)?.index+1)));
-    const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}${attempt&&!currentReplay?freeViewButton(trace):''}</div>`:'';
+    const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}${attempt&&!currentReplay?freeViewButton(trace):!attempt?liveFreeViewButton(snapshot):''}</div>`:'';
     const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
     // Saved still frames are not shown under the replay (user 11-08): the video already shows the attempt.
     const station=cameraStation(snapshot);
@@ -5682,7 +5688,7 @@
     bindOperatorEnhancements(snapshot,previousRun!==run.run_id);
     const replayForPolicy=view.querySelector('video[data-history-replay]');if(replayForPolicy)updateReplayPolicy(snapshot,replayForPolicy);
     view.querySelectorAll('[data-policy-marker-seconds]').forEach(b=>b.addEventListener('click',()=>{const v=view.querySelector('video[data-history-replay]');if(v&&b.dataset.policyMarkerSeconds!==''){v.pause();v.currentTime=Number(b.dataset.policyMarkerSeconds);}}));
-    view.querySelectorAll('[data-free-view]').forEach(button=>button.addEventListener('click',()=>openFreeView(button.dataset.freeView,view.querySelector('.ab-history-tabs [aria-pressed="true"],.ab-history-tabs [aria-selected="true"]')?.textContent.trim()||'attempt')));
+    view.querySelectorAll('[data-free-view]').forEach(button=>button.addEventListener('click',()=>openFreeView(button.dataset.freeView,button.dataset.freeViewLabel??(view.querySelector('.ab-history-tabs [aria-pressed="true"],.ab-history-tabs [aria-selected="true"]')?.textContent.trim()||'attempt'))));
     view.querySelectorAll('[data-camera-view]').forEach(button=>{
       button.addEventListener('pointerdown',event=>event.preventDefault());
       button.addEventListener('click',()=>{cameraChoices.set(cameraContext(snapshot),button.dataset.cameraView);render(snapshot);});

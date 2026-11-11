@@ -19,6 +19,7 @@ What is real and what is reconstructed (also written into scene.json):
     drawn upright.
 
 Usage: free_view_export.py <execution_dir> <out_dir>
+       free_view_export.py --live <execution_dir> <out_dir>   (attempt still running; see follow())
 """
 from __future__ import annotations
 
@@ -164,15 +165,44 @@ def mat_from(pos, quat):
 
 
 # ---------------------------------------------------------------- motion
-def load_motion(m, exe: Path):
+def jsonl(path: Path):
+    """Complete rows of a log that may still be written to (a half-written last line is left out)."""
+    if not path.is_file():
+        return []
+    text = path.read_text(encoding="utf-8")
+    rows = text.split("\n")[:-1]  # the part after the last newline is not finished yet
+    out = []
+    for line in rows:
+        if line.strip():
+            try:
+                out.append(json.loads(line))
+            except ValueError:
+                pass
+    return out
+
+
+def load_motion(m, exe: Path, live=False, physics=None):
+    """Poses of every body for each frame.  live=True: the attempt is still running, so the logs are read
+    as far as they go, there is no final observation yet and doors and drawers stay where they started."""
     reset = json.loads((exe / "reset_receipt.json").read_text())
     cond = reset["execution_conditions"]
     to_native = reset["physical_to_native"]
-    receipts = [json.loads(line) for line in (exe / "rpc-receipts.jsonl").read_text().splitlines() if line.strip()]
-    last_seq = max(int(r["response"].get("sequence", 0)) for r in receipts)
-    physics = (exe / "native-physics.jsonl").read_text().splitlines()
-    per_seq = max(1, round(len(physics) / max(1, last_seq)))
-    frames = last_seq + 1
+    if live:
+        receipts = [r for r in jsonl(exe / "rpc-receipts.jsonl") if isinstance(r.get("response"), dict) and isinstance(r.get("request"), dict)]
+        physics = (exe / "native-physics.jsonl").read_text().split("\n")[:-1] if physics is None else physics
+        # One frame is one control step.  The finished bundle derives the ratio from the whole log; while running it
+        # comes from the latest receipt that has both counts (25 physics steps per control step in every run so far).
+        ratios = [int(r["response"]["physics_steps"]) / int(r["response"]["sequence"]) for r in receipts
+                  if int(r["response"].get("sequence") or 0) > 0 and int(r["response"].get("physics_steps") or 0) > 0]
+        per_seq = max(1, round(ratios[-1])) if ratios else 25
+        frames = max(1, len(physics) // per_seq + 1)
+        last_seq = frames - 1
+    else:
+        receipts = [json.loads(line) for line in (exe / "rpc-receipts.jsonl").read_text().splitlines() if line.strip()]
+        last_seq = max(int(r["response"].get("sequence", 0)) for r in receipts)
+        physics = (exe / "native-physics.jsonl").read_text().splitlines()
+        per_seq = max(1, round(len(physics) / max(1, last_seq)))
+        frames = last_seq + 1
 
     def adr(name):
         return int(m.joint(name).qposadr[0])
@@ -199,7 +229,8 @@ def load_motion(m, exe: Path):
         return out
 
     fix0 = fixture_joints(exe / "initial_public_observation.json")
-    fix1 = fixture_joints(exe / "final_public_observation.json")
+    final = exe / "final_public_observation.json"
+    fix1 = fixture_joints(final) if final.is_file() and not live else {}
 
     # free objects: observed positions
     free = {}
@@ -228,6 +259,10 @@ def load_motion(m, exe: Path):
                               "released": int(r["response"]["sequence"])})
     for arm, start in open_close.items():
         holds.append({"arm": arm, "start": start, "end": frames - 1, "released": frames - 1})
+    if live:  # a receipt may name a step the physics log has not reached yet
+        holds = [h for h in holds if h["start"] <= frames - 1]
+        for h in holds:
+            h["end"], h["released"] = min(h["end"], frames - 1), min(h["released"], frames - 1)
 
     def observed_at(name, seq):
         obs = observed[name]
@@ -248,14 +283,15 @@ def load_motion(m, exe: Path):
     for hold in holds:
         hold["object"] = None
     for seq in range(frames):
-        rec = json.loads(physics[min(len(physics) - 1, max(0, seq * per_seq - 1))])
         d.qpos[:] = m.qpos0
-        d.qpos[arm_adr] = rec["qpos"]
-        d.qpos[base_adr] = rec["base_qpos"]
-        for logged, adrs in finger_adr.items():
-            vals = rec["gripper_qpos"][logged]
-            for a, v in zip(adrs, vals):
-                d.qpos[a] = v
+        if physics:
+            rec = json.loads(physics[min(len(physics) - 1, max(0, seq * per_seq - 1))])
+            d.qpos[arm_adr] = rec["qpos"]
+            d.qpos[base_adr] = rec["base_qpos"]
+            for logged, adrs in finger_adr.items():
+                vals = rec["gripper_qpos"][logged]
+                for a, v in zip(adrs, vals):
+                    d.qpos[a] = v
         u = seq / max(1, frames - 1)
         for joint, v0 in fix0.items():
             d.qpos[adr(joint)] = v0 + (fix1.get(joint, v0) - v0) * u
@@ -360,13 +396,8 @@ def load_model(exe: Path, out: Path):
 
 
 # ---------------------------------------------------------------- bundle
-def export(exe: Path, out: Path):
-    out.mkdir(parents=True, exist_ok=True)
-    m, moved = load_model(exe, out)
-    if moved:
-        print(f"{moved} model files read from {ROOT} (the run's own release is gone)", file=sys.stderr)
-    xpos, xquat, info = load_motion(m, exe)
-    moving = np.where((np.ptp(xpos, axis=0).max(axis=1) > 1e-5) | (np.ptp(xquat, axis=0).max(axis=1) > 1e-5))[0]
+def geometry(m, xpos0, xquat0, moving):
+    """Visible geoms as one vertex/index buffer: still parts placed at their frame-0 pose, moving bodies in body frame."""
     moving_index = {int(b): i for i, b in enumerate(moving)}
     tex_mean = texture_means(m)
 
@@ -393,7 +424,7 @@ def export(exe: Path, out: Path):
         if b in moving_index:
             key = ("body", b)
         else:
-            br, bp = mat_from(xpos[0, b], xquat[0, b])
+            br, bp = mat_from(xpos0[b], xquat0[b])
             v = v @ br.T + bp
             n = n @ br.T
             if name.startswith("wall_"):
@@ -428,15 +459,27 @@ def export(exe: Path, out: Path):
 
     vbytes = np.concatenate(verts).tobytes()
     ibytes = np.concatenate(idx).tobytes()
-    (out / "geom.bin").write_bytes(vbytes + ibytes)
-    poses = np.concatenate([xpos[:, moving], xquat[:, moving]], axis=2).astype("<f4")
-    (out / "poses.bin").write_bytes(poses.tobytes())
+    return vbytes, ibytes, ranges, vcount, icount, skipped
 
+
+NOTES = {
+    "robot": "real: logged joint values of the run, forward kinematics on the saved scene model",
+    "fixtures": "first and last public observation, linear in between",
+    "objects": "reconstructed: position from logged find_objects answers; carried rigidly with the closed hand; orientation unknown, drawn upright",
+    "colours": "material colour times mean texture colour; no textures, no shadows",
+}
+LIVE_NOTES = dict(NOTES, fixtures="while the attempt runs, doors and drawers stay where they started; the replay after the attempt shows them moving",
+                  live="about one second behind the simulation; nothing on this page reaches the robot")
+
+
+def scene_json(m, exe, moving, xpos0, geom, info, live=False):
+    vbytes, ibytes, ranges, vcount, icount, skipped = geom
     robot = [i for i, b in enumerate(moving) if m.body(int(b)).name.startswith(("robot0_", "mobilebase0_"))]
-    centre = xpos[0, moving[robot]].mean(axis=0) if robot else xpos[0].mean(axis=0)
-    scene = {
+    centre = xpos0[moving[robot]].mean(axis=0) if robot else xpos0.mean(axis=0)
+    return {
         "format": "attentionbench-free-view-demo-1",
         "display_only": True,
+        "live": live,
         "vertices": vcount,
         "vertex_bytes": len(vbytes),
         "indices": icount,
@@ -444,15 +487,25 @@ def export(exe: Path, out: Path):
         "moving_bodies": [m.body(int(b)).name for b in moving],
         "focus": [round(float(x), 3) for x in centre],
         "skipped_geoms": skipped,
-        "source": {"execution": exe.name, "task_id": info["task_id"], "seed": info["seed"]},
+        "source": {"execution": exe.name, "attempt": exe.parent.name, "task_id": info["task_id"], "seed": info["seed"]},
         "motion": info,
-        "notes": {
-            "robot": "real: logged joint values of the run, forward kinematics on the saved scene model",
-            "fixtures": "first and last public observation, linear in between",
-            "objects": "reconstructed: position from logged find_objects answers; carried rigidly with the closed hand; orientation unknown, drawn upright",
-            "colours": "material colour times mean texture colour; no textures, no shadows",
-        },
+        "notes": LIVE_NOTES if live else NOTES,
     }
+
+
+def export(exe: Path, out: Path):
+    out.mkdir(parents=True, exist_ok=True)
+    m, moved = load_model(exe, out)
+    if moved:
+        print(f"{moved} model files read from {ROOT} (the run's own release is gone)", file=sys.stderr)
+    xpos, xquat, info = load_motion(m, exe)
+    moving = np.where((np.ptp(xpos, axis=0).max(axis=1) > 1e-5) | (np.ptp(xquat, axis=0).max(axis=1) > 1e-5))[0]
+    geom = geometry(m, xpos[0], xquat[0], moving)
+    vbytes, ibytes, ranges, vcount, icount, skipped = geom
+    (out / "geom.bin").write_bytes(vbytes + ibytes)
+    poses = np.concatenate([xpos[:, moving], xquat[:, moving]], axis=2).astype("<f4")
+    (out / "poses.bin").write_bytes(poses.tobytes())
+    scene = scene_json(m, exe, moving, xpos[0], geom, info)
     (out / "scene.json").write_text(json.dumps(scene, ensure_ascii=False))
     sizes = {p.name: p.stat().st_size for p in out.iterdir() if p.is_file()}
     print(json.dumps({"vertices": vcount, "triangles": icount // 3, "moving_bodies": len(moving), "frames": info["frames"],
@@ -460,7 +513,91 @@ def export(exe: Path, out: Path):
                       "fixture_joints": info["fixture_joints"], "skipped_geoms": skipped, "bytes": sizes}, ensure_ascii=False, indent=1))
 
 
+# ---------------------------------------------------------------- live
+IDLE_SECONDS = 60      # stop when no page has asked for this attempt for this long
+AFTER_END_SECONDS = 20  # after the attempt ends, keep the last frames this long so open pages can fetch them
+MAX_SECONDS = 4 * 3600
+
+
+def write_atomic(path: Path, data: bytes):
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
+def follow(exe: Path, out: Path, tick=0.5, clock=None, sleep=None):
+    """Live 3D of a running attempt.  Reads the attempt's logs as they grow and writes, into `out` only:
+    scene.json and geom.bin.gz once, then poses.bin and status.json about twice a second.  Never writes
+    beside the run's own files and never talks to the simulation.  Removes `out` when it stops."""
+    import gzip
+    import shutil
+    import time
+    clock, sleep = clock or time.time, sleep or time.sleep
+    started = clock()
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "wanted").touch()
+    try:
+        m, moved = load_model(exe, out)
+        # Everything that is not welded to the world may move: robot, base, doors and drawers, loose objects.
+        moving = np.array([b for b in range(1, m.nbody) if int(m.body_weldid[b]) != 0], dtype=int)
+        lines, offset = [], 0
+
+        def pull():
+            nonlocal offset
+            log = exe / "native-physics.jsonl"
+            if log.is_file():
+                with log.open("rb") as f:
+                    f.seek(offset)
+                    chunk = f.read()
+                cut = chunk.rfind(b"\n") + 1  # only whole lines
+                if cut:
+                    lines.extend(chunk[:cut].decode("utf-8").split("\n")[:-1])
+                    offset += cut
+
+        # Before the first logged step the robot still sits where the model parks it, far from the kitchen,
+        # and the camera would aim there; wait for the first step.
+        pull()
+        while not lines:
+            if (exe / "native_result.json").is_file() or clock() - (out / "wanted").stat().st_mtime > IDLE_SECONDS:
+                return "no step was logged"
+            sleep(tick)
+            pull()
+        xpos, xquat, info = load_motion(m, exe, live=True, physics=lines)
+        geom = geometry(m, xpos[0], xquat[0], moving)
+        vbytes, ibytes = geom[0], geom[1]
+        write_atomic(out / "geom.bin.gz", gzip.compress(vbytes + ibytes, 6))
+        write_atomic(out / "scene.json", json.dumps(scene_json(m, exe, moving, xpos[0], geom, info, live=True), ensure_ascii=False).encode())
+        ended_at = None
+        shown = -1
+        while True:
+            pull()
+            ended = (exe / "native_result.json").is_file()
+            if len(lines) != shown or ended:
+                xpos, xquat, info = load_motion(m, exe, live=True, physics=lines)
+                poses = np.concatenate([xpos[:, moving], xquat[:, moving]], axis=2).astype("<f4")
+                write_atomic(out / "poses.bin", poses.tobytes())
+                status = {"frames": info["frames"], "seconds_per_frame": info["seconds_per_frame"], "holds": info["holds"],
+                          "ended": ended, "attempt": exe.parent.name, "execution": exe.name}
+                write_atomic(out / "status.json", json.dumps(status).encode())
+                shown = len(lines)
+            now = clock()
+            if ended and ended_at is None:
+                ended_at = now
+            if ended_at is not None and now - ended_at > AFTER_END_SECONDS:
+                return "ended"
+            if now - (out / "wanted").stat().st_mtime > IDLE_SECONDS:
+                return "nobody is watching"
+            if now - started > MAX_SECONDS:
+                return "time limit"
+            sleep(tick)
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) == 4 and sys.argv[1] == "--live":
+        print("live 3D stopped:", follow(Path(sys.argv[2]), Path(sys.argv[3])), file=sys.stderr)
+    elif len(sys.argv) == 3:
+        export(Path(sys.argv[1]), Path(sys.argv[2]))
+    else:
         sys.exit(__doc__)
-    export(Path(sys.argv[1]), Path(sys.argv[2]))

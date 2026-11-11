@@ -1,6 +1,6 @@
 """Read-only test port for the run page with the 3D view (test only, not the harness).
 
-Usage: python3 -I free_view_preview.py <ui dir> <port> <dev-v2 root> <sim python> <cache dir>
+Usage: python3 -I free_view_preview.py <ui dir> <port> <dev-v2 root> <sim python> <cache dir> [<live execution dir>]
 
 - /ui/* comes from <ui dir> (the worktree), everything else is fetched from 8769 with GET.
 - POST, PUT, PATCH and DELETE are refused, so nothing here can start, stop or change a run.
@@ -8,6 +8,9 @@ Usage: python3 -I free_view_preview.py <ui dir> <port> <dev-v2 root> <sim python
     /api/dev-v2/experiments/<experiment>/cells/<cell>/agent/files/free-view/<eNNNNNN>/<scene.json|geom.bin.gz|poses.bin.gz>
   It is the harness's own route (benchmarks/attention_harness/free_view.py) with one difference: the built files
   go to <cache dir> instead of into the run's folder, so this port never writes to the run store.
+- Live 3D: .../agent/files/free-view/live/<scene.json|geom.bin.gz|status.json|poses-<n>.bin> is the harness's live
+  route too.  The attempt it follows is <live execution dir> when given (e.g. a finished attempt being written out
+  again step by step, to try live without a run), else the newest unfinished execution of that cell.
 """
 import gzip, http.server, json, re, subprocess, sys, threading, urllib.request, urllib.error
 from pathlib import Path
@@ -24,9 +27,24 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=u
          '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.json': 'application/json',
          '.bin': 'application/octet-stream'}
 ROOT_TAG = re.compile(r'<div id="attentionbench-clear"[^>]*>')
+LIVE_SOURCE = Path(sys.argv[6]).resolve() if len(sys.argv) > 6 else None
+FREE_LIVE = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/cells/([a-f0-9]{64})/agent/files/(free-view/live/[a-z0-9.-]+)')
 FREE = re.compile(r'/api/dev-v2/experiments/(devexp-[a-f0-9]{24})/cells/([a-f0-9]{64})/agent/files/free-view/(e\d{6})/(scene\.json|geom\.bin\.gz|poses\.bin\.gz)')
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmarks.attention_harness import free_view
+free_view.LIVE_ROOT = CACHE / 'live'
+free_view._sim_python = lambda: SIM_PYTHON
+
+
+def live_cell(experiment, cell):
+    """The cell as the harness would describe it while an attempt runs (this port has no run store)."""
+    root = ROOT / experiment / 'artifacts' / experiment / 'cells' / cell
+    episode = LIVE_SOURCE
+    if episode is None:
+        running = [d for d in root.glob('agent/private/executions/e*/openarm365-dev-*') if d.is_dir() and not (d / 'native_result.json').exists()]
+        episode = max(running, key=lambda d: d.stat().st_mtime, default=None)
+    return dict(dev_mode='agent', key=cell, state='running' if episode else 'completed',
+                artifact_dir=str(episode.parents[1] if LIVE_SOURCE else root), active_episode=str(episode) if episode else None)
 
 
 def export(episode, out):
@@ -82,6 +100,13 @@ class H(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlsplit(self.path)
+        live = FREE_LIVE.fullmatch(url.path)
+        if live:
+            try:
+                value, kind = free_view.live_file(live_cell(live[1], live[2]), live[3])
+            except FileNotFoundError as error:
+                return self.send(404, json.dumps({'error': str(error)}).encode(), 'application/json')
+            return self.plain(value.read_bytes() if isinstance(value, Path) else value, kind)
         free = FREE.fullmatch(url.path)
         if free:
             folder, reason = bundle(*free.groups()[:3])
