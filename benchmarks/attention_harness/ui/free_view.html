@@ -232,7 +232,8 @@ window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDef
 /* ---------- load (three GETs, then the page is on its own) ---------- */
 async function load() {
   const base = new URLSearchParams(location.search).get('data') || 'data';
-  const get = async (name, kind) => { const r = await fetch(base + '/' + name); if (!r.ok) throw new Error(name + ': HTTP ' + r.status); return r[kind](); };
+  if (new URLSearchParams(location.search).get('embed')) document.querySelector('#top h1').hidden = true;
+  const get = async (name, kind) => { const r = await fetch(base + '/' + name); if (!r.ok) { let why = ''; try { why = (await r.json()).error || ''; } catch (e) {} throw new Error(why || name + ': HTTP ' + r.status); } return r[kind](); };
   const [sc, geom, pose] = await Promise.all([get('scene.json', 'json'), get('geom.bin', 'arrayBuffer'), get('poses.bin', 'arrayBuffer')]);
   const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
