@@ -133,3 +133,18 @@ def test_selected_formal_run_and_unreadable_store(tmp_path):
     assert any(row['source'] == 'run' for row in reader.read(run='run-1')['notices'])
     broken = notices.NoticeReader(store=SimpleNamespace(_connect=lambda: (_ for _ in ()).throw(OSError('private /path'))), probe=lambda: True)
     assert any(row['source'] == 'system' and row['level'] == 'error' for row in broken.read()['notices'])
+
+
+def test_memory_events_without_a_title_do_not_hide_the_other_notices(monkeypatch):
+    from benchmarks.attention_harness import memory_monitor
+    events = [{'event': 'origin_reopened', 'memory_id': 'p-1', 'reason': 'reopened by the operator', 'time': 5.0, 'status': 'reopened'},
+              {'event': 'promoted', 'memory_id': 'p-2', 'time': 6.0},
+              {'event': 'rejected', 'seq': 7, 'title': 'Open the door first', 'time': 7.0}]
+    monkeypatch.setattr(memory_monitor, 'automatic_checks', lambda **_: {'notices': [], 'errors': [], 'events': events})
+    reader = notices.NoticeReader(quota=lambda: {'used_percent': 75}, probe=lambda: True)
+    titles = [row['title'] for row in reader.read()['notices']]
+    assert 'Some status details are unavailable' not in titles
+    assert 'Codex quota is running low this week' in titles
+    assert 'Note checked and trusted: Note — the failure stopped when Dev had the note.' in titles
+    assert 'Note rejected after check: Open the door first.' in titles
+    assert len(titles) == 3
