@@ -20,3 +20,11 @@ test('the run list carries the version limit before the ledger starts',()=>{
 test('a task picture that failed to load is asked for again',()=>{
   assert.match(live,/\.catch\(\(\)=>\{taskPictureReady\.delete\(src\);return null;\}\)/);
 });
+test('Loading screen: one short status line, the explanation is a centred hint under the bar',()=>{
+  const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert');
+  const ui=path.join(__dirname,'..','ui');const live=fs.readFileSync(path.join(ui,'live.js'),'utf8');const html=fs.readFileSync(path.join(ui,'index.html'),'utf8');
+  assert.match(live,/class="op-loading-hint" data-op-loading-hint hidden/);
+  assert.match(live,/'Waiting for the first picture'/);
+  assert.doesNotMatch(live,/Waiting for the first picture… the simulator/);
+  assert.match(html,/\.op-loading-hint\{[^}]*text-align:center/);
+});

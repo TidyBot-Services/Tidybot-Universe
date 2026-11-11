@@ -1217,13 +1217,19 @@
   }
   function stageStatus(stage,age) {
     const text=stage.querySelector('[data-op-loading-text]');if(!text)return;
+    // 11-11 (user): one short status line; the longer explanation sits under the bar as a quiet second line.
+    const hint=stage.querySelector('[data-op-loading-hint]');
+    const note=value=>{if(hint){hint.textContent=value;hint.hidden=!value;}};
+    note('');
     if(stage.dataset.opStage==='replay'){text.textContent=age>20?'Still loading the replay…':'Loading replay…';return;}
     const fresh=view.querySelector('[data-preview-freshness]')?.textContent||'';
     const launching=stage.dataset.opStage==='launch';
     const phase=stage.dataset.opPhase;
     if(phase==='model'||phase==='advisor'){text.textContent=phase==='model'?"The AI is writing the robot's plan…":'The advisor is preparing guidance…';stage.dataset.slow='false';return;}
     // Environment and planner start-up can take a few minutes the first time; only warn after that.
-    text.textContent=age>300?'Still starting — this is taking longer than usual. You can keep waiting or stop the run.':age>15||/Receiving|Waiting/i.test(fresh)?'Waiting for the first picture… the simulator can take a few minutes to start':age>5?'Connecting to camera…':age>2||!launching?'Starting simulator…':'Preparing your run…';
+    const waiting=age>15||/Receiving|Waiting/i.test(fresh);
+    note(age>300?'You can keep waiting or stop the run.':waiting?'The simulator can take a few minutes to start.':'');
+    text.textContent=age>300?'Still starting — this is taking longer than usual':waiting?'Waiting for the first picture':age>5?'Connecting to camera…':age>2||!launching?'Starting simulator…':'Preparing your run…';
     stage.dataset.slow=String(age>300);
   }
   function initStages() {
@@ -4782,7 +4788,7 @@
     })()).join('')+pending(null);
   }
   function loadingOverlay(kind) {
-    return `<div class="op-loading" data-op-loading role="status" aria-live="polite"><div class="op-loading-word" aria-hidden="true">LOADING</div><div class="op-loading-text" data-op-loading-text>${kind==='replay'?'Loading replay…':'Starting simulator…'}</div><i class="op-loading-bar" aria-hidden="true"></i></div>`;
+    return `<div class="op-loading" data-op-loading role="status" aria-live="polite"><div class="op-loading-word" aria-hidden="true">LOADING</div><div class="op-loading-text" data-op-loading-text>${kind==='replay'?'Loading replay…':'Starting simulator…'}</div><i class="op-loading-bar" aria-hidden="true"></i><div class="op-loading-hint" data-op-loading-hint hidden></div></div>`;
   }
   // Between tries an Agent run keeps its black stage: the last frame if there is one, and what the AI is doing over it.
   function operatorHeldStage(snapshot,attempts,phase,copy) {
