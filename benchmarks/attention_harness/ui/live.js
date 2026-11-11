@@ -5452,6 +5452,9 @@
     const story=(overview.match(/<button type="button" class="op-agent-story-entry" data-agent-story-open>[\s\S]*?<\/button>/)||[''])[0];
     const replyExtra=waiting?extra(request):'';
     execution=execution.replace(operatorHeading('03','REPLAY &amp; ATTEMPTS',''),operatorHeading('01','REPLAY',''));
+    // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
+    const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
+    if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
     const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     return title+execution+progress+setup;
