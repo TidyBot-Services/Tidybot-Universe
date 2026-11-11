@@ -158,3 +158,97 @@ html #attentionbench-clear[data-operator-view="true"] .op-held-note p{margin:6px
 }
 /* The main UI's side padding narrows here, and the bar reaches the page edges by cancelling it. */
 @media (min-width:761px) and (max-width:1050px){html #attentionbench-clear.ab-industrial[data-operator-view="true"] header.top.ab-shell-top{margin:-18px -18px 18px}}
+
+/* Run page skin C "Refine" (2026-11-11 preview). Same layout and markup as today; only the look changes:
+   one instrument panel for video + steps + Eval, one sunk track for attempts, numbers at the cover's size.
+   The replay panel follows Light | Dark too (user, 11-11): paper in light, instrument in dark. */
+html body #attentionbench-clear[data-operator-view="true"] .view{--rk-ins:var(--sh-card);--rk-ins2:var(--sh-sunk);--rk-ink:var(--sh-ink);--rk-on:var(--sh-card);--rk-text:var(--sh-ink);--rk-mut:var(--sh-mut);--rk-dim:var(--sh-mut);--rk-line:var(--sh-line2);--rk-edge:var(--sh-line);--rk-amber:var(--sh-amb);--rk-ok:#3d7a39;--rk-glow:none;--rk-hover:#2428220d;--rk-sel:var(--sh-sunk)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .view{--rk-ins:#0d0f12;--rk-ins2:#14181d;--rk-ink:#f3f1ea;--rk-on:#0d0f12;--rk-text:#d8d5cc;--rk-mut:#a3a199;--rk-dim:#8e8c85;--rk-line:#ffffff1f;--rk-edge:#ffffff2e;--rk-amber:#e8b26a;--rk-ok:#3fa36b;--rk-glow:0 0 12px #3fa36b;--rk-hover:#ffffff0d;--rk-sel:#ffffff14}
+
+/* 01 · attempts: one sunk segmented track */
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills{display:inline-flex!important;flex-wrap:wrap;align-items:center;gap:2px!important;width:auto!important;max-width:100%;padding:3px!important;margin:0 0 12px!important;border:1px solid var(--sh-line2)!important;border-radius:999px!important;background:var(--sh-sunk)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill{border:0!important;background:transparent!important;box-shadow:none!important;border-radius:999px!important;height:32px!important;min-height:0!important;align-items:center}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill button{border:0!important;background:transparent!important;box-shadow:none!important;height:32px!important;color:var(--sh-mut)!important;font:600 12.5px "DM Sans",system-ui,sans-serif!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill .op-pill-tries{font-weight:400!important;font-size:11.5px!important;border-left:0!important;padding-left:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill:not([data-on="no"]){background:var(--sh-card)!important;box-shadow:0 1px 3px #24282233!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill:not([data-on="no"]) button{color:var(--sh-ink)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill[data-tone="ok"]:not([data-on="no"]) .op-pill-attempt{color:var(--sh-okink)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-tries-list button{height:auto!important}
+
+/* 01 · cameras: a dark strip that caps the instrument panel */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views{display:flex!important;align-items:center;justify-content:flex-end;gap:2px!important;width:100%!important;max-width:none!important;margin:0!important;padding:9px 12px!important;border:0!important;border-radius:16px 16px 0 0!important;background:var(--rk-ins2)!important;border:1px solid var(--rk-line)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views::before{content:"REPLAY";margin-right:auto;padding-left:6px;font:600 11.5px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.16em;color:var(--rk-amber)}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views button{height:28px!important;padding:0 11px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--rk-mut)!important;font:600 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.1em!important;text-transform:uppercase}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views button[aria-pressed="true"],html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views button[data-active="true"],html body #attentionbench-clear[data-operator-view="true"] .view .ab-camera-views button.active{background:var(--rk-ink)!important;color:var(--rk-on)!important}
+
+/* 01 · video, steps and Eval share one instrument panel */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-layout{gap:0!important;border-radius:0 0 16px 16px!important;overflow:hidden;border:1px solid var(--rk-line);border-top:0;background:var(--rk-ins)!important;color:var(--rk-ink)!important;align-items:stretch!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-media{border-right:1px solid var(--rk-line);background:var(--rk-ins)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-media .op-video{border-radius:0!important;border:0!important;margin:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-media .ab-replay-transport{border-radius:0!important;border-top:1px solid var(--rk-line);border-bottom:1px solid var(--rk-line)}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-eval-strip{margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:var(--rk-ink)!important;padding:14px 16px 16px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-eval-strip h4{font:500 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--rk-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-eval-strip .op-review-tag{background:transparent!important;border:0!important;padding:0 0 0 6px!important;color:var(--rk-ink)!important;font:600 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.14em!important;text-transform:uppercase}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-eval-stage b{color:var(--rk-ink)!important;font-weight:500!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-eval-stage.completed i{width:11px!important;height:11px!important;min-width:0!important;border:0!important;background:var(--rk-ok)!important;box-shadow:var(--rk-glow)!important;color:transparent!important;font-size:0!important;margin:8px auto 7px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace{background:var(--rk-ins)!important;color:var(--rk-ink)!important;padding:14px 12px 10px 16px!important;border:0!important;border-radius:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace h4{font:500 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--rk-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trim-toggle{border:1px solid var(--rk-edge)!important;border-radius:999px!important;background:var(--rk-ins2)!important;padding:3px!important;box-shadow:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trim-toggle button{border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--rk-mut)!important;font:600 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.1em!important;text-transform:uppercase}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trim-toggle button[aria-pressed="true"]{background:var(--rk-ink)!important;color:var(--rk-on)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trim-note,html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-hint{color:var(--rk-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events{background:transparent!important;border:0!important;scrollbar-color:var(--rk-edge) transparent}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-plan{background:transparent!important;border:0!important;border-top:1px solid var(--rk-line)!important;border-bottom:1px solid var(--rk-line)!important;border-radius:0!important;color:var(--rk-text)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-plan summary b{background:var(--rk-ink)!important;color:var(--rk-on)!important;border:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-plan summary span,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-plan [data-plan-note]{color:var(--rk-text)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step{background:transparent!important;border:0!important;border-radius:7px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary{min-height:30px!important;padding-top:4px!important;padding-bottom:4px!important;border-radius:7px}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary b{color:var(--rk-text)!important;font-weight:400!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary small,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events time{color:var(--rk-dim)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary>span{color:var(--rk-ok)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary:hover{background:var(--rk-hover)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step[data-selected="true"] summary{background:var(--rk-sel)!important;box-shadow:inset 2px 0 0 var(--sh-acc)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step[data-selected="true"] summary b{color:var(--rk-ink)!important;font-weight:600!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>:not(summary){color:var(--rk-text)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip{background:transparent!important;border:0!important;border-radius:0!important;min-height:0!important;padding-top:3px!important;padding-bottom:3px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip b{color:var(--rk-dim)!important;font-weight:400!important;font-size:12px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip small{color:var(--rk-dim)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip>span{color:var(--rk-amber)!important;filter:grayscale(1) sepia(1) saturate(3) hue-rotate(-10deg)}
+
+/* Section rule: solid hairline instead of dashes */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-heading{border-bottom:1px solid var(--sh-line)!important}
+
+/* 02 · one verdict line instead of the hatched banner; numbers at the cover's size */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome{display:flex!important;align-items:baseline;gap:12px;flex-wrap:wrap;min-height:0!important;padding:0 0 12px!important;margin:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome::before,html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome::after{display:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome strong{font:700 20px/1 "Barlow Condensed",sans-serif!important;letter-spacing:.06em!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome>div{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-outcome p{margin:0!important;font-size:14px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-head{display:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filters{gap:0!important;border-top:1px solid var(--sh-line);border-bottom:1px solid var(--sh-line);margin:0 0 10px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter{display:flex!important;flex-direction:column;align-items:flex-start;justify-content:center;height:auto!important;min-height:0!important;padding:15px 20px 14px!important;border:0!important;border-left:1px solid var(--sh-line2)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;text-align:left}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter:first-child{border-left:0!important;padding-left:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter b{font:700 44px/1 "Barlow Condensed",sans-serif!important;letter-spacing:.01em!important;color:var(--sh-ink)!important;white-space:nowrap}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter[data-kpi="rate"] b{color:var(--sh-acc)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter span{margin-top:8px;font:500 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.14em!important;text-transform:uppercase;color:var(--sh-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter[aria-pressed="true"]{box-shadow:inset 0 -3px 0 var(--sh-acc)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-detail{border:0!important;background:transparent!important;padding:6px 0 0!important}
+
+/* 03 · setup as a ruled grid, budgets as large numbers */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-fields{gap:0!important;border-top:1px solid var(--sh-line)}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-field{border:0!important;border-bottom:1px solid var(--sh-line2)!important;border-left:1px solid var(--sh-line2)!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:15px 20px 16px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-field.op-wide{border-left:0!important;padding-left:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-field.op-task{background:transparent!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-meters{gap:0 26px!important;border:0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-meter{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;padding:16px 0 0!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-meter b em{font:700 40px/1 "Barlow Condensed",sans-serif!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-meter .op-budget-track{height:3px!important;border-radius:2px!important;background:var(--sh-line)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-meter .op-budget-track i{background:var(--sh-ink)!important;border-radius:2px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill .op-pill-tries,html body #attentionbench-clear[data-operator-view="true"] .view nav.op-pills .op-pill .op-pill-tries *{color:var(--sh-mut)!important;opacity:1!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter b{font-size:36px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-attn-filter{min-width:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-pill[data-on][data-tone] button.op-pill-tries[data-tries-toggle],html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-pill[data-on][data-tone] button.op-pill-tries[data-tries-toggle] span{color:var(--sh-mut)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .panel .panel-title.op-heading{border-bottom:1px solid var(--sh-line)!important}
+/* setup cells in one row share one height, so their bottom rules line up */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-fields{align-items:stretch!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-field{align-self:stretch!important;height:auto!important;min-height:0!important;margin:0!important}
