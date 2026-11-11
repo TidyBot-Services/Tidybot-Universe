@@ -13,14 +13,16 @@ class AgentExecutor(NativeExecutor):
         self.planner.ledger.invalidate('pre_dispatch_rejection')
         raise RecoverablePlanRejection(dict(reason=reason, validation=diagnostics or {}))
 
-    def move_delta(self, side, dx=0., dy=0., dz=0., rotation_delta=None, *, request_id, grasp_search=None):
+    def move_delta(self, side, dx=0., dy=0., dz=0., rotation_delta=None, *, request_id, grasp_search=None, speed=1.):
         rotation=[0.,0.,0.] if rotation_delta is None else rotation_delta
         if (not isinstance(rotation,(tuple,list)) or len(rotation)!=3
                 or any(type(x) not in (int,float) or not math.isfinite(x) for x in [dx,dy,dz,*rotation])):
             return self.reject('invalid_delta')
         if any(abs(v)>getattr(self,'arm_delta_limit',.05) for v in (dx,dy,dz)) or any(abs(v)>.5 for v in rotation):
             return self.reject('action_delta_limit')
-        return super().move_delta(side,dx,dy,dz,rotation_delta=rotation,request_id=request_id,grasp_search=grasp_search)
+        if speed!=1 and (getattr(self,'arm_motion','short')!='long' or type(speed) not in (int,float) or not math.isfinite(speed) or not .25<=speed<=1):
+            return self.reject('invalid_speed')
+        return super().move_delta(side,dx,dy,dz,rotation_delta=rotation,request_id=request_id,grasp_search=grasp_search,speed=speed)
 
     def base_move(self, dx, dy, dyaw, *, request_id):
         if (any(type(v) not in (int,float) or not math.isfinite(v) for v in (dx,dy,dyaw))
