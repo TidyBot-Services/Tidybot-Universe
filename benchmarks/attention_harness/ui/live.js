@@ -3619,6 +3619,7 @@
         const startButton=form.querySelector('[data-start-yes]'),startLabel=startButton?.textContent;
         if(startButton)startButton.textContent='Starting…';
         form.querySelector('#ab-launch-message').textContent='Starting your run. Checking the task, the scene and the models; this can take up to a minute.';
+        const starting=launchStartAnimation(launchDialog);
         try {
           if(!budget.valid)throw new Error(Object.values(budget.errors)[0]);
           let selection={request_key:requestKey,tasks:[profile.task_id],seeds:[Number(form.seed.value)],policies:[form.v2_policy.value],mode:form.v2_mode.value,
@@ -3630,12 +3631,13 @@
           if(window.Lobby.enabled&&window.Lobby.snap?.demo){
             const made=await Lobby.send('/api/lobby/runs',{task_key:profile.task_id,strategy:'reactive_help',dev_source:Lobby.devSource(provider,form.model_source.value),share_replies:true});
             if(!made.ok)throw new Error(Lobby.errorText(made.value));
-            keys.clearSecrets();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
+            keys.clearSecrets();await starting.ready();starting.stop();launchDialog.close();lastRendered='';await refresh();Lobby.open(made.value.experiment_id);return;
           }
           const response = await controlFetch('/api/dev-v2/experiments',{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken || ''},body:JSON.stringify({selection,start:form.v2_start.value==='yes'})});
           const result = await response.json();
           if (!response.ok) throw new Error(providerErrorText(result)||`HTTP ${response.status}`);
           keys.clearSecrets();
+          await starting.ready();
           // Remote: the new run is drawn only once the lobby knows it, or 02 offers no Stop to someone already in line.
           if(window.Lobby.enabled)await Lobby.refresh();
           selectedDev = 'v2-'+result.cells[0].key;
@@ -3649,10 +3651,12 @@
           url.searchParams.set('dev',selectedDev);
           url.hash=`exp=${result.experiment_id}`;
           history.replaceState(null,'',url);
+          starting.stop();
           launchDialog.close();
           lastRendered = '';
           await refresh();
         } catch (error) {
+          starting.stop();  // the error text below must be readable
           submitting = false;
           form.querySelector('#ab-launch-message').textContent = launchCreationError(error);
           if(startButton)startButton.textContent=startLabel;
@@ -3661,6 +3665,23 @@
       });
       launchDialog.showModal();
     }));
+  }
+
+  // 11-12 (user picked "E"): while a run is being created the whole screen shows the cover's large type, one word at a
+  // time. The server checks task, scene and models in one request and reports no steps, so the words only take turns;
+  // READY is shown once the request has really succeeded. The clock is real elapsed time.
+  function launchStartAnimation(dialog) {
+    const layer=document.createElement('div');
+    layer.className='ab-start-anim';layer.setAttribute('role','status');layer.setAttribute('aria-label','Starting your run');
+    layer.innerHTML='<div class="ab-start-pre" aria-hidden="true">CHECKING THE</div><div class="ab-start-word" aria-hidden="true"></div><div class="ab-start-rule" aria-hidden="true"><i></i></div><div class="ab-start-foot"><span>Starting your run · this can take up to a minute</span><b data-start-clock>00:00</b></div>';
+    dialog.append(layer);
+    const word=layer.querySelector('.ab-start-word'),pre=layer.querySelector('.ab-start-pre'),clock=layer.querySelector('[data-start-clock]'),began=Date.now();
+    const show=(text,ready)=>{word.innerHTML=[...text].map((ch,i)=>`<span style="--i:${i}">${ch}</span>`).join('');layer.dataset.ready=ready?'1':'0';if(ready)pre.textContent='YOUR RUN IS';};
+    const words=['TASK','SCENE','MODELS'];let index=0;show(words[0],false);
+    const turn=setInterval(()=>{index=(index+1)%words.length;show(words[index],false);},2600);
+    const tick=setInterval(()=>{const s=Math.floor((Date.now()-began)/1000);clock.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},500);
+    const stop=()=>{clearInterval(turn);clearInterval(tick);layer.remove();};
+    return {stop,ready:()=>{clearInterval(turn);show('READY',true);return new Promise(done=>setTimeout(done,650));}};
   }
 
   function sessionKey(session) {
