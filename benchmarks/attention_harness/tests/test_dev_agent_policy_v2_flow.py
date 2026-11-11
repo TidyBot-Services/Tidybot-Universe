@@ -645,7 +645,7 @@ def test_full_memory_budget_gate_before_query(tmp_path):
 def test_loop_quota_and_fatal_keep_stop_and_free_pending(tmp_path,cause):
     r=Rig(tmp_path)
     class Quota:
-        def event(self,event):pass
+        def event(self,event,**kw):pass
         def check(self,reason):
             if r.helper.pending_ask and reason=='before_resume':raise ValueError(cause if cause!='fatal' else 'ledger_invariant')
     result,_=drive_rig(r,[['submit'],[]],quota=Quota())

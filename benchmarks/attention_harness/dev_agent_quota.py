@@ -50,14 +50,56 @@ def read_weekly_quota(home=None, *, now=None):
 class QuotaUnavailable(RuntimeError): pass
 
 
-# User 11-08: one run may use at most this many points of the weekly Codex quota, counted from the first reading
-# made during this run in the same weekly window (11-11: not from an older reading found on disk at the start). Runs open at the same time share the one weekly counter, so each sees the
-# others' use too: the cap then stops runs earlier, never later.
+# User 11-08: one run may use at most this many points of the weekly Codex quota.
+# User 11-11: the points are the run's OWN use. Runs open at the same time share the one weekly counter, so its rise
+# says nothing about one run (three runs open together were each stopped for the 5 points the three used together).
+# A run's own use is counted in tokens and turned into points at a fixed rate.
 RUN_CAP_POINTS = 5
+# Measured on the lab account: 133 M tokens = 5 points (11-11, three runs), 170 M = 5 points (11-10), 31 M = 1 point.
+# That is 27-34 M tokens a point; 25 M counts a run's use a little high, so the cap stops early rather than late.
+# Tokens are input (cached included) plus output, as Codex reports them in total_token_usage.
+TOKENS_PER_POINT = 25_000_000
+ROLLOUT_TAIL_BYTES = 1 << 20
+
+
+def _tokens(usage):
+    """input + output of one Codex usage record, or None when it is not one."""
+    if not isinstance(usage,dict):return None
+    total=usage.get('total_tokens')
+    if type(total) is int and total>=0:return total
+    parts=[usage.get('input_tokens'),usage.get('output_tokens')]
+    if all(type(v) is int and v>=0 for v in parts):return sum(parts)
+    return None
+
+
+def rollout_tokens(thread_id, home=None):
+    """Tokens a persistent Codex session has used so far (its newest total_token_usage); None when its file is missing."""
+    root=Path(home).expanduser()/'.codex' if home is not None else Path(os.environ.get('CODEX_HOME') or Path.home()/'.codex')
+    paths=list(root.joinpath('sessions').rglob('rollout-*%s.jsonl'%thread_id))
+    if not paths:return None
+    best=0
+    for path in paths:
+        try:
+            size=path.stat().st_size
+            for span in (ROLLOUT_TAIL_BYTES,size):
+                with path.open('rb') as stream:
+                    stream.seek(max(0,size-span));lines=stream.read().split(b'\n')
+                found=None
+                for line in reversed(lines):
+                    if b'"total_token_usage"' not in line:continue
+                    try:info=(json.loads(line).get('payload') or {}).get('info') or {}
+                    except ValueError:continue  # the first line of a tail can be cut
+                    found=_tokens(info.get('total_token_usage'))
+                    if found is not None:break
+                if found is not None or span>=size:break
+        except OSError:return None
+        best=max(best,found or 0)
+    return best
 
 
 class QuotaMonitor:
-    def __init__(self, private, ledger, *, stop_percent=90, reader=None, clock=time.time, run_cap_points=RUN_CAP_POINTS):
+    def __init__(self, private, ledger, *, stop_percent=90, reader=None, clock=time.time, run_cap_points=RUN_CAP_POINTS,
+                 tokens_per_point=TOKENS_PER_POINT, rollout_reader=None):
         if type(stop_percent) not in (int,float) or not math.isfinite(stop_percent) or not 0<stop_percent<=100:
             raise ValueError('invalid_quota_stop_percent')
         self.private,self.ledger,self.stop_percent=private,ledger,stop_percent
@@ -70,10 +112,50 @@ class QuotaMonitor:
         self.lock=threading.RLock()
         prior=self.private/'quota-event.json'
         if prior.exists():self.latest=json.loads(prior.read_bytes())
+        # The run's own use: persistent sessions (Dev) are read from their session file, one-shot calls (Eval, Advisor)
+        # are added up from the usage each call reports. Kept in the run's folder, so a resumed run goes on counting.
+        self.tokens_per_point=tokens_per_point; self.rollout_reader=rollout_reader or rollout_tokens
+        own=self.private/'quota-own.json'
+        self.own=json.loads(own.read_bytes()) if own.exists() else dict(threads={},call_tokens=0)
 
-    def event(self, event):
-        """CLI variants wrap weekly limits in payload/rate_limits/secondary."""
+    def _save_own(self):
+        from .dev_agent_workspace import atomic_write,encode
+        atomic_write(self.private,'quota-own.json',encode(self.own))
+
+    def spent(self, usage):
+        """Add the usage of one finished one-shot call (Eval, Advisor) to this run's own count."""
+        tokens=_tokens(usage)
+        if not tokens:return
+        with self.lock:
+            self.own['call_tokens']+=tokens;self._save_own()
+
+    def own_tokens(self):
+        """(tokens this run has used itself, None) or (None, why they cannot be counted)."""
+        with self.lock:
+            total=self.own['call_tokens'];changed=False
+            for tid,seen in list(self.own['threads'].items()):
+                try:now=self.rollout_reader(tid)
+                except Exception:now=None
+                if now is None and not seen.get('found'):return None,'session_file_missing'
+                if now is not None and (now>seen.get('tokens',0) or not seen.get('found')):
+                    self.own['threads'][tid]=seen=dict(tokens=max(now,seen.get('tokens',0)),found=True);changed=True
+                total+=seen.get('tokens',0)
+            if changed:self._save_own()
+            return total,None
+
+    def event(self, event, *, session=False, count=True):
+        """CLI variants wrap weekly limits in payload/rate_limits/secondary.
+
+        session=True marks the stream of a persistent session: its tokens are read from its session file (a turn can
+        run for hours without reporting usage), so the usage of its finished turns is not added a second time.
+        count=False: the stream is not on the lab's Codex account (another provider), so none of it is this run's use."""
         now=self.clock()
+        if count and isinstance(event,dict):
+            if session and event.get('type')=='thread.started' and isinstance(event.get('thread_id'),str):
+                with self.lock:
+                    if event['thread_id'] not in self.own['threads']:
+                        self.own['threads'][event['thread_id']]=dict(tokens=0,found=False);self._save_own()
+            elif not session and event.get('type')=='turn.completed':self.spent(event.get('usage'))
         def walk(value, stamp):
             if not isinstance(value,dict):return
             raw=value.get('timestamp')
@@ -124,13 +206,18 @@ class QuotaMonitor:
                                        replaced_used_percent=self.baseline['used_percent'])
                     from .dev_agent_workspace import atomic_write,encode
                     atomic_write(self.private,'quota-baseline.json',encode(self.baseline))
-                run_points=used-self.baseline['used_percent']
+                account_points=used-self.baseline['used_percent']
+                tokens,why=self.own_tokens()
+                # Without a count of its own the run falls back to the rise of the shared counter (stops early, never late).
+                run_points=account_points if tokens is None else tokens/self.tokens_per_point
                 self.capped=self.capped or (self.run_cap_points is not None and run_points>=self.run_cap_points)
                 self.stopped=self.stopped or used>=self.stop_percent or self.capped
                 # Usage only moves when Codex runs, and every local Codex turn writes a fresh
                 # reading; an old reading (e.g. during a long execution) is used but flagged.
                 sample=dict(at=now,reason=reason,used_percent=used,resets_at=reset,stop_percent=self.stop_percent,
                             run_points=run_points,run_cap_points=self.run_cap_points,run_cap_reached=self.capped,
+                            run_points_source='account_rise:'+why if tokens is None else 'own_tokens',run_tokens=tokens,
+                            tokens_per_point=self.tokens_per_point,account_points=account_points,
                             stopped=self.stopped,observed_at=observed,stale=now-observed>WEEKLY_READING_MAX_AGE)
             else:
                 self.failure=error or 'quota_stale_or_unavailable'

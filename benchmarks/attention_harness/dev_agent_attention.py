@@ -263,6 +263,7 @@ class Helper:
             self.ledger.settle(jid,{k:v for k,v in row.items() if k!='context'})
         if self.quota:
             for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
+            if not record.get('cache_hit'):self.quota.spent((record.get('usage') or {}).get('codex_usage'))
         return self._publish(vid)
 
     def finish(self):

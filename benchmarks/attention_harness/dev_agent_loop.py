@@ -296,7 +296,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
             try:
                 stream=session.resume(session.thread_id,prompt) if session.thread_id else session.start(prompt)
                 for event in stream:
-                    if event and quota:quota.event(event)
+                    if event and quota:quota.event(event,session=True,count=getattr(session,'provider',None) is None)
                     command=control()
                     if command in ('cancel','pause'):
                         broker.stop_reason='operator_cancel' if command=='cancel' else 'operator_paused'

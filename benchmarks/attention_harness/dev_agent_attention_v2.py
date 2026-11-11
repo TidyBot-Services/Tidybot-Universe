@@ -429,6 +429,7 @@ class HelperV2(Helper):
         # execution receipts/history; no sealed vN export is rewritten.
         if self.quota and record:
             for name in ('quota_before','quota_after'):self.quota.event(record.get(name) or {})
+            if not record.get('cache_hit'):self.quota.spent((record.get('usage') or {}).get('codex_usage'))
         return feedback(row)
 
     def _human_reply(self, eid, view, deadline):

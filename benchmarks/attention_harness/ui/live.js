@@ -3235,7 +3235,7 @@
         if(!meter.hidden){meter.querySelector('i').style.width=`${used}%`;meter.querySelector('b').style.left=`${stop}%`;}
         if(select.value==='codex'&&labCodex){
           help.textContent=`Dev, Eval and Advisor run on ${labCodex.model}, reasoning ${labCodex.reasoning_effort||'high'}. Results are not comparable with PARCC results.`;
-          name.textContent=labCodex.label;note.innerHTML=`Uses the lab's Codex quota. The run stops at <span data-quota-stop-label>${stop}</span>% of the weekly quota${labCodex.run_cap_points?`, or once it has used ${labCodex.run_cap_points} points of it`:''}.`;
+          name.textContent=labCodex.label;note.innerHTML=`Uses the lab's Codex quota. The run stops at <span data-quota-stop-label>${stop}</span>% of the weekly quota${labCodex.run_cap_points?`, or once this run itself has used about ${labCodex.run_cap_points} points of it`:''}.`;
         }else if(select.value==='codex'){
           help.textContent='Codex results are not comparable with PARCC results and use the Codex subscription quota.';
           name.textContent='Codex subscription';note.innerHTML=`The run stops at <span data-quota-stop-label>${stop}</span>% of the quota.`;
