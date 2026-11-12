@@ -235,3 +235,12 @@ def test_live_waits_until_the_try_has_its_scene(tmp_path, running):
     (episode/'scene.xml').unlink()
     with pytest.raises(FileNotFoundError, match='first step'):dev_agent_view.artifact(dict(cell, active_episode=None), 'free-view/live/scene.json')
     assert started == []
+
+
+def test_live_header_names_the_try_and_phone_tools_clear_the_live_message():
+    """User 11-12: live 3D must say which try is running (run page wording "Try N"), and on a phone the tool
+    stack must sit above the live message instead of on top of it."""
+    html = (Path(__file__).resolve().parents[1] / 'ui' / 'free_view.html').read_text(encoding='utf-8')
+    assert "'Try ' + parseInt(sc.source.attempt.slice(1), 10)" in html
+    narrow = html[html.index('@media (max-width:720px)'):][:600]
+    assert 'body:has(#livemsg:not([hidden])) #tools{bottom:150px}' in narrow
