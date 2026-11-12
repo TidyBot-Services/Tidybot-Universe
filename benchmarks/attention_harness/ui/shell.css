@@ -322,3 +322,8 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-controls [d
 html body #attentionbench-clear[data-operator-view="true"] .view .op-controls [data-run-control-note][data-run-control-note="pausing"]::before{animation:op-pulse 1.2s infinite}
 @media(max-width:760px){html body #attentionbench-clear[data-operator-view="true"] .view .op-controls [data-run-control-note]{height:auto;min-height:36px;padding:7px 14px 7px 12px;white-space:normal}}
 @media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-controls [data-run-control-note]::before{animation:none}}
+
+/* 11-12 user: "Pause, stop and resume are for the owner only" (someone else's run) is a quiet chip like the
+   Pausing note, not loose grey text */
+html body #attentionbench-clear[data-lobby-view="other"] .view .op-controls[data-ended]::after{content:"Only the person who started this run can pause, stop or resume it";display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid var(--sh-line,#d3d4c6);border-radius:999px;background:var(--sh-chip,#fff);color:var(--sh-mut,#62685e);font:500 13px "DM Sans",system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
+@media(max-width:760px){html body #attentionbench-clear[data-lobby-view="other"] .view .op-controls[data-ended]::after{height:auto;min-height:36px;padding:7px 14px;white-space:normal}}
