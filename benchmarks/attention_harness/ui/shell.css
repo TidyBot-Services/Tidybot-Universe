@@ -340,3 +340,13 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty
 /* 11-12 user: a help group with many tries (Try 8–19) ran past the panel and could not be scrolled */
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list{max-height:min(60vh,520px)!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>small{position:sticky;top:-6px;z-index:1;background:var(--op-paper,#f8f6f0);margin:-6px -6px 0;padding:10px 16px 8px!important}
+
+/* 11-12 user (option 4): waiting for the shared robot keeps the black video stage (16:9) with one amber pill
+   in the middle and a quiet line under it; no stripes, no dashed border */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;aspect-ratio:16 / 9;width:100%;max-width:100%;box-sizing:border-box;padding:24px;text-align:center;border:0;border-radius:12px;background:#0b0d0b;background-image:none}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-live-strip+.op-idle[data-lifecycle="robot_wait"]{border-radius:0 0 12px 12px}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 18px 0 14px;border-radius:999px;border:1px solid #ef9f2766;background:#ef9f271a;color:#fac775;font:500 14px "DM Sans",system-ui,sans-serif;white-space:nowrap}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b::before{content:"";width:8px;height:8px;border-radius:50%;background:#ef9f27;animation:op-pulse 1.2s infinite}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] p{max-width:46ch;margin:0;color:#8f8a7c;font:400 13px/1.5 "DM Sans",system-ui,sans-serif;text-wrap:balance}
+@media(max-width:760px){html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"]{aspect-ratio:auto;min-height:200px}html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b{white-space:normal;height:auto;min-height:40px;padding:8px 16px 8px 12px}}
+@media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b::before{animation:none}}
