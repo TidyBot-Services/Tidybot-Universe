@@ -26,7 +26,7 @@ class AgentExecutor(NativeExecutor):
 
     def base_move(self, dx, dy, dyaw, *, request_id):
         if (any(type(v) not in (int,float) or not math.isfinite(v) for v in (dx,dy,dyaw))
-                or math.hypot(dx,dy)>getattr(self,'base_limits',(.20,.30))[0] or abs(dyaw)>getattr(self,'base_limits',(.20,.30))[1]):
+                or math.hypot(dx,dy)>.20 or abs(dyaw)>.30):
             return self.reject('base_delta_limit')
         before=state_fingerprint(self.env,self)
         try:return super().base_move(dx,dy,dyaw,request_id=request_id)

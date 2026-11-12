@@ -19,14 +19,13 @@ def action_arguments(action):
     return [values.get(name,[0.,0.,0.] if name=='rotation_delta' else 0.) for name in names]
 
 
-def base_limit(dx, dy, dyaw, what, limits=None):
-    """Same per-call bound as execution; a clear recoverable rejection."""
+def base_limit(dx, dy, dyaw, what):
+    """Same per-call bound as execution (unchanged); a clear recoverable rejection."""
     from openarm365_dev.base_motion import validate_delta
-    try: validate_delta(dx, dy, dyaw, limits)
+    try: validate_delta(dx, dy, dyaw)
     except Exception as exc:
         if 'exceeds' in str(exc):
-            t, y = limits or (.20, .3)
-            raise ValueError(what+f' exceeds the per-call base limit {t:.2f} m / {y:.2g} rad; a larger move needs several steps') from exc
+            raise ValueError(what+' exceeds the per-call base limit 0.20 m / 0.3 rad; a larger move needs several steps') from exc
         raise ValueError('invalid_'+what.replace(' ','_')) from exc
 
 
@@ -83,7 +82,7 @@ def validate(op, payload, *, config=None):
         if action['group']=='bimanual':
             if len(args)!=1:raise ValueError('one_target_required')
             vector(args[0],14)
-        elif action['group']=='base': vector(args,3);base_limit(*args,'base action',(.60,.60) if (config or {}).get('arm_motion')=='long' else None)
+        elif action['group']=='base': vector(args,3);base_limit(*args,'base action')
         else:
             if len(args) not in (3,4):raise ValueError('invalid_delta')
             vector(args[:3],3)
@@ -195,12 +194,11 @@ def probe(env, executor, planner, observe, request):
             action=payload['action'];group=action['group'];args=action_arguments(action)
             if group=='base':
                 from openarm365_dev.base_motion import validate_delta
-                lim=getattr(executor,'base_limits',None) if getattr(executor,'arm_motion','short')=='long' else None
                 from openarm365_dev.base_motion import check_exact_base_path
                 from openarm365_dev.world import snapshot
                 result=check_exact_base_path(env,snapshot(env,chassis_binding=planner.chassis_binding),
-                    planner.chassis_binding,validate_delta(*args,limits=lim),executor.base_initial,
-                    execution_settings=executor.execution_settings,**({} if lim is None else dict(limits=lim)))
+                    planner.chassis_binding,validate_delta(*args),executor.base_initial,
+                    execution_settings=executor.execution_settings)
             elif group=='bimanual':result=planner.plan_joints(args[0],side='both',epoch=executor.epoch)
             else:
                 side=group.split('_')[0];current=tcp_pose(env,side)

@@ -279,8 +279,6 @@ class Workspace:
             short='Safety: arm coordinates <= 0.05 m / 0.5 rad per action,'
             if short not in tools:raise ValueError('tools_arm_limit_text_missing')
             tools=tools.replace(short,'Safety: arm coordinates <= 0.30 m / 0.5 rad per action,')
-            tools=tools.replace('base translation <= 0.20 m and yaw <= 0.30 rad','base translation <= 0.60 m and yaw <= 0.60 rad').replace(
-                '0.20 m translation / 0.3 rad yaw per call','0.60 m translation / 0.6 rad yaw per call')
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).

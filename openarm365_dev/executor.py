@@ -260,8 +260,6 @@ class NativeExecutor:
         # 2026-11-12: long = up to 0.30 m per coordinate in one planned motion, pause ends once the arm is still,
         # endpoint checked at 8 mrad. short = the earlier fixed values. All other checks are the same in both.
         self.arm_motion=arm_motion;self.arm_delta_limit=.30 if arm_motion=='long' else .05
-        from .base_motion import base_limits as _base_limits
-        self.base_limits=_base_limits(arm_motion)
         if arm_motion=='long' and execution_settings is not None:
             # 2026-11-12 (user, in person: "可以，按建议改"): long runs loosen three physical checks on the executor's own
             # copy: uncommanded base drift 3 -> 10 mm, held object vs hand 10 mm/0.1 rad -> 25 mm/0.25 rad. The planner
@@ -857,8 +855,7 @@ class NativeExecutor:
     def base_move(self,dx,dy,dyaw,*,request_id):
         self.check_live()
         NativeExecutor.handoff_motion_gate(self)
-        limits=getattr(self,'base_limits',None) if getattr(self,'arm_motion','short')=='long' else None
-        delta=validate_delta(dx,dy,dyaw,limits)
+        delta=validate_delta(dx,dy,dyaw)
         NativeExecutor.rebase_held_references(self,request_id)
         from .world import snapshot
         before=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float).copy()
@@ -873,7 +870,6 @@ class NativeExecutor:
             if len(occupied)>1:raise PlanningRejected('Base motion with two held objects is not supported')
             held=occupied[0] if occupied else None
         try: collision=check_exact_base_path(self.env,world,self.planner.chassis_binding,delta,self.base_initial,
-            **({} if limits is None else dict(limits=limits)),
             **({'held_body_id':held['target_id']} if held else {}),
             **({} if getattr(self,'execution_settings',None) is None else dict(execution_settings=self.execution_settings)))
         except PlanningRejected as exc:
@@ -896,10 +892,7 @@ class NativeExecutor:
             # At 20 Hz, 80 steps allow a .20 m / .30 rad command to settle.
             # The native controller maps normalized actions to .15/.15/.30
             # velocity actuators and rotates XY actions back to reset axes.
-            # Long runs: the closed loop below runs at most 0.12 m/s and 0.24 rad/s, so a 0.60 m move gets
-            # its travel time plus the original 2 s of margin (short runs keep exactly 80 steps).
-            drive=80 if limits is None else max(80,math.ceil(max(float(np.linalg.norm(delta[:2]))/.12,abs(float(delta[2]))/.24)/float(self.env.control_timestep))+40)
-            for _ in range(drive):
+            for _ in range(80):
                 actual=np.asarray(self.env.sim.data.qpos[self.env.robots[0]._ref_base_joint_pos_indexes],float)
                 error=target-actual
                 if np.linalg.norm(error[:2])<=.005 and abs(error[2])<=.005:break
