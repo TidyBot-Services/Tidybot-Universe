@@ -327,3 +327,12 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-controls [d
    Pausing note, not loose grey text */
 html body #attentionbench-clear[data-lobby-view="other"] .view .op-controls[data-ended]::after{content:"Only the person who started this run can pause, stop or resume it";display:inline-flex;align-items:center;height:36px;padding:0 14px;border:1px solid var(--sh-line,#d3d4c6);border-radius:999px;background:var(--sh-chip,#fff);color:var(--sh-mut,#62685e);font:500 13px "DM Sans",system-ui,sans-serif;letter-spacing:0;white-space:nowrap}
 @media(max-width:760px){html body #attentionbench-clear[data-lobby-view="other"] .view .op-controls[data-ended]::after{height:auto;min-height:36px;padding:7px 14px;white-space:normal}}
+
+/* 11-12 user: the empty step list is a calm card, not a bare line; a running try gets a pulsing amber dot */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty{display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:3px;align-items:center;margin:6px 0 0;padding:14px 16px;border:1px dashed var(--sh-line,#d3d4c6);border-radius:12px;background:var(--sh-panel,#f8f6f0);color:var(--sh-mut,#62685e);font:400 13.5px/1.45 "DM Sans",system-ui,sans-serif}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty::before{content:"";grid-row:1 / span 2;width:9px;height:9px;border-radius:50%;background:var(--sh-line,#d3d4c6)}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty b{font-weight:600;color:var(--sh-ink,#242822)}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty span{grid-column:2}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty[data-tone="running"]{border-style:solid;border-color:color-mix(in srgb,var(--op-amber,#b7791f) 35%,transparent);background:color-mix(in srgb,var(--op-amber,#b7791f) 8%,transparent)}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty[data-tone="running"]::before{background:var(--op-amber,#b7791f);animation:op-pulse 1.2s infinite}
+@media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty::before{animation:none}}
