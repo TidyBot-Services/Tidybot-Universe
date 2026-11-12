@@ -244,3 +244,10 @@ def test_live_header_names_the_try_and_phone_tools_clear_the_live_message():
     assert "'Try ' + parseInt(sc.source.attempt.slice(1), 10)" in html
     narrow = html[html.index('@media (max-width:720px)'):][:600]
     assert 'body:has(#livemsg:not([hidden])) #tools{bottom:150px}' in narrow
+
+
+def test_live_view_says_when_the_robot_is_standing_still():
+    """User 11-12: live 3D looked frozen while the robot paused between moves; it now says how long ago it last moved."""
+    html = (Path(__file__).resolve().parents[1] / 'ui' / 'free_view.html').read_text(encoding='utf-8')
+    assert 'lastMoveAt = Date.now(); }' in html  # new frames reset the clock
+    assert "'Robot is still · last moved '" in html

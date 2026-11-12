@@ -78,6 +78,7 @@
   #golive{flex:none;height:30px;padding:0 12px;border-radius:999px;border:1px solid #ff3b2f99;background:transparent;font:600 12px/1 var(--heading);letter-spacing:.12em;text-transform:uppercase;color:#ffb3a8}
   #golive:hover{background:#ff3b2f22}
   #livemsg{font:500 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#ffb3a8}
+  #livemsg[data-tone="idle"]{color:#e8dcc4;text-shadow:0 1px 6px #000}
   @keyframes pulse{50%{opacity:.35}}
   #notes{right:max(20px,env(safe-area-inset-right));bottom:96px;width:min(380px,calc(100vw - 40px));max-height:min(60vh,420px);overflow:auto;padding:16px 18px;border-radius:14px;background:#f8f6f0;color:#242822;box-shadow:0 20px 60px -20px #000}
   #notes h2{margin:0 0 8px;font:700 20px/1 var(--heading);letter-spacing:.06em;text-transform:uppercase}
@@ -248,7 +249,7 @@ const cam = {target: [0,0,1], yaw: 0, pitch: 0, dist: 3};
 const setCam = c => { cam.target = c.target.slice(); cam.yaw = c.yaw; cam.pitch = c.pitch; cam.dist = c.dist; };
 const eyeOf = c => { const cp = Math.cos(c.pitch); return [c.target[0] + c.dist*cp*Math.cos(c.yaw), c.target[1] + c.dist*cp*Math.sin(c.yaw), c.target[2] + c.dist*Math.sin(c.pitch)]; };
 const scratch = new Float32Array(16), P = [0,0,0], Q = [1,0,0,0];
-let live = false, liveFollow = true, liveEnded = false, liveAttempt = '', holds = [], nMovingLive = 0;
+let live = false, liveFollow = true, liveEnded = false, liveAttempt = '', holds = [], nMovingLive = 0, lastMoveAt = 0;
 let followIndex = -1, followOffset = [0,0,0], shownClock = '', shownPhase = null, intro = 0;
 
 function poseAt(i, t, p, q) {
@@ -388,7 +389,7 @@ async function livePoses(base, st) {
     if (!r.ok) throw new Error('poses: HTTP ' + r.status);
     const add = new Float32Array(await r.arrayBuffer()), have = frames * nMoving * 7;
     const got = Math.floor(add.length / (nMoving * 7));
-    if (got > 0) { const grown = new Float32Array(have + got * nMoving * 7); grown.set(poses.subarray(0, have)); grown.set(add.subarray(0, got * nMoving * 7), have); poses = grown; frames += got; }
+    if (got > 0) { const grown = new Float32Array(have + got * nMoving * 7); grown.set(poses.subarray(0, have)); grown.set(add.subarray(0, got * nMoving * 7), have); poses = grown; frames += got; lastMoveAt = Date.now(); }
   }
   holds = st.holds || holds; liveEnded = !!st.ended;
   drawTimeline();
@@ -400,13 +401,20 @@ async function liveTick(base) {
     if (!st || st.attempt !== liveAttempt) {
       // The attempt shown has ended. Keep its last frame; when the next attempt starts, load that one.
       if (!liveEnded) { liveEnded = true; setLiveFollow(false); setPlaying(false); }
-      $('livemsg').hidden = false;
+      $('livemsg').hidden = false; delete $('livemsg').dataset.tone;
       $('livemsg').textContent = st ? 'The next attempt has started · loading it' : 'This attempt has ended · waiting for the next one';
       if (st) { location.reload(); return; }
       wait = 3000;
     } else {
       await livePoses(base, st);
-      if (st.ended) { setLiveFollow(false); $('livemsg').hidden = false; $('livemsg').textContent = 'This attempt has ended · its full replay (with doors moving) is on the run page'; }
+      if (st.ended) { setLiveFollow(false); $('livemsg').hidden = false; delete $('livemsg').dataset.tone; $('livemsg').textContent = 'This attempt has ended · its full replay (with doors moving) is on the run page'; }
+      else {
+        // The robot moves in short bursts and stands still while it plans; say so, so a still picture does not look stuck.
+        if (!lastMoveAt) lastMoveAt = Date.now();
+        const idle = Math.floor((Date.now() - lastMoveAt) / 1000);
+        $('livemsg').hidden = idle < 3; $('livemsg').dataset.tone = 'idle';
+        if (idle >= 3) $('livemsg').textContent = 'Robot is still · last moved ' + (idle < 60 ? idle + ' s' : Math.floor(idle / 60) + ' min ' + (idle % 60) + ' s') + ' ago · the view updates when it moves';
+      }
     }
   } catch (e) { wait = 3000; }
   setTimeout(() => liveTick(base), wait);
