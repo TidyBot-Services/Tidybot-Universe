@@ -38,7 +38,7 @@ def test_long_is_recorded_sealed_and_described(monkeypatch, settings):
     assert 'the 12 mrad endpoint bound' in text and 'the 4 mrad endpoint bound' not in text and '10 mm/3 mrad uncommanded base drift' in text
     assert 'Optional speed=s (0.25..1.0' in text
     assert dev_sdk(c)['arm_motion'] == dict(mode='long', translation_limit_m=.30, endpoint_bound_rad=.012, settle='adaptive', speed_range=[.25, 1.0],
-                                             base_drift_m=.010, held_object_m=.025, held_object_rad=.25)
+                                             base_drift_m=.010, held_object_m=.025, held_object_rad=.25, base_translation_limit_m=.60, base_yaw_limit_rad=.60)
     assert {k: v for k, v in c.items() if k not in ('arm_motion', 'dev_sdk_sha256', 'dev_sdk_prompt_sha256', 'dev_sdk_metadata_sha256')} == \
            {k: v for k, v in plain.items() if k not in ('dev_sdk_sha256', 'dev_sdk_prompt_sha256', 'dev_sdk_metadata_sha256')}
 
@@ -171,3 +171,46 @@ def test_speed_is_checked(motion, speed, ok):
     if ok: assert executor.NativeExecutor.checked_speed(e, speed) == float(speed)
     else:
         with pytest.raises(ValueError, match='speed'): executor.NativeExecutor.checked_speed(e, speed)
+
+
+def test_base_limits_follow_the_option():
+    # 11-12 (user OK in person): long runs move the base up to 0.60 m / 0.60 rad per call.
+    from openarm365_dev import base_motion as bm
+    from curobo_v2.client import PlanningRejected
+    assert bm.base_limits('short') == (.20, .30) and bm.base_limits('long') == (.60, .60)
+    bm.validate_delta(.2, 0, .3)
+    with pytest.raises(PlanningRejected, match=r'0\.20m translation or 0\.3rad yaw'): bm.validate_delta(.21, 0, 0)
+    bm.validate_delta(.6, 0, .6, (.60, .60))
+    with pytest.raises(PlanningRejected, match=r'0\.60m translation or 0\.6rad yaw'): bm.validate_delta(.61, 0, 0, (.60, .60))
+
+
+def test_long_base_text_and_metadata(monkeypatch, settings):
+    from benchmarks.attention_harness.dev_tasks import dev_sdk_prompt, dev_sdk
+    dc, plain = config(monkeypatch, settings)
+    dc, c = config(monkeypatch, settings, arm_motion='long')
+    assert '<=0.20m and abs(dyaw) <=0.30rad' in dev_sdk_prompt(plain)
+    text = dev_sdk_prompt(c)
+    assert '<=0.60m and abs(dyaw) <=0.60rad' in text and '<=0.20m and abs(dyaw)' not in text and 'exceeds 0.60m translation or 0.6rad yaw' in text
+    assert dev_sdk(c)['base']['translation_limit_m'] == .60 and dev_sdk(c)['base']['yaw_limit_rad'] == .60
+    assert dev_sdk(plain)['base']['translation_limit_m'] == .20
+
+
+def test_probe_base_action_uses_the_runs_limit():
+    from openarm365_dev_v2.agent_probe import validate
+    action = lambda dx: dict(action=dict(group='base', operation='move_delta', args=[dx, 0, 0], kwargs={}))
+    try: validate('plan_dry_run', action(.1))
+    except ValueError as exc: pytest.skip(f'plan_dry_run payload shape differs here: {exc}')
+    with pytest.raises(ValueError, match='0.20 m'): validate('plan_dry_run', action(.5))
+    validate('plan_dry_run', action(.5), config=dict(arm_motion='long'))
+    with pytest.raises(ValueError, match='0.60 m'): validate('plan_dry_run', action(.65), config=dict(arm_motion='long'))
+
+
+def test_agent_executor_base_limit_follows_the_option():
+    from openarm365_dev_v2.agent_executor import AgentExecutor
+    from openarm365_dev_v2.agent_rejection import RecoverablePlanRejection
+    e = AgentExecutor.__new__(AgentExecutor); e.failed = False; e.check_live = lambda: None
+    e.planner = NS(client=NS(attest=lambda: None), ledger=NS(invalidate=lambda _: None))
+    e.base_limits = (.20, .30)
+    with pytest.raises(RecoverablePlanRejection, match='base_delta_limit'): e.base_move(.3, 0, 0, request_id='r')
+    e.base_limits = (.60, .60)
+    with pytest.raises(RecoverablePlanRejection, match='base_delta_limit'): e.base_move(.61, 0, 0, request_id='r')

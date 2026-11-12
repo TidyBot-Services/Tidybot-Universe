@@ -22,7 +22,7 @@ SDK_PROMPT="""Use only: from robot_sdk import sensors, left_arm, right_arm, left
 # sealed behaviour of every earlier run: 0.05 m, a fixed 1 s pause, 4 mrad. Plan: docs/PLAN-smooth-motion-step1-20261112.md
 ARM_MOTION = {'short': dict(translation_limit_m=.05, endpoint_bound_rad=.004, settle='fixed'),
               'long': dict(translation_limit_m=.30, endpoint_bound_rad=.012, settle='adaptive', speed_range=[.25, 1.0],
-                           base_drift_m=.010, held_object_m=.025, held_object_rad=.25)}
+                           base_drift_m=.010, held_object_m=.025, held_object_rad=.25, base_translation_limit_m=.60, base_yaw_limit_rad=.60)}
 
 
 def arm_motion(config):
@@ -60,7 +60,8 @@ def dev_sdk(config=None):
         limits={**limits,'sdk_calls':config['sdk_call_limit'],'control_steps':config['horizon'],
                 'attempt_seconds':config['attempt_wall_seconds']}
     value = {**SDK, **limits}
-    if arm_motion(config) == 'long': value['arm_motion'] = dict(mode='long', **ARM_MOTION['long'])
+    if arm_motion(config) == 'long':
+        value['arm_motion'] = dict(mode='long', **ARM_MOTION['long'])
     if base_description_enabled(config):
         value['groups'] = [*SDK['groups'], 'base']
         value['base'] = dict(signature='move_delta(dx, dy, dyaw)', frame='current_base_mount',
@@ -79,6 +80,8 @@ def dev_sdk(config=None):
             mode='record_only',attachment='no_attachment',contact_guards='record_only_per_action',empty_close=True,
             base_rehold_after_contact=True,base_rehold_max_translation_m=.05,base_rehold_max_yaw_rad=.10,
             minimum_planned_joint_motion_rad=1e-4,planner_position_tolerance_m=.004,planner_orientation_tolerance_rad=.03)
+    if arm_motion(config) == 'long' and 'base' in value:
+        value['base'] = dict(value['base'], translation_limit_m=.60, yaw_limit_rad=.60)
     return value
 
 def dev_sdk_prompt(config=None):
@@ -144,6 +147,8 @@ def dev_sdk_prompt(config=None):
             'One move_delta is planned and executed as one continuous collision-checked motion: cover a transfer '
             'in ONE call (or a few long ones), not in many small steps; keep short moves for the last centimetres '
             'before contact. A motion planned longer than 100 control steps is refused before it starts; ask for a shorter one.')
+        prompt=prompt.replace('sqrt(dx*dx+dy*dy) <=0.20m and abs(dyaw) <=0.30rad','sqrt(dx*dx+dy*dy) <=0.60m and abs(dyaw) <=0.60rad').replace(
+            'Base delta exceeds 0.20m translation or 0.3rad yaw','Base delta exceeds 0.60m translation or 0.6rad yaw')
         prompt=prompt.replace('the 4 mrad endpoint bound','the 12 mrad endpoint bound').replace('3 mm/3 mrad uncommanded base drift','10 mm/3 mrad uncommanded base drift')
         prompt+=(' Optional speed=s (0.25..1.0, default 1.0) on move_delta(...) and bimanual.move_joints(q14, speed=s) runs '
             'the same planned path more slowly; you decide when to slow down (for example while carrying an object). '

@@ -9,6 +9,13 @@ from curobo_v2.sapien_world import transformed_box
 
 BASE_TRANSLATION_LIMIT_M = 0.20
 BASE_YAW_LIMIT_RAD = 0.30
+# 2026-11-12 (user, in person: "可以的 先这么改"): arm_motion long runs move the base up to 0.60 m / 0.60 rad per call.
+LONG_BASE_TRANSLATION_LIMIT_M = 0.60
+LONG_BASE_YAW_LIMIT_RAD = 0.60
+
+
+def base_limits(arm_motion='short'):
+    return (LONG_BASE_TRANSLATION_LIMIT_M, LONG_BASE_YAW_LIMIT_RAD) if arm_motion == 'long' else (BASE_TRANSLATION_LIMIT_M, BASE_YAW_LIMIT_RAD)
 BASE_CLEARANCE_M = 0.02
 BASE_SAMPLE_TRANSLATION_M = 0.02
 BASE_SAMPLE_YAW_RAD = 0.05
@@ -68,13 +75,15 @@ def base_is_stationary(previous, current, control_timestep):
                 and speeds[2] <= BASE_SETTLE_YAW_SPEED_RADPS)
 
 
-def validate_delta(dx, dy, dyaw):
+def validate_delta(dx, dy, dyaw, limits=None):
     try: delta = np.asarray([dx, dy, dyaw], dtype=float)
     except (TypeError, ValueError) as exc: raise PlanningRejected('Base delta must be finite numeric metres/radians') from exc
     if delta.shape != (3,) or not np.isfinite(delta).all():
         raise PlanningRejected('Base delta must be finite numeric metres/radians')
-    if np.linalg.norm(delta[:2]) > BASE_TRANSLATION_LIMIT_M + 1e-12 or abs(delta[2]) > BASE_YAW_LIMIT_RAD + 1e-12:
-        raise PlanningRejected('Base delta exceeds 0.20m translation or 0.3rad yaw per SDK call')
+    translation, yaw = limits or (BASE_TRANSLATION_LIMIT_M, BASE_YAW_LIMIT_RAD)
+    if np.linalg.norm(delta[:2]) > translation + 1e-12 or abs(delta[2]) > yaw + 1e-12:
+        raise PlanningRejected('Base delta exceeds 0.20m translation or 0.3rad yaw per SDK call' if limits is None else
+                               f'Base delta exceeds {translation:.2f}m translation or {yaw:.2g}rad yaw per SDK call')
     return delta
 
 
@@ -118,7 +127,7 @@ def _copy_mjdata(model, source):
     return copy.copy(source)
 
 
-def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None, held_body_id=None, execution_settings=None):
+def check_exact_base_path(env, world, binding, delta, base_initial, *, source_data=None, held_body_id=None, execution_settings=None, limits=None):
     """Sweep native geoms with FK and exact MuJoCo distances on copied data."""
     import mujoco
     from .world import is_descendant, shape_box
@@ -126,7 +135,7 @@ def check_exact_base_path(env, world, binding, delta, base_initial, *, source_da
     absolute_min = effective_base_min_distance(execution_settings)
     clearance = effective_base_clearance(execution_settings)
     started = time.monotonic()
-    delta = validate_delta(*delta)
+    delta = validate_delta(*delta, limits=limits)
     sim = env.sim
     model = sim.model
     native_model = model._model
