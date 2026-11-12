@@ -107,6 +107,7 @@
   @media (max-width:720px){
     #head{right:20px;top:calc(max(16px,env(safe-area-inset-top)) + 46px)}
     #tools{top:auto;bottom:100px;flex-direction:column}
+    body:has(#livemsg:not([hidden])) #tools{bottom:150px}
     #word{letter-spacing:.24em;padding-left:.24em}
     #hint{display:none}
     .pill small{display:none}
@@ -458,6 +459,8 @@ async function load() {
   const cut = name.search(/→|->/);
   if (cut > 0) { const em = document.createElement('em'); em.textContent = name.slice(cut).replace('->', '→'); $('title').replaceChildren(name.slice(0, cut), em); } else $('title').textContent = name;
   $('attempt').textContent = (qs0.get('attempt') || '').replace(/[^\w ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  // Live has no label from the run page; name the try the way the run page does ("Try 5" for execution e000005).
+  if (live && !$('attempt').textContent && /^e\d+$/.test(sc.source.attempt || '')) $('attempt').textContent = 'Try ' + parseInt(sc.source.attempt.slice(1), 10);
   $('src').textContent = 'Seed ' + sc.source.seed + ' · ' + sc.source.execution + (live ? ' · running now' : ' · ' + clockText((frames - 1) * dt)) + ' · ' + (sc.indices / 3).toLocaleString() + ' triangles';
   drawTimeline();
   const labels = {robot: 'Robot', fixtures: 'Doors and drawers', objects: 'Objects', colours: 'Look', live: 'Live'};
