@@ -51,7 +51,7 @@
   let launchOptionsLoading = false;
   let selectedRun = initialSelection.get('run');
   let selectedRequest = null;
-  let lastRendered = '', lastDrawn = '';
+  let lastRendered = '', lastDrawn = '', lastParts = null;
   let orchestrator = null;
   const gatewayPage = root.dataset.gateway === '1';  // Served by the public gateway: signed in, this person's runs only.
   let orchestratorExpectedUnavailable = root.dataset.remote === '1' || gatewayPage;  // neither the lobby nor the gateway has an orchestrator
@@ -5592,18 +5592,41 @@
     // An Agent run's poll often changes nothing on the page (a quota timestamp, say). Leave the page alone then.
     // An empty lastRendered means an action asked for a redraw, to reset what it disabled.
     const clock = /(<em data-count-to=")[\d.]+(" data-count-seconds="1">)([^<]*)(<\/em>)/g;
-    const drawn = html.replace(clock,'$1$2$4')+banner+JSON.stringify(snapshot.dev_v2?.planner||null);
+    // Counters move on every reach check (about every 12 s): the resource meters and the counts inside the
+    // full-story dialog. Redrawing the whole page for that reloaded the replay video (a black flash) and lost
+    // the scroll place, so those pieces are compared on their own and patched in place.
+    const PATCHED='[data-dev-budget-key],dialog.op-agent-story';
+    let parts=null, rest=html;
+    try{
+      const sheet=document.createElement('template');sheet.innerHTML=html;
+      const found=[...sheet.content.querySelectorAll(PATCHED)];
+      parts=found.map(e=>e.innerHTML);found.forEach(e=>{e.innerHTML='';});rest=sheet.innerHTML;
+    }catch(_){parts=null;rest=html;}
+    const drawn = rest.replace(clock,'$1$2$4')+banner+JSON.stringify(snapshot.dev_v2?.planner||null);
     if (snapshot.agent && lastRendered && previousRun === run.run_id && drawn === lastDrawn) {
+      const shown=parts?[...view.querySelectorAll(PATCHED)]:[];
+      if(parts&&lastParts&&shown.length===parts.length)shown.forEach((el,i)=>{
+        if(parts[i].replace(clock,'$1$2$4')===lastParts[i].replace(clock,'$1$2$4'))return;  // a ticking clock is patched below
+        const at=el.scrollTop;el.innerHTML=parts[i];el.scrollTop=at;
+        if(el.agentStoryClose)el.querySelector('[data-agent-story-close]')?.addEventListener('click',el.agentStoryClose);
+      });
+      lastParts=parts;
       const times=[...html.matchAll(clock)].map(row=>row[3]);
       view.querySelectorAll('em[data-count-seconds="1"]').forEach((el,index)=>{if(times[index]!=null)el.textContent=times[index];});
       refreshAttemptDag(snapshot);refreshFlowDetail(snapshot);refreshMoreDialog();
       return;
     }
-    lastDrawn = drawn;
+    lastDrawn = drawn; lastParts = parts;
     const scrolled = [...view.querySelectorAll('[data-core-region] *')].filter(e=>e.scrollTop||e.scrollLeft).map(e=>[e.className,e.scrollTop,e.scrollLeft]);
     const previousHeld = view.querySelector('img[data-held-frame]');
     // Panels rise in when the page opens, not on every redraw.
     if(previousRun)view.setAttribute('data-settled','');
+    // A redraw of the same run must not move the reader: hold the page's height while the content is swapped
+    // (a replay video is re-attached a moment later) and put the scroll place back.
+    if(previousRun===run.run_id){
+      const pageY=window.scrollY;view.style.minHeight=view.offsetHeight+'px';
+      requestAnimationFrame(()=>{view.style.minHeight='';if(Math.abs(window.scrollY-pageY)>1)window.scrollTo(0,pageY);});
+    }
     view.innerHTML = html;
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
@@ -6429,6 +6452,7 @@
     if(!dialog||!entry)return;
     const key=`attention.agent-story:${snapshot.run.run_id}`;
     const close=()=>{stored(key,null);dialog.close();entry.focus({preventScroll:true});};
+    dialog.agentStoryClose=close;
     entry.addEventListener('click',()=>{stored(key,'open');dialog.showModal();});
     dialog.querySelector('[data-agent-story-close]').addEventListener('click',close);
     dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
