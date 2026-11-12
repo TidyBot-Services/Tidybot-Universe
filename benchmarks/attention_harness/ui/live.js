@@ -1085,6 +1085,29 @@
     if(first!=null)return {seconds:first,mode:'nearest'};
     return Number.isFinite(recording?.duration_seconds)&&recording.duration_seconds>0?{seconds:0,mode:'nearest'}:exact;
   }
+  // Safari (11-12, user): a paused replay inside the rounded, clipped panel turns black, although the frame is
+  // decoded. On pause (and after a seek while paused) the current frame is painted onto a canvas laid over the
+  // video; it goes away as soon as the video plays, seeks or changes source. Other browsers simply show the same
+  // picture twice.
+  function holdPausedFrame(video) {
+    const figure=video.closest('figure');
+    if(!figure||!video.videoWidth||video.readyState<2)return;
+    let still=figure.querySelector('canvas[data-paused-frame]');
+    if(!still){
+      still=document.createElement('canvas');still.dataset.pausedFrame='';still.setAttribute('aria-hidden','true');
+      still.style.cssText='position:absolute;pointer-events:none;object-fit:contain;background:#0b0d0b';
+      figure.append(still);
+    }
+    still.width=video.videoWidth;still.height=video.videoHeight;
+    try{still.getContext('2d').drawImage(video,0,0,still.width,still.height);}catch(_){still.remove();return;}
+    const box=video.getBoundingClientRect(),host=figure.getBoundingClientRect();
+    Object.assign(still.style,{left:`${box.left-host.left}px`,top:`${box.top-host.top}px`,width:`${box.width}px`,height:`${box.height}px`});
+    still.hidden=false;
+  }
+  function dropPausedFrame(video) {
+    const still=video.closest('figure')?.querySelector('canvas[data-paused-frame]');
+    if(still)still.hidden=true;
+  }
   function rememberReplay(video) {
     const key=video.dataset.replayKey;
     if(!key||video.dataset.replayRestoring==='true'||video.readyState<1||video.seeking||!Number.isFinite(video.currentTime))return;
@@ -1171,7 +1194,12 @@
       }
       updateReplayPolicy(snapshot,video);rememberReplay(video);
     };
-    video.onpause = () => rememberReplay(video);
+    video.onpause = () => {rememberReplay(video);holdPausedFrame(video);};
+    if(!video.pausedFrameBound){
+      video.pausedFrameBound=true;
+      for(const ev of ['play','playing','seeking','emptied','loadstart'])video.addEventListener(ev,()=>dropPausedFrame(video));
+      video.addEventListener('seeked',()=>{if(video.paused)holdPausedFrame(video);});
+    }
     video.onerror = () => {
       const selected = replaySelections.get(key);
       if (selected?.pending || selected?.seeking) { selected.pending = false; selected.seeking = false; video.dataset.replayRestoring='false'; selected.error = 'Replay failed to load; seeking is unavailable'; showSelection(); }
