@@ -4588,7 +4588,7 @@
       review:['⚠ NEEDS REVIEW','Needs review','Work or ownership is unresolved. Review the persistent records before continuing; no automatic retry is available.'],
       sdk:['● SDK RUNNING','SDK running','A claimed SDK execution has a live owner.'],
       // Remote time-share: this Try is ready and waits its turn; the clock is stopped meanwhile.
-      robot_wait:['○ WAITING FOR THE ROBOT',l.robot_ahead>0?`Waiting for the robot · ${l.robot_ahead} ahead`:'Waiting for the robot',`This run's next Try is ready and waits its turn for the shared robot${l.robot_ahead>0?`: ${l.robot_ahead} ${l.robot_ahead===1?'execution is':'executions are'} ahead`:''}. Waiting time does not count toward this run.`],
+      robot_wait:['○ WAITING FOR THE ROBOT',l.robot_ahead>0?`Waiting for the robot · ${l.robot_ahead} ahead`:'Waiting for the robot',"Waiting time doesn't count toward this run."],
       terminal:['○ ENDED','Ended','This run has ended. Recorded work and replies remain available.']
     };
     // A shared run that has just started has no recorded work yet: say so plainly instead of the 'prepared' wording.
