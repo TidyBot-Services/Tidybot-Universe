@@ -70,7 +70,7 @@ test('a run that stopped for no progress says so, and never reads as a cancel',(
 
 test('02 says a Try is waiting for the robot and how many are ahead',()=>{
   assert.match(live,/robot_wait:\['○ WAITING FOR THE ROBOT',l\.robot_ahead>0\?`Waiting for the robot · \$\{l\.robot_ahead\} ahead`/);
-  assert.match(live,/Waiting time does not count toward this run\./);
+  assert.match(live,/Waiting time doesn't count toward this run\./);
   assert.match(live,/\['model','advisor','approval','sdk','preparing','robot_wait'\]\.includes\(item\.lifecycle\.phase\)/);
 });
 
