@@ -4592,7 +4592,15 @@
       terminal:['○ ENDED','Ended','This run has ended. Recorded work and replies remain available.']
     };
     // A shared run that has just started has no recorded work yet: say so plainly instead of the 'prepared' wording.
-    if(snapshot.lobby&&['queued','running','waiting_human'].includes(snapshot.lobby.state)&&l.phase==='prepared')return {title:'● RUNNING',short:snapshot.lobby.state==='queued'?'Waiting in line':'Starting the first attempt',text:snapshot.lobby.state==='queued'?'The robot has not started this run yet. It runs one task at a time.':'The robot is getting ready for the first attempt. The scene appears here once it starts.'};
+    // 11-12 user: a run that was paused and resumed also passes through 'prepared'; it already has tries, so it is
+    // picking up where it left off, not starting its first attempt.
+    const hasWork=(snapshot.try_attempts?.length||0)+(snapshot.attempts?.length||0)+(snapshot.dev_session?.versions?.length||0)>0;
+    if(snapshot.lobby&&['queued','running','waiting_human'].includes(snapshot.lobby.state)&&l.phase==='prepared'){
+      if(snapshot.lobby.state==='queued')return {title:'● RUNNING',short:'Waiting in line',text:'The robot has not started this run yet. It runs one task at a time.'};
+      return hasWork
+        ? {title:'● RUNNING',short:'Resuming',text:'The run is picking up where it left off. The next try appears here once it starts.'}
+        : {title:'● RUNNING',short:'Starting the first attempt',text:'The robot is getting ready for the first attempt. The scene appears here once it starts.'};
+    }
     const row=rows[l.phase];return row?{title:row[0],short:row[1],text:row[2]}:null;
   }
   function operatorPageTitle(snapshot,name) {
