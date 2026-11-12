@@ -4634,7 +4634,7 @@
       const why=!rc.can_resume&&rc.resume_blocked_reason?` title="${esc(rc.resume_blocked_reason)}"`:'';
       const resume=rc.can_keep_running?'<button type="button" data-dev-resume>Keep running</button>':`<button type="button"${why} data-dev-resume ${rc.can_resume?'':'disabled'}>▶ Resume</button>`;
       const note=rc.pause_detail || (rc.state==='pausing'?`Pausing · the current step${rc.current_step?` (${rc.current_step})`:''} will finish first`:rc.state==='paused'?"Paused · the run's time budget is not counting":'');
-      return pause+resume+(note?`<small data-run-control-note>${esc(note)}</small>`:'');
+      return pause+resume+(note?`<small data-run-control-note="${esc(rc.state||'')}">${esc(note)}</small>`:'');
     }
     const s=snapshot.dev_session;
     return s?`<button type="button" data-dev-resume ${(snapshot.dev_v2?s.state==='not_started':['ready','stopped'].includes(s.state))?'':'disabled'}>Resume</button>`:'';
