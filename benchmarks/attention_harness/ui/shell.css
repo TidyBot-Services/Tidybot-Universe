@@ -336,3 +336,7 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty
 html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty[data-tone="running"]{border-style:solid;border-color:color-mix(in srgb,var(--op-amber,#b7791f) 35%,transparent);background:color-mix(in srgb,var(--op-amber,#b7791f) 8%,transparent)}
 html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty[data-tone="running"]::before{background:var(--op-amber,#b7791f);animation:op-pulse 1.2s infinite}
 @media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-steps-empty::before{animation:none}}
+
+/* 11-12 user: a help group with many tries (Try 8–19) ran past the panel and could not be scrolled */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list{max-height:min(60vh,520px)!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view nav.op-pills.op-tabs .op-tries-list>small{position:sticky;top:-6px;z-index:1;background:var(--op-paper,#f8f6f0);margin:-6px -6px 0;padding:10px 16px 8px!important}
