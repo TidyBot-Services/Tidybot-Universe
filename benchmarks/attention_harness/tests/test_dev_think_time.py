@@ -555,3 +555,21 @@ def test_contact_setting_labels_are_not_reported_as_contacts():
            'fixture_contact_mode': 'record_only', 'fixture_contact_radius_m': 0.01,
            'fixture_press_contact_radius_m': 0.035, 'fixture_contact_base_rehold_max_yaw_rad': 0.1}
     assert set(contacts_in(row)) == {'unexpected_contacts', 'bilateral_contact_objects'}
+
+
+def test_completion_recovers_a_first_failure_that_an_older_summary_shortened(tmp_path):
+    # Reviewer addition (11-14): exercise the fallback that re-reads the public trace row.
+    import json
+    from benchmarks.attention_harness import dev_agent_tools as tools
+    from benchmarks.attention_harness.dev_agent_workspace import TOOLS_V2
+    (tmp_path / 'docs').mkdir()
+    (tmp_path / 'docs' / 'tools.md').write_text(TOOLS_V2)
+    folder = tmp_path / 'executions' / 'e000003'
+    folder.mkdir(parents=True)
+    long_error = 'RuntimeError: ' + 'x' * 5000
+    (folder / 'trace.json').write_text(json.dumps([
+        {'source': 'right_arm', 'operation': 'move_delta', 'arguments': {'args': [0, 0, .05]}, 'status': 'failed',
+         'error': {'type': 'RuntimeError', 'message': long_error}}]))
+    (folder / 'summary.json').write_text(json.dumps({'outcome': {'status': 'failed'}, 'first_failure': 'shortened…'}))
+    out = tools.completion({'status': 'completed', 'execution_id': 'e000003'}, tmp_path, 'r1')
+    assert long_error in out and 'shortened' not in out
