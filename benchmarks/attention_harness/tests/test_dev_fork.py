@@ -15,6 +15,7 @@ from benchmarks.attention_harness.dev_ledger import DevV2Store
 from benchmarks.attention_harness.dev_loop import immutable, process_identity
 from benchmarks.attention_harness.dev_tasks import get_task
 from benchmarks.attention_harness.tests.test_memory_provisional import REJECTED, SOURCE, missing_model_copy_fixture
+from benchmarks.attention_harness.tests.test_dev_agent_d7 import fixture as agent_memory_fixture
 from openarm365_dev_v2 import scene_contract
 from openarm365_dev_v2.scene_contract import registered_contract_ref
 
@@ -26,7 +27,7 @@ def eid_for(key):
     return 'devexp-' + hashlib.sha256(key.encode()).hexdigest()[:24]
 
 
-def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versions=2):
+def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versions=2, agent=False, source_padding=''):
     """A finished daily run laid out as on 8769: root/<eid>/ledger.sqlite3, artifacts and cell evidence."""
     root = tmp_path / 'daily'
     key = 'fork-source-run-102'
@@ -34,6 +35,7 @@ def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versi
     selection = dict(request_key=key, tasks=[TASK], seeds=[102], policies=['reactive_help'], mode='interactive',
                      target_depth=1, target_valid_executions=1, max_versions=3, help_budget=1,
                      scene_contract=registered_contract_ref(), reproducible_reset=True)
+    if agent:selection['dev_mode']='agent'
     (root / eid).mkdir(parents=True)
     store = DevV2Store(root / eid / 'ledger.sqlite3')
     experiment = dev_experiment.create(store, root / eid / 'artifacts', selection)
@@ -51,11 +53,20 @@ def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versi
     system = get_task(TASK).system_prompt(config)
     for v in range(1, versions + 1):
         d = cells / f'v{v}'
-        src = immutable(d / 'policy.py', SOURCE + f'# version {v}\n')
+        src = immutable(d / 'policy.py', SOURCE + f'# version {v}\n'+source_padding)
         mi = immutable(d / 'model-input.json', {'messages': [
             {'role': 'system', 'content': system + (dev_fork.OPINION + '{"passed": false}' if v > 1 else '')},
             {'role': 'user', 'content': '{}'}]})
         ok = valid or v < versions
+        if agent:
+            # Incoming snapshot versus a mutable outgoing ref containing future help.
+            immutable(d/'help.json',dict(status='delivered',delivered=True,content=f'help-marker-{v}',hint_human_seconds=37))
+            outgoing=immutable(d/'outgoing-help.json',dict(status='delivered',delivered=True,content=f'help-marker-{v+1}'))
+            row=dict(execution_id=f'e{v}' if executed or v<versions else None,native_success=False,
+                     eval_verdict='fail',eval=dict(passed=False,reason=f'eval-marker-{v}',advice=f'advice-marker-{v}'))
+            store.version(cell['key'],dict(version=v,source=src,help=outgoing,valid=ok,summary=f'summary-marker-{v}',
+                                         reason=f'reason-marker-{v}',agent=row,formal_eligible=False))
+            continue
         store.version(cell['key'], {'version': v, 'source': src, 'diff': src, 'reason': 'fixture', 'valid': ok,
                                     'validation_error': None if ok else 'fixture validator error',
                                     'model_input': mi, 'formal_eligible': False})
@@ -87,9 +98,9 @@ def bridge(tmp_path, monkeypatch):
     def materialize(argv, **kwargs):
         def arg(name):return Path(argv[argv.index(name) + 1])
         selection = json.loads(arg('--selection').read_bytes())
-        c = selection['configuration']
-        store = DevV2Store(arg('--store'), configuration={'goal_id': c['goal_id'], 'limits': c['experiment_budget'],
-                                                          'wall_seconds': c['wall_seconds']})
+        c = selection.get('configuration')
+        store = DevV2Store(arg('--store'), **({'configuration':{'goal_id': c['goal_id'], 'limits': c['experiment_budget'],
+                                                          'wall_seconds': c['wall_seconds']}} if c else {}))
         arg('--output').write_text(json.dumps(dev_experiment.create(store, arg('--artifacts'), selection)))
         return SimpleNamespace(returncode=0)
     monkeypatch.setattr(daily.subprocess, 'run', materialize)
@@ -228,3 +239,167 @@ def test_preview_endpoint(tmp_path, bridge):
 @pytest.fixture(autouse=True)
 def offline_r4_snapshot(r4_deployment):
     """New dev defaults bind an isolated authenticated snapshot."""
+
+
+def agent_child_body(source, **fork):
+    body=child_body(source,**fork)
+    selection=body['selection']
+    selection.pop('configuration');selection.pop('eval_agent')
+    selection.update(dev_mode='agent',goal_key='fork-agent-goal')
+    return body
+
+
+def test_agent_history_cut_at_n_and_fresh_workspace(tmp_path,bridge):
+    from benchmarks.attention_harness.dev_agent_workspace import Workspace
+    from benchmarks.attention_harness.dev_agent_loop import bootstrap
+    s=source_run(tmp_path,agent=True,versions=6)
+    shown=dev_fork.preview(s.root,s.eid,s.cell,3)
+    assert len(shown['attempts'])==6 and not shown['blocked']
+    assert shown['attempts'][2]['executed'] and shown['attempts'][2]['reason']=='eval-marker-3'
+    assert any('Attempts 1–3' in text for text in shown['prompt_includes'])
+    created=bridge(s.root).create(agent_child_body(s,version=3))
+    store=DevV2Store(s.root/created['experiment_id']/'ledger.sqlite3')
+    manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,created['experiment_id']))
+    assert manifest['initial_sources'][TASK]['source']==SOURCE+'# version 3\n'
+    assert created['selection']['mode']=='interactive' and not created['cells'][0]['experiment_eligible']
+    fork=manifest['fork'];history=dev_fork._json(fork['history'])
+    assert [row['version'] for row in history]==[1,2,3]
+    assert [row['help'] for row in history]==[[f'help-marker-{v}'] for v in (1,2,3)]
+    assert 'reference_suggestion' not in history[0]['eval']
+    assert history[2]['eval']['reference_suggestion']=='advice-marker-3'
+    assert history[2]['outcome']==dict(valid=True,executed=True,native_success=False)
+    workspace=Workspace(tmp_path/'new-agent')
+    dev_fork.publish_history(workspace,manifest)
+    document=(workspace.ws/'docs/previous-run.md').read_text()
+    assert document.startswith('# Earlier run up to Attempt 3')
+    assert 'summary-marker-1' in document and 'advice-marker-3' in document
+    text='\n'.join(p.read_text() for p in (s.root/created['experiment_id']/'fork').iterdir())+document
+    for v in (4,5,6):
+        for kind in ('summary','reason','eval','help','advice'):assert f'{kind}-marker-{v}' not in text
+    assert 'advice-marker-1' not in text and 'advice-marker-2' not in text
+    assert 'hint_human_seconds' not in text
+    prompt=bootstrap(workspace,SimpleNamespace(limits={'formal_versions':10},wall_seconds=21600),'reactive_help')
+    assert 'Read docs/previous-run.md' in prompt
+    assert not (workspace.private/'session.json').exists()
+    assert sum(p.stat().st_size for p in (s.root/created['experiment_id']/'fork').iterdir())<100000
+
+
+def test_agent_code_only_has_no_history_or_feedback(tmp_path,bridge):
+    from benchmarks.attention_harness.dev_agent_workspace import Workspace
+    s=source_run(tmp_path,agent=True,versions=6)
+    created=bridge(s.root).create(agent_child_body(s,version=3,carry='code'))
+    store=DevV2Store(s.root/created['experiment_id']/'ledger.sqlite3')
+    manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,created['experiment_id']))
+    assert manifest['fork']['history'] is None and manifest['fork']['feedback'] is None
+    workspace=Workspace(tmp_path/'new-agent')
+    dev_fork.publish_history(workspace,manifest)
+    assert not (workspace.ws/'docs/previous-run.md').exists()
+    files=list((s.root/created['experiment_id']/'fork').iterdir())
+    assert {p.name for p in files}=={'source.py','fork.json'}
+    text='\n'.join(p.read_text() for p in files)
+    assert not any(f'{kind}-marker-' in text for kind in ('summary','reason','eval','help','advice'))
+
+
+@pytest.mark.parametrize('mode',['experiment','diagnostic'])
+def test_agent_fork_requires_interactive(tmp_path,bridge,mode):
+    s=source_run(tmp_path,agent=True)
+    body=agent_child_body(s);body['selection']['mode']=mode
+    with pytest.raises(ValueError,match='interactive'):bridge(s.root).create(body)
+    assert not (s.root/eid_for(body['selection']['request_key'])/'fork').exists()
+
+
+def test_agent_fork_preview_endpoint(tmp_path,bridge):
+    s=source_run(tmp_path,agent=True)
+    (s.root/s.eid/'authorization.json').write_text('{}')
+    value,kind=bridge(s.root).get(f'/api/dev-v2/experiments/{s.eid}/fork-preview?cell={s.cell}&version=1&carry=feedback')
+    assert kind=='application/json' and value['attempts'][0]['executed'] and not value['blocked']
+
+
+def bind_memory_fork(f,carry='feedback'):
+    request=dict(experiment_id='devexp-'+'a'*24,cell='b'*64,version=3,carry=carry)
+    record=immutable(f.root/'fork.json',dict(schema=dev_fork.SCHEMA,**request,source_cells=[request['cell'],'c'*64]))
+    with f.store.tx() as db:
+        experiment=f.store.get(db,'experiments','exp')
+        experiment['selection']['fork']=dict(request,record=record)
+        f.store.put(db,'experiments','exp',experiment)
+    return request
+
+
+@pytest.mark.parametrize('carry',['code','feedback'])
+def test_agent_fork_memory_excludes_entire_source_run_before_publication(agent_memory_fixture,carry):
+    f=agent_memory_fixture;request=bind_memory_fork(f,carry)
+    origins={'n0':dict(source_run_id='run:other'),'n1':dict(origin=dict(experiment_id='other',cell='other'))}
+    for v in range(1,7):
+        row=dict(f.gateway.rows[0],memory_id=f'source-{v}',guidance=f'future-memory-marker-{v}')
+        f.gateway.rows.append(row)
+        origins[row['memory_id']]=(dict(source_run_id='run:'+request['cell']) if v%2 else
+                                   dict(origin=dict(experiment_id=request['experiment_id'],cell='c'*64,help_version=v)))
+    f.gateway.provenance=lambda mid:origins[mid]
+    f.memory.start()
+    assert {e['memory_id'] for e in f.memory.packet['entries']}=={'n0','n1'}
+    assert {g['memory_id'] for g in f.gateway.grants.values()}=={'n0','n1'}
+    text=(f.ws.ws/'memory/v1.json').read_text()+(f.ws.private/'memory/v1/memory-input.json').read_text()
+    assert 'future-memory-marker' not in text
+    # Restoring a cached generation rechecks origin rather than trusting old delivery.
+    origins['n0']=dict(source_run_id='run:'+request['cell'])
+    with pytest.raises(PermissionError):f.memory.start()
+
+
+def test_agent_fork_memory_missing_provenance_stops_delivery(agent_memory_fixture):
+    f=agent_memory_fixture;bind_memory_fork(f)
+    f.gateway.provenance=lambda mid:{}
+    with pytest.raises(PermissionError,match='provenance'):f.memory.start()
+    assert not (f.ws.ws/'memory/v1.json').exists()
+    assert not f.gateway.grants
+
+
+def test_agent_history_screens_prose(tmp_path):
+    s=source_run(tmp_path,agent=True)
+    source=dev_fork.Source(s.root,s.eid,s.cell,2)
+    source.versions[1]['summary']='reward SECRET /tmp/example'
+    assert source.history()[0]['summary']=='[withheld]'
+
+
+def test_agent_fork_start_publishes_code_and_cut_history_before_any_session(tmp_path,bridge,monkeypatch):
+    from benchmarks.attention_harness import dev_agent_loop,dev_agent_isolation
+    s=source_run(tmp_path,agent=True,versions=6)
+    created=bridge(s.root).create(agent_child_body(s,version=3))
+    store=DevV2Store(s.root/created['experiment_id']/'ledger.sqlite3')
+    exp=dev_experiment.snapshot(store,created['experiment_id']);manifest=dev_experiment.verify_manifest(exp)
+    inspected=[]
+    def preflight(ws,private,**kwargs):
+        inspected.append(ws)
+        assert (ws/'work/main.py').read_text()==SOURCE+'# version 3\n'
+        text=(ws/'docs/previous-run.md').read_text()
+        assert '# Earlier run up to Attempt 3' in text and 'help-marker-3' in text
+        assert not any(f'-marker-{n}' in text for n in (4,5,6))
+        assert not (private/'session.json').exists()
+        raise dev_agent_isolation.IsolationUnavailable('offline_preflight_stop')
+    monkeypatch.setattr(dev_agent_isolation,'verify_runtime',preflight)
+    monkeypatch.setattr(dev_agent_loop,'CodexAgentSession',lambda *a,**kw:pytest.fail('must not start Codex'))
+    class Listener:
+        def __enter__(self):return self
+        def __exit__(self,*a):pass
+        def bind(self,*a):pass
+        def listen(self):pass
+        def getsockname(self):return ('127.0.0.1',12345)
+    monkeypatch.setattr(dev_agent_loop.socket,'socket',Listener)
+    result=dev_agent_loop.run_agent_cell(store,exp,manifest,exp['cells'][0]['key'],runner_factory=lambda **kw:pytest.fail('must not start simulator'))
+    assert inspected and result['reason']=='isolation_unavailable'
+
+
+def test_missing_incoming_help_blocks_feedback_but_allows_code_only(tmp_path):
+    s=source_run(tmp_path,agent=True,versions=6)
+    (s.dir/'v2/help.json').unlink()
+    shown=dev_fork.preview(s.root,s.eid,s.cell,3)
+    assert shown['blocked'] and 'source_history' in ids(shown['checks'],'block')
+    assert not dev_fork.preview(s.root,s.eid,s.cell,3,'code')['blocked']
+
+
+def test_agent_frozen_bundle_stays_under_100kb_without_truncation(tmp_path):
+    s=source_run(tmp_path,agent=True,versions=1,source_padding='# large source\n'*8000)
+    shown=dev_fork.preview(s.root,s.eid,s.cell,1,'code')
+    assert shown['blocked'] and 'fork_size' in ids(shown['checks'],'block')
+    with pytest.raises(dev_fork.ForkTooLarge):
+        dev_fork.materialize(s.root,tmp_path/'child',dict(experiment_id=s.eid,cell=s.cell,version=1,carry='code'))
+    assert not (tmp_path/'child/fork').exists()

@@ -24,7 +24,7 @@ def fixture(tmp_path,monkeypatch,*,outcome='passed',script=None,prepared=True,mo
     monkeypatch.setattr(dev_agent_attention,'Helper',forbidden_helper)
     monkeypatch.setattr(dev_agent_isolation,'verify_runtime',lambda *a,**kw:None)
     monkeypatch.setattr(dev_agent_isolation,'codex_identity',lambda:dict(offline_fake=True))
-    monkeypatch.setattr(dev_agent_loop,'QuotaMonitor',lambda *a,**kw:SimpleNamespace(check=lambda *a:None,event=lambda *a:None))
+    monkeypatch.setattr(dev_agent_loop,'QuotaMonitor',lambda *a,**kw:SimpleNamespace(check=lambda *a:None,event=lambda *a,**kw:None))
     monkeypatch.setattr(dev_agent_eval,'Evaluator',lambda *a,**kw:FakeEvaluator())
     class Listener:
         def __enter__(self):return self

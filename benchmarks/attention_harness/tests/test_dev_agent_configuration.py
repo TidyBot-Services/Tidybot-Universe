@@ -31,6 +31,13 @@ def test_creation_options_reject_unsupported(change):
     with pytest.raises(ValueError):normalize({**SELECTION,**change})
 
 
+def test_fork_is_interactive_and_still_refuses_validation_origin():
+    fork=dict(experiment_id='devexp-'+'a'*24,cell='b'*64,version=3,carry='feedback')
+    assert normalize(dict(SELECTION,fork=fork))['dev_mode']=='agent'
+    with pytest.raises(ValueError,match='interactive'):normalize(dict(SELECTION,fork=fork,mode='experiment'))
+    with pytest.raises(ValueError):normalize(dict(SELECTION,fork=fork),validation_origin={'dev_mode':'agent'})
+
+
 def test_create_freezes_agent_only(tmp_path,offline_dev_identity):
     store=DevV2Store(tmp_path/'db')
     selection=dict(SELECTION,dev_model='gpt-6-sol',eval_model='gpt-6-astra',quota_stop_percent=91)

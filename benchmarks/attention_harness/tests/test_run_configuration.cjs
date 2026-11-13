@@ -30,7 +30,7 @@ test('Run again reads a saved Agent selection and falls back for absent values',
   assert.match(source,/button\.hasAttribute\('data-open-run-again'\)/);
 });
 
-test('only an ended Agent run offers Run again; nothing offers to continue from an attempt',()=>{
+test('only an ended Agent run offers Run again; continuation uses the fork dialog',()=>{
   const fragment=source.slice(source.indexOf('  function runAgainButton('),source.indexOf('\n  function ',source.indexOf('  function runAgainButton(')+10));
   const {runAgainButton}=vm.runInNewContext(fragment+'\n({runAgainButton})',{isTerminal:snapshot=>snapshot.ended});
   const run=mode=>({ended:true,dev_v2:{versions:[{version:1}]},dev_v2_selection:mode?{dev_mode:mode}:{}});
@@ -38,7 +38,8 @@ test('only an ended Agent run offers Run again; nothing offers to continue from 
   assert.equal(runAgainButton(run(null)),'');                  // an older One call run
   assert.equal(runAgainButton({...run('agent'),ended:false}),'');
   assert.equal(runAgainButton({ended:true}),'');              // a Fixed run has no Dev v2 cell
-  assert.doesNotMatch(source,/data-open-fork|continueButton|forkPanel/);
+  assert.match(source,/data-continue-attempt data-open-fork/);
+  assert.match(source,/selection.fork=fork.request\(\)/);
 });
 
 test('Run again applies saved fields to the existing dialog before Start',()=>{

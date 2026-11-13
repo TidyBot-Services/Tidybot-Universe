@@ -410,7 +410,7 @@
     return {agent,run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
       created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
-      status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
+      status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,fork:session.fork,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
       attempts_used:agent?(()=>{const value=Number(counts?.formal_versions??versions.length)||0,high=Math.max(value,versionsSeen.get(session.session_id)||0);versionsSeen.set(session.session_id,high);return high;})():session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??session.agent_resources?.limits?.formal_versions??session.agent_versions_limit??10):session.budget?.executions,
       agent_solved:agent&&(versions.some(v=>v.native_success===true)||session.reason==='native_success'),
@@ -585,6 +585,7 @@
     const ids=(r.development?r.policy_ids||[]:r.attention_control?.segments?.length?r.attention_control.segments.map(s=>s.policy_id):[r.initial_policy]).filter(Boolean).filter((id,i,a)=>id!==a[i-1]);
     const icon=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
     const badges=[];let strategy=null,progress=null;
+    if(r.fork)badges.push('<span class="ab-run-badge" data-run-badge="continued">Continued</span>');
     if(ids.length){
       const text=ids.length===1?policyShort(ids[0]):ids.length===2?`${policyShort(ids[0],true)} → ${policyShort(ids[1],true)}`:`${policyShort(ids[0],true)} → … → ${policyShort(ids.at(-1),true)}`;
       const full=`Help strategy: ${ids.map(policyTitle).join(' → ')}${ids.length>1?` · ${ids.length-1} switch${ids.length>2?'es':''}`:''}`;
@@ -602,7 +603,7 @@
     if(rail){
       // Rail cards (task groups, 10-30): version bar + count, the coloured strategy chip, then `extra` (the status).
       const bar=progress?`<span class="ab-run-bar" title="${esc(progress.full)}"><i style="width:${Math.round(100*Math.min(1,progress.used/progress.limit))}%"></i></span><span class="ab-run-rail-text">${progress.used}/${progress.limit}</span>`:'';
-      return `<div class="ab-run-rail-meta">${bar}${strategy||''}${extra}</div>`;
+      return `<div class="ab-run-rail-meta">${bar}${strategy||''}${r.fork?'<span class="ab-run-badge" data-run-badge="continued">Continued</span>':''}${extra}</div>`;
     }
     return badges.length||extra?`<div class="ab-run-badges">${badges.join('')}${extra}</div>`:'';
   }
@@ -1704,11 +1705,63 @@
     if(snapshot?.dev_v2?.lifecycle?.can_create_new===false)return `<button class="${cls}" type="button" data-open-launch disabled title="Original goal resources or worker availability prevent a new run">${label}</button>`;
     return `<button class="${cls}" type="button" data-open-launch ${launchOptions?.dev_v2?.profiles?.some(p=>p.enabled) ? '' : 'disabled'}>${label}</button>`;
   }
-  // New run only makes Agent runs, so an older One call run has no same settings to repeat.
-  // 11-10 run page: no longer placed on the run page (the user found it out of place); kept for the launch code path.
+  // Repeat keeps a settled Agent run's settings; older One call runs have no Agent settings to repeat.
   function runAgainButton(snapshot) {
     return snapshot?.dev_v2 && isTerminal(snapshot) && snapshot.dev_v2_selection?.dev_mode==='agent'
       ? '<button type="button" data-open-run-again>Run again with the same settings</button>' : '';
+  }
+  function canContinue(snapshot) {
+    return Boolean(snapshot?.dev_v2 && snapshot.dev_v2_selection?.dev_mode==='agent' && isTerminal(snapshot)
+      && root.dataset.remote!=='1' && snapshot.lobby?.mine!==false && launchOptions?.dev_v2?.continue_from_attempt
+      && snapshot.dev_v2.versions?.some(v=>v.valid===true));
+  }
+  function continueButton(snapshot,version=null) {
+    if(!canContinue(snapshot)||version!=null&&!snapshot.dev_v2.versions.some(v=>v.version===version&&v.valid===true))return '';
+    const label=version==null?'Continue from an attempt…':'Continue from this attempt';
+    return `<button type="button" class="op-continue" data-continue-attempt data-open-fork ${version==null?'':`data-fork-version="${esc(version)}"`}><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9a6 6 0 0 1-6 6H6"/></svg>${esc(label)}</button>`;
+  }
+  function forkPanel(form,start,onChange) {
+    const cell=currentSnapshot.dev_v2,eid=cell.experiment_id,key=cell.key;
+    const versions=cell.versions.filter(v=>v.valid===true).map(v=>v.version).sort((a,b)=>a-b);
+    const state={version:versions.includes(start.version)?start.version:versions.at(-1),carry:'feedback',preview:null,loading:true,error:'',seq:0};
+    const header=launchDialog.querySelector('.ab-launch-header');
+    header.querySelector('.kicker').textContent='NEW RUN / CONTINUE FROM AN ATTEMPT';
+    const panel=document.createElement('section');panel.className='ab-launch-section ab-fork';panel.dataset.forkPanel='';
+    form.querySelector('.ab-launch-body').prepend(panel);
+    const lock=()=>{
+      form.v2_mode.value='interactive';form.seed.value=String(cell.seed);
+      for(const name of ['benchmark','task_id','v2_mode','seed','robot_model','execution_arm'])form[name].disabled=true;
+    };
+    form.querySelector('[data-task-picker]').hidden=true;
+    form.task_id.closest('label').hidden=false;
+    if(!form.goal_id.readOnly)form.goal_id.value=`daily-v2-fork-${Date.now()}`;
+    function render() {
+      const p=state.preview,attempt=p?.attempts?.find(a=>a.version===state.version);
+      header.querySelector('h3').textContent=`Continue from Attempt ${state.version}`;
+      panel.innerHTML=`<p class="ab-fork-strip">${esc(eid)} · Attempt ${state.version} · ${esc(attempt?.outcome||'Checking…')}</p>
+        <p>Excluded from comparison</p>
+        <label class="ab-launch-field">Source attempt<select data-fork-attempt aria-label="Source attempt">${(p?.attempts||cell.versions).map(v=>`<option value="${v.version}" ${v.version===state.version?'selected':''} ${v.valid===false?'disabled':''}>Attempt ${v.version}${v.outcome?' · '+esc(v.outcome):''}</option>`).join('')}</select></label>
+        <fieldset class="ab-fork-carry"><legend>Carry into the new run</legend>${[['feedback','Code + earlier feedback'],['code','Code only']].map(([id,title])=>`<label><input type="radio" name="fork_carry" value="${id}" ${state.carry===id?'checked':''}>${title}</label>`).join('')}</fieldset>
+        <h4>Checks</h4><ul class="ab-fork-checks" aria-live="polite">${state.loading?'<li>Checking the source attempt…</li>':''}${state.error?`<li data-level="block">${esc(state.error)}</li>`:''}${(p?.checks||[]).map(r=>`<li data-level="${esc(r.level)}"><b>${r.level==='ok'?'✓':r.level==='block'?'✕':'!'} ${esc(r.title)}</b> ${esc(r.body||'')}</li>`).join('')}</ul>
+        <h4>What Dev will see</h4><ul data-fork-prompt>${(p?.prompt_includes||[]).map(line=>`<li>${esc(line)}</li>`).join('')}</ul>`;
+      panel.querySelector('[data-fork-attempt]').addEventListener('change',event=>{state.version=Number(event.target.value);load();});
+      panel.querySelectorAll('[name="fork_carry"]').forEach(input=>input.addEventListener('change',()=>{state.carry=input.value;load();}));
+      lock();onChange();
+    }
+    async function load() {
+      const seq=++state.seq;state.loading=true;state.error='';state.preview=null;render();
+      try {
+        const response=await fetch(`/api/dev-v2/experiments/${encodeURIComponent(eid)}/fork-preview?cell=${encodeURIComponent(key)}&version=${state.version}&carry=${state.carry}`,{cache:'no-store'});
+        const value=await response.json();
+        if(seq!==state.seq)return;
+        if(!response.ok)throw new Error(value.error||`HTTP ${response.status}`);
+        state.preview=value;
+      } catch(error) {if(seq===state.seq)state.error=error.message;}
+      finally {if(seq===state.seq){state.loading=false;render();}}
+    }
+    load();
+    return {lock,ready:()=>Boolean(state.preview&&!state.preview.blocked&&!state.loading&&!state.error),
+      request:()=>({experiment_id:eid,cell:key,version:state.version,carry:state.carry})};
   }
   function attemptLabel(status) {
     return {running:'Attempt running', succeeded:'Attempt succeeded', failed:'Attempt unsuccessful', timed_out:'Attempt timed out', cancelled:'Attempt cancelled'}[status] || 'Not executed yet';
@@ -3145,8 +3198,9 @@
   }
 
   function bindLaunch() {
-    view.querySelectorAll('[data-open-launch],[data-open-run-again]').forEach(button=>button.addEventListener('click', () => {
-      const repeat=button.hasAttribute('data-open-run-again')?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
+    view.querySelectorAll('[data-open-launch],[data-open-run-again],[data-open-fork]').forEach(button=>button.addEventListener('click', () => {
+      const forkStart=button.hasAttribute('data-open-fork')&&canContinue(currentSnapshot)?{version:Number(button.dataset.forkVersion)||null}:null;
+      const repeat=button.hasAttribute('data-open-run-again')||forkStart?runConfigDefaultsFromSelection(currentSnapshot?.dev_v2_selection):null;
       const options = launchOptions;
       const devProfiles = options?.dev_v2?.profiles || [];
       const hosted = window.Lobby.enabled || !!options?.hosted;  // A shared host: its own limits, and never the lab's Codex.
@@ -3195,7 +3249,8 @@
           ${window.Lobby.newRunHtml()}
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
-      bindLaunchWizard(launchDialog,form);
+      let fork=null;
+      if(!forkStart)bindLaunchWizard(launchDialog,form);
       // A test host may offer one lab Codex model next to PARCC; the public host never does, and then Codex is not listed.
       const labCodex=hosted&&typeof options?.hosted?.lab_codex?.model==='string'?{...options.hosted.lab_codex,label:`Lab Codex · ${options.hosted.lab_codex.model}`}:null;
       const keys = bindKeys(form,hosted?'parcc':'codex',labCodex);
@@ -3332,10 +3387,11 @@
         const stopLabel=form.querySelector('[data-quota-stop-label]');
         if(stopLabel)stopLabel.textContent=form.quota_stop_percent.value;
         updateSummary();
-        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid||!!blocked;
+        for(const button of form.querySelectorAll('button[type=submit]'))button.disabled=submitting||!profile?.enabled||!budget.valid||!!blocked||!!fork&&!fork.ready();
         window.Lobby.syncJoin(form,profile);
         syncSeedOptions();
         renderTaskPicker();
+        fork?.lock();
       }
       // 05: lowered limits get a Reduced budget mark; anything above the envelope is blocked here and by the server.
       let budget=agentBudgetCheck(limits.versions,limits.wall,limits);
@@ -3577,6 +3633,7 @@
         updatePreview();showQuota();
       }
       form.benchmark.addEventListener('change',syncBenchmark);
+      if(forkStart){fork=forkPanel(form,forkStart,updatePreview);updatePreview();}
       form.task_id.addEventListener('change',syncTask);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',syncProfile);
@@ -3631,6 +3688,10 @@
             help_budget:Number(form.help_count.value),goal_key:form.goal_id.value};
           if(profile.rules_profile)selection.rules_profile=profile.rules_profile;
           selection=agentLaunchSelection(selection,{limits:budget.limits,devModel:form.dev_model.value,evalModel:form.eval_model.value,advisorModel:form.advisor_model?.value,channel:profile.channel,tier:options?.dev_v2?.budget_tier});
+          if(fork){
+            if(!fork.ready())throw new Error('A check failed for this attempt; see Checks.');
+            selection.fork=fork.request();
+          }
           // 11-12 (user): long arm moves are the default, here and on Remote; Short steps stays selectable.
           if(form.arm_motion?.value==='long')selection.arm_motion='long';
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
@@ -5222,7 +5283,7 @@
     const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
     const fork = snapshot.dev_v2_selection?.fork;
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">From ${esc(fork.experiment_id.slice(0, 15))} · Attempt ${esc(fork.version)}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}${snapshot.dev_v2_selection?.dev_mode==='agent'?runAgainButton(snapshot)+continueButton(snapshot):''}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
@@ -6452,17 +6513,17 @@
     const wait=root.dataset.remote==='1'&&snapshot.lobby?.mine!==true?null:agent.human_wait,heading=wait?operatorHeading('04','YOUR MOVE',`<b data-agent-reply-countdown data-deadline="${wait.deadline_at}" data-seconds="${wait.seconds}"></b>`):operatorHeading('04','HELP &amp; REPLIES','');
     return `<section class="panel detail ab-current-request${wait?' op-reply-live':''}" data-core-region="request" data-state="${wait?'waiting':'idle'}" aria-label="Help and replies">${heading}${wait?agentReplyForm(wait):''}${DEBUG_VIEW?agentStory(agent):''}<div data-agent-policy-status>${notices.map(n=>`<p role="status">${n}</p>`).join('')}${agent.active_help?'<p role="status">Advisor request pending</p>':''}</div>${!rows.length&&!(agent.tries||[]).length?'<p>No help requests recorded.</p>':''}</section>`;
   }
-  function agentAttemptCard(version,before=true) {
+  function agentAttemptCard(version,before=true,snapshot=null) {
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}${snapshot&&continueButton(snapshot,version.version)?`<div class="op-continue-row">${continueButton(snapshot,version.version)}</div>`:''}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
     const attempt=snapshot.attempts.find(a=>a.attempt_id===stored(`attention.history:${snapshot.run.run_id}`));
     const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
-    return version?agentAttemptCard(version):'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
+    return version?agentAttemptCard(version,true,snapshot):'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
   }
   function agentFullStory(snapshot) {
     const versions=snapshot.dev_session.versions,rows=attentionLedger(snapshot).rows;
@@ -6473,7 +6534,7 @@
     for(const [index,help] of rows.entries())if(help.nextIndex===0)flow+=row('Help',agentHelpCard(help.help,index+1));
     for(const version of versions){
       flow+=work(version.before_attempt||{});
-      flow+=row(`<span class="op-agent-story-circle" aria-hidden="true">${version.native_success===true?'✓':'✕'}</span><b>Attempt ${version.version}</b>`,agentAttemptCard(version,false),version.native_success===true?'solved':'failed');
+      flow+=row(`<span class="op-agent-story-circle" aria-hidden="true">${version.native_success===true?'✓':'✕'}</span><b>Attempt ${version.version}</b>`,agentAttemptCard(version,false,snapshot),version.native_success===true?'solved':'failed');
       for(const [index,help] of rows.entries())if(help.nextIndex===version.version)flow+=row('Help',agentHelpCard(help.help,index+1));
     }
     if(snapshot.dev_v2?.trailing_activity)flow+=work(snapshot.dev_v2.trailing_activity);

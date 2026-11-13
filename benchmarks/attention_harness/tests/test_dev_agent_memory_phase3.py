@@ -147,6 +147,11 @@ def test_non_arm_shapes_refused(tmp_path,monkeypatch,change):
             manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,batch['experiment_id']))
             with pytest.raises((ValueError,RuntimeError)):
                 validate_creation(dict(manifest['selection'],**change),manifest['validation_origin'])
+            if 'fork' in change:
+                from benchmarks.attention_harness.dev_agent_config import normalize
+                fork=dict(experiment_id='devexp-'+'a'*24,cell='b'*64,version=1,carry='feedback')
+                with pytest.raises(ValueError):
+                    normalize(dict(manifest['selection'],fork=fork),validation_origin=manifest['validation_origin'])
             for cross in (dict(seed=102,contract=f.native.contract,runs=10),dict(seed=101,contract=f.native.contract,runs=6,family_check_id='family-test')):
                 with pytest.raises((ValueError,RuntimeError)):
                     validate_creation(manifest['selection'],dict(manifest['validation_origin'],cross_seed=cross))
