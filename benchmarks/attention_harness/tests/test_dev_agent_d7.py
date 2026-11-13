@@ -93,7 +93,9 @@ def test_delivery_is_bounded_screened_and_private(fixture):
     f.memory.start()
     value = json.loads((f.ws.ws / 'memory/v1.json').read_bytes())
     assert value == dev_v2_loop.prompt_memory_view(dict(memory=f.memory.packet['entries']))
-    assert value['memory'][0]['content'] == 'Lift carefully 0'
+    # Same-level, unverified notes follow T2's newest-first order.
+    assert [e['memory_id'] for e in value['memory']] == ['n1', 'n0']
+    assert [e['content'] for e in value['memory']] == ['Lift carefully 1', 'Lift carefully 0']
     assert any('Unvalidated:' in e.get('title', '') for e in value['memory'])
     assert events(f, 'planner_memory_unvalidated_used')
     public = json.dumps(value)
@@ -104,7 +106,8 @@ def test_delivery_is_bounded_screened_and_private(fixture):
     # the agent boundary; the unchanged shared loader still accepts this term.
     f.gateway.rows[0]['guidance'] = 'object_in_sink'
     f.memory.open(2, SOURCE.decode())
-    assert json.loads((f.ws.ws / 'memory/v2.json').read_bytes())['memory'][0]['content'] == '[withheld]'
+    screened = json.loads((f.ws.ws / 'memory/v2.json').read_bytes())['memory']
+    assert next(e for e in screened if e['memory_id'] == 'n0')['content'] == '[withheld]'
 
 
 @pytest.mark.parametrize('layered', [False, True])
@@ -224,6 +227,48 @@ def test_revocation_during_snapshot_cannot_dispatch(fixture):
         assert not b.quarantined
         b.accept(request('probe'));assert settled(b,'probe')['status']=='completed'
     finally:b.close()
+
+
+@pytest.mark.parametrize('note_context,cell_context,expected', [
+    ({'experiment_id': 'note-run'}, {'experiment_id': 'cell-run'}, 'note-run'),
+    ({}, {'experiment_id': 'cell-run'}, 'cell-run'),
+    ({'experiment_id': None}, {'experiment_id': 'cell-run'}, 'cell-run'),
+    ({}, {}, None),
+    ({'experiment_id': None}, {'experiment_id': None}, None),
+])
+def test_run_note_source_run_legacy_fallback_and_missing_audit(fixture, monkeypatch,
+                                                             note_context, cell_context, expected):
+    from benchmarks.attention_harness import memory_run_notes
+    f = fixture
+    cell = dict(f.store.cell('cell'), run_notes=True)
+    cell.pop('experiment_id')
+    cell.update(cell_context)
+    monkeypatch.setattr(f.store, 'cell', lambda key: cell)
+    note = dict(note_id='legacy-note', cell='cell', help_version=1, title='Lift first',
+                content='Lift carefully', failure_signature={}, **note_context)
+    ref = immutable(f.root / 'legacy-note.json', note)
+    original = Path(ref['uri']).read_bytes()
+    with f.store.tx() as db:
+        f.store.event(db, 'planner_memory_run_note_created', dict(cell='cell', version=1,
+            note_id=note['note_id'], help_version=1, note=ref))
+
+    directory = f.ws.private / 'legacy-delivery'
+    entries = memory_run_notes.deliver(f.store, 'cell', 2, directory)
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry['source_run'] == expected and entry['source_version'] == 1
+    assert entry['note_id'] == note['note_id'] and entry['content'] == note['content']
+    assert entry['run_note'] and entry['unvalidated'] and entry['excluded_from_results']
+    assert entry['trusted_here'] is False
+    saved = (directory / 'memory-run-notes-input.json').read_bytes()
+    assert memory_run_notes.deliver(f.store, 'cell', 2, directory) == entries
+    assert (directory / 'memory-run-notes-input.json').read_bytes() == saved
+    assert Path(ref['uri']).read_bytes() == original
+    missing = events(f, 'planner_memory_run_note_source_run_missing')
+    assert missing == ([dict(cell='cell', version=2, note_id=note['note_id'],
+                             reason='source_run_unavailable_in_delivery')] if expected is None else [])
+    assert len(events(f, 'planner_memory_run_notes_delivered')) == 1
+    assert events(f, 'planner_memory_run_note_skipped') == []
 
 
 def test_run_notes_merge_and_generation_resume(fixture):

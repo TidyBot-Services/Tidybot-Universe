@@ -138,7 +138,8 @@ def delivered(directory):
 
 
 def deliver(store, key, version, directory, *, service_entries=()):
-    if store.cell(key).get('run_notes') is not True:
+    cell = store.cell(key)
+    if cell.get('run_notes') is not True:
         return []
     path = Path(directory) / 'memory-run-notes-input.json'
     if path.exists():
@@ -159,7 +160,9 @@ def deliver(store, key, version, directory, *, service_entries=()):
                 "SELECT at,payload FROM v2_events WHERE kind=? AND json_extract(payload,'$.cell')=?",(PREFIX+'created',key))}
         notes = sorted(active.values(), key=lambda n: (-n['help_version'], n['note_id']))
         entries = [dict({k: note[k] for k in ('note_id', 'help_version', 'title', 'content', 'failure_signature')},
-                        created_at=created.get(note['note_id'],0), level='same_task',source_run=note['experiment_id'],source_version=note['help_version'],
+                        created_at=created.get(note['note_id'],0), level='same_task',
+                        source_run=note.get('experiment_id') or cell.get('experiment_id'),
+                        source_version=note['help_version'],
                         layer='run', run_note=True, unvalidated=True, trusted_here=False, match_level='run_note',
                         excluded_from_results=True) for note in notes[:RUN_NOTE_CAP]]
         chosen = order(service_entries, entries)
@@ -168,6 +171,10 @@ def deliver(store, key, version, directory, *, service_entries=()):
                       omitted=max(0, len(notes) - len(entries)), entries=entries)
         immutable(path, packet)
     entries = packet['entries']
+    for entry in entries:
+        if entry.get('source_run') is None:
+            _once(store, PREFIX + 'source_run_missing', dict(cell=key, version=version,
+                  note_id=entry['note_id'], reason='source_run_unavailable_in_delivery'))
     if entries:
         ids = [e['note_id'] for e in entries]
         _once(store, 'planner_memory_run_notes_delivered', dict(cell=key, version=version, packet=_ref(path),

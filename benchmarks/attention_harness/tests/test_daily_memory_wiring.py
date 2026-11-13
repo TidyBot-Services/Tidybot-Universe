@@ -182,7 +182,8 @@ def test_exact_dev_grant_and_visual_proxy_hint_share_generated_input(tmp_path,mo
     generated_input=dev_v2_loop.immutable(tmp_path/'model-input.json',{'messages':messages})
     user=json.loads(json.loads(Path(generated_input['uri']).read_bytes())['messages'][-1]['content'])
     assert user['attention_control']['memory']==[{'title':'Gripper alignment',
-        'summary':'Check alignment before grasping','content':'Check the gripper alignment.'}]
+        'summary':'Check alignment before grasping','content':'Check the gripper alignment.',
+        'memory_id':'real-memory-1','level':'same_task'}]
     assert 'side camera' in user['attention_control']['help']['content']
 
     for conflict in (dict(human_wait_seconds=60,background_seconds=0,approval_rule='generated_motion_policy'),
