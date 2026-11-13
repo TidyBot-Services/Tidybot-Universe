@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-13",
+  "decision": "user in person 2026-11-13: 可以写进正式配置",
+  "id": "grasp-v2-20261113",
+  "planner_deployment": {
+    "lock_path": "/home/truares/Documents/Codex/2026-10-11/new-chat-2/outputs/openarm-dev-integration/deployment-05/runtime-lock.json",
+    "service_ik_candidates_max": 16,
+    "sha256": "0058f2d4d3d4a7d7894f53dcb99128c0db377cb216ab3cf747cb038f12b4e1a0"
+  },
+  "scene_contract": {
+    "file": "openarm365_dev_v2/scene_contracts/dev-seeds-101-103-v2-20261019-kp1500.json",
+    "note": "reference only; the contract records scene state, not planner settings",
+    "sha256": "bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716"
+  },
+  "schema": "attentionbench.openarm365-formal-grasp-freeze.v1",
+  "settings": {
+    "contact_exempt_objects": "movable_objects",
+    "ik_candidates": 8,
+    "ik_max_joint_jump": 1.0,
+    "planner_mode": "ik_path"
+  }
+}

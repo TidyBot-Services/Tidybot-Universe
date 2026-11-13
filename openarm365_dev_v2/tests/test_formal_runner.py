@@ -219,6 +219,35 @@ def test_dev_runner_still_refuses_an_entry_lock_and_keeps_its_boundary_label(env
     assert dev_runner.runner_boundary == 'dev_loop' and dev_runner.allow_entry_lock is False
 
 
+@pytest.mark.parametrize('generation', ['grasp-v2-20261113', '0g', 'pre-0g'])
+def test_formal_result_and_trace_record_grasp_generation(env, fake_native, generation):
+    config = json.loads(env.config.read_bytes())
+    if generation != 'grasp-v2-20261113':
+        del config['grasp_freeze']
+    if generation == 'pre-0g':
+        config['contact_exempt_objects'] = 'none'
+        for key in ('planner_mode', 'ik_candidates', 'ik_max_joint_jump'):
+            del config[key]
+    env.config.write_text(json.dumps(config, sort_keys=True))
+    runner = formal_module.OpenArm365FormalSuiteRunner(
+        service_source_root='', sim_python='', sim_source_root='', task_source_root='', asset_manifest='')
+    result = runner.execute(make_request(env))
+    assert result['grasp_generation'] == generation
+    persisted = json.loads((Path(result['artifact_dir']) / 'result.json').read_bytes())
+    trace = json.loads(Path(result['artifacts']['trace']['uri']).read_bytes())
+    assert persisted['grasp_generation'] == trace['grasp_generation'] == generation
+
+
+def test_dev_result_and_trace_do_not_add_grasp_generation(env, fake_native):
+    env.config.write_text(json.dumps(env.dev, sort_keys=True))
+    runner = runner_module.OpenArm365DevRunnerV2(
+        service_source_root='', sim_python='', sim_source_root='', task_source_root='', asset_manifest='')
+    result = runner.execute(make_request(env))
+    persisted = json.loads((Path(result['artifact_dir']) / 'result.json').read_bytes())
+    trace = json.loads(Path(result['artifacts']['trace']['uri']).read_bytes())
+    assert all('grasp_generation' not in value for value in (result, persisted, trace))
+
+
 def test_memory_scope_is_bound_to_the_openarm365_robot_and_controller(env):
     from benchmarks.attention_harness.robocasa365.memory import ScopedMemoryGateway
     context = memory_context(_config(make_request(env)))

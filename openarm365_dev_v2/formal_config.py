@@ -5,13 +5,48 @@ declared boundary and the three budget fields differ: the experiment freeze choo
 inside the original 80/2400/480 envelope. The Dev tier has a separate budget.
 """
 import copy
+import hashlib
+import json
+from pathlib import Path
 
 from benchmarks.attention_harness.dev_tasks import SDK
-from .dev_config import SCHEMA as DEV_SCHEMA, make_dev_config, validate_dev_config
+from .dev_config import SCHEMA as DEV_SCHEMA, PLANNER_CONFIG_KEYS, make_dev_config, validate_dev_config
 
 SCHEMA = 'attentionbench.openarm365-formal-config.v2'
 # Dev v2 values for the fields a formal config chooses; used to reuse the Dev validator.
 DEV_WHOLE_CASE_SECONDS = 1800
+GRASP_FREEZE_PATH = Path(__file__).resolve().parent / 'formal_freezes' / 'grasp-v2-20261113.json'
+GRASP_FREEZE_ID = 'grasp-v2-20261113'
+GRASP_FREEZE_SHA256 = 'c945f2ff3712496600ee33c0beed19dc429be2b64bfa17e25d743fe39c26c4b0'
+
+
+def _grasp_settings():
+    try:
+        data = GRASP_FREEZE_PATH.read_bytes()
+    except OSError as exc:
+        raise ValueError('formal grasp freeze record unavailable') from exc
+    if hashlib.sha256(data).hexdigest() != GRASP_FREEZE_SHA256:
+        raise ValueError('formal grasp freeze record sha256 mismatch')
+    return json.loads(data)['settings']
+
+
+def grasp_generation(c):
+    """Identify the frozen formal condition, retaining the Dev generation rule."""
+    if c.get('runner_boundary') != 'formal':
+        return '0g' if all(key in c for key in PLANNER_CONFIG_KEYS) else 'pre-0g'
+    settings = _grasp_settings()
+    frozen = 'grasp_freeze' in c
+    if frozen and c['grasp_freeze'] != {'id': GRASP_FREEZE_ID, 'sha256': GRASP_FREEZE_SHA256}:
+        raise ValueError('formal grasp freeze reference mismatch')
+    mismatches = [key for key, value in settings.items()
+                  if type(c.get(key)) is not type(value) or c.get(key) != value]
+    if not mismatches:
+        return GRASP_FREEZE_ID if frozen else '0g'
+    if not frozen and c.get('contact_exempt_objects') == 'none' and not any(key in c for key in PLANNER_CONFIG_KEYS):
+        return 'pre-0g'
+    if any(key in c for key in PLANNER_CONFIG_KEYS) and not all(key in c for key in PLANNER_CONFIG_KEYS):
+        raise ValueError('formal grasp planner_mode, ik_candidates and ik_max_joint_jump must be present together')
+    raise ValueError('formal grasp settings mismatch: ' + ', '.join(mismatches))
 
 
 def _check_budget(attempt_wall_seconds, whole_case_wall_seconds, sdk_call_limit):
@@ -42,6 +77,8 @@ def make_formal_config(task_id, seed, lock, *, attempt_wall_seconds, whole_case_
     c['scene_reset_seed'] = scene_reset_seed
     if scene_contract is not None:
         c['scene_contract'] = scene_contract
+    c['grasp_freeze'] = {'id': GRASP_FREEZE_ID, 'sha256': GRASP_FREEZE_SHA256}
+    grasp_generation(c)
     return c
 
 
@@ -78,9 +115,12 @@ def validate_formal_config(c, *, expected_source_root=None):
     if c.get('scene_reset_seed') != c.get('seed') or type(c.get('scene_reset_seed')) is not int:
         raise ValueError('a formal configuration requires reproducible reset (scene_reset_seed equal to the seed)')
     _check_budget(c.get('attempt_wall_seconds'), c.get('whole_case_wall_seconds'), c.get('sdk_call_limit'))
+    grasp_generation(c)
+    formal_view = dict(c)
+    formal_view.pop('grasp_freeze', None)
     # Everything except the boundary and the three budget fields is validated by the Dev
     # validator on the equivalent Dev view, so identity, lock, scene and robot checks stay single-sourced.
-    dev_view = dict(c, schema_version=DEV_SCHEMA, runner_boundary='dev_loop',
+    dev_view = dict(formal_view, schema_version=DEV_SCHEMA, runner_boundary='dev_loop',
                     whole_case_wall_seconds=DEV_WHOLE_CASE_SECONDS, sdk_call_limit=SDK['sdk_calls'])
     validate_dev_config(dev_view, expected_source_root=expected_source_root, budget_boundary='formal')
     return c
