@@ -186,7 +186,7 @@ def test_handoff_worker_post_execution_rehold_and_replay(monkeypatch,tmp_path,fi
     scope=dict(__name__=worker.__name__,__package__=worker.__package__,c=dict(bimanual_collaboration='handoff'),
         json=json,os=os,time=time,traceback=traceback,sys=NS(stdin=[json.dumps(request)]*2),
         stop=NS(is_set=lambda:False),args=NS(agent_mode=agent,deadline=e.deadline,evidence=tmp_path),
-        receipt_cache={},executor=e,env=e.env,execution_settings=settings,fixture_enabled=enabled,
+        receipt_cache={},capture=lambda *a,**k:None,executor=e,env=e.env,execution_settings=settings,fixture_enabled=enabled,
         allowed_operations={'left_gripper':['open']},send=sent.append,override=None,tier=None,
         receipt_fields=lambda settings:{},RecoverablePlanRejection=RecoverablePlanRejection,
         FixtureContactBaseDisplacementRejected=ft.FixtureContactBaseDisplacementRejected)

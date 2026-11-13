@@ -168,7 +168,7 @@ def test_actual_worker_rpc_rejection_receipt_and_replay(monkeypatch,tmp_path,fix
     sent=[]
     scope=dict(__name__=worker.__name__,__package__=worker.__package__,c=dict(bimanual_collaboration=collaboration),json=json,os=os,time=time,traceback=traceback,
         sys=NS(stdin=[json.dumps(request)]*2),stop=NS(is_set=lambda:False),
-        args=NS(agent_mode=agent,deadline=e.deadline,evidence=tmp_path),receipt_cache={},executor=e,env=e.env,
+        args=NS(agent_mode=agent,deadline=e.deadline,evidence=tmp_path),receipt_cache={},capture=lambda *a,**k:None,executor=e,env=e.env,
         execution_settings=settings,fixture_enabled=fi.enabled,allowed_operations={'left_gripper':['move_to']},
         send=sent.append,override=None,tier=None,receipt_fields=lambda *a:{},RecoverablePlanRejection=RecoverablePlanRejection,
         FixtureContactBaseDisplacementRejected=ft.FixtureContactBaseDisplacementRejected)

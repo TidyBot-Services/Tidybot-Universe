@@ -294,6 +294,7 @@ def main():
             # Action boundary: the end state of every request is always recorded (Eval/Advisor key moments).
             if executor.sequence>before:capture(executor.sequence,boundary=True)
             receipt_cache[rid]=(canonical,response)
+            executor.sync_physics()
             with (args.evidence/'rpc-receipts.jsonl').open('a') as f:
                 f.write(json.dumps({'request':request,'response':response},sort_keys=True)+'\n');f.flush();os.fsync(f.fileno())
             send(response)
