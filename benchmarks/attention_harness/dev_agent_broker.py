@@ -330,6 +330,22 @@ class Broker:
             self.pool.submit(self._dispatch,rid,source,False)
             return
 
+    def _prespawn_next(self):
+        """Try speed-up 2 (user OK 11-14), local runs only: start a FRESH worker for the next execution
+        while Dev thinks. Remote time-share (sim_token) never pre-starts. Any failure is recorded and
+        the next execution simply starts cold."""
+        prespawn=getattr(self.executor,'prespawn',None)
+        if prespawn is None or self.sim_token is not None or self.closing.is_set() or self.quarantined:return
+        if self.stop_reason is not None:return
+        try:
+            counts=self.budget.counts;limits=self.budget.limits
+            if counts['executions']>=limits.get('executions',float('inf')):return
+            eid='e%06d'%(counts['executions']+1)
+            prespawn(self.workspace.private/'executions'/eid,log=self.workspace.private/'prespawn-log.jsonl')
+        except Exception as exc:
+            try:atomic_write(self.workspace.private,'errors/prespawn.json',encode(dict(error='prespawn_failed',**soft_error(exc))))
+            except OSError:pass
+
     def _robot(self):
         """Hold the host's simulator token for exactly this one execution (Remote time-share), or nothing."""
         if self.sim_token is None:return nullcontext()
@@ -495,7 +511,11 @@ class Broker:
                     self.prober.close()
                     eid = response['execution_id']
                     directory = self.workspace.private / 'executions' / eid
-                    directory.mkdir(parents=True)
+                    # A pre-started worker (try speed-up 2) already created exactly this folder.
+                    claim=getattr(self.executor,'claim_prespawn',None)
+                    claimed=bool(claim and claim(directory))
+                    if not claimed and hasattr(self.executor,'clear_stale_prespawn'):self.executor.clear_stale_prespawn(directory)
+                    directory.mkdir(parents=True,exist_ok=claimed)
                     errored = None;not_dispatched=False;stopped_after_timeout=None
                     try:
                         if self.memory:self.memory.recheck()
@@ -654,6 +674,7 @@ class Broker:
                     self.workspace.regenerate()
                     if self.on_settled:self.on_settled(response)
                     self._publish(response)
+                    self._prespawn_next()
                 except BaseException as exc:
                     self.quarantined=True
                     response.update(status='needs_review',error='settlement_failure')
@@ -688,4 +709,10 @@ class Broker:
         self.closing.set()
         self.pool.shutdown(wait=True)
         self.prober.close()
+        discard=getattr(self.executor,'discard_prespawn',None)
+        if discard:
+            try:discard('run_closed')
+            except Exception as exc:
+                try:atomic_write(self.workspace.private,'errors/prespawn-close.json',encode(dict(error='prespawn_discard_failed',**soft_error(exc))))
+                except OSError:pass
         self.lease.close()

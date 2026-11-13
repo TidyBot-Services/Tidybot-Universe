@@ -48,7 +48,7 @@ class OpenArm365DevRunnerV2:
             'perception_mode':'sim_gt','capabilities':ready['capabilities'],
             **({'memory_validation':validation_public} if validation_public else {})}
 
-    def execute(self,request):
+    def execute(self,request,prespawned=None):
         override=diagnostic_budget()
         tier=dev_tier_budget() if self.runner_boundary=='dev_loop' else None
         if override and (self.runner_boundary!='dev_loop' or request.entry_lock is not None):
@@ -82,19 +82,34 @@ class OpenArm365DevRunnerV2:
         if request.task_id!=c['task_id'] or request.seed!=c['seed']:raise ValueError('Locked 365 task/seed mismatch')
         seconds,limit=self.budgets(request,c)
         started=time.monotonic();deadline=started+seconds
-        episode=request.artifact_root/('openarm365-dev-'+uuid.uuid4().hex[:12]);episode.mkdir(parents=True,exist_ok=False)
+        if prespawned is not None:
+            # Try speed-up 2 (user OK 11-14): a fresh worker started for exactly this execution
+            # directory and config while Dev was thinking. Never reused; verified before adoption.
+            if not agent or self.memory_validation is not None:raise ValueError('prespawn requires plain agent mode')
+            episode=Path(prespawned['episode'])
+            if episode.parent.resolve()!=Path(request.artifact_root).resolve():raise ValueError('prespawn episode is not in this execution directory')
+            if (episode/'config.json').read_bytes()!=request.config_path.read_bytes():raise ValueError('prespawn config differs from this execution')
+            if Path(prespawned['owner'].config).resolve()!=(episode/'config.json').resolve():raise ValueError('prespawn owner config mismatch')
+        else:
+            episode=request.artifact_root/('openarm365-dev-'+uuid.uuid4().hex[:12]);episode.mkdir(parents=True,exist_ok=False)
         ids=dict(run_id=request.run_id,attempt_id=request.attempt_id)
         if self.episode_observer:self.episode_observer(str(episode.resolve()))
         binding=dict(suite=self.suite,task_id=request.task_id,seed=c['seed'],policy_sha256=request.policy_sha256,
             config_sha256=request.config_sha256,entry_lock=request.entry_lock,**ids)
         (episode/'policy.py').write_bytes(request.policy_code_path.read_bytes())
-        (episode/'config.json').write_bytes(request.config_path.read_bytes())
+        if prespawned is None:(episode/'config.json').write_bytes(request.config_path.read_bytes())
         recording_context=dict(**ids,camera_name='robot0_agentview_left',started_monotonic=started,
             origin='native_pipe://owned-openarm365-v2',dev_version=dev_version_label(request.attempt_id),
             frame_stride=FRAME_STRIDE)
         write(episode/'recording_context.json',recording_context)
-        owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
-            cancel_check=self.cancel_event.is_set,process_observer=self.process_observer,**({"agent_mode":True} if agent else {}))
+        if prespawned is not None:
+            owner=prespawned['owner'];owner.cancel_check=self.cancel_event.is_set
+        else:
+            owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
+                cancel_check=self.cancel_event.is_set,process_observer=self.process_observer,**({"agent_mode":True} if agent else {}))
+        prespawn_receipt=None if prespawned is None else dict(used=True,
+            started_before_bind_seconds=round(started-prespawned['spawn_started'],3),
+            ready_before_bind_seconds=None if prespawned.get('prespawned_at') is None else round(started-prespawned['prespawned_at'],3))
         validation_public=validation_receipt=None
         if self.memory_validation:
             from benchmarks.attention_harness.dev_memory_validation import policy_input
@@ -103,7 +118,7 @@ class OpenArm365DevRunnerV2:
         native={'evaluated':False,'native_success':False,'reason':'not_started'}
         def event(row):events.append(dict(row,timestamp=time.monotonic()-started,timestamp_basis='relative'))
         try:
-            probe=probe_sandbox();ready=owner.start();attested=True
+            probe=probe_sandbox();ready=owner.bind(deadline) if prespawned is not None else owner.start();attested=True
             write(episode/'initial_public_observation.json',ready['initial_observation'])
             condition=ready.get('scene_condition')
             write(episode/'scene-condition.json',{'state':ready.get('scene_state'),'validation':condition})
@@ -161,6 +176,7 @@ class OpenArm365DevRunnerV2:
         if validation_receipt and outcome is not None:trace['memory_validation']=validation_receipt
         receipt=dict(**ids,**execution_labels,elapsed_seconds=time.monotonic()-started,deadline_seconds=seconds,service_stop=cleanup,
             sandbox_probe=probe,policy_process=outcome.__dict__ if outcome else None,camera_recording=recording,control_steps=max((r.get('sequence',0) for r in owner.ledger),default=0),
+            **({'prespawn':prespawn_receipt} if prespawn_receipt else {}),
             sdk_call_budget={'limit':limit,'requested':outcome.call_count if outcome else 0,
                 'dispatched':min(outcome.call_count,limit) if outcome else 0},outcome_unknown=unknown)
         safety=self.safety_record(dict(**ids,source='native_per_physics_step_monitor',monitor_available=attested,

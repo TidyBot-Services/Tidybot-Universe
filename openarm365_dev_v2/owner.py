@@ -1,11 +1,13 @@
 """V2 owner start override; RPC/lifetime/cleanup remain inherited unchanged."""
-import json,os,selectors,subprocess
+import json,os,selectors,subprocess,time
 from pathlib import Path
 from openarm365_dev.owner import NativeOwner
 class NativeOwnerV2(NativeOwner):
-    def __init__(self,*args,source_root=None,agent_mode=False,**kwargs):
+    def __init__(self,*args,source_root=None,agent_mode=False,prespawn=False,**kwargs):
         super().__init__(*args,**kwargs);self.source_root=Path(source_root) if source_root is not None else None
         self.startup_response=None;self.agent_mode=agent_mode
+        if prespawn and not agent_mode:raise ValueError('prespawn requires agent mode')
+        self.prespawn=prespawn;self.prespawned=None
     def rpc(self,group,operation,args=(),kwargs=None,*,request_id=None):
         if group in ('left_gripper','right_gripper') and operation=='move_to' and self.config.is_file():
             from curobo_v2.fixture_interaction import config_enabled
@@ -36,7 +38,8 @@ class NativeOwnerV2(NativeOwner):
         self.log=(self.evidence/'native-service.log').open('ab')
         self.process=subprocess.Popen([self.python,'-B','-u','-m','openarm365_dev_v2.worker',
             '--config',str(self.config),'--evidence',str(self.evidence),'--deadline',str(self.deadline),
-            '--owner-pid',str(os.getpid()),*(['--agent-mode'] if self.agent_mode else [])],env=env,cwd=project,stdin=subprocess.PIPE,
+            '--owner-pid',str(os.getpid()),*(['--agent-mode'] if self.agent_mode else []),
+            *(['--prespawn'] if self.prespawn else [])],env=env,cwd=project,stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,stderr=self.log,start_new_session=True)
         from benchmarks.attention_harness.dev_loop import process_identity
         launch={'argv':self.process.args,'cwd':str(project),'PYTHONPATH':env['PYTHONPATH'],
@@ -44,9 +47,21 @@ class NativeOwnerV2(NativeOwner):
         (self.evidence/'worker-launch.json').write_text(json.dumps(launch,indent=2)+'\n')
         if self.process_observer:self.process_observer(self.process.pid)
         self.selector=selectors.DefaultSelector();self.selector.register(self.process.stdout,selectors.EVENT_READ)
+        return self._await_ready(allow_prespawned=self.prespawn)
+    def _await_ready(self,allow_prespawned=False):
         while True:
             message=self.read()
             self.startup_response=message
             if message.get('kind')=='ready':self.ready=message;return message
+            if allow_prespawned and message.get('kind')=='prespawned':
+                self.prespawned=dict(at=time.monotonic());return message
             if message.get('kind')=='fatal':raise RuntimeError('Native startup failed: '+message['error'])
             raise RuntimeError('Unexpected native startup message')
+    def bind(self,deadline):
+        """Hand a pre-started worker its execution deadline (shorten only); returns the normal ready message."""
+        if not self.prespawned or self.ready is not None:raise RuntimeError('bind requires a pre-started, unbound worker')
+        if self.process is None or self.process.poll() is not None:raise RuntimeError('pre-started worker is not running')
+        if not deadline<=self.deadline:raise ValueError('bind deadline may not extend the launch deadline')
+        self.deadline=deadline
+        self.process.stdin.write((json.dumps(dict(kind='bind',deadline=deadline))+'\n').encode());self.process.stdin.flush()
+        return self._await_ready()
