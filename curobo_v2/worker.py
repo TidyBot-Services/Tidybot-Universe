@@ -101,6 +101,10 @@ def main() -> None:
     (directory / "loaded_identity.json").write_text(json.dumps(identity, indent=2) + "\n")
     failed = None
     test_fault_used = False
+    # Dev tier: stat-based per-request file check with a full re-hash on any change and every 60 s.
+    # Formal and legacy tiers keep the full hash check on every request.
+    from curobo_v2.identity import DevFileWatch
+    file_watch = DevFileWatch(lock) if (args.tier, args.boundary) == ('dev', 'dev_loop') else None
 
     @app.middleware("http")
     async def authenticated(request: Request, call_next):
@@ -111,7 +115,8 @@ def main() -> None:
         try:
             if failed:
                 raise IdentityError(failed)
-            verify_files(lock)
+            if file_watch is None:verify_files(lock)
+            else:file_watch.check()
             verify_runtime(lock, full=False)
             if (gpu_runtime.kernel_backend != "cuda_core" or not gpu_runtime.cuda_core_backend
                     or get_backend_name() != "cuda_core"):
