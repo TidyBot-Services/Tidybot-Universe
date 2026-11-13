@@ -28,7 +28,8 @@ def cabinet_public_values(env):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
     parser.add_argument('--evidence',type=Path,required=True);parser.add_argument('--deadline',type=float,required=True)
-    parser.add_argument('--owner-pid',type=int,required=True);parser.add_argument('--agent-mode',action='store_true');args=parser.parse_args()
+    parser.add_argument('--owner-pid',type=int,required=True);parser.add_argument('--agent-mode',action='store_true')
+    parser.add_argument('--prespawn',action='store_true');args=parser.parse_args()
     output=os.fdopen(os.dup(sys.stdout.fileno()),'w',buffering=1)
     os.dup2(sys.stderr.fileno(),sys.stdout.fileno())  # Also redirect native C/C++ stdout.
     sys.stdout=sys.stderr  # Upstream imports may print; stdout is exclusively RPC.
@@ -101,6 +102,15 @@ def main():
             **({} if 'execution_settings' not in c else dict(execution_settings=execution_settings)))
         send({'kind':'spawn','pid':planner.owner.process.pid})
         planner.prepare(planner.names)
+        if args.prespawn:
+            # Try speed-up 2 (user OK 11-14): this fresh worker was started ahead of its execution.
+            # Wait for the one bind message; its deadline only tightens the launch deadline.
+            if not args.agent_mode:raise ValueError('prespawn requires agent mode')
+            from .prespawn import wait_for_bind,tighten
+            waited=time.monotonic();send({'kind':'prespawned'})
+            args.deadline=wait_for_bind(sys.stdin,args.deadline,stop);tighten(planner,args.deadline)
+            (args.evidence/'prespawn.json').write_text(json.dumps(dict(waited_for_bind_seconds=round(time.monotonic()-waited,3),
+                bound_deadline=args.deadline),indent=2)+'\n')
         from benchmarks.attention_harness.robocasa365.recording import StepRecorder
         from benchmarks.attention_harness.robocasa365.human_camera import capture_human_view
         from .extra_views import live_version

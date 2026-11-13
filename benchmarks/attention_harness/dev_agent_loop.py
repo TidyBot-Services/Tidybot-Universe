@@ -80,7 +80,8 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
           policy='reactive_help', completion_reader=trusted_completion, control=lambda:None,
           version_record=lambda row:None, progress=lambda row:None, external_deadline=None, quota_interval=60,
           memory=None, exporter=None, before_step=lambda kind:True,
-          agent_policy_version='agent-policy-v1', validation=False, advisor_client_constructed=False, sim_token=None):
+          agent_policy_version='agent-policy-v1', validation=False, advisor_client_constructed=False, sim_token=None,
+          prespawn=False):
     """Injectable offline seam; production always supplies a preflighted session."""
     if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
         raise ValueError('unsupported agent policy version')
@@ -237,7 +238,8 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         broker=Broker(workspace,executor=executor,prober=prober,evaluator=evaluator or FakeEvaluator(),
             agent_mode=True,helper=helper,budget=LedgerBudget(ledger),quota=quota,on_cut=cut,on_version=version,
             on_execution=execution,on_settled=settled,quiesce=session.quiesce,memory=memory if memory_visible else None,
-            before_step=before_step,agent_policy_version=agent_policy_version,validation=validation,sim_token=sim_token)
+            before_step=before_step,agent_policy_version=agent_policy_version,validation=validation,sim_token=sim_token,
+            prespawn=prespawn)
         def stalled():
             snap=ledger.snapshot()
             return 'no_progress_seconds' in snap and snap['idle_seconds']>=snap['no_progress_seconds'] and broker.active is None
@@ -519,6 +521,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             execution_options=dict(validation_arm=validation['arm_record'],agent_configuration=dict(
                 dev_model=session.model,dev_reasoning_effort=session.reasoning_effort,
                 eval_model=evaluator.model,agent_policy_version=agent_policy_version))
+        from .dev_agent_prespawn import prespawn_allowed
+        prespawn=prespawn_allowed(sim_lock=sim_lock,public_gateway_mode=public_gateway_mode,validation=validation)
         sim_token=None
         if sim_lock is not None:
             from .sim_timeshare import SimToken
@@ -527,7 +531,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
             prober=Prober(config,sim_python=SIM_PYTHON,private_dir=workspace.private,run_seconds=None if sim_lock is not None else 21600),sim_token=sim_token,evaluator=evaluator,helper=helper,quota=quota if providers['dev'] is None else None,policy=cell['policy_id'],
             control=control,external_deadline=outer_deadline_epoch,version_record=lambda row:store.version(key,row),
             progress=lambda row:store.update_cell(key,agent_resources=row),memory=memory,exporter=exporter,before_step=before_step,
-            agent_policy_version=agent_policy_version,validation=validation is not None,advisor_client_constructed=advisor is not None)
+            agent_policy_version=agent_policy_version,validation=validation is not None,advisor_client_constructed=advisor is not None,
+            prespawn=prespawn)
         store.update_cell(key,**{k:v for k,v in result.items() if k!='resources'},agent_resources=result['resources'],owner=None)
         print(end_line(key,result),file=sys.stderr,flush=True)
         return result
