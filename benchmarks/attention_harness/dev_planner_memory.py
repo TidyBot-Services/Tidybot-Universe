@@ -167,9 +167,12 @@ def client_for(settings):
 class Note:
     """One retrieved note with its applicability level for this Dev context."""
     def __init__(self, memory_id, version, guidance, status, applicability, *, created_at=0.0,
-                 match_level='same_scene', trusted_here=None, source_seed=None, source_task_id=None, trust_scope=None):
+                 match_level='same_scene', trusted_here=None, source_seed=None, source_task_id=None, trust_scope=None, level=None, skill_tags=(), source_verified=False, applies_when='', source_run=None, source_version=None):
         self.memory_id, self.version, self.guidance = memory_id, version, guidance
         self.status, self.applicability, self.created_at = status, applicability or {}, created_at or 0.0
+        self.source_run, self.source_version = source_run, source_version
+        self.level = level or ('same_task' if match_level == 'same_scene' else match_level)
+        self.skill_tags, self.source_verified, self.applies_when = skill_tags, source_verified, applies_when
         self.match_level = match_level
         self.trust_scope = trust_scope
         self.trusted_here = (status == 'trusted' and match_level == 'same_scene') if trusted_here is None else trusted_here
@@ -184,7 +187,8 @@ SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id
 
 
 class DevMemory:
-    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False):
+    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False, excluded=False):
+        self.mode, self.excluded = mode, excluded
         self.gateway, self.settings, self.layered = gateway, settings, layered
         self.family = layered and family is True
         self.sdk_description_sealed = 'dev_sdk_sha256' in config
@@ -226,7 +230,7 @@ class DevMemory:
         if callable(getattr(self.gateway, 'retrieve_entries', None)):
             rows = [Note(r['memory_id'], r['version'], r['guidance'], r['status'], r.get('applicability'),
                          created_at=r.get('created_at'), match_level=r.get('match_level', 'same_scene'),
-                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'), trust_scope=r.get('trust_scope'))
+                         trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'), trust_scope=r.get('trust_scope'), level=r.get('level'), skill_tags=r.get('skill_tags',()), source_verified=r.get('source_verified') is True, applies_when=r.get('applies_when',''), source_run=r.get('source_run'), source_version=r.get('source_version'))
                     for r in self.gateway.retrieve_entries(self.context, now=now,
                         match_levels=levels)
                     if (not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False)
@@ -244,9 +248,17 @@ class DevMemory:
                     for m in self.gateway.retrieve(self.context, now=now)]
         result = []
         for n in rows:
+            if self.mode == 'experiment' and not self.excluded and n.status == 'provisional':
+                continue
             if reference_only and (n.match_level not in levels or n.trusted_here is not False):
                 continue
             family_scope = n.match_level == 'same_family'
+            cross_task = family_scope or n.match_level in {'same_skill','general'}
+            if n.match_level == 'same_skill':
+                from attention_memory_service.skill_tags import tags_for
+                if (n.applicability.get('task_id') == self.context.get('task_id')
+                        or not set(n.skill_tags) & set(tags_for(self.context.get('task_id')))):
+                    continue
             if family_scope:
                 try:
                     from attention_memory_service.families import family_of
@@ -264,7 +276,7 @@ class DevMemory:
                     or n.applicability.get('execution_profile') != self.context.get('execution_profile')
                     or self.sdk_description_sealed and n.applicability.get('sdk_interface_sha256') != self.context.get('sdk_interface_sha256')
                     or not planner_matches(n.applicability, self.context)
-                    or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
+                    or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (cross_task and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue
             result.append(n)
@@ -276,7 +288,7 @@ class DevMemory:
         if self.context is None:
             return []
         if not self.layered:
-            return self.eligible()
+            return self.eligible()[:3]
         notes = self.notes()
         return order(notes, family=self.family)
 
@@ -301,7 +313,7 @@ class DevMemory:
             if getattr(m,'match_level',None)=='same_family' and grant.get('seeded_for_tests') is True:
                 raise PermissionError('test-seeded Memory cannot be a family reference')
             # Deliberately exclude validation/evaluation internals from online input.
-            entry = dict(memory_id=m.memory_id, version=m.version, content=grant['guidance'],
+            entry = dict(memory_id=m.memory_id, version=m.version, content=grant['guidance'], level=getattr(m,'level','same_task'),
                          grant_id=grant['grant_id'], source_trace_id=grant['source_trace_id'],
                          evidence_refs=grant['evidence_refs'], authority=self.settings['store_id'],
                          context=self.context, development_id=development_id,
@@ -310,12 +322,16 @@ class DevMemory:
                          excluded_from_results=grant.get('excluded_from_results') is True,
                          status=getattr(m.status,'value',m.status))
             if self.layered:
+                if m.match_level in {'same_skill','general'} or 'level' in grant:
+                    if any(grant.get(k) != v for k,v in dict(level=m.level,skill_tags=list(m.skill_tags),
+                            applies_when=m.applies_when,source_verified=m.source_verified).items()):
+                        raise PermissionError('Memory grant reuse metadata mismatch')
                 if (grant.get('match_level', m.match_level) != m.match_level
                         or grant.get('trusted_here', m.trusted_here) is not m.trusted_here
                         or not m.trusted_here and grant.get('excluded_from_results') is not True
                         or m.unvalidated and (grant.get('unvalidated') is not True or grant.get('trust_scope') != 'provisional')):
                     raise PermissionError('Memory grant trust level/exclusion mismatch')
-                entry.update(layer=layer_of(m), source_task_id=m.source_task_id, created_at=m.created_at, match_level=m.match_level, trusted_here=m.trusted_here, unvalidated=m.unvalidated,
+                entry.update(source_run=m.source_run, source_version=m.source_version, level=m.level, skill_tags=list(m.skill_tags), applies_when=m.applies_when, source_verified=m.source_verified, layer=layer_of(m), source_task_id=m.source_task_id, created_at=m.created_at, match_level=m.match_level, trusted_here=m.trusted_here, unvalidated=m.unvalidated,
                              trust_scope=grant.get('trust_scope'), source_seed=grant.get('source_seed', m.source_seed),
                              excluded_from_results=grant.get('excluded_from_results') is True or not m.trusted_here)
             # Catalogue copy is descriptive only; the grant still binds guidance,
@@ -353,6 +369,8 @@ class DevMemory:
             m = eligible.get(entry['memory_id'])
             if m is None or m.version != entry['version'] or m.guidance != entry['content']:
                 raise PermissionError('Memory disabled/expired/rolled back/version changed before exposure')
+            if self.layered and (m.match_level in {'same_skill','general'} or 'level' in entry) and any(entry.get(k) != v for k,v in dict(level=m.level,skill_tags=list(m.skill_tags),applies_when=m.applies_when,source_verified=m.source_verified).items()):
+                raise PermissionError('Memory reuse metadata changed before exposure')
             if self.layered and (m.match_level != entry.get('match_level') or m.trusted_here is not entry.get('trusted_here')):
                 raise PermissionError('Memory trust level changed before exposure')
             grant = self.gateway.get_dev_use(entry['grant_id'])
@@ -377,7 +395,7 @@ def _load_memory(store, cell, version, previous, config, settings, directory, la
             store.event(db, 'planner_memory_scope', dict(cell=cell, version=version,
                         level=scope['level'], reason=scope.get('reason'), seed=config.get('seed')))
     gateway = None if scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'} else client_for(settings)
-    service = DevMemory(gateway, settings, config, layered=layered, mode=mode, family=layered and store.cell(cell).get('memory_family') is True)
+    service = DevMemory(gateway, settings, config, layered=layered, mode=mode, family=layered and store.cell(cell).get('memory_family') is True, excluded=layered and store.cell(cell).get('excluded_from_results') is True)
     path = Path(directory) / 'memory-input.json'
     if path.exists():
         packet = json.loads(path.read_bytes())

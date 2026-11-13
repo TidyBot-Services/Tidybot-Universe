@@ -1,5 +1,6 @@
 """Explicit screened R5 product selections; pilot and historical records stay frozen."""
 from dataclasses import replace
+from attention_memory_service.skill_tags import VERSION as SKILL_TAGS_VERSION, tags_for
 import json
 from curobo_v2.fixture_interaction import PROFILE,PILOT_SEEDS
 from openarm365_dev_v2.fixture_contract import checked,contract_ref
@@ -46,7 +47,7 @@ def prepare_selection(selection):
 
 def options():
     return [dict(task_record(t).public(),rules_profile=PROFILE,family=family,family_label=label,
-        held_out=t in HELD_OUT,explicit_only=True,rules_label='fixture rules (R5)',
+        held_out=t in HELD_OUT,skill_tags=list(tags_for(t)),skill_tags_version=SKILL_TAGS_VERSION,explicit_only=True,rules_label='fixture rules (R5)',
         seed_options=[dict({'seed':s,'enabled':exclusion(t,s) is None},**({} if exclusion(t,s) is None else exclusion(t,s))) for s in PILOT_SEEDS[t]])
         for family,(label,tasks) in FAMILIES.items() for t in tasks if t not in SET_ASIDE]
 

@@ -1,0 +1,68 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const api=require('../ui/memory.js');
+const root=path.join(__dirname,'..');
+const source=fs.readFileSync(path.join(root,'ui/memory.js'),'utf8');
+const value={notes:[{original:{memory_id:'p-1',title:'Retreat <slowly>',guidance:'Original x=1.2',source_verified:true,source_run:'run',source_version:2},generalized:{level:'same_skill',guidance:'Retreat slowly.',applies_when:'Carrying <cup>',confirmation:{actor:'alice',confirmed_at:1,human_attention_seconds:2}}}],errors:[{memory_id:'p-bad',error:'digest <mismatch>'}]};
+
+test('original/generalized columns, exact labels, escaped evidence and visible errors',()=>{
+ const html=api.reuseHtml(value,true,'Alice');
+ for(const label of ['Original · Same task only','Generalized · same_skill','Same task only','Same skill','General','Edit','Source verified','2.0 s human attention'])assert.ok(html.includes(label));
+ assert.match(html,/Retreat &lt;slowly&gt;/);assert.match(html,/Carrying &lt;cup&gt;/);
+ assert.match(html,/role="alert"/);assert.match(html,/digest &lt;mismatch&gt;/);
+ assert.doesNotMatch(html,/<cup>|<mismatch>|disabled/);
+ assert.match(api.reuseHtml(value,false),/disabled/);
+});
+
+test('one click request binds original ID, operator, level, opening time, edit and control token',()=>{
+ const req=api.levelRequest('p/a','general',' alice ',123,{guidance:'Move',applies_when:'When carrying'});
+ assert.equal(req.url,'/api/dev-memories/p%2Fa/level');
+ assert.deepEqual(JSON.parse(req.options.body),{actor:'alice',level:'general',opened_at:123,edit:{guidance:'Move',applies_when:'When carrying'}});
+ assert.throws(()=>api.levelRequest('p','general','',1),/Operator/);
+ assert.throws(()=>api.levelRequest('p','same_family','a',1),/Unknown/);
+ assert.throws(()=>api.levelRequest('p','general','a',NaN),/Open/);
+});
+
+test('click handler displays errors, restores buttons and supports edit without sending',async()=>{
+ const fragment=source.slice(source.indexOf('  const reuseBody='),source.indexOf('  async function pollAutomatic'));
+ const handlers={},status={textContent:'',setAttribute(k,v){this[k]=v}},buttons=[{disabled:false},{disabled:false}];
+ const form={elements:{actor:{value:'alice'},guidance:{value:'Retreat'},applies_when:{value:'When carrying'},level:{value:'same_skill'}},querySelector(){return editor}};
+ const editor={hidden:true};
+ const row={dataset:{reuseId:'p-1',openedAt:'10'},querySelector(sel){return sel==='form'?form:status},querySelectorAll(){return buttons}};
+ const body={querySelector(){return null},addEventListener(type,fn){handlers[type]=fn}};
+ const button={dataset:{reuseLevel:'general'},hasAttribute(){return false}};
+ const target={closest(sel){if(sel==='details[data-reuse-id]')return row;if(sel==='[data-reuse-edit]')return null;return button}};
+ let fetches=0;
+ vm.runInNewContext(fragment,{$:()=>body,canOperate:true,levelRequest:api.levelRequest,localStorage:{getItem(){return 'alice'},setItem(){}},Date,
+   fetch:async()=>{fetches++;return {ok:false,status:503,json:async()=>({error:'Service unavailable'})}}});
+ await handlers.click({target});
+ assert.equal(fetches,1);assert.match(status.textContent,/Could not confirm note: Service unavailable/);
+ assert.equal(status.role,'alert');assert.ok(buttons.every(b=>!b.disabled));
+ const editTarget={closest(sel){return sel==='details[data-reuse-id]'?row:sel==='[data-reuse-edit]'?{}:null}};
+ await handlers.click({target:editTarget});assert.equal(editor.hidden,false);assert.equal(fetches,1);
+});
+
+test('opening starts attention clock and successful confirmation shows recorded seconds',async()=>{
+ const fragment=source.slice(source.indexOf('  const reuseBody='),source.indexOf('  async function pollAutomatic'));
+ const handlers={},status={textContent:'',setAttribute(){}},buttons=[{disabled:false}];
+ const form={elements:{actor:{value:'alice'},level:{value:'same_skill'}}};
+ const row={open:true,dataset:{reuseId:'p-1'},matches(){return true},querySelector(s){return s==='form'?form:status},querySelectorAll(){return buttons}};
+ const body={querySelector(){return null},addEventListener(t,f){handlers[t]=f}};
+ const button={dataset:{reuseLevel:'same_skill'},hasAttribute(){return false}};
+ vm.runInNewContext(fragment,{$:()=>body,canOperate:true,levelRequest:api.levelRequest,localStorage:{getItem(){return ''},setItem(){}},Date,
+  fetch:async()=>({ok:true,json:async()=>({memory:{generalized:{confirmation:{human_attention_seconds:4.25}}}})})});
+ handlers.toggle({target:row});assert.ok(Number(row.dataset.openedAt)>0);
+ await handlers.click({target:{closest(s){return s==='details[data-reuse-id]'?row:s==='[data-reuse-edit]'?null:button}}});
+ assert.match(status.textContent,/Confirmed same_skill by alice · 4.3 s human attention/);
+ assert.ok(buttons.every(b=>!b.disabled));
+});
+
+test('dark rules for reuse controls are generated by gen_dark_theme.py',()=>{
+ const css=fs.readFileSync(path.join(root,'ui/memory.css'),'utf8');
+ assert.match(css,/reuse-note-dark/);assert.match(css,/html\[data-theme="dark"\] #reuse-notes textarea/);
+ assert.match(fs.readFileSync(path.join(root,'../../scripts/gen_dark_theme.py'),'utf8'),/reuse-note-light/);
+ assert.match(fs.readFileSync(path.join(root,'ui/memory.html'),'utf8'),/id="reuse-notes-body"/);
+});

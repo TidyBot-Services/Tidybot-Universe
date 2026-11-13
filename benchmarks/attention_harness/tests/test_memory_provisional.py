@@ -249,6 +249,10 @@ class ServiceGateway:
         self.svc = MemoryService(path)
         self.calls = []
 
+    def reuse_note_detail(self, mid):return self.svc.reuse_note_detail(mid)
+    def provenance(self, mid):return self.svc.provenance(mid)
+    def generalize_note(self, **kw):return self.svc.generalize_note(**kw)
+
     def store_id(self):
         return SETTINGS['store_id']
 
@@ -262,7 +266,8 @@ class ServiceGateway:
         rows = []
         for m, level in self.svc.retrieve_levels(context, now=now, levels=tuple(match_levels or ['same_scene'])):
             provenance = self.svc.v2._provenance(m.memory_id) or {}
-            rows.append({**m.artifact(), **flags(provenance), **marker(level, trusted_here(m, level)),
+            from attention_memory_service.reuse_notes import FIELDS
+            rows.append({**m.artifact(), **{k:provenance[k] for k in FIELDS if k in provenance}, **flags(provenance), **marker(level, trusted_here(m, level)),
                          'source_seed': provenance.get('source_seed')})
         return json.loads(json.dumps(rows))
 
@@ -322,22 +327,22 @@ def test_every_policy_prompt_gets_notes_with_cap_order_and_labels(tmp_path, monk
     directory = root / 'v1'; directory.mkdir()
     packet, _, _ = loop.attention(store, cell['key'], 1, {}, SOURCE, 0, [], manifest, process_identity(), directory, None)
     assert [(e['memory_id'], e['match_level'], e['trusted_here']) for e in packet['memory']] == [
-        ('seed-here', 'same_scene', True), ('p-new', 'same_scene', False), ('p-old', 'same_scene', False)]
+        ('p-new', 'same_scene', False), ('seed-other', 'same_task', False), ('p-old', 'same_scene', False)]
     assert sum(not e['trusted_here'] for e in packet['memory']) == memory.NOT_TRUSTED_HERE_CAP
     messages = loop.model_messages(config, SOURCE, {}, packet, {'dev_calls': 1})
     notes = json.loads(messages[1]['content'])['attention_control']['memory']
-    assert [n['title'] for n in notes] == ['Trusted here', 'Unvalidated: New unvalidated', 'Unvalidated: Old unvalidated']
+    assert [n['title'] for n in notes] == ['Unvalidated: New unvalidated', 'Reference (scene 101): Other scene', 'Unvalidated: Old unvalidated']
     assert 'grant_id' not in json.dumps(notes) and 'trusted_here' not in json.dumps(notes)
     flagged = events(store, 'planner_memory_unvalidated_used')
-    assert flagged == [dict(cell=cell['key'], version=1, memory_ids=['p-new', 'p-old'],
-                            match_levels=['same_scene', 'same_scene'], layers=['scene', 'scene'], excluded_from_results=True)]
+    assert flagged == [dict(cell=cell['key'], version=1, memory_ids=['p-new', 'seed-other', 'p-old'],
+                            match_levels=['same_scene', 'same_task', 'same_scene'], layers=['scene', 'task', 'scene'], excluded_from_results=True)]
     retrieved = events(store, 'planner_memory_retrieved')[0]
     assert retrieved['not_trusted_here'] is True and retrieved['unvalidated'] is True
     from benchmarks.attention_harness.dev_memory_view import projection
     view = projection(store, cell)
     assert view['unvalidated_used'] is True
     assert [(e['memory_id'], e['trusted'], e['match_level']) for e in view['retrievals'][0]['entries']] == [
-        ('seed-here', True, 'same_scene'), ('p-new', False, 'same_scene'), ('p-old', False, 'same_scene')]
+        ('p-new', False, 'same_scene'), ('seed-other', False, 'same_task'), ('p-old', False, 'same_scene')]
     # Delivery never changes a policy's own help decision; the planner's
     # retrieve_memory decision is only logged (no help record, no cost).
     if policy != 'full_trace_aware_attention_planner':
@@ -345,7 +350,7 @@ def test_every_policy_prompt_gets_notes_with_cap_order_and_labels(tmp_path, monk
     elif packet['action'] == 'retrieve_memory':
         assert not (directory / 'help.json').exists()
     saved = json.loads((directory / 'memory-input.json').read_bytes())
-    memory.DevMemory(gateway, SETTINGS, config, layered=True).recheck(saved)
+    memory.DevMemory(gateway, SETTINGS, config, layered=True, mode='interactive').recheck(saved)
     provenance = loop.memory_provenance(saved)
     assert provenance['not_trusted_here'] is True and provenance['excluded_from_results'] is True
 
@@ -378,10 +383,10 @@ def test_sdk_implementation_change_keeps_notes_interface_change_drops_them(tmp_p
     gateway, here = populated(tmp_path, config)
     original = memory.sdk_identity
     monkeypatch.setattr(memory, 'sdk_identity', lambda cfg: {**original(cfg), 'implementation': {'sdk.py': '0' * 64}})
-    rebuilt = memory.DevMemory(gateway, SETTINGS, config, layered=True)
+    rebuilt = memory.DevMemory(gateway, SETTINGS, config, layered=True, mode='interactive')
     assert rebuilt.context['sdk_sha256'] != here['sdk_sha256']
     assert rebuilt.context['sdk_interface_sha256'] == here['sdk_interface_sha256']
-    assert [n.memory_id for n in rebuilt.selected()] == ['seed-here', 'p-new', 'p-old']
+    assert [n.memory_id for n in rebuilt.selected()] == ['p-new', 'seed-other', 'p-old']
     monkeypatch.setattr(memory, 'sdk_identity', lambda cfg: {**original(cfg), 'prompt': 'changed SDK text'})
     assert memory.DevMemory(gateway, SETTINGS, config, layered=True).selected() == []
 
@@ -419,7 +424,15 @@ def staged(tmp_path, help_public=TIMEOUT, version=2):
     return store, cell, ref, root
 
 
-def test_importer_builds_payload_and_real_service_accepts_it_idempotently(tmp_path):
+def test_importer_builds_payload_and_real_service_accepts_it_idempotently(tmp_path, monkeypatch):
+    from benchmarks.attention_harness import memory_family
+    original_generalize = memory_family.generalize
+    class FakeProvider:
+        def chat(self, **kwargs):
+            return SimpleNamespace(artifact=lambda:dict(content=json.dumps(dict(
+                title='Lift before sideways motion',guidance='Lift slightly before moving sideways.',
+                applies_when='When carrying an object.'))))
+    monkeypatch.setattr(memory_family, 'generalize', lambda *a,**kw: original_generalize(*a,**kw,provider=FakeProvider()))
     store, cell, ref, root = staged(tmp_path)
     gateway = ServiceGateway(tmp_path / 'memory.sqlite')
     lines = []
@@ -427,7 +440,7 @@ def test_importer_builds_payload_and_real_service_accepts_it_idempotently(tmp_pa
     memory_id = provisional.memory_id(cell['experiment_id'], cell['key'], 2)
     note = gateway.svc.store.get_memory(memory_id)
     assert note.status.value == 'provisional'
-    assert gateway.svc.v2.provenance(memory_id)['title'] == ADVICE['content']
+    assert gateway.svc.v2.provenance(memory_id)['title'] == 'open cabinet: '+ADVICE['content']
     receipts = events(store, importer.RECEIPT)
     assert receipts[0]['memory_id'] == memory_id and receipts[0]['status'] == 'provisional'
     assert importer.run([store.path], client=gateway, namespace=SETTINGS['namespace']) == dict(

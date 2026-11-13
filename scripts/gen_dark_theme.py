@@ -253,6 +253,15 @@ def main(path):
     if new != html:
         open(path, 'w', encoding='utf-8').write(new)
     print(len(dark.splitlines()), 'rules,', 'updated' if new != html else 'unchanged')
+    memory_path=Path(path).with_name('memory.css')
+    if memory_path.exists():
+        css=memory_path.read_text()
+        match=re.search(r'/\* reuse-note-light \*/(.*?)/\* reuse-note-light-end \*/',css,re.S)
+        if match:
+            generated=convert(match.group(1))
+            updated=re.sub(r'/\* reuse-note-dark \*/.*?/\* reuse-note-dark-end \*/',
+                lambda m:'/* reuse-note-dark */\n'+generated+'\n/* reuse-note-dark-end */',css,flags=re.S)
+            if updated!=css:memory_path.write_text(updated)
 
 
 if __name__ == '__main__':

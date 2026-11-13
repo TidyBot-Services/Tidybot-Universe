@@ -63,3 +63,14 @@ test('memory styles and errors have generated dark-theme rules',()=>{
   assert.match(dark,/\[data-theme="dark"\][^{]*\.op-memory-error\{[^}]*#e08670/);
   assert.match(dark,/\.op-memory-error\{[^}]*#3a2824/);
 });
+
+test('declined citations are counted separately and their evidence is visible',()=>{
+  const copy=JSON.parse(JSON.stringify(snapshot));
+  copy.agent.memory_use[0].notes[0]={...copy.agent.memory_use[0].notes[0],referenced:'none',evidence:[],
+    considered_not_used:true,considered_not_used_evidence:[{file:'v1/policy.py',line:9,excerpt:'# Not using note mem-1: no carried <object>.'}]};
+  const text=api.agentMemoryUse(copy);
+  assert.match(text,/received 2 notes · used 0 · considered, not used 1/);
+  assert.match(text,/considered · not used/);
+  assert.match(text,/Not using note mem-1: no carried &lt;object&gt;/);
+  assert.match(text,/v1\/policy.py:9/);
+});

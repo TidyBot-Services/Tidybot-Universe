@@ -83,7 +83,7 @@ def create(store, key, version, directory):
         reason = effective_reason(origin, helped, signature)
         taken = [e['title'] for kind, e in events(store, key)
                  if kind == PREFIX + 'created' and e['help_version'] < version]
-        heading = unique_title(note_title(content, signature), taken, version)
+        heading = unique_title(note_title(content, signature, task_id=cell['task_id']), taken, version)
         public_screen(heading)
         public_screen(content)
         target = directory / 'memory-run-note.json'
@@ -137,7 +137,7 @@ def delivered(directory):
     return json.loads(path.read_bytes())['entries'] if path.is_file() else []
 
 
-def deliver(store, key, version, directory):
+def deliver(store, key, version, directory, *, service_entries=()):
     if store.cell(key).get('run_notes') is not True:
         return []
     path = Path(directory) / 'memory-run-notes-input.json'
@@ -154,12 +154,18 @@ def deliver(store, key, version, directory):
                 active[event['note_id']] = _read_note(event)
             except (OSError, ValueError, KeyError):
                 continue
+        with sqlite3.connect('file:' + str(Path(store.path).resolve()) + '?mode=ro',uri=True) as db:
+            created = {json.loads(raw)['note_id']:at for at,raw in db.execute(
+                "SELECT at,payload FROM v2_events WHERE kind=? AND json_extract(payload,'$.cell')=?",(PREFIX+'created',key))}
         notes = sorted(active.values(), key=lambda n: (-n['help_version'], n['note_id']))
         entries = [dict({k: note[k] for k in ('note_id', 'help_version', 'title', 'content', 'failure_signature')},
+                        created_at=created.get(note['note_id'],0), level='same_task',source_run=note['experiment_id'],source_version=note['help_version'],
                         layer='run', run_note=True, unvalidated=True, trusted_here=False, match_level='run_note',
                         excluded_from_results=True) for note in notes[:RUN_NOTE_CAP]]
+        chosen = order(service_entries, entries)
+        entries = [e for e in chosen if e.get('run_note')]
         packet = dict(schema=INPUT_SCHEMA, cell=key, version=version, cap=RUN_NOTE_CAP,
-                      omitted=max(0, len(notes) - RUN_NOTE_CAP), entries=entries)
+                      omitted=max(0, len(notes) - len(entries)), entries=entries)
         immutable(path, packet)
     entries = packet['entries']
     if entries:

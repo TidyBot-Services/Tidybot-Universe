@@ -5521,15 +5521,16 @@
     const versions=snapshot.agent.memory_use||[];
     const notes=versions.flatMap(v=>(v.notes||[]).map(n=>({...n,version:v.version})));
     const used=notes.filter(n=>n.referenced==='explicit').length;
+    const considered=notes.filter(n=>n.considered_not_used).length;
     const errors=versions.flatMap(v=>(v.errors||[]).map(e=>`<p class="op-memory-error" role="alert">Memory analysis error · v${esc(v.version)}: ${esc(e.error)}</p>`));
     const rows=notes.map(n=>{
       const explicit=n.referenced==='explicit';
-      const evidence=(n.evidence||[]).map(e=>`<li><code>${esc(e.file)}${e.line!=null?':'+esc(e.line):e.event_index!=null?' · event '+esc(e.event_index):''}</code><blockquote>${esc(e.excerpt)}</blockquote></li>`).join('');
+      const evidence=[...(n.evidence||[]),...(n.considered_not_used_evidence||[])].map(e=>`<li><code>${esc(e.file)}${e.line!=null?':'+esc(e.line):e.event_index!=null?' · event '+esc(e.event_index):''}</code><blockquote>${esc(e.excerpt)}</blockquote></li>`).join('');
       const hints=(n.behavioural_hint||[]).map(e=>`<li>Behavioural hint (weaker): ${esc(e.excerpt)}</li>`).join('');
-      return `<li data-memory-note data-referenced="${explicit}"><div><strong>${esc(n.title)}</strong> <span>v${esc(n.version)} · ${esc(n.level)} · ${explicit?'used · explicit reference':'not used'}</span></div><small>${esc(n.memory_id)}</small>${evidence||hints?`<ul>${evidence}${hints}</ul>`:''}</li>`;
+      return `<li data-memory-note data-referenced="${explicit}"><div><strong>${esc(n.title)}</strong> <span>v${esc(n.version)} · ${esc(n.level)} · ${explicit?'used · explicit reference':n.considered_not_used?'considered · not used':'not used'}</span></div><small>${esc(n.memory_id)}</small>${evidence||hints?`<ul>${evidence}${hints}</ul>`:''}</li>`;
     }).join('');
     const failures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis'&&!versions.some(v=>v.version===e.error?.version&&(v.errors||[]).some(row=>row.error===e.error?.error))).map(e=>`<p class="op-memory-error" role="alert">Memory analysis error: ${esc(typeof e.error==='object'?JSON.stringify(e.error):e.error)}</p>`);
-    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used"><p><strong>Memory: received ${notes.length} notes · used ${used}</strong></p><p class="minor">Used means an explicit reference in Dev text or code comments. Counts include each version’s delivery.</p>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}${errors.join('')}${failures.join('')}</div>`;
+    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used"><p><strong>Memory: received ${notes.length} notes · used ${used} · considered, not used ${considered}</strong></p><p class="minor">Used means an explicit application reference in Dev text or code comments. Declined notes are counted separately. Counts include each version’s delivery.</p>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}${errors.join('')}${failures.join('')}</div>`;
   }
   function operatorThreeParts(regions,snapshot) {
     if(DEBUG_VIEW)return regions.join('');

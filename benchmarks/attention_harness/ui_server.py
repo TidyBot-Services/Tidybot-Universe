@@ -1408,14 +1408,15 @@ def create_server(
                 try:
                     size = int(self.headers.get("Content-Length", "0"))
                     if (self.headers.get("Content-Type", "").split(";", 1)[0] != "application/json"
-                            or not 0 < size <= 2048):
+                            or not 0 < size <= 4096):
                         raise ValueError("bounded JSON body required")
                     body = json.loads(self.rfile.read(size))
-                    if not isinstance(body, dict) or set(body) - {"actor", "reason", "expires_at"}:
+                    if not isinstance(body, dict) or set(body) - ({"actor", "level", "opened_at", "edit"} if memory_action == "level" else {"actor", "reason", "expires_at"}):
                         raise ValueError("body needs actor and reason (and expires_at for expiry)")
                     record = memory_view.operate(memory_id, memory_action, actor=body.get("actor"),
                                                  reason=body.get("reason"),
-                                                 expires_at=body.get("expires_at"), dev_v2=dev_memory_action)
+                                                 expires_at=body.get("expires_at"), dev_v2=dev_memory_action,
+                                                 **({k:body.get(k) for k in ("level","opened_at","edit")} if memory_action == "level" else {}))
                     self._json({"memory_id": memory_id, "action": memory_action, "memory": record})
                 except FileNotFoundError as error:
                     self._json({"error": str(error)}, HTTPStatus.NOT_FOUND)

@@ -11,7 +11,7 @@ def _cut(text, limit):
     return head.rstrip(' ,;:') + '…'
 
 
-def note_title(content, failure_signature=None):
+def note_title(content, failure_signature=None, *, task_id=None):
     from attention_memory_service.note_title import validate_title
     text = re.sub(r'[`*]', '', content)
     text = re.split(r'[\r\n]|(?<=[.!?。！？])\s+', text.strip(), maxsplit=1)[0]
@@ -19,6 +19,11 @@ def note_title(content, failure_signature=None):
     if len(text) > 80:
         clause = re.split(r'; |: | — ', text, maxsplit=1)[0]
         text = _cut(clause if len(clause) >= 20 else text, 80)
+    if text.casefold() in {'note','hint','untitled','untitled note','unvalidated: note'}:
+        text = ''
+    if task_id:
+        prefix = task_id.replace('_', ' ') + ': '
+        text = _cut(prefix + text, 80)
     try:
         return validate_title(text)
     except ValueError:
@@ -29,9 +34,9 @@ def note_title(content, failure_signature=None):
         except ValueError:
             operation = (failure_signature or {}).get('operation')
             try:
-                return validate_title(f'Hint for {operation}' if operation else 'Hint')
+                return validate_title(_cut(f'Apply guidance for {task_id or operation or "robot motion"}'.replace('_',' '),80))
             except ValueError:
-                return 'Hint'
+                return 'Apply the recorded motion guidance'
 
 
 def unique_title(base, taken, version):

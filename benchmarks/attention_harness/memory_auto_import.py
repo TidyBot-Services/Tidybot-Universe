@@ -89,7 +89,7 @@ def summary_for(guidance):
         return None  # The summary is display text only; omit it when not plain.
 
 
-def provisional_payload(proposal, namespace, *, taken=()):
+def provisional_payload(proposal, namespace, *, taken=(), ledger=None):
     if proposal.get('schema_version') != SCHEMA or proposal.get('status') != 'pending_import':
         raise Refused('not a pending provisional proposal')
     agent = proposal.get('origin', {}).get('channel') == 'dev_agent'
@@ -115,18 +115,47 @@ def provisional_payload(proposal, namespace, *, taken=()):
                    context=context, guidance=guidance, failure_signature=proposal['failure_signature'], origin=origin,
                    origin_public_feedback_text=paths['origin_public_feedback'].read_bytes().decode('utf-8'),
                    help_public_feedback_text=paths['help_public_feedback'].read_bytes().decode('utf-8'),
-                   title=unique_title(note_title(guidance, proposal['failure_signature']), taken, proposal['help_version']))
+                   title=unique_title(note_title(guidance, proposal['failure_signature'], task_id=context['task_id']), taken, proposal['help_version']))
     if agent:
         origin['channel'] = 'dev_agent'
         payload['agent_evidence'] = agent_evidence(proposal)
         from attention_memory_service.agent_provisional import verify
         verify(origin, guidance, payload['agent_evidence'])
+    version_ref = proposal.get('source_version_evidence')
+    if version_ref:
+        raw = _verified(version_ref).read_bytes().decode('utf-8')
+        payload['source_version_evidence'] = dict(raw_version=raw, sha256=version_ref['sha256'])
+    elif agent:
+        raw = payload['agent_evidence']['help']['help_record']
+        import hashlib
+        payload['source_version_evidence'] = dict(raw_version=raw, sha256=hashlib.sha256(raw.encode()).hexdigest())
+    if ledger is not None and not agent and 'source_version_evidence' in payload:
+        outcomes = settled_source_outcomes(ledger, proposal)
+        if outcomes is not None:payload['source_version_evidence']['outcomes'] = outcomes
     if 'from_run_note' in proposal:
         payload['from_run_note'] = proposal['from_run_note']
     summary = summary_for(guidance)
     if summary:
         payload['summary'] = summary
     return payload
+
+
+def settled_source_outcomes(ledger, proposal):
+    """Read only the source version's settled receipts; never consult latest results."""
+    from .dev_ledger import DevV2Store
+    cell = DevV2Store(ledger).cell(proposal['cell'])
+    jobs = {j['kind']:j for j in cell.get('jobs', [])
+            if j.get('version') == proposal['help_version'] and j.get('state') == 'settled'
+            and j.get('kind') in {'execute','eval'}}
+    if set(jobs) != {'execute','eval'}:return None
+    import hashlib
+    def text_ref(raw):return dict(raw=raw, sha256=hashlib.sha256(raw.encode()).hexdigest())
+    def read_ref(ref):return text_ref(_verified(ref).read_bytes().decode('utf-8'))
+    execution, review = jobs['execute']['receipt'], jobs['eval']['receipt']
+    return dict(bundle=read_ref(execution['bundle']), native=read_ref(execution['native_result']),
+                eval=read_ref(review.get('eval_review') or review['review']),
+                execute_job=text_ref(json.dumps(jobs['execute'],sort_keys=True,ensure_ascii=False)),
+                eval_job=text_ref(json.dumps(jobs['eval'],sort_keys=True,ensure_ascii=False)))
 
 
 def agent_evidence(proposal):
@@ -250,7 +279,7 @@ def run(ledgers, *, client, namespace, dry_run=False, out=print, redact=Redactor
                 continue
             try:
                 proposal = _queue_value(event['queue'])
-                chosen = unique_title(note_title(proposal['help_content'], proposal['failure_signature']),
+                chosen = unique_title(note_title(proposal['help_content'], proposal['failure_signature'], task_id=proposal['context']['task_id']),
                                       taken, proposal['help_version'])
                 title_inputs[event['queue']['sha256']] = tuple(taken)
                 taken.append(chosen)
@@ -261,7 +290,7 @@ def run(ledgers, *, client, namespace, dry_run=False, out=print, redact=Redactor
             try:
                 if kind == 'provisional':
                     proposal = _queue_value(target)
-                    payload = provisional_payload(proposal, namespace, taken=title_inputs[target['sha256']])
+                    payload = provisional_payload(proposal, namespace, taken=title_inputs[target['sha256']], ledger=ledger)
                 else:
                     payload = outcome_payload(target)
             except (Refused, KeyError, ValueError, OSError) as exc:
@@ -280,6 +309,12 @@ def run(ledgers, *, client, namespace, dry_run=False, out=print, redact=Redactor
             try:
                 if kind == 'provisional':
                     response = client.create_provisional_note(**payload)
+                    from attention_memory_service.skill_tags import tags_for
+                    if tags_for(payload['context']['task_id']):
+                        from .memory_family import generalize
+                        # Immutable attempts live beside this proposal; retries reuse the raw response.
+                        generalize(client, 'memory:'+payload['memory_id'], reuse=True,
+                                   output_dir=Path(target['uri']).parent/'memory-rewrite')
                 else:
                     response = client.record_provisional_outcome(**payload)
             except Exception as exc:

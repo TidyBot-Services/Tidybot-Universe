@@ -13,7 +13,7 @@ import time
 from typing import Any
 
 # Operator actions the UI may request. "expiry" changes when a memory stops being usable.
-ACTIONS = ("disable", "enable", "rollback", "expiry")
+ACTIONS = ("disable", "enable", "rollback", "expiry", "level")
 _TEXT = re.compile(r"^[^\x00-\x1f\x7f]{1,200}$")
 
 
@@ -110,11 +110,17 @@ class MemoryView:
     # -- operating ---------------------------------------------------------------
 
     def operate(self, memory_id: str, action: str, *, actor: Any, reason: Any,
-                expires_at: Any = None, dev_v2: bool = False) -> dict[str, Any]:
+                expires_at: Any = None, dev_v2: bool = False, level=None, opened_at=None, edit=None) -> dict[str, Any]:
         if action not in ACTIONS:
             raise ValueError(f"unsupported memory action: {action}")
         if not self.can_operate or (dev_v2 and self.source != "service"):
             raise PermissionError("Memory operator authority is not configured on this server")
+        if action == 'level':
+            if not dev_v2:raise ValueError('level confirmation requires Dev Memory')
+            if not isinstance(actor,str) or not _TEXT.fullmatch(actor.strip() or '\x00'):
+                raise ValueError('actor must be 1-200 printable characters')
+            actor=actor.strip()
+            return self.gateway.confirm_note_level(memory_id=memory_id, level=level, actor=actor, opened_at=opened_at, edit=edit)
         for name, value in (("actor", actor), ("reason", reason)):
             if not isinstance(value, str) or not _TEXT.fullmatch(value.strip() or "\x00"):
                 raise ValueError(f"{name} must be 1-200 printable characters")

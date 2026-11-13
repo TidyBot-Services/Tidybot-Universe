@@ -125,6 +125,10 @@ def automatic_checks(root=None,gateway=None):
                     value['positive_controls'].append(dict(control_id=spec['control_id'],title=safe_text(spec['title']),
                         label='Test · not counted in results',status='Queued',pairs=[],failed_gates=[],errors=[]))
             except Exception as exc:value['errors'].append('Positive-control queue unavailable: '+safe_detail(str(exc)))
+    value['reuse']=dict(notes=[],errors=[])
+    if callable(getattr(gateway,'reuse_notes_list',None)):
+        try:value['reuse']=gateway.reuse_notes_list()
+        except Exception as exc:value['errors'].append('Reuse notes unavailable: '+str(exc))
     value['family']=dict(fixtures=[],candidates=[],events=[])
     if gateway is not None:
         if callable(getattr(gateway,'family_list',None)):
@@ -440,6 +444,10 @@ def _max_versions(experiment, cells, events=()):
 
 def _here_layer(row, cells):
     task = (row.get('applicability_summary') or {}).get('task_id')
+    if row.get('level') == 'general':return 'general'
+    if row.get('level') == 'same_skill':
+        from attention_memory_service.skill_tags import tags_for
+        return 'skill' if any(cell.get('task_id') != task and set(row.get('skill_tags',())) & set(tags_for(cell.get('task_id'))) for cell in cells) else None
     same = [cell for cell in cells if task is not None and cell.get('task_id') == task]
     if same:
         return 'scene' if any(cell.get('seed') == _note_seed(row) for cell in same) else 'task'
@@ -469,7 +477,7 @@ def _path(row, layer, catalogue):
         prior = catalogue.get(row.get('from_provisional')) or {}
         if prior.get('origin_summary'):
             path = f"{_learned(prior['origin_summary'])} → provisional on scene {_note_seed(prior)} → " + path
-    if layer in ('task', 'family'):
+    if layer in ('task', 'skill', 'general', 'family'):
         path += f" → read here as {layer} reference"
     return path
 
@@ -584,6 +592,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'summary': short(row.get('summary'), 180), 'group': short(row.get('group') or 'General', 40),
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
+        notes[-1].update({k:row[k] for k in ('level','skill_tags','applies_when','source_run','source_version','source_verified','generalized_from','generalized_copy') if k in row})
         profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
         if profile:notes[-1]['execution_profile']=profile
         try:
@@ -604,7 +613,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
         notes[-1].update(unvalidated=row.get('status') == 'provisional' or row.get('unvalidated') is True,
                          uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
                          # Another scene of the same task: readable only as a labelled reference.
-                         reference=layer in ('task', 'family'))
+                         reference=layer in ('task', 'skill', 'general', 'family'))
     from .memory_run_notes import events as local_events, PREFIX
     run_notes = []
     for cell in cells:

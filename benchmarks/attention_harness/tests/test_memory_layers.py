@@ -28,10 +28,10 @@ def test_order_caps_labels_and_idempotence():
     tasks = [dict(id='t',match_level='same_task',trusted_here=False,created_at=99,source_seed=101)]
     families = [dict(id=f'f{n}',match_level='same_family',trusted_here=False,source_task_id='pick_place_plate',created_at=n) for n in range(2)]
     result = layers.order(trusted + tasks + families + scenes, runs, family=True)
-    assert [e['id'] for e in result] == ['legacy','trusted','r4','r3','r2','s1','s0','f1']
+    assert [e['id'] for e in result] == ['t','r4','r3']
     assert layers.order(result, family=True) == result
-    assert len(layers.order(trusted+tasks+families+scenes,runs)) == 7
-    assert layers.order([tasks[0],scenes[0]]) == [scenes[0],tasks[0]]
+    assert len(layers.order(trusted+tasks+families+scenes,runs)) == 3
+    assert layers.order([tasks[0],scenes[0]]) == [tasks[0],scenes[0]]
     assert layers.label(runs[2]) == 'This run (v2) · Unvalidated: '
     assert layers.label(trusted[0]) == ''
     assert layers.label(scenes[0]) == 'Unvalidated: '
@@ -50,8 +50,8 @@ def test_title_validation_and_collisions():
     assert titles.note_title('This first clause is long enough; '+ 'additional words '*10) == 'This first clause is long enough'
     assert titles.note_title('go: '+ 'additional words '*10).endswith('…')
     assert titles.note_title('Use /left\\arm <slowly>') == 'Use left arm slowly'
-    assert titles.note_title('https://example.com') == 'Hint'
-    assert titles.note_title('private evaluator', {'operation':'left_arm.move_delta'}) == 'Hint for left_arm.move_delta'
+    assert titles.note_title('https://example.com') == 'Apply guidance for robot motion'
+    assert titles.note_title('private evaluator', {'operation':'left_arm.move_delta'}) == 'Apply guidance for left arm.move delta'
     base = 'Lift the cup before moving sideways'
     assert titles.unique_title(base, [base.upper()], 4) == base+' (v4)'
     assert titles.unique_title(base, [base,base+' (v4)'], 4) == base+' (v4, 2)'
@@ -106,7 +106,7 @@ def test_family_opt_in_exclusion_and_packet_recheck(tmp_path,monkeypatch):
     assert 'same_family' not in gateway.levels[-1]
     on=memory.DevMemory(gateway,SETTINGS,ctx,layered=True,family=True)
     packet=on.packet(development_id='on',source=SOURCE)
-    assert gateway.levels[-1] == ['same_scene','same_task','same_family']
+    assert gateway.levels[-1] == ['same_scene','same_task','same_family','same_skill','general']
     assert packet['family_reference'] and packet['family_cap']==1 and packet['not_trusted_here']
     entry,=packet['entries']
     assert entry['memory_id']=='f2' and entry['layer']=='family' and entry['source_task_id']=='pick_place_plate'
@@ -118,7 +118,7 @@ def test_family_opt_in_exclusion_and_packet_recheck(tmp_path,monkeypatch):
         off.recheck(packet)
     on.scope={'level':'reference_only','reason':'no_scene_contract'}
     on.selected()
-    assert gateway.levels[-1]==['same_task','same_family']
+    assert gateway.levels[-1]==['same_task','same_family','same_skill','general']
     store,cell,config,_,root=make(tmp_path,'autonomous',memory_authority=SETTINGS,memory_family=True)
     monkeypatch.setattr(memory,'client_for',lambda _:gateway)
     directory=root/'v1';directory.mkdir()
@@ -183,7 +183,9 @@ def test_monitor_layer_and_path_helpers():
     assert monitor._path(dict(source_seed=102,seeded_for_tests=True),'scene',{})=='Test note → scene 102'
 
 
-def test_importer_titles_replay_receipts_in_queue_order(tmp_path):
+def test_importer_titles_replay_receipts_in_queue_order(tmp_path,monkeypatch):
+    from benchmarks.attention_harness import memory_family
+    monkeypatch.setattr(memory_family,'generalize',lambda *a,**kw: {})
     store,cell,_,root=staged(tmp_path)
     write_version(root,3,public=REJECTED)
     directory=write_version(root,4,public=TIMEOUT,help_value=ADVICE)
@@ -198,7 +200,7 @@ def test_importer_titles_replay_receipts_in_queue_order(tmp_path):
     client=Client()
     assert importer.run([store.path],client=client,namespace=SETTINGS['namespace'])['deferred']==1
     assert importer.run([store.path],client=client,namespace=SETTINGS['namespace'])['created']==1
-    assert seen==[ADVICE['content'],ADVICE['content']+' (v4)',ADVICE['content']+' (v4)']
+    assert seen==['open cabinet: '+ADVICE['content'],'open cabinet: '+ADVICE['content']+' (v4)','open cabinet: '+ADVICE['content']+' (v4)']
 
 
 def test_family_scope_rejected_and_unavailable_mapping(monkeypatch):
@@ -239,7 +241,7 @@ def test_old_packet_projection_derives_layers_without_rewriting(tmp_path,monkeyp
         db.execute('UPDATE v2_events SET payload=? WHERE seq=?',(json.dumps(event),seq))
     memory.load_memory(store,cell['key'],1,SOURCE,config,SETTINGS,directory,True)
     assert hashlib.sha256(path.read_bytes()).hexdigest()==digest
-    assert [e['layer'] for e in projection(store,cell)['retrievals'][0]['entries']]==['scene','scene','task']
+    assert [e['layer'] for e in projection(store,cell)['retrievals'][0]['entries']]==['scene','task','scene']
 
 
 def test_monitor_projection_counts_lineage_and_legacy_read(tmp_path,monkeypatch):
@@ -259,7 +261,7 @@ def test_monitor_projection_counts_lineage_and_legacy_read(tmp_path,monkeypatch)
         row['applicability_summary']={'task_id':task}
     catalogue=SimpleNamespace(dev_catalogue=lambda:rows)
     result=monitor.project(bridge,catalogue,cell['experiment_id'])
-    assert result['run']['layer_counts']==dict(run=1,scene=1,task=1,family=1)
+    assert result['run']['layer_counts']==dict(run=1,scene=1,task=1,skill=0,general=0,family=1)
     assert result['run']['family_reference'] is True
     assert [n['layer'] for n in result['notes']]==['scene','task','family',None]
     assert result['run_notes'][0]['layer']=='run'

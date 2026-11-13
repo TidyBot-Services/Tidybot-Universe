@@ -40,7 +40,7 @@ class Memory:
             packet = self.default
         self.number, self.previous, self.packet, self.service = number, previous, packet, service
         self._binding()
-        notes = memory_run_notes.deliver(self.store, self.key, number, directory) if self.run_notes and deliver_notes else []
+        notes = memory_run_notes.deliver(self.store, self.key, number, directory, service_entries=packet['entries']) if self.run_notes and deliver_notes else []
         entries = memory_run_notes.merge(packet['entries'], notes, family=self.family) if notes else packet['entries']
         view = feedback(prompt_memory_view(dict(memory=entries)))
         self.workspace.publish(f'memory/v{number}.json', view)
@@ -50,7 +50,7 @@ class Memory:
         record_delivery(self.workspace.private, number, entries, view)
         count = len(view['memory'])
         unvalidated = sum(e.get('unvalidated') is True or e.get('trusted_here') is False for e in entries)
-        self.message = f'Memory for v{number}: memory/v{number}.json ({count} notes; {unvalidated} unvalidated)'
+        self.message = f'Memory for v{number}: memory/v{number}.json ({count} notes; {unvalidated} unvalidated). Cite each applied note as Using note <memory_id>: <why>; explain rejected notes as Not using note <memory_id>: <why>.'
         self.generations[number] = packet
         return self.message
 

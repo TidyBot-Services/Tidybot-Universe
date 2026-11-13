@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -34,7 +35,7 @@ def test_effective_creation_immutable_idempotent_and_changed_answer(tmp_path):
     assert note['effective_reason'] == 'signature_changed'
     assert (note['origin_progress'], note['help_progress']) == (2, 1)
     assert note['run_local'] and note['unvalidated'] and note['excluded_from_results']
-    assert note['content'] == ADVICE['content'] and note['title'] == ADVICE['content']
+    assert note['content'] == ADVICE['content'] and note['title'] == 'open cabinet: '+ADVICE['content']
     assert all(sha(ref['uri']) == ref['sha256'] for ref in note['refs'].values())
     ref = notes.create(store, cell['key'], 2, root/'v2')
     assert sha(ref['uri']) == ref['sha256']
@@ -82,7 +83,7 @@ def test_progress_and_invalid_signature_and_public_screen(tmp_path, monkeypatch)
     assert notes.create(store, cell['key'], 2, directory) is None
     assert events(store, notes.PREFIX+'skipped')[-1]['reason'] == 'signature_invalid'
     assert notes.title('  First   sentence. Second sentence.\nThird') == 'First sentence.'
-    assert notes.title('x'*100) == 'Hint'  # Key-like text fails public title validation.
+    assert notes.title('x'*100) == 'Apply guidance for robot motion'  # Key-like text fails public title validation.
 
 
 def test_no_scene_contract_stages_local_note_but_keeps_proposal_refusal(tmp_path, monkeypatch):
@@ -148,17 +149,17 @@ def test_order_labels_and_decision_isolation_every_policy(tmp_path, monkeypatch,
     monkeypatch.setattr(loop, 'decide', decide)
     directory = root/'v3'; directory.mkdir()
     packet, _, _ = loop.attention(store, cell['key'], 3, {}, SOURCE, 0, [], manifest, process_identity(), directory, None)
-    assert [e.get('note_id', e.get('memory_id')) for e in packet['memory']] == ['seed-here', note['note_id'], 'p-new', 'p-old']
+    assert [e.get('note_id', e.get('memory_id')) for e in packet['memory']] == ['p-new', 'seed-other', 'p-old']
     prompt = loop.prompt_memory_view(packet)['memory']
-    assert [e['title'] for e in prompt] == ['Trusted here', 'This run (v2) · Unvalidated: '+note['title'],
-                                         'Unvalidated: New unvalidated', 'Unvalidated: Old unvalidated']
+    assert [e['title'] for e in prompt] == ['Unvalidated: New unvalidated', 'Reference (scene 101): Other scene', 'Unvalidated: Old unvalidated']
     saved = json.loads((directory/'memory-input.json').read_bytes())
     assert note['note_id'] not in json.dumps(saved)
-    memory.DevMemory(gateway, SETTINGS, config, layered=True).recheck(saved)
+    memory.DevMemory(gateway, SETTINGS, config, layered=True, mode='interactive').recheck(saved)
     assert dev_memory_view.projection(store, store.cell(cell['key']))['unvalidated_used']
     legacy = [{'memory_id':'z','content':'Last'},{'memory_id':'a','content':'First'}]
-    assert notes.merge(legacy, [packet['memory'][1]]) == legacy+[packet['memory'][1]]
-    assert [e['content'] for e in loop.compact_memory(notes.merge(legacy, [packet['memory'][1]]))[0]] == ['Last','First',note['content']]
+    local = dict(note,layer='run',trusted_here=False)
+    assert notes.merge(legacy, [local]) == [local]+sorted(legacy,key=lambda e:e['memory_id'])
+    assert [e['content'] for e in loop.compact_memory(notes.merge(legacy, [local]))[0]] == [note['content'],'First','Last']
 
 
 def test_unbound_prompt_survives_interactive_switch(tmp_path):
@@ -282,6 +283,7 @@ def test_monitor_and_kill_switch_endpoint_auth(tmp_path, monkeypatch):
     monkeypatch.setattr(ui_server.secrets, 'token_urlsafe', lambda _: 'fixture-control-token')
     handler_type = ui_server.create_server(dev_v2_bridge=bridge)
     handler = object.__new__(handler_type)
+    handler.server = SimpleNamespace(public_gateway_mode=False)
     handler.path = path; handler.headers = {'X-Attention-Token':'wrong'}
     response = {}; handler._json = lambda value, status=200: response.update(value=value,status=status)
     handler.do_POST()

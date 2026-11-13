@@ -1,10 +1,10 @@
 """Shared Memory prompt order, caps and labels (plan 0d fourth revision)."""
-LAYERS = ('run', 'scene', 'task', 'family')
-LEVEL_LAYER = {'same_scene': 'scene', 'same_task': 'task', 'same_family': 'family', 'run_note': 'run'}
+LAYERS = ('run', 'scene', 'task', 'skill', 'general', 'family')
+LEVEL_LAYER = {'same_scene': 'scene', 'same_task': 'task', 'same_family': 'family', 'same_skill': 'skill', 'general': 'general', 'run_note': 'run'}
 LEVELS = tuple(level for level in LEVEL_LAYER if level != 'run_note')
 RUN_NOTE_CAP = 3
-TRUSTED_PROMPT_CAP = 8
-OTHER_UNVALIDATED_CAP = 2
+TRUSTED_PROMPT_CAP = 3
+OTHER_UNVALIDATED_CAP = 3
 FAMILY_CAP = 1
 FAMILY_DEFAULT = True  # New development selections only; old manifests remain opt-in.
 
@@ -26,13 +26,20 @@ def order(service_entries, run_notes=(), *, family=False):
     entries = list(service_entries) + list(run_notes)
     runs = [e for e in entries if layer_of(e) == 'run']
     runs.sort(key=lambda e: _get(e, 'help_version', 0), reverse=True)
-    trusted = [e for e in entries if (layer_of(e) == 'scene' and _get(e, 'trusted_here') is not False)
-               or (layer_of(e) == 'task' and _get(e, 'trusted_here') is True)]
-    others = _newest([e for e in entries if layer_of(e) == 'scene' and _get(e, 'trusted_here') is False])
-    others += _newest([e for e in entries if layer_of(e) == 'task' and _get(e, 'trusted_here') is not True])
-    families = _newest([e for e in entries if layer_of(e) == 'family']) if family else []
-    families.sort(key=lambda e:_get(e,'trust_scope')!='family_scoped')
-    return trusted + runs[:RUN_NOTE_CAP] + others[:OTHER_UNVALIDATED_CAP] + families[:FAMILY_CAP]
+    rest = [e for e in entries if layer_of(e) not in {'run','family'}]
+    families = [e for e in entries if layer_of(e) == 'family'] if family else []
+    families.sort(key=lambda e: (_get(e,'trust_scope') != 'family_scoped', -(_get(e,'created_at',0) or 0)))
+    rest += families[:FAMILY_CAP]
+    rank = {'same_task':0, 'same_skill':1, 'general':2}
+    def priority(e):
+        level = _get(e, 'level') or _get(e, 'match_level') or {'scene':'same_task','task':'same_task'}.get(layer_of(e))
+        if level == 'same_scene':level = 'same_task'
+        return (rank.get(level, 3), not _get(e, 'source_verified', False),
+                -(_get(e, 'created_at', 0) or 0), _get(e, 'memory_id', ''))
+    # A run note is local L1 guidance. The shared cap includes local notes.
+    return sorted(runs + rest, key=lambda e: (0, not _get(e,'source_verified',False), -(_get(e,'created_at',0) or _get(e,'help_version',0) or 0), '')
+                  if layer_of(e) == 'run' else priority(e))[:3]
+
 
 
 def label(entry):
@@ -46,5 +53,7 @@ def label(entry):
         if _get(entry, 'trusted_here') is True:return 'Trusted for this task: '
         seed = _get(entry, 'source_seed')
         return prefix + (f' (scene {seed}): ' if seed is not None else ': ')
+    if layer in {'skill','general'}:
+        return ('Same skill' if layer == 'skill' else 'General') + ' · Unvalidated: '
     if _get(entry,'trust_scope')=='family_scoped':return 'Trusted for the family (model rewrite): '
     return f"Reference (task {_get(entry, 'source_task_id')}): "

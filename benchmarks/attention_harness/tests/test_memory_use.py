@@ -166,10 +166,10 @@ def test_actual_delivery_projection_caps_and_screening():
     entries[0]['content'] = 'object_in_sink'  # withheld by the agent boundary
     view = feedback(prompt_memory_view(dict(memory=entries)))
     notes = audit.delivered_notes(entries, view)
-    assert len(notes) == 8
+    assert len(notes) == 3
     assert notes[0]['content'] == '[withheld]'
     assert notes[0]['level'] == 'L1'
-    assert notes[-1]['memory_id'] == 'n7'
+    assert notes[-1]['memory_id'] == 'n2'
 
 
 def test_copied_real_run_read_only_delivered_but_no_strict_reference():
@@ -197,8 +197,9 @@ def test_export_produces_audit_and_projection_surfaces_analysis_errors(fixture):
     path = f.root/'v1/memory_use.json'
     result = json.loads(path.read_text())
     assert len(result['notes']) == 2 and 'errors' not in result
-    assert [n['referenced'] for n in result['notes']] == ['explicit', 'none']
-    assert result['notes'][0]['evidence'][0]['excerpt'] == 'Following n0 before this submission.'
+    by_id = {n['memory_id']:n for n in result['notes']}
+    assert (by_id['n0']['referenced'], by_id['n1']['referenced']) == ('explicit', 'none')
+    assert by_id['n0']['evidence'][0]['excerpt'] == 'Following n0 before this submission.'
     path.write_text('{broken')
     view = projection(f.store, f.store.cell('cell'), now=1)
     assert any(e['source']=='Memory analysis' and e['error'].get('file')=='v1/memory_use.json' for e in view['agent']['errors'])

@@ -284,6 +284,8 @@ class Workspace:
         if config.get('agent_policy_version')=='agent-policy-v2':
             # 11-13 try speed-up item 3: short first reads; frozen v1 TOOLS bytes stay unchanged.
             tools+=OUTPUT_RULE
+        if not (config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only'):
+            tools += MEMORY_CITATION_RULE
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'
         if success_condition:
             # The public rule only (region + rule), never a verdict (10-29 step 6).
@@ -457,3 +459,10 @@ the execution history even before the first submit. Version help files index all
 help in their execution window. Eval advice and help reach the next resume message.
 '''
 )
+
+
+MEMORY_CITATION_RULE = """
+When you apply a Memory note, write `Using note <memory_id>: <why>` in your reasoning
+or a Python code comment. When you consider a note and decide it does not apply,
+write `Not using note <memory_id>: <why>`. Use its exact ID from memory/vN.json.
+"""

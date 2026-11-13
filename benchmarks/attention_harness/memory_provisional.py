@@ -165,6 +165,7 @@ def stage(store, key, version, directory, *, agent_help_evidence=None):
                     eval_reason_class=eval_reason_class(_origin_review(cell, version - 1)),
                     context=memory_context, refs=refs, help_content=content, status='pending_import', authority_candidate=False,
                     unvalidated=True, excluded_from_results=True)
+    proposal['source_version_evidence'] = _ref(directory / 'version.json')
     if agent_help_evidence is not None:
         proposal.update(origin=dict(channel='dev_agent'), provenance=dict(channel='dev_agent'))
     link = run_note_link(store, key, version, directory)

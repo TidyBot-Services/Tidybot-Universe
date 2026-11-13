@@ -62,11 +62,21 @@ def analyse(notes, sources, *, behavioural_matcher=None):
     for note in notes:
         row = {k: note[k] for k in ('memory_id', 'title', 'level')}
         evidence = []
+        declined = []
         for source in sources:
-            span = _match(note, source['text'])
-            if span is not None:
-                evidence.append(_evidence(source, span))
+            identity = note.get('memory_id', '')
+            decisions = list(re.finditer(r'(?<![\w-])(?P<no>Not )?using note\s+'
+                             + re.escape(identity) + r'(?![\w-])\s*:', source['text'], re.I)) if identity else []
+            if decisions:
+                for decision in decisions:
+                    target = declined if decision.group('no') else evidence
+                    target.append(_evidence(source, decision.span()))
+            else:
+                span = _match(note, source['text'])
+                if span is not None:
+                    evidence.append(_evidence(source, span))
         row.update(delivered=True, referenced='explicit' if evidence else 'none', evidence=evidence)
+        if declined:row.update(considered_not_used=True, considered_not_used_evidence=declined)
         fields = {k: note[k] for k in ('applies_when', 'parameters')
                   if isinstance(note.get(k), (dict, list)) and note[k]}
         if fields and behavioural_matcher is not None:
@@ -75,7 +85,11 @@ def analyse(notes, sources, *, behavioural_matcher=None):
                 {**{k: e[k] for k in ('file', 'line', 'event_index') if k in e},
                  'excerpt': e['excerpt'][:200]} for e in hints]
         result.append(row)
-    return dict(notes=result)
+    value = dict(notes=result)
+    if any(n.get('considered_not_used') for n in result):
+        value.update(used=sum(bool(n['evidence']) for n in result),
+                     considered_not_used=sum(bool(n.get('considered_not_used')) for n in result))
+    return value
 
 
 def event_cursor(private):
@@ -110,7 +124,7 @@ def validate_report(value):
                 any(not isinstance(note.get(k), str) for k in ('memory_id', 'title', 'level')) or
                 note.get('delivered') is not True or note.get('referenced') not in ('explicit', 'none')):
             raise ValueError('invalid memory_use.json note')
-        for field in ('evidence', 'behavioural_hint'):
+        for field in ('evidence', 'behavioural_hint', 'considered_not_used_evidence'):
             evidence = note.get(field, [])
             if not isinstance(evidence, list):
                 raise ValueError('invalid memory_use.json evidence')
@@ -119,6 +133,9 @@ def validate_report(value):
                         not isinstance(row.get('excerpt'), str) or len(row['excerpt']) > 200 or
                         not any(type(row.get(k)) is int for k in ('line', 'event_index'))):
                     raise ValueError('invalid memory_use.json evidence pointer')
+        if ('considered_not_used' in note and (type(note['considered_not_used']) is not bool
+                or note['considered_not_used'] != bool(note.get('considered_not_used_evidence')))):
+            raise ValueError('memory_use.json considered/evidence disagreement')
         if (note['referenced'] == 'explicit') != bool(note.get('evidence')):
             raise ValueError('memory_use.json reference/evidence disagreement')
     if not isinstance(value.get('errors', []), list) or any(
@@ -142,6 +159,15 @@ def delivered_notes(entries, visible):
     for shown in visible['memory']:
         for index, entry in enumerate(remaining):
             projected = feedback(prompt_memory_view(dict(memory=[entry])))['memory']
+            if 'level' not in shown and 'memory_id' not in shown:
+                # Reconstruct the pre-T2 bounded projection for immutable historical deliveries.
+                # Compare exact screened bytes; do not infer identity from similar guidance.
+                from .memory_layers import label
+                legacy = {k:entry[k] for k in ('title','summary') if isinstance(entry.get(k),str) and entry[k]}
+                prefix = label(entry)
+                if prefix:legacy['title'] = prefix + (legacy.get('title') or 'note')
+                legacy['content'] = entry['content'][:1200]
+                projected = feedback(dict(memory=[legacy]))['memory']
             if projected == [shown]:
                 identity = entry.get('memory_id') or entry.get('note_id')
                 if not identity:

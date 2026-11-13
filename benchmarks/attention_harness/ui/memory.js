@@ -3,7 +3,7 @@
   const TD={name:'dark',amber:'#ffd23f',amberHex:0xffd23f,onAmber:'#1a1400',flashLine:'#fff',ink:'#ffffff',mut:'#a3a199',mut2:'#8e8c85',mut3:'#7a7870',card:'#14181d',cardLine:'#3a3f45',pill:'#0d0f12',pillInk:'#ffffff',stroke:'#6f9bff',coreGlow2:'#5f8dff',stWait:'#3a3f45',stGo:'#6f93ff',pass:'#3ddc84',fail:'#ff5d5d',bk:['#dfe7ff','#7f9dff','#2c4aa8'],ec:{u:0x3ddc84,x:0xff5d5d,k:0x9db4ff},sc:{u:0x2fd37a,x:0xff4d4d,k:0x6f93ff},efc:{u:'#3ddc84',x:'#ff5d5d',k:'#9db4ff',v:'#c79bff',r:'#51ddd0'},off:0x59606e,vc:[0x5fd4ff,0x7fa8ff,0x9a8cff,0xc58cff,0xff8cd0],ringOp:.45,shell:0x8a96aa,shellOp:.07,fill:0x161b22,fillOp:.18,core:0x2d63d9,coreGlow:0x5f8dff,additive:true,bg:0x0d0f12,gc:['#3d8bf0','#25c48d','#e977a6','#8f7cf0','#6fbf3a','#9aa1ad']};
   // One drawing palette: the canvas is an instrument surface and ignores Light | Dark; only the page around it follows the theme.
   const theme=TD;
-  const LAYERS=['run','scene','task','family'];
+  const LAYERS=['run','scene','task','skill','general','family'];
   const layerName=layer=>layer[0].toUpperCase()+layer.slice(1);
   const color=kind=>kind==='off'?`#${theme.off.toString(16).padStart(6,'0')}`:theme.efc[{helps:'u',not_helps:'x',not_tested:'k',unvalidated:'v',run_note:'r'}[kind]||'k'];
   const groupColor=i=>theme.gc[i%6];
@@ -37,6 +37,7 @@
         last_used_at:row.last_used_at||null,test_seeded:row.test_seeded===true,index:i,flash:0,
         unvalidated,uses,expires_in_days:Number.isFinite(row.expires_in_days)?Math.max(0,Math.round(row.expires_in_days)):null,
         reference:row.reference===true,scene_seed:Number.isInteger(row.scene_seed)?row.scene_seed:null};
+      for(const key of ['level','skill_tags','applies_when','source_run','source_version','source_verified'])if(key in row)note[key]=row[key];
       if(row.execution_profile)note.execution_profile=row.execution_profile;
       if(Array.isArray(row.source_drift))note.source_drift=row.source_drift;
       if(row.motion_permission?.action==='dev_tier_sim_motion'&&row.motion_permission?.actor==='dev_tier_sim_motion')note.motion_permission=row.motion_permission;
@@ -73,7 +74,7 @@
     const uses=note.unvalidated?`Used ${note.uses?.grants??0} · failure gone ${note.uses?.failure_gone??0}${note.expires_in_days==null?'':` · Expires in ${note.expires_in_days} day${note.expires_in_days===1?'':'s'}`}`:'';
     const where=note.version?`Used by Dev ${note.versions.map(v=>'v'+v).join(', ')}`:'Not used in this run';
     const statusText={off:'Off',expired:'Expired',withdrawn:'Withdrawn'}[note.status]||where;
-    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p>${execution}${pathLine}<div class="chips">${layerChip}<span class="${effect==='helps'?'u':effect==='not_helps'?'x':effect==='unvalidated'?'v':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}${scope?`<span class="ref">${escapeHtml(scope)}</span>`:''}${excluded}</div>${uses?`<div class="meta" data-uses>${escapeHtml(uses)}</div>`:''}<div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
+    return `<button class="close" type="button" data-close aria-label="Close">×</button><h4>${escapeHtml(note.title)}</h4><p>${escapeHtml(note.summary||'No summary yet.')}</p>${execution}${pathLine}<div class="chips">${layerChip}${note.level?`<span>${escapeHtml({same_task:'Same task',same_skill:'Same skill',general:'General'}[note.level]||note.level)}</span>`:''}${note.source_verified?'<span>Source verified</span>':''}<span class="${effect==='helps'?'u':effect==='not_helps'?'x':effect==='unvalidated'?'v':'k'}">${label}${note.lift_pt!=null&&effect==='helps'?` (+${escapeHtml(note.lift_pt)} pt)`:''}</span><span>${escapeHtml(note.status==='active'?where:statusText)}</span><span>${escapeHtml(note.group)}</span>${note.test_seeded?'<span>Test note</span>':''}${scope?`<span class="ref">${escapeHtml(scope)}</span>`:''}${excluded}</div>${uses?`<div class="meta" data-uses>${escapeHtml(uses)}</div>`:''}<div class="meta">Read ${note.reads} times · last used ${ago(note.last_used_at)}</div>${demo?'':`<details class="manage"><summary>Manage…</summary><form data-manage><label>Actor<input name="actor" maxlength="200" required></label><label>Reason<input name="reason" maxlength="200" required></label><label>Expiry (local time)<input name="expires_at" type="datetime-local"></label><small>Setting an expiry and withdrawing a note cannot be undone. Both ask for confirmation.</small>${canOperate?'':'<small>Actions are unavailable because the operator key is not configured on this server.</small>'}<div class="actions">${[['disable','Turn off'],['enable','Turn back on'],['expiry','Set expiry…'],['rollback','Withdraw…']].map(([a,t])=>`<button type="button" data-action="${a}" ${canOperate?'':'disabled'}>${t}</button>`).join('')}</div></form></details><details class="details"><summary>Details</summary><p>Note ID: ${escapeHtml(note.id)}</p></details>`}`;
   }
   function manageRequest(note,action,actor,reason,expiryRaw,confirmFn=global.confirm){
     if(!actor?.trim()||!reason?.trim())throw Error('Actor and reason are required');
@@ -95,7 +96,7 @@
     return [execution,scope.reason==='scene_contract_missing'?'Memory unavailable — this seed has no scene contract':'Memory: reference only — this seed has no scene contract'].filter(Boolean).join(' · ');
   }
   const warningText=warnings=>Array.isArray(warnings)&&warnings.length?'Some note details are unavailable right now.':'';
-  const api={familyHtml,automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
+  const api={reuseHtml,levelRequest,familyHtml,automaticHtml,layerLegend,versionCount,runNoteOffRequest,feedLabel,themes:{dark:TD,light:TD},memoryScopeText,adapt,newEvents,visibleNotes,cardHtml,manageRequest,ago,warningText,orbitRadii,flowLayout,phoneCallouts,versionColor,cameraFitDistance};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(!global.document)return;
   const $=id=>document.getElementById(id),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -249,6 +250,18 @@
     data=adapt(data);recordReads(fresh);render();feed(fresh);
   }
   async function poll(){if(!experimentId)return;try{const response=await fetch('/api/dev-v2/memory-monitor?exp='+encodeURIComponent(experimentId),{cache:'no-store',credentials:'same-origin'});const payload=await response.json();if(!response.ok)throw Error(payload.error||`HTTP ${response.status}`);const fresh=newEvents(previous,payload.events);previous=payload.events||[];recordReads(fresh);data=adapt(payload);$('error').textContent='';render();feed(fresh);clearTimeout(pollTimer);pollTimer=setTimeout(poll,['running','planned'].includes(payload.run?.state)?2000:10000);}catch(error){$('error').textContent='Memory data is unavailable right now: '+error.message;noticeController.clientError('Memory');if(!data){data=adapt({run:{state:'unavailable',versions:[]},notes:[],events:[]});render()}clearTimeout(pollTimer);pollTimer=setTimeout(poll,10000)}}
+  function reuseHtml(value,canOperate=false,actor=''){
+    const esc=escapeHtml;
+    const errors=(value?.errors||[]).map(e=>`<p role="alert">${esc(e.memory_id)}: ${esc(e.error)}</p>`).join('');
+    const rows=(value?.notes||[]).map(({original:o,generalized:g})=>`<details data-reuse-id="${esc(o.memory_id)}"><summary>${esc(o.title)} · ${o.source_verified?'Source verified':'Provisional'}</summary><div class="reuse-pair"><article><h3>Original · Same task only</h3><p>${esc(o.guidance)}</p></article><article><h3>Generalized · ${esc(g?.level||'pending')}</h3><p>${esc(g?.guidance||'Generalization unavailable. The importer will retry failed model calls.')}</p><p>Applies when: ${esc(g?.applies_when||'')}</p></article></div><p>Source: ${esc(o.source_run)} · v${esc(o.source_version)}</p>${g?`<form data-reuse-form><label>Operator <input name="actor" required maxlength="200" value="${esc(actor)}"></label><div class="reuse-actions">${[['same_task','Same task only'],['same_skill','Same skill'],['general','General']].map(([level,text])=>`<button type="button" data-reuse-level="${level}" ${canOperate?'':'disabled'}>${text}</button>`).join('')}<button type="button" data-reuse-edit ${canOperate?'':'disabled'}>Edit</button></div><div data-reuse-editor hidden><label>Guidance<textarea name="guidance" maxlength="600">${esc(g.guidance)}</textarea></label><label>Applies when<textarea name="applies_when" maxlength="240">${esc(g.applies_when)}</textarea></label><label>Level<select name="level">${['same_task','same_skill','general'].map(l=>`<option ${l===g.level?'selected':''}>${l}</option>`).join('')}</select></label><button type="button" data-reuse-save ${canOperate?'':'disabled'}>Save edit</button></div></form>${g.confirmation?`<p>Confirmed by ${esc(g.confirmation.actor)} · ${esc(new Date(g.confirmation.confirmed_at*1000).toLocaleString())} · ${esc(g.confirmation.human_attention_seconds.toFixed(1))} s human attention</p>`:''}`:''}${canOperate?'':'<p>Operator key is not configured on this server.</p>'}<p data-reuse-status role="status"></p></details>`).join('');
+    return errors+(rows||'<p>No imported notes yet.</p>');
+  }
+  function levelRequest(memoryId,level,actor,openedAt,edit=null){
+    if(!actor?.trim())throw Error('Operator is required');
+    if(!['same_task','same_skill','general'].includes(level))throw Error('Unknown reuse level');
+    if(!Number.isFinite(openedAt))throw Error('Open the note before confirming');
+    return {url:`/api/dev-memories/${encodeURIComponent(memoryId)}/level`,options:{method:'POST',headers:{'Content-Type':'application/json','X-Attention-Token':global.document?.body?.dataset?.controlToken||''},body:JSON.stringify({level,actor:actor.trim(),opened_at:openedAt,edit})}};
+  }
   function automaticHtml(value){
     // A paper card like the side panel (2026-10-24): status line, then what is being checked, what waits and what came out.
     const esc=escapeHtml;
@@ -326,14 +339,58 @@
     const promotions=(value.events||[]).filter(e=>e.event==='promoted'&&e.trust_scope==='task_scoped').map(e=>`<p>Trusted for this task: ${esc(e.title)} — checks on other seeds passed.</p>`).join('');
     return `<div class="ac-cross"><h3>Other seeds · ${value.cross_seed_enabled?'On':'Off'}</h3><ul>${rows||'<li class="ac-empty">No cross-seed checks</li>'}</ul>${skipped.map(s=>`<p class="ac-skip">${esc(s.reason)}</p>`).join('')}${promotions}</div>`;
   }
+  const reuseBody=$('reuse-notes-body');
+  let reuseValue=null;
+  function renderReuse(){
+    if(!reuseBody||!reuseValue||reuseBody.querySelector('details[open]'))return;
+    let actor='';try{actor=localStorage.getItem('attention.memory.actor')||''}catch(_){}
+    reuseBody.innerHTML=reuseHtml(reuseValue,canOperate,actor);
+  }
+  reuseBody?.addEventListener('toggle',e=>{
+    if(e.target.matches('details[data-reuse-id]')&&e.target.open)e.target.dataset.openedAt=String(Date.now()/1000);
+  },true);
+  reuseBody?.addEventListener('click',async e=>{
+    const row=e.target.closest('details[data-reuse-id]');if(!row)return;
+    const form=row.querySelector('form');
+    if(e.target.closest('[data-reuse-edit]')){form.querySelector('[data-reuse-editor]').hidden=false;return;}
+    const button=e.target.closest('[data-reuse-level],[data-reuse-save]');if(!button)return;
+    const status=row.querySelector('[data-reuse-status]');
+    try{
+      const actor=form.elements.actor.value;
+      const edit=button.hasAttribute('data-reuse-save')?{guidance:form.elements.guidance.value,applies_when:form.elements.applies_when.value}:null;
+      const level=button.dataset.reuseLevel||form.elements.level.value;
+      const req=levelRequest(row.dataset.reuseId,level,actor,Number(row.dataset.openedAt),edit);
+      row.querySelectorAll('button').forEach(b=>b.disabled=true);
+      const response=await fetch(req.url,{...req.options,credentials:'same-origin'}),result=await response.json();
+      if(!response.ok)throw Error(result.error||`HTTP ${response.status}`);
+      try{localStorage.setItem('attention.memory.actor',actor.trim())}catch(_){}
+      const saved=result.memory;
+      if(saved?.generalized?.level){
+        const current=reuseValue?.notes?.find(n=>n.original.memory_id===row.dataset.reuseId);
+        if(current)current.generalized=saved.generalized;
+        row.querySelector('article:nth-child(2) h3').textContent='Generalized · '+saved.generalized.level;
+        const paragraphs=row.querySelectorAll('article:nth-child(2) p');
+        paragraphs[0].textContent=saved.generalized.guidance;
+        paragraphs[1].textContent='Applies when: '+saved.generalized.applies_when;
+        form.elements.guidance.value=saved.generalized.guidance;
+        form.elements.applies_when.value=saved.generalized.applies_when;
+        form.elements.level.value=saved.generalized.level;
+      }
+      const confirmed=saved?.generalized?.confirmation;
+      status.textContent=`Confirmed ${level} by ${actor.trim()} · ${(confirmed?.human_attention_seconds??0).toFixed(1)} s human attention`;
+      // A second decision starts a fresh attention interval.
+      row.dataset.openedAt=String(Date.now()/1000);
+    }catch(error){status.textContent='Could not confirm note: '+error.message;status.setAttribute('role','alert');}
+    finally{row.querySelectorAll('button').forEach(b=>b.disabled=!canOperate);}
+  });
   async function pollAutomatic(){
     const target=$('automatic-checks-body');if(!target)return;
-    try{const response=await fetch('/api/dev-v2/automatic-checks',{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error();target.innerHTML=automaticHtml(await response.json());}
+    try{const response=await fetch('/api/dev-v2/automatic-checks',{cache:'no-store',credentials:'same-origin'});if(!response.ok)throw Error();const value=await response.json();target.innerHTML=automaticHtml(value);reuseValue=value.reuse;renderReuse();}
     catch(_){target.textContent='Automatic checks status is unavailable.';}
     setTimeout(pollAutomatic,10000);
   }
   async function init(){if(!demo)pollAutomatic();if(!demo&&!experimentId){try{const r=await fetch('/api/dev-v2/experiments',{credentials:'same-origin'});const sessions=await r.json();const items=Array.isArray(sessions)?sessions:sessions.sessions||[];experimentId=items.filter(x=>x.experiment_id).sort((a,b)=>(b.created_at||0)-(a.created_at||0))[0]?.experiment_id||null;if(experimentId)$('back').href='/ui/#exp='+encodeURIComponent(experimentId);}catch(_){}}
-    if(!demo)fetch('/api/dev-memories',{credentials:'same-origin'}).then(async c=>{if(c.ok){canOperate=(await c.json()).control?.can_operate===true;if(selected)$('card').innerHTML=cardHtml(selected,selected.run_note?data?.run.can_operate_run_notes:canOperate,false)}}).catch(()=>{});
+    if(!demo)fetch('/api/dev-memories',{credentials:'same-origin'}).then(async c=>{if(c.ok){canOperate=(await c.json()).control?.can_operate===true;renderReuse();if(selected)$('card').innerHTML=cardHtml(selected,selected.run_note?data?.run.can_operate_run_notes:canOperate,false)}}).catch(()=>{});
     if(global.THREE){try{globe=createGlobe();globe.applyTheme3D();setView('3d')}catch(_){globe=null}}
     if(!globe){$('views').querySelector('[data-view="3d"]').hidden=true;setView('2d')}
     if(demo){$('sample').hidden=false;data=adapt(sample(Number(demo[1])));sampleTick();setInterval(sampleTick,3000)}else if(experimentId)poll();else{data=adapt({run:{versions:[]},notes:[],events:[]});render();$('error').textContent='No Dev run found';}

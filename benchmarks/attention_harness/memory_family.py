@@ -25,10 +25,20 @@ def write(client,action,**payload):
     return client.family.write(action,payload)
 
 
-def generalize(client,source,*,provider=None,output_dir,clock=time.time,before_call=None):
+def generalize(client,source,*,provider=None,output_dir,clock=time.time,before_call=None,reuse=False):
     """Use Dev's CodexClient, retaining raw provider wire and immutable attempts."""
-    kind,mid=source.split(':',1);r=read(client,source,'source')
-    prompt=dict(instruction=REWRITE_PROMPT,title=r['title'],guidance=r['guidance'],task_id=r['context']['task_id'])
+    kind,mid=source.split(':',1)
+    instruction = REWRITE_PROMPT
+    if reuse:
+        from attention_memory_service.reuse_notes import REWRITE_PROMPT as instruction
+        value = client.reuse_note_detail(mid)
+        original = value['original']
+        # Identity/context is not taken from public display text.
+        provenance = client.provenance(mid)
+        r = dict(title=original['title'], guidance=original['guidance'], context=provenance['artifact']['applicability'])
+    else:
+        r=read(client,source,'source')
+    prompt=dict(instruction=instruction,title=r['title'],guidance=r['guidance'],task_id=r['context']['task_id'])
     directory=Path(output_dir);directory.mkdir(parents=True,exist_ok=True)
     for attempt in range(2):
         path=directory/f'rewrite-{attempt}.json'
@@ -41,7 +51,7 @@ def generalize(client,source,*,provider=None,output_dir,clock=time.time,before_c
             p=provider or CodexClient(response_observer=observe)
             if hasattr(p,'response_observer'):p.response_observer=observe
             started=clock()
-            response=p.chat(model=MODEL,messages=[dict(role='system',content=REWRITE_PROMPT),dict(role='user',content=encoded(prompt))],max_tokens=2048,temperature=0,reasoning_effort='high')
+            response=p.chat(model=MODEL,messages=[dict(role='system',content=instruction),dict(role='user',content=encoded(prompt))],max_tokens=2048,temperature=0,reasoning_effort='high')
             raw=response.artifact()['content'];finished=clock()
             receipt=dict(provider='codex',model=MODEL,prompt=prompt,prompt_sha256=digest(encoded(prompt).encode()),raw_response=raw,response_sha256=digest(raw.encode()),started_at=started,finished_at=finished,provider_response=wire,model_source='codex')
             import re
@@ -50,11 +60,13 @@ def generalize(client,source,*,provider=None,output_dir,clock=time.time,before_c
             except ValueError:parsed={}
             if not isinstance(parsed,dict):parsed={}
             rewrite=dict(title=parsed.get('title'),guidance=parsed.get('guidance'),receipt=receipt)
+            if reuse:rewrite['applies_when'] = parsed.get('applies_when')
             immutable(path,rewrite)
-        try:validate_rewrite(r,rewrite)
+        try:validate_rewrite(r,rewrite,instruction=instruction,generalized=reuse)
         except (StateConflictError,ValueError,KeyError,TypeError) as exc:
             if attempt==1:raise DevConflict('Model rewrite rejected after two attempts: '+str(exc)) from exc
             continue
+        if reuse:return client.generalize_note(memory_id=mid,rewrite=rewrite)
         return write(client,'generalize',source=dict(kind=kind,id=mid),rewrite=rewrite)
 
 

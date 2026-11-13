@@ -326,8 +326,8 @@ def compact_memory(entries):
     from .memory_layers import TRUSTED_PROMPT_CAP, layer_of
     shared=any('trusted_here' in e for e in entries)
     ordered=list(entries) if shared else sorted(entries,key=lambda e:(e.get('memory_id',''),e.get('version',0)))
-    notes=[];cut=0;trusted=0;omitted=0
-    for entry in ordered:
+    notes=[];cut=0;trusted=0;omitted=max(0,len(ordered)-3)
+    for entry in ordered[:3]:
         if layer_of(entry)=='scene' and entry.get('trusted_here') is not False:
             trusted+=1
             if trusted>TRUSTED_PROMPT_CAP:
@@ -337,6 +337,13 @@ def compact_memory(entries):
         if len(content)>1200:
             content=content[:1200];cut+=1
         note={k:entry[k] for k in ('title','summary') if isinstance(entry.get(k),str) and entry[k]}
+        if not note.get('title') or note['title'].casefold().strip() in {'note','hint','untitled','untitled note','unvalidated: note'}:
+            from .memory_titles import _cut
+            note['title'] = _cut(' '.join(content.split()), 80)
+        for key in ('memory_id','level','applies_when','source_run','source_version'):
+            if key in entry:note[key] = entry[key]
+        if entry.get('note_id'):note.setdefault('memory_id',entry['note_id'])
+        note.setdefault('level', 'same_task' if entry.get('match_level') in (None,'same_scene','same_task','run_note') else entry['match_level'])
         label=memory_label(entry)
         if label:note['title']=label+(note.get('title') or 'note')
         note['content']=content
@@ -371,7 +378,7 @@ def attention(store,key,version,feedback,previous,failures,prior,m,owner,directo
     # full planner still sees it, as a logged retrieve_memory decision.
     decision_memory=memory if not shared or policy=='full_trace_aware_attention_planner' else m['memory']
     from . import memory_run_notes
-    run_notes=memory_run_notes.deliver(store,key,version,directory) if cell.get('run_notes') is True else []
+    run_notes=memory_run_notes.deliver(store,key,version,directory,service_entries=memory['entries']) if cell.get('run_notes') is True else []
     prompt_entries=memory_run_notes.merge(memory['entries'],run_notes, family=cell.get('memory_family') is True) if run_notes else memory['entries']
     deliver=bool(cell.get('planner_features')) or shared or bool(run_notes)
     if decision_path.exists():decision=json.loads(decision_path.read_bytes())
