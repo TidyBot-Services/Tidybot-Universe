@@ -48,3 +48,23 @@ test('missing operator authority disables every action and main view has no life
  assert.match(html,/operator key is not configured/);
  assert.doesNotMatch(source,/data-dev-memory-operation|data-dev-memory-action|data-memory-panel|data-memory-note-used/);
 });
+
+test('operator timeout response is displayed in the note card error region',async()=>{
+ const script=fs.readFileSync(path.join(root,'ui/memory.js'),'utf8');
+ // Run the actual browser click handler with a rejected service response.
+ const body=script.match(/\$\('card'\)\.onclick=async e=>\{([\s\S]*?)\n  \};/)[1];
+ const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+ const click=new AsyncFunction('e','$','selected','data','noticeController','manageRequest','fetch','poll','experimentId','globe',body);
+ const error={textContent:''},notices=[];
+ const form={elements:{actor:{value:'operator'},reason:{value:'review'},expires_at:{value:''}}};
+ const button={dataset:{action:'disable'},disabled:false,closest:()=>form};
+ const event={target:{closest:selector=>selector==='[data-action]'?button:null}};
+ const message='Memory Service request timed out (180 second limit): TimeoutError';
+ await click(event,id=>error,base,null,{clientError:value=>notices.push(value)},
+   ()=>({url:'/api/dev-memories/note/disable',options:{}}),
+   async()=>({ok:false,status:504,json:async()=>({error:message})}),
+   ()=>assert.fail('failed operator action must not report success'),'experiment',null);
+ assert.ok(error.textContent.includes(message));
+ assert.equal(button.disabled,false);
+ assert.deepEqual(notices,['Memory']);
+});

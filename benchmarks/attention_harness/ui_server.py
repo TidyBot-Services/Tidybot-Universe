@@ -1423,6 +1423,14 @@ def create_server(
                     self._json({"error": str(error)}, HTTPStatus.FORBIDDEN)
                 except (ValueError, TypeError, json.JSONDecodeError) as error:
                     self._json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
+                except TimeoutError as error:
+                    self._json({"error": "Memory Service request timed out (180 second limit): "
+                                + (str(error) or type(error).__name__)}, HTTPStatus.GATEWAY_TIMEOUT)
+                except URLError as error:
+                    timed_out = isinstance(error.reason, TimeoutError)
+                    self._json({"error": ("Memory Service request timed out (180 second limit): " if timed_out
+                                          else "Memory Service request failed: ") + str(error)},
+                               HTTPStatus.GATEWAY_TIMEOUT if timed_out else HTTPStatus.BAD_GATEWAY)
                 except Exception as error:
                     # The service refuses illegal transitions (for example re-enabling a rollback).
                     conflict = "StateConflict" in type(error).__name__

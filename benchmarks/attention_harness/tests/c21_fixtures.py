@@ -12,6 +12,10 @@ from benchmarks.attention_harness.tests.test_dev_local_deployment import base
 
 @pytest.fixture
 def r4_deployment(base, monkeypatch):
+    # This fixture deliberately has no planner runtime modules; applicability
+    # derivation itself is exercised by test_planner_behavior's closed runtime.
+    from curobo_v2 import planner_behavior
+    monkeypatch.setattr(planner_behavior, 'from_config', lambda config: 'c'*64)
     snapshot = dev_local.materialize(base.repo)
     settings = es.from_config(replace(es.R4_20261027,
         planner_deployment={k: snapshot[k] for k in ('lock_path', 'sha256')}).to_dict())

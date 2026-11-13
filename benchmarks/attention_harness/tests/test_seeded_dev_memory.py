@@ -30,7 +30,7 @@ def test_exact_seeded_context_and_missing_fields(tmp_path, monkeypatch, budget_t
     assert result['camera_names'] == list(cfg['camera_names'])
     assert result['task_prompt'] == cfg['task_prompt']
     assert result['scene_contract_ref'] == registered_contract_ref()
-    profile_keys = {'execution_profile', 'planner_dev_local_sha256'} if budget_tier == 'dev' else set()
+    profile_keys = {'execution_profile', 'planner_dev_local_sha256', 'planner_behavior_sha256'} if budget_tier == 'dev' else set()
     assert set(result) == set(memory.SCOPE) | {'seed', 'camera_names', 'task_prompt', 'scene_contract_ref',
                                                'sdk_interface_sha256'} | profile_keys
     if budget_tier == 'dev':

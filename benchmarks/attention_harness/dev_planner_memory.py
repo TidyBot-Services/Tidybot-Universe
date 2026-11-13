@@ -115,9 +115,28 @@ def context(config, namespace, *, contract_catalog=None):
     if 'dev_sdk_sha256' in config and value['sdk_interface_sha256'] != config['dev_sdk_sha256']:
         raise DevConflict('Memory SDK description differs from sealed config')
     if 'execution_settings' in config:value['execution_profile']=config['execution_settings']['profile']
-    if config.get('planner_source',{}).get('kind')=='dev-local':value['planner_dev_local_sha256']=config['execution_settings']['planner_deployment']['sha256']
+    if config.get('planner_source',{}).get('kind')=='dev-local':
+        value['planner_dev_local_sha256']=config['execution_settings']['planner_deployment']['sha256']
+        from curobo_v2.planner_behavior import from_config
+        value['planner_behavior_sha256']=from_config(config)
     public_screen(value)
     return value
+
+
+def planner_matches(applicability, context):
+    key = 'planner_behavior_sha256' if 'planner_behavior_sha256' in applicability else 'planner_dev_local_sha256'
+    return applicability.get(key) == context.get(key)
+
+
+def reuse_scope_matches(applicability, context):
+    # Frozen notes preserve the original exact SDK tuple. New behavior-scoped
+    # notes use the interface split too: the implementation includes the audit
+    # deployment hash, which changes on a UI-only snapshot.
+    interface = applicability.get('sdk_interface_sha256')
+    new = 'planner_behavior_sha256' in applicability and interface is not None
+    return (not new or context.get('sdk_interface_sha256') == interface) and all(
+        applicability.get(k) == v for k, v in context.items()
+        if k in SCOPE and not (new and k == 'sdk_sha256'))
 
 
 def sdk_identity(config):
@@ -192,8 +211,8 @@ class DevMemory:
                 and type(m.version) is int and m.version > 0
                 and m.applicability.get('execution_profile') == self.context.get('execution_profile')
                 and (not self.sdk_description_sealed or m.applicability.get('sdk_interface_sha256') == self.context.get('sdk_interface_sha256'))
-                and m.applicability.get('planner_dev_local_sha256') == self.context.get('planner_dev_local_sha256')
-                and all(m.applicability.get(k) == v for k, v in self.context.items() if k in SCOPE)],
+                and planner_matches(m.applicability, self.context)
+                and reuse_scope_matches(m.applicability, self.context)],
                 key=lambda m: (m.memory_id, m.version))
 
     def notes(self):
@@ -244,7 +263,7 @@ class DevMemory:
                     or n.match_level == 'same_scene' and n.trusted_here is not (n.status == 'trusted')
                     or n.applicability.get('execution_profile') != self.context.get('execution_profile')
                     or self.sdk_description_sealed and n.applicability.get('sdk_interface_sha256') != self.context.get('sdk_interface_sha256')
-                    or n.applicability.get('planner_dev_local_sha256') != self.context.get('planner_dev_local_sha256')
+                    or not planner_matches(n.applicability, self.context)
                     or any(n.applicability.get(k) != self.context.get(k) for k in TASK_SCOPE if not (family_scope and k == 'task_id'))
                     or n.match_level == 'same_scene' and any(n.applicability.get(k) != self.context.get(k) for k in SCENE_SCOPE)):
                 continue

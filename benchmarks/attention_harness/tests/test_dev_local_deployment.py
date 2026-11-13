@@ -385,7 +385,9 @@ def test_memory_context_and_metadata(base,monkeypatch,tmp_path):
     config['execution_settings']=local_settings(result).to_dict()
     prior=memory.context(config,'test')
     config['planner_source']=dict(kind='dev-local',source_root=str(base.repo))
-    assert memory.context(config,'test')==dict(prior,planner_dev_local_sha256=sha)
+    from curobo_v2 import planner_behavior
+    monkeypatch.setattr(planner_behavior,'from_config',lambda c:'b'*64)
+    assert memory.context(config,'test')==dict(prior,planner_dev_local_sha256=sha,planner_behavior_sha256='b'*64)
     assert labels.config_metadata(config)==dict(execution_profile=es.PROFILE,planner_lock_sha256=sha,
                                                 deployment_kind='dev-local',formal_eligible=False)
 
