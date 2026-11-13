@@ -159,9 +159,10 @@ def publish_history(workspace,manifest):
 def _setting(value):return 'not set' if value is None else str(value)
 def check(rows,level,check_id,title,body=''):rows.append(dict(id=check_id,level=level,title=title,body=body))
 
-def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run_notes=False):
+def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run_notes=False,agent=None):
     """Plain-language checks shown before creation and repeated on the real new config at creation.
     level: ok, warn or block. Any block refuses creation."""
+    if agent is None:agent=source_config.get('dev_mode')=='agent'
     rows=[]
     if not valid:check(rows,'block','source_valid','This attempt\'s code never passed the validator.','Continue from an attempt whose code ran.')
     if carry=='feedback' and not executed:check(rows,'block','source_executed','This attempt has no execution result to carry over.','Choose "Code only", or another attempt.')
@@ -176,7 +177,12 @@ def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run
             elif old_entry is not None and new_entry is None:
                 check(rows,'block','scene_contract','The source run was checked against a scene contract that is no longer registered.')
             else:check(rows,'ok','scene',f'Scene and task match the source run (seed {source_config["seed"]}).')
-    if source_prompt is None:check(rows,'warn','sdk','The SDK text of the source attempt was not recorded.','The code may call functions that changed.')
+    seals=[k for k in ('dev_sdk_prompt_sha256','dev_sdk_sha256','dev_sdk_metadata_sha256') if source_config.get(k)] if agent else []
+    if agent and seals:
+        same=all(source_config[k]==new_config.get(k) for k in seals)
+        if same:check(rows,'ok','sdk','The SDK text the AI sees is the same as in the source attempt.')
+        else:check(rows,'warn','sdk','The SDK text the AI sees changed after the source run.','The AI is told the current SDK; calls in the old code may need updating.')
+    elif agent or source_prompt is None:check(rows,'warn','sdk','The SDK text of the source attempt was not recorded.','The code may call functions that changed.')
     else:
         from .dev_tasks import get_task
         current=get_task(new_config['task_id']).system_prompt(new_config)
@@ -185,9 +191,14 @@ def checks(source_config,source_prompt,new_config,*,carry,executed,valid,has_run
     grasp=[k for k in GRASP_FIELDS if source_config.get(k)!=new_config.get(k)]
     if grasp:check(rows,'warn','grasp_settings','Grasp settings differ from the source run: '+', '.join(f'{k} {_setting(source_config.get(k))} → {_setting(new_config.get(k))}' for k in grasp)+'.','The code will run with the new settings and may behave differently.')
     if source_config.get('execution_settings')!=new_config.get('execution_settings'):
-        check(rows,'warn','execution_settings','Execution settings differ from the source run: execution_settings '
-            +str((source_config.get('execution_settings') or {}).get('profile','legacy'))+' → '
-            +str((new_config.get('execution_settings') or {}).get('profile','legacy'))+'.',
+        old,new=source_config.get('execution_settings') or {},new_config.get('execution_settings') or {}
+        differences=[]
+        for key in sorted(old.keys() | new.keys(),key=lambda k:(k!='profile',k)):
+            if key in old and key in new and old[key]==new[key]:continue
+            before,after=old.get(key,'legacy' if key=='profile' else None),new.get(key,'legacy' if key=='profile' else None)
+            differences.append(f'{key} changed' if isinstance(before,dict) or isinstance(after,dict) else f'{key} {_setting(before)} → {_setting(after)}')
+        check(rows,'warn','execution_settings','Execution settings differ from the source run: '
+            +(', '.join(differences) or 'execution_settings changed')+'.',
             'The code will run with the new settings and may behave differently.')
     if has_run_notes:check(rows,'warn','run_notes','The source run\'s notes are not carried over.','Only code and feedback can be carried in this version.')
     check(rows,'warn','excluded','Excluded from comparison.','A run that continues earlier work reuses its attention and time, so it never enters result tables.')
@@ -199,11 +210,17 @@ def preview_config(source_config):
     value=copy.deepcopy(source_config)
     # A fork is a new dev run with today's defaults, even for a legacy origin.
     value['budget_tier']='dev'
-    value['execution_settings']=d.new_execution_settings().to_dict()
+    from .dev_fixture_tasks import PROFILE
+    fixture=(source_config.get('execution_settings') or {}).get('profile')==PROFILE
+    value['execution_settings']=d.new_execution_settings(budget_tier='dev',**(dict(rules_profile=PROFILE,fixture_telemetry_hz=20) if fixture else {})).to_dict()
     value['planner_source']=dict(kind='dev-local',source_root=str(d.ROOT))
+    if fixture:
+        from openarm365_dev_v2.fixture_contract import contract_ref,success_ref
+        value.update(scene_reset_seed=value['seed'],fixture_scene_contract=contract_ref(value['task_id']),
+                     fixture_success_condition=success_ref(value['task_id']),scene_verification='fixture_contract_only')
+    value.update(contact_exempt_objects=d.DEFAULT_CONTACT_EXEMPT_OBJECTS,planner_mode=d.DEFAULT_PLANNER_MODE,ik_candidates=d.DEFAULT_IK_CANDIDATES,ik_max_joint_jump=d.DEFAULT_IK_MAX_JOINT_JUMP)
     from .dev_tasks import dev_sdk_seal
     value.update(dev_sdk_seal(value))
-    value.update(contact_exempt_objects=d.DEFAULT_CONTACT_EXEMPT_OBJECTS,planner_mode=d.DEFAULT_PLANNER_MODE,ik_candidates=d.DEFAULT_IK_CANDIDATES,ik_max_joint_jump=d.DEFAULT_IK_MAX_JOINT_JUMP)
     if source_config.get('scene_contract'):
         from openarm365_dev_v2.scene_contract import registered_contract_ref
         try:value['scene_contract']=registered_contract_ref()
@@ -214,7 +231,7 @@ def preview(root,experiment_id,cell_key,version,carry='feedback'):
     """What the dialog shows: the source's attempts, the checks for the chosen one, and what v1's prompt will include."""
     if carry not in CARRY:raise ValueError('unknown carry')
     s=Source(root,experiment_id,cell_key,version)
-    rows=checks(s.config,s.system_prompt(),preview_config(s.config),carry=carry,executed=s.executed(version),valid=s.record['valid'],has_run_notes=s.has_run_notes())
+    rows=checks(s.config,s.system_prompt(),preview_config(s.config),carry=carry,executed=s.executed(version),valid=s.record['valid'],has_run_notes=s.has_run_notes(),agent=s.agent)
     if s.agent:
         try:
             _materialize(s,Path(root)/('devexp-'+'0'*24),dict(experiment_id=experiment_id,cell=cell_key,version=version,carry=carry),write=False)
@@ -295,7 +312,7 @@ def apply(record,configs,sources,*,mode,tasks,seeds):
         from openarm365_dev_v2.scene_contract import registered_contract_ref
         config['scene_contract']=registered_contract_ref();config['scene_reset_seed']=source_config.get('scene_reset_seed',source_config['seed'])
     prompt=_checked(record['source_system_prompt']).read_text() if record.get('source_system_prompt') else None
-    rows=checks(source_config,prompt,config,carry=record['carry'],executed=record['executed'],valid=record['valid'],has_run_notes=record['has_run_notes'])
+    rows=checks(source_config,prompt,config,carry=record['carry'],executed=record['executed'],valid=record['valid'],has_run_notes=record['has_run_notes'],agent=record.get('dev_mode')=='agent')
     blocked=[r['title'] for r in rows if r['level']=='block']
     if blocked:raise ValueError('cannot continue this attempt: '+' '.join(blocked))
     text=_checked(record['source']).read_text();public_screen(text)

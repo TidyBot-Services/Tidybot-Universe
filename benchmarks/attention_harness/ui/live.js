@@ -1722,6 +1722,7 @@
   }
   function forkPanel(form,start,onChange) {
     const cell=currentSnapshot.dev_v2,eid=cell.experiment_id,key=cell.key;
+    const {source,profile,reason}=start;
     const versions=cell.versions.filter(v=>v.valid===true).map(v=>v.version).sort((a,b)=>a-b);
     const state={version:versions.includes(start.version)?start.version:versions.at(-1),carry:'feedback',preview:null,loading:true,error:'',seq:0};
     const header=launchDialog.querySelector('.ab-launch-header');
@@ -1729,20 +1730,27 @@
     const panel=document.createElement('section');panel.className='ab-launch-section ab-fork';panel.dataset.forkPanel='';
     form.querySelector('.ab-launch-body').prepend(panel);
     const lock=()=>{
-      form.v2_mode.value='interactive';form.seed.value=String(cell.seed);
-      for(const name of ['benchmark','task_id','v2_mode','seed','robot_model','execution_arm'])form[name].disabled=true;
+      const values={benchmark:source.suite,task_id:fixtureTaskKey({task_id:source.task_id,rules_profile:source.execution_profile==='r5-fixture-20261031'?source.execution_profile:null}),
+        v2_mode:'interactive',seed:String(source.seed),robot_model:source.robot?.model,execution_arm:source.robot?.execution_arm};
+      for(const [name,value] of Object.entries(values)){
+        form[name].innerHTML=`<option value="${esc(value)}">${esc(value)}</option>`;
+        form[name].value=String(value??'');form[name].disabled=true;
+        form[name].closest('label').hidden=true;
+      }
     };
     form.querySelector('[data-task-picker]').hidden=true;
-    form.task_id.closest('label').hidden=false;
     if(!form.goal_id.readOnly)form.goal_id.value=`daily-v2-fork-${Date.now()}`;
     function render() {
       const p=state.preview,attempt=p?.attempts?.find(a=>a.version===state.version);
       header.querySelector('h3').textContent=`Continue from Attempt ${state.version}`;
       panel.innerHTML=`<p class="ab-fork-strip">${esc(eid)} · Attempt ${state.version} · ${esc(attempt?.outcome||'Checking…')}</p>
-        <p>Excluded from comparison</p>
+        <div class="ab-launch-grid" data-fork-conditions>${[
+          ['Task',taskName(source.task_id)],['Scene seed',source.seed],['Robot',source.robot?.model],['Arm',source.robot?.execution_arm],
+          ['Rules profile',source.execution_profile||'legacy'],['Session type','Interactive · excluded from comparison']
+        ].map(([title,value])=>`<div class="ab-launch-field">${esc(title)}<output>${esc(value)}</output></div>`).join('')}</div>
         <label class="ab-launch-field">Source attempt<select data-fork-attempt aria-label="Source attempt">${(p?.attempts||cell.versions).map(v=>`<option value="${v.version}" ${v.version===state.version?'selected':''} ${v.valid===false?'disabled':''}>Attempt ${v.version}${v.outcome?' · '+esc(v.outcome):''}</option>`).join('')}</select></label>
         <fieldset class="ab-fork-carry"><legend>Carry into the new run</legend>${[['feedback','Code + earlier feedback'],['code','Code only']].map(([id,title])=>`<label><input type="radio" name="fork_carry" value="${id}" ${state.carry===id?'checked':''}>${title}</label>`).join('')}</fieldset>
-        <h4>Checks</h4><ul class="ab-fork-checks" aria-live="polite">${state.loading?'<li>Checking the source attempt…</li>':''}${state.error?`<li data-level="block">${esc(state.error)}</li>`:''}${(p?.checks||[]).map(r=>`<li data-level="${esc(r.level)}"><b>${r.level==='ok'?'✓':r.level==='block'?'✕':'!'} ${esc(r.title)}</b> ${esc(r.body||'')}</li>`).join('')}</ul>
+        <h4>Checks</h4><ul class="ab-fork-checks" aria-live="polite">${!profile?`<li data-level="block">Cannot continue this run: ${esc(reason||'The source configuration is no longer offered.')}</li>`:''}${state.loading?'<li>Checking the source attempt…</li>':''}${state.error?`<li data-level="block">${esc(state.error)}</li>`:''}${(p?.checks||[]).map(r=>`<li data-level="${esc(r.level)}"><b>${r.level==='ok'?'✓':r.level==='block'?'✕':'!'} ${esc(r.title)}</b> ${esc(r.body||'')}</li>`).join('')}</ul>
         <h4>What Dev will see</h4><ul data-fork-prompt>${(p?.prompt_includes||[]).map(line=>`<li>${esc(line)}</li>`).join('')}</ul>`;
       panel.querySelector('[data-fork-attempt]').addEventListener('change',event=>{state.version=Number(event.target.value);load();});
       panel.querySelectorAll('[name="fork_carry"]').forEach(input=>input.addEventListener('change',()=>{state.carry=input.value;load();}));
@@ -1760,7 +1768,7 @@
       finally {if(seq===state.seq){state.loading=false;render();}}
     }
     load();
-    return {lock,ready:()=>Boolean(state.preview&&!state.preview.blocked&&!state.loading&&!state.error),
+    return {lock,ready:()=>Boolean(profile&&state.preview&&!state.preview.blocked&&!state.loading&&!state.error),
       request:()=>({experiment_id:eid,cell:key,version:state.version,carry:state.carry})};
   }
   function attemptLabel(status) {
@@ -2411,7 +2419,8 @@
   }
   function runConfigDefaultsFromSelection(selection) {
     const parcc=['dev','eval','advisor'].every(role=>{const desc=selection?.agent_provider?.roles?.[role];return desc?.credential==='lab'&&desc.provider==='parcc';});
-    return {seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:null,
+    return {taskId:selection?.tasks?.[0],rulesProfile:selection?.rules_profile,armMotion:selection?.arm_motion||'short',
+      seed:selection?.seeds?.[0],policy:selection?.policies?.length===1?selection.policies[0]:null,
       devModel:selection?.dev_model,evalModel:selection?.eval_model,advisorModel:selection?.advisor_model||selection?.advisor_proxy?.model||'gpt-6-astra',
       ...(selection?.agent_limits?{agentLimits:selection.agent_limits}:{}),
       mode:selection?.mode,modelSource:parcc?'parcc':'codex',help:selection?.help_budget,
@@ -2635,6 +2644,11 @@
   }
   function runConfigSummary({robot,arm,seed,layout,style,versions,help}) {
     return `${robot} · ${arm} · seed ${seed} · layout ${layout} / style ${style} · up to ${versions} versions · ${help} help requests`;
+  }
+  function runConfigSource(source,defaults) {
+    if(!source||!defaults)return source;
+    return {...source,task_id:defaults.taskId??source.task_id,seed:defaults.seed??source.seed,
+      execution_profile:defaults.rulesProfile??source.execution_profile};
   }
   function launchSourceProfile(source, profiles, options) {
     if(!source)return {profile:null,reason:''};
@@ -3205,18 +3219,18 @@
       const devProfiles = options?.dev_v2?.profiles || [];
       const hosted = window.Lobby.enabled || !!options?.hosted;  // A shared host: its own limits, and never the lab's Codex.
       const limits = options?.hosted?.limits || window.Lobby.newRunLimits() || AGENT_LIMITS;
-      if (!devProfiles.length) return;
+      if (!devProfiles.length&&!forkStart) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
       // On Remote a run is copied only from your own: someone else's settings would look like yours.
       const remoteForeign=root.dataset.remote==='1'&&!linkedConfiguration&&currentSnapshot?.lobby?.mine!==true;
-      const source = linkedConfiguration?.run || (remoteForeign?null:currentSnapshot?.run);
+      const source = runConfigSource(forkStart?currentSnapshot?.run:linkedConfiguration?.run || (remoteForeign?null:currentSnapshot?.run),repeat);
       const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
         <form id="ab-launch-form"><div class="ab-launch-body">
-          ${window.Lobby.newRunNotice()}${launchSourceNotice(source,sourceProfile,sourceUnavailable)}
-          <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>Choose the task and its starting scene. Left: how it starts. Right: what done looks like.</small></div>
+          ${window.Lobby.newRunNotice()}${forkStart?'':launchSourceNotice(source,sourceProfile,sourceUnavailable)}
+          <section class="ab-launch-section" data-run-config-section="what"><div class="ab-run-section-head"><h4><span class="op-number">01</span>What to run</h4><small>${forkStart?'Task and scene are fixed to the source run.':'Choose the task and its starting scene. Left: how it starts. Right: what done looks like.'}</small></div>
           <div class="tp" data-task-picker><div class="tp-toolbar" data-task-toolbar></div><p class="tp-error" data-task-picker-error role="alert" hidden></p><div class="tp-grid" data-task-cards></div><div data-task-seeds></div></div>
           <div class="ab-launch-grid">
             <label class="ab-launch-field">Benchmark<select name="benchmark" aria-label="Benchmark" required></select></label>
@@ -3331,6 +3345,7 @@
         return taskProfiles().find(p => p.robot === form.robot_model.value && p.execution_arm === form.execution_arm.value);
       }
       function syncSeedOptions() {
+        if(forkStart){form.seed.innerHTML=`<option value="${esc(source.seed)}">${esc(source.seed)}</option>`;form.seed.value=String(source.seed);return;}
         const profile=selectedProfile(),v2=profile?.channel==='dev_v2';
         const registered=profile?.rules_profile?profile.seeds:options?.dev_v2?.registered_scene_seeds||[];
         const remote=remoteSeeds(profile,profile?.rules_profile?(profile.seed_options||[]).filter(row=>row.enabled).map(row=>row.seed)
@@ -3477,6 +3492,7 @@
         return taskPickerCards(opts,picker.manifest);
       }
       function renderTaskPicker(toolbar=false) {
+        if(forkStart)return;
         const box=form.querySelector('[data-task-picker]');
         if(!box)return;
         const cards=pickerCards();
@@ -3595,6 +3611,7 @@
         if(next){event.preventDefault();next.focus();}
       });
       loadTaskPickerManifest().then(manifest=>{picker.manifest=manifest;picker.html='';renderTaskPicker(true);
+        if(forkStart)return;
         // 11-10 (user): one seed control. The picker's seed chips drive the form's seed select, so the old
         // "Scene seed" dropdown is hidden (it still submits) and its note moves under the chips.
         const seedField=form.seed.closest('label'),note=form.querySelector('[data-seed-note]'),box=form.querySelector('[data-task-picker]');
@@ -3628,12 +3645,13 @@
         if(repeat.modelSource==='parcc')keys.labSource('parcc',{dev:repeat.devModel,eval:repeat.evalModel,advisor:repeat.advisorModel});
         else {pick('dev_model',repeat.devModel);pick('eval_model',repeat.evalModel);pick('advisor_model',repeat.advisorModel);}
         set('help_count',repeat.help);
+        if(form.arm_motion)set('arm_motion',repeat.armMotion);
         if(repeat.agentLimits){set('max_attempts',repeat.agentLimits.versions);set('wall_seconds',repeat.agentLimits.wall_seconds);}
         set('goal_id',repeat.goalId);set('name_suffix',repeat.nameSuffix);
         updatePreview();showQuota();
       }
       form.benchmark.addEventListener('change',syncBenchmark);
-      if(forkStart){fork=forkPanel(form,forkStart,updatePreview);updatePreview();}
+      if(forkStart){fork=forkPanel(form,{...forkStart,source,profile:sourceProfile,reason:sourceUnavailable},updatePreview);updatePreview();}
       form.task_id.addEventListener('change',syncTask);
       form.robot_model.addEventListener('change',syncArm);
       form.execution_arm.addEventListener('change',syncProfile);
@@ -6244,7 +6262,7 @@
     const latest = attempts.at(-1), latestOutcome = outcomes[latest?.attempt_id];
     const resources = Object.fromEntries(Object.keys(s.budget).map(key => [key,{limit:s.budget[key],used:s.used[key],reserved:s.reserved[key],remaining:s.remaining[key]}]));
     return {dev_session:s,dev_evidence_gaps:gaps,attention_control:s.attention_control,
-      run:{run_id:s.session_id,suite:cfg.suite||'robocasa365',task_id:cfg.task_id,seed:cfg.seed,created_at:s.created_at,name_suffix:s.name_suffix,history_deleted_at:s.history_deleted_at,status:s.state==='stopped'?'cancelled':terminal?'completed':'running',locked:true,robot:{model:cfg.robot,execution_arm:cfg.execution_arm||'right'},robot_configuration:{controller:cfg.controller,config_sha256:s.locked.config_sha256,base:cfg.base_mode==='stationary'?{capability:'stationary'}:null},developer_model:s.model,evaluator_model:'native_evaluator',execution_target:'robocasa365_sim',policy_id:s.attention_control?.active_policy||'autonomous',assistance_mode:'autonomous',formal_eligible:false},
+      run:{run_id:s.session_id,suite:cfg.suite||'robocasa365',task_id:cfg.task_id,seed:cfg.seed,execution_profile:cfg.execution_settings?.profile||'legacy',created_at:s.created_at,name_suffix:s.name_suffix,history_deleted_at:s.history_deleted_at,status:s.state==='stopped'?'cancelled':terminal?'completed':'running',locked:true,robot:{model:cfg.robot,execution_arm:cfg.execution_arm||'right'},robot_configuration:{controller:cfg.controller,config_sha256:s.locked.config_sha256,base:cfg.base_mode==='stationary'?{capability:'stationary'}:null},developer_model:s.model,evaluator_model:'native_evaluator',execution_target:'robocasa365_sim',policy_id:s.attention_control?.active_policy||'autonomous',assistance_mode:'autonomous',formal_eligible:false},
       attempts,traces,attempt_dags:dags,requests:[],responses:{},request_lifecycle:{},response_evidence:{},response_uses:{},resources,work_items:s.state==='needs_review'?[{state:'blocked'}]:[],budget_events:[],
       station:{status:terminal?'ended':'running',camera_url:null,...(s.preview_station||{}),camera_attempt_id:latest?.attempt_id,latest_execution:null,interrupt:s.stop_requested?{state:s.state==='stopped'?'stopped':'requested'}:null},
       task_plan:{max_attempts:s.budget.executions,definition:{description:cfg.task_prompt}},

@@ -27,30 +27,36 @@ def eid_for(key):
     return 'devexp-' + hashlib.sha256(key.encode()).hexdigest()[:24]
 
 
-def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versions=2, agent=False, source_padding=''):
+def source_run(tmp_path, *, valid=True, executed=True, legacy_grasp=False, versions=2, agent=False, source_padding='',fixture=False,arm_motion='short',config_transform=None):
     """A finished daily run laid out as on 8769: root/<eid>/ledger.sqlite3, artifacts and cell evidence."""
     root = tmp_path / 'daily'
     key = 'fork-source-run-102'
     eid = eid_for(key)
-    selection = dict(request_key=key, tasks=[TASK], seeds=[102], policies=['reactive_help'], mode='interactive',
+    task='categorize_condiments' if fixture else TASK
+    selection = dict(request_key=key, tasks=[task], seeds=[102], policies=['reactive_help'], mode='interactive',
                      target_depth=1, target_valid_executions=1, max_versions=3, help_budget=1,
                      scene_contract=registered_contract_ref(), reproducible_reset=True)
     if agent:selection['dev_mode']='agent'
+    if fixture:
+        from benchmarks.attention_harness.dev_fixture_tasks import PROFILE
+        selection.pop('scene_contract');selection.pop('reproducible_reset');selection['rules_profile']=PROFILE
+    if arm_motion=='long':selection['arm_motion']='long'
     (root / eid).mkdir(parents=True)
     store = DevV2Store(root / eid / 'ledger.sqlite3')
     experiment = dev_experiment.create(store, root / eid / 'artifacts', selection)
     cell = experiment['cells'][0]
     manifest = json.loads(Path(experiment['manifest']['uri']).read_bytes())
-    config = copy.deepcopy(manifest['configs'][f'{TASK}:102'])
+    config = copy.deepcopy(manifest['configs'][f'{task}:102'])
     if legacy_grasp:
         config['contact_exempt_objects'] = 'none'
         for k in ('planner_mode', 'ik_candidates', 'ik_max_joint_jump'):
             config.pop(k, None)
+    if config_transform:config_transform(config)
     cells = Path(experiment['artifact_dir']) / 'cells' / cell['key']
     cells.mkdir(parents=True)
     immutable(cells / 'config.json', config)
     store.update_cell(cell['key'], state='failed', artifact_dir=str(cells))
-    system = get_task(TASK).system_prompt(config)
+    system = get_task(task).system_prompt(config)
     for v in range(1, versions + 1):
         d = cells / f'v{v}'
         src = immutable(d / 'policy.py', SOURCE + f'# version {v}\n'+source_padding)
@@ -145,6 +151,79 @@ def test_preview_blocks_and_warns_in_plain_words(tmp_path, monkeypatch):
     monkeypatch.setattr(scene_contract, 'registered_contract_ref', lambda: {'uri': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     shown = dev_fork.preview(s.root, s.eid, s.cell, 2)
     assert shown['blocked'] and ids(shown['checks'], 'block') == ['scene_contract']
+
+
+@pytest.mark.parametrize('old_settings,new_settings,detail', [
+    ({'profile':'r5-fixture-20261031','planner_deployment':{'lock':'old'}},
+     {'profile':'r5-fixture-20261031','planner_deployment':{'lock':'new'}},
+     'planner_deployment changed'),
+    ({'profile':'r4-20261027','planner_deployment':{'lock':'old'}},
+     {'profile':'r5-fixture-20261031','planner_deployment':{'lock':'new'}},
+     'profile r4-20261027 → r5-fixture-20261031, planner_deployment changed'),
+    (None, {'profile':'r5-fixture-20261031'}, 'profile legacy → r5-fixture-20261031'),
+    ({'profile':'r4-20261027'}, None, 'profile r4-20261027 → legacy'),
+    ({'fixture_telemetry_hz':10}, {'fixture_telemetry_hz':20}, 'fixture_telemetry_hz 10 → 20'),
+    (None, {}, 'execution_settings changed'),
+])
+def test_execution_settings_warning_names_changed_keys(old_settings,new_settings,detail):
+    source={'seed':102}
+    target={'seed':102}
+    if old_settings is not None:source['execution_settings']=old_settings
+    if new_settings is not None:target['execution_settings']=new_settings
+    rows=dev_fork.checks(source,None,target,carry='code',executed=True,valid=True)
+    warnings=[r for r in rows if r['id']=='execution_settings']
+    assert warnings==[dict(id='execution_settings',level='warn',
+        title='Execution settings differ from the source run: '+detail+'.',
+        body='The code will run with the new settings and may behave differently.')]
+    assert not ids(rows,'block')
+
+
+@pytest.mark.parametrize('seal', ['same','changed','missing','prompt_only','combined_only'])
+def test_agent_sdk_check_uses_recorded_seals_without_model_input(tmp_path,seal):
+    def transform(config):
+        if seal=='changed':config['dev_sdk_prompt_sha256']='0'*64
+        elif seal=='missing':
+            for key in list(config):
+                if key.startswith('dev_sdk_'):config.pop(key)
+        elif seal in ('prompt_only','combined_only'):
+            keep='dev_sdk_prompt_sha256' if seal=='prompt_only' else 'dev_sdk_sha256'
+            for key in list(config):
+                if key.startswith('dev_sdk_') and key!=keep:config.pop(key)
+    s=source_run(tmp_path,agent=True,config_transform=transform)
+    source=dev_fork.Source(s.root,s.eid,s.cell,2)
+    assert source.system_prompt() is None
+    rows=dev_fork.preview(s.root,s.eid,s.cell,2)['checks']
+    row=next(r for r in rows if r['id']=='sdk')
+    assert row['level']==('warn' if seal in ('changed','missing') else 'ok')
+    assert row['title']==('The SDK text the AI sees changed after the source run.' if seal=='changed' else
+        'The SDK text of the source attempt was not recorded.' if seal=='missing' else
+        'The SDK text the AI sees is the same as in the source attempt.')
+    fork=dev_fork.materialize(s.root,tmp_path/'child',dict(experiment_id=s.eid,cell=s.cell,version=2,carry='feedback'))
+    record=dev_fork.load(fork)
+    assert rows==dev_fork.apply(record,{f'{TASK}:102':dev_fork.preview_config(source.config)}, {},mode='interactive',tasks=[TASK],seeds=[102])
+
+
+@pytest.mark.parametrize('arm_motion',['short','long'])
+def test_fixture_preview_matches_creation_checks(tmp_path,bridge,arm_motion):
+    from benchmarks.attention_harness.dev_fixture_tasks import PROFILE
+    s=source_run(tmp_path,agent=True,fixture=True,arm_motion=arm_motion)
+    shown=dev_fork.preview(s.root,s.eid,s.cell,2)
+    preview=dev_fork.preview_config(s.config)
+    assert preview['execution_settings']['profile']==PROFILE
+    assert preview['execution_settings']['fixture_telemetry_hz']==20
+    assert not shown['blocked'] and ids(shown['checks'],'ok')==['scene','sdk']
+    assert ids(shown['checks'],'warn')==['excluded']
+    body=agent_child_body(s)
+    body['selection'].update(tasks=['categorize_condiments'],rules_profile=PROFILE)
+    if arm_motion=='long':body['selection']['arm_motion']='long'
+    created=bridge(s.root).create(body)
+    store=DevV2Store(s.root/created['experiment_id']/'ledger.sqlite3')
+    manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,created['experiment_id']))
+    assert shown['checks']==manifest['fork']['checks']
+    config=manifest['configs']['categorize_condiments:102']
+    fields=(*dev_fork.SCENE_FIELDS,*dev_fork.GRASP_FIELDS,'execution_settings','planner_source',
+        'fixture_scene_contract','fixture_success_condition','scene_verification','dev_sdk_prompt_sha256','dev_sdk_sha256')
+    assert {k:preview.get(k) for k in fields}=={k:config.get(k) for k in fields}
 
 
 def test_create_continues_from_the_attempt_and_is_idempotent(tmp_path, bridge):
