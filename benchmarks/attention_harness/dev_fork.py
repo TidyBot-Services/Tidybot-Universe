@@ -240,18 +240,20 @@ def preview(root,experiment_id,cell_key,version,carry='feedback'):
         except (OSError,ValueError,KeyError):
             check(rows,'block','source_history','The earlier attempt history or its incoming help snapshot is unavailable.','Choose "Code only", or another attempt.')
     lines=len(s.source_text().splitlines())
-    includes=[f'policy.py from Attempt {version} ({lines} lines) as the starting code']
-    if carry=='feedback':
-        if s.agent:
-            includes += [f'summaries, reasons, execution outcomes and Eval verdicts for Attempts 1–{version}',
-                         f'help hint texts received before each attempt through Attempt {version} (no attention counts)',
-                         f'the source run’s Eval reference suggestion for Attempt {version} only',
-                         f'docs/previous-run.md: earlier run up to Attempt {version}']
-        else:
+    if s.agent:
+        # Agent sources: short sentence-case lines (the dialog shows what is not carried in its own muted line).
+        earlier='Attempt 1' if version==1 else f'Attempts 1–{version}'
+        includes=[f'policy.py from Attempt {version} · {lines} lines, as version 1']
+        if carry=='feedback':
+            includes+=[f'What each of {earlier} changed, how it ended, and Eval’s verdict',
+                       'Help hints received before those attempts · text only, not counted',
+                       f'Eval’s suggestion for Attempt {version}']
+    else:
+        includes=[f'policy.py from Attempt {version} ({lines} lines) as the starting code']
+        if carry=='feedback':
             review=s.review(version)
             includes+=['the execution feedback of Attempt '+str(version)]+(['the reviewer\'s verdict and reason for Attempt '+str(version)] if review else [])
-    else:includes.append('no earlier feedback or trace')
-    if s.agent:includes+=['a fresh Dev session', 'Memory from other runs only; all notes originating in the source run are excluded']
+        else:includes.append('no earlier feedback or trace')
     e=s.experiment
     return dict(experiment_id=experiment_id,cell=cell_key,version=version,carry=carry,task_id=s.cell['task_id'],seed=s.cell['seed'],policy_id=s.cell['policy_id'],
         created_at=e.get('created_at'),attempts=s.attempts(),checks=rows,blocked=any(r['level']=='block' for r in rows),prompt_includes=includes,

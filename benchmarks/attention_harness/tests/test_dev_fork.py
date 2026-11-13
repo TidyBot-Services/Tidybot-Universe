@@ -336,6 +336,14 @@ def test_agent_history_cut_at_n_and_fresh_workspace(tmp_path,bridge):
     assert len(shown['attempts'])==6 and not shown['blocked']
     assert shown['attempts'][2]['executed'] and shown['attempts'][2]['reason']=='eval-marker-3'
     assert any('Attempts 1–3' in text for text in shown['prompt_includes'])
+    assert shown['prompt_includes']==[f"policy.py from Attempt 3 · {shown['prompt_includes'][0].split(' · ')[1]}",
+        'What each of Attempts 1–3 changed, how it ended, and Eval’s verdict',
+        'Help hints received before those attempts · text only, not counted','Eval’s suggestion for Attempt 3']
+    assert shown['prompt_includes'][0].endswith(' lines, as version 1')
+    assert dev_fork.preview(s.root,s.eid,s.cell,1)['prompt_includes'][1]=='What each of Attempt 1 changed, how it ended, and Eval’s verdict'
+    code_only=dev_fork.preview(s.root,s.eid,s.cell,3,'code')['prompt_includes']
+    assert len(code_only)==1 and code_only[0].startswith('policy.py from Attempt 3 · ')
+    assert not any('previous-run' in t or 'fresh Dev' in t or 'Memory' in t for t in shown['prompt_includes'])
     created=bridge(s.root).create(agent_child_body(s,version=3))
     store=DevV2Store(s.root/created['experiment_id']/'ledger.sqlite3')
     manifest=dev_experiment.verify_manifest(dev_experiment.snapshot(store,created['experiment_id']))
