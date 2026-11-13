@@ -187,6 +187,7 @@ SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id
 
 
 class DevMemory:
+    excluded_origin = None
     def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False, excluded=False, excluded_origin=None):
         self.mode, self.excluded = mode, excluded
         self.gateway, self.settings, self.layered = gateway, settings, layered
