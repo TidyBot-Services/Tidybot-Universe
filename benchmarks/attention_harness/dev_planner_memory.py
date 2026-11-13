@@ -187,9 +187,11 @@ SCENE_SCOPE = ('scene_id', 'object_set_id', 'camera_config_id', 'task_variant_id
 
 
 class DevMemory:
-    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False, excluded=False):
+    excluded_origin = None
+    def __init__(self, gateway, settings, config, *, layered=False, mode='experiment', family=False, excluded=False, excluded_origin=None):
         self.mode, self.excluded = mode, excluded
         self.gateway, self.settings, self.layered = gateway, settings, layered
+        self.excluded_origin=excluded_origin
         self.family = layered and family is True
         self.sdk_description_sealed = 'dev_sdk_sha256' in config
         self.scope = memory_scope(config, mode if layered else 'experiment')
@@ -205,13 +207,33 @@ class DevMemory:
         if gateway.store_id() != settings['store_id']:
             raise PermissionError('Memory Service authority identity mismatch')
 
+    def allowed_origin(self, memory_id):
+        """Trusted Service provenance only; never infer origin from note prose/IDs.
+
+        Promoted notes carry source_run_id='run:'+cell; provisional notes carry
+        origin.experiment_id/cell. This runs before caps and grant publication,
+        and also on replay through recheck(). Missing provenance fails closed.
+        """
+        if not self.excluded_origin:return True
+        reader=getattr(self.gateway,'provenance',None)
+        if not callable(reader):raise PermissionError('fork Memory requires Service provenance')
+        provenance=reader(memory_id)
+        if not isinstance(provenance,dict):raise PermissionError('fork Memory provenance unavailable')
+        origins=[provenance,provenance.get('origin') or {},provenance.get('from_run_note') or {}]
+        if not any(any(o.get(k) for k in ('experiment_id','cell','source_run_id')) for o in origins):
+            raise PermissionError('fork Memory provenance has no run origin')
+        cells=self.excluded_origin['cells']
+        return not any(o.get('experiment_id')==self.excluded_origin['experiment_id'] or o.get('cell') in cells
+                       or o.get('source_run_id') in {'run:'+c for c in cells} for o in origins)
+
     def eligible(self):
         if self.context is None:
             return []
         if self.layered:
             return [n for n in self.notes() if n.trusted_here]
         return sorted([m for m in self.gateway.retrieve(self.context, now=time.time())
-                if getattr(m.status, 'value', m.status) == 'trusted'
+                if self.allowed_origin(m.memory_id)
+                and getattr(m.status, 'value', m.status) == 'trusted'
                 and type(m.version) is int and m.version > 0
                 and m.applicability.get('execution_profile') == self.context.get('execution_profile')
                 and (not self.sdk_description_sealed or m.applicability.get('sdk_interface_sha256') == self.context.get('sdk_interface_sha256'))
@@ -233,7 +255,8 @@ class DevMemory:
                          trusted_here=r.get('trusted_here'), source_seed=r.get('source_seed'), source_task_id=r.get('source_task_id'), trust_scope=r.get('trust_scope'), level=r.get('level'), skill_tags=r.get('skill_tags',()), source_verified=r.get('source_verified') is True, applies_when=r.get('applies_when',''), source_run=r.get('source_run'), source_version=r.get('source_version'))
                     for r in self.gateway.retrieve_entries(self.context, now=now,
                         match_levels=levels)
-                    if (not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False)
+                    if self.allowed_origin(r['memory_id'])
+                    and (not reference_only or r.get('match_level') in levels and r.get('trusted_here') is False)
                     and (r.get('match_level') != 'same_family' or
                          r.get('status') in {'provisional','trusted'} and not r.get('seeded_for_tests')
                          and (r.get('expires_at') is None or r['expires_at']>now)
@@ -245,7 +268,7 @@ class DevMemory:
                          created_at=getattr(m, 'created_at', 0.0), match_level=getattr(m, 'match_level', 'same_scene'),
                          trusted_here=getattr(m, 'trusted_here', None),
                          source_seed=(m.applicability or {}).get('seed'))
-                    for m in self.gateway.retrieve(self.context, now=now)]
+                    for m in self.gateway.retrieve(self.context, now=now) if self.allowed_origin(m.memory_id)]
         result = []
         for n in rows:
             if self.mode == 'experiment' and not self.excluded and n.status == 'provisional':
@@ -395,7 +418,18 @@ def _load_memory(store, cell, version, previous, config, settings, directory, la
             store.event(db, 'planner_memory_scope', dict(cell=cell, version=version,
                         level=scope['level'], reason=scope.get('reason'), seed=config.get('seed')))
     gateway = None if scope.get('reason') in {'scene_contract_missing', 'scene_contract_not_registered'} else client_for(settings)
-    service = DevMemory(gateway, settings, config, layered=layered, mode=mode, family=layered and store.cell(cell).get('memory_family') is True, excluded=layered and store.cell(cell).get('excluded_from_results') is True)
+    excluded=None
+    current=store.cell(cell)
+    if current.get('dev_mode')=='agent':
+        with store.tx() as db:experiment=store.get(db,'experiments',current['experiment_id'])
+        fork=experiment.get('selection',{}).get('fork')
+        if fork:
+            from .dev_fork import load
+            record=load(fork)
+            excluded=dict(experiment_id=fork['experiment_id'],cells=record.get('source_cells',[fork['cell']]))
+    service = DevMemory(gateway, settings, config, layered=layered, mode=mode, family=layered and current.get('memory_family') is True,
+                        excluded=layered and current.get('excluded_from_results') is True,
+                        **({'excluded_origin':excluded} if excluded else {}))
     path = Path(directory) / 'memory-input.json'
     if path.exists():
         packet = json.loads(path.read_bytes())

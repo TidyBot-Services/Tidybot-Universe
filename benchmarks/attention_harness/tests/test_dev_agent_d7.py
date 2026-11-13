@@ -472,8 +472,25 @@ def test_config_accepts_memory_but_refuses_controls():
     from benchmarks.attention_harness.dev_agent_config import normalize
     from benchmarks.attention_harness.tests.test_dev_agent_configuration import SELECTION
     normalize(dict(SELECTION, memory_authority=SETTINGS, memory_family=True, run_notes=True))
-    for field in ('validation_experiment', 'positive_control', 'planner_features', 'fork'):
+    normalize(dict(SELECTION,fork=dict(experiment_id='devexp-'+'a'*24,cell='b'*64,version=1,carry='code')))
+    for field in ('validation_experiment', 'positive_control', 'planner_features'):
         with pytest.raises(ValueError): normalize(dict(SELECTION, **{field: True}))
+
+
+def test_export_marks_fork_origin_without_carrying_old_accounting(fixture):
+    f=fixture
+    fork=dict(experiment_id='devexp-'+'a'*24,cell='b'*64,version=3,carry='feedback')
+    with f.store.tx() as db:
+        experiment=f.store.get(db,'experiments','exp');experiment['selection']['fork']=fork
+        f.store.put(db,'experiments','exp',experiment)
+    atomic_write(f.ws.private,'sources/r.py',SOURCE)
+    f.ws.publish('versions/v0001/help.json',dict(status='not_requested'))
+    exporter=Exporter(f.store,'cell',f.ws,f.config,f.ledger)
+    response=dict(op='submit',request_id='r',version_id='v0001',execution_dispatched=False)
+    exporter.capture(response,dict(version=1,valid=False),SimpleNamespace())
+    row=exporter.settle(response)
+    assert row['fork']==fork and row['formal_eligible'] is False
+    assert f.ledger.snapshot()['attention']['help_count']==0
 
 
 def test_creation_freezes_memory_selection(tmp_path,offline_dev_identity):

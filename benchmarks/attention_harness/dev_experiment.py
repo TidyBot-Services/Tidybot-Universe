@@ -311,6 +311,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
     if fork_record is not None:
         # v1 starts from the source attempt; its carried feedback reaches v1's Dev prompt only.
         manifest['fork']=dict(selection['fork'],feedback=fork_record['feedback'],source=fork_record['source'],checks=fork_checks)
+        if fork_record.get('dev_mode')=='agent':manifest['fork'].update(history=fork_record.get('history'),source_cells=fork_record['source_cells'])
     if budget_tier=='dev':
         manifest['budget_tier']='dev'
         if source=='parcc' and MODEL['model'] in FREE_MODELS:

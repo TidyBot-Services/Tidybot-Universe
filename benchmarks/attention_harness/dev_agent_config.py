@@ -114,8 +114,13 @@ def normalize(selection, *, validation_origin=None):
     if origin is not None:
         from .memory_agent_validation import validate_options
         validate_options(selection,origin)
-    if any(selection.get(k) for k in ('validation_experiment','positive_control','planner_features','fork')):
+    if any(selection.get(k) for k in ('validation_experiment','positive_control','planner_features')):
         raise ValueError('agent_memory_or_control_not_supported')
+    if 'fork' in selection:
+        if origin is not None:raise ValueError('agent_validation_fork_not_supported')
+        from .dev_fork import request_fields
+        request_fields(selection['fork'])
+        if selection.get('mode')!='interactive':raise ValueError('agent fork requires interactive mode (excluded from comparison)')
     if selection.get('model_source','codex')!='codex':raise ValueError('agent_requires_codex')
     if any(len(selection.get(k,[]))!=1 for k in ('tasks','seeds','policies')):
         raise ValueError('agent_single_cell_required')

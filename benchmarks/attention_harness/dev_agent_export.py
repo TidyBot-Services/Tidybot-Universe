@@ -79,6 +79,8 @@ class Exporter:
             valid=row.get('valid') is True, config_sha256=self.config_ref['sha256'], manifest=experiment['manifest'],
             reason=row.get('reason', response.get('result', {}).get('outcome', {}).get('status', '')), formal_eligible=False,
             agent={k: v for k, v in row.items() if k not in ('version', 'formal_eligible', 'reason')})
+        if experiment.get('selection',{}).get('fork'):
+            record['fork']=experiment['selection']['fork']
         versions,wall=getattr(self.ledger,'limits',{}).get('formal_versions',10),getattr(self.ledger,'wall_seconds',21600)
         if (versions,wall)!=(10,21600):  # the ledger holds the frozen budget; the official run records nothing extra
             record['reduced_budget']=dict(versions=versions,wall_seconds=wall,default_versions=10,default_wall_seconds=21600,

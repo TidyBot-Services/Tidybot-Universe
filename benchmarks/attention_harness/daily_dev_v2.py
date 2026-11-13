@@ -173,6 +173,8 @@ class DailyDevV2:
         if e.get('validation_experiment'):return []
         config=json.loads(Path(e['manifest']['uri']).read_bytes())
         rows=[dict(c,**config_metadata(config['configs'][f"{c['task_id']}:{c['seed']}"]),channel='dev_v2',session_id='v2-'+c['key'],created_at=e['created_at'],locked={'config':dict(config['configs'][f"{c['task_id']}:{c['seed']}"],suite='robocasa365')},model=config['model']['model'],experiment_state=e['state'],manifest=e['manifest'],name_suffix=e['selection'].get('name_suffix','')) for c in e['cells']]
+        if config.get('fork'):
+            for row in rows:row['fork']={k:config['fork'][k] for k in ('experiment_id','cell','version','carry')}
         if config.get('dev_mode')=='agent':
             from .dev_agent_human_reply import pending
             from .dev_agent_view import clean

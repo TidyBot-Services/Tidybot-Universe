@@ -48,6 +48,8 @@ def fatal_cause(broker, session_failures):
 def bootstrap(workspace, ledger, policy):
     from .dev_agent_prompts import DEV_PROMPT
     prompt=DEV_PROMPT
+    if (workspace.canonical/'docs/previous-run.md').is_file():
+        prompt+='\nRead docs/previous-run.md for the earlier run’s history up to the selected attempt.'
     if 'trial_runs' in ledger.limits:
         prompt=prompt.replace('10 formal versions, 40 moving executions, 300 read-only probes','1 formal version, 4 no-eval trial runs, 60 read-only probes').replace('21600 active wall seconds','1920 active wall seconds')
     elif (ledger.limits['formal_versions'],ledger.wall_seconds)!=(10,21600):
@@ -470,6 +472,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
                 dict(config,agent_policy_id=cell['policy_id']) if config.get('agent_policy_version')=='agent-policy-v2' else config,success_condition=dev_condition,
                 budget=manifest.get('agent_limits'),wall_unlimited=sim_lock is not None)
             atomic_write(workspace.ws,'work/main.py',manifest['initial_sources'][cell['task_id']]['source'].encode())
+        if manifest.get('fork'):
+            from .dev_fork import publish_history
+            publish_history(workspace,manifest)
         if validation:
             from .memory_agent_validation import seed
             seed(workspace,validation['current'])
