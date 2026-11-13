@@ -19,7 +19,7 @@ import time
 VERSION = '1'
 SCHEMA = 'attentionbench.frame-cleanup.v1'
 CLEANED = 'cleaned up (video kept)'
-TERMINAL = {'completed', 'failed', 'cancelled', 'unknown', 'needs_review', 'not_started', 'condition_invalid', 'stopped'}
+TERMINAL = {'completed', 'failed', 'cancelled', 'needs_review', 'not_started', 'condition_invalid', 'stopped'}
 IMAGES = {'.png', '.jpg', '.jpeg'}
 
 
@@ -34,8 +34,7 @@ def is_frame_image(name):
         return False
     parts = path.parts
     return (path.suffix.lower() in IMAGES and
-            bool(set(parts) & {'frames', 'live', 'recording_frames', 'recording_views'})) or any(
-                parts[i:i + 2] == ('snapshots', 'objects') for i in range(len(parts) - 1))
+            bool(set(parts) & {'frames', 'live', 'recording_frames', 'recording_views'}))
 
 
 def safe(path):
@@ -65,7 +64,8 @@ def receipt_for(path):
 
 def cleaned_files(root, receipt):
     if not receipt:return set()
-    names = {n for group in receipt['views'] for n in group['deleted_files']}
+    names = {n for group in receipt['views']
+             for n in (*group.get('deleted_files', []), *group.get('already_missing', []))}
     if receipt.get('status') == 'in_progress':
         names.update(n for group in receipt['views'] for n in group['files'] if not (root/n).exists())
     return names
@@ -138,7 +138,8 @@ def plan(run_dir):
     def group(episode, view):
         key = (episode, view)
         if key not in groups:
-            groups[key] = dict(execution=str(episode.relative_to(root)), view=view, paths=set(), kept=set())
+            groups[key] = dict(execution=str(episode.relative_to(root)), view=view,
+                               paths=set(), kept=set(), already_missing=set())
         return groups[key]
     def add(g, path, first=False):
         if first:
@@ -172,10 +173,16 @@ def plan(run_dir):
             name = Path(row['filename'])
             if name.is_absolute() or '..' in name.parts or name.parts[:1] != ('frames',):
                 raise ValueError('unsafe agent frame manifest')
-            g = group(episode, view); path = base/name
+            if not is_frame_image(name):
+                continue
+            g = group(episode, view)
             first = row['filename'] == first_by_view[view] or '-000000-' in name.name
-            if path in file_set:
-                add(g, path, first)
+            for copy in (agent/'ws/executions'/eid, agent/'private/public/executions'/eid):
+                path = copy/name
+                if path in file_set:
+                    add(g, path, first)
+                else:
+                    g['already_missing'].add(path)
             sha = row.get('sha256')
             if sha:
                 frame_shas[(agent, sha)].add((episode, view))
@@ -188,6 +195,33 @@ def plan(run_dir):
             for name, entry in load(path).get('files', {}).items():
                 if not is_frame_image(name):
                     protected_shas.add((agent, entry['sha256']))
+                else:
+                    obj = path.parent/'objects'/entry['sha256']
+                    # Both the cut pointer and manifests/<sha>.json describe
+                    # objects in snapshots/objects, never manifests/objects.
+                    if path.parent.name == 'manifests':
+                        obj = path.parent.parent/'objects'/entry['sha256']
+                    safe(obj)
+                    if obj not in file_set:
+                        for owner in frame_shas.get((agent, entry['sha256']), ()):
+                            group(*owner)['already_missing'].add(obj)
+    # Journals remain after a prior prune even if every image is gone.
+    for journal in (p for p in files if p.name == 'frames.jsonl'):
+        folder = journal.parent
+        if folder.name == 'recording_frames':
+            episode, view = folder.parent, 'overview'
+        elif folder.parent.name == 'recording_views':
+            episode, view = folder.parent.parent, folder.name
+        else:
+            continue
+        for line in journal.read_text().splitlines():
+            if not line.strip(): continue
+            name = Path(json.loads(line).get('file', ''))
+            if name.is_absolute() or '..' in name.parts:
+                raise ValueError('unsafe recording frame manifest')
+            path = folder/name
+            if is_frame_image(path.relative_to(root)) and path not in file_set:
+                group(episode, view)['already_missing'].add(path)
     for path in files:
         rel = path.relative_to(root)
         if path.name in {'camera_initial.png', 'camera_final.png'} or set(rel.parts) & {'replay_trim', 'free_view_v1'}:
@@ -240,6 +274,7 @@ def plan(run_dir):
         result.append(dict(execution=g['execution'], view=view, mp4=str(video.relative_to(root)),
                            expected_count=expected, decoded_count=actual, skipped=reason,
                            files=sorted(str(p.relative_to(root)) for p in paths),
+                           already_missing=sorted(str(p.relative_to(root)) for p in g['already_missing']),
                            kept_first_frames=sorted(str(p.relative_to(root)) for p in g['kept'])))
     eligible -= blocked
     inodes = defaultdict(list)
@@ -452,15 +487,18 @@ def notices(root):
 
 def _schedule(run_dir):
     """Detach cleanup from the run outcome; wait until the worker has exited."""
-    root = Path(run_dir)
+    root = safe(run_dir)
     if not root.is_dir(): return
     status = state(root)
     if not status['terminal'] or status['paused'] or (root/'frame-cleanup.json').exists(): return
     log = safe(root/'frame-cleanup.log')
+    repo = Path(__file__).resolve().parents[2]
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+    env['PYTHONPATH'] = str(repo)+(os.pathsep+env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
     with log.open('ab') as stream:
         subprocess.Popen([sys.executable, '-B', '-m', __name__, str(root), str(os.getpid())],
                          stdout=stream, stderr=stream, start_new_session=True,
-                         env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
+                         cwd=repo, env=env)
 
 
 def schedule(run_dir):

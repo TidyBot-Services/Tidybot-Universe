@@ -82,7 +82,7 @@ def test_video_failures_skip_entire_view(run,monkeypatch,problem):
     cleanup.apply(cell); assert (ep/'recording_frames/000001.jpg').exists()
 
 
-@pytest.mark.parametrize('status,reason,owner',[('running',None,None),('planned','operator_paused',None),('completed',None,{'pid':os.getpid()})])
+@pytest.mark.parametrize('status,reason,owner',[('running',None,None),('unknown',None,None),('planned','operator_paused',None),('completed',None,{'pid':os.getpid()})])
 def test_active_paused_refused(run,status,reason,owner):
     cell,_=run
     if owner:
@@ -157,11 +157,76 @@ def test_failed_view_keeps_agent_ws_public_eval_objects(run,monkeypatch):
         assert (w.private/'snapshots/objects'/row['sha256']).exists()
 
 
-def test_missing_nonframe_object_still_fails(run,tmp_path):
-    cell,w,rows,ep,cut=agent(run);cleanup.apply(cell)
+@pytest.mark.parametrize('name', ['work-proof.json', 'scratch/grasp.png'])
+def test_missing_nonframe_object_still_fails(run,tmp_path,name):
+    cell,w,rows,ep,cut=agent(run)
+    if name.startswith('scratch/'):
+        (w.ws/'scratch').mkdir()
+        (w.ws/name).write_bytes(b'authored drawing')
+        cut=freeze_origin(w,'post-feedback-v1')
     manifest=json.loads(Path(cut['path']).read_bytes())
-    (w.private/'snapshots/objects'/manifest['files']['work-proof.json']['sha256']).unlink()
-    with pytest.raises(FileNotFoundError):provision_replay(cut,tmp_path/'replay')
+    obj=w.private/'snapshots/objects'/manifest['files'][name]['sha256']
+    obj.unlink()
+    planned=cleanup.plan(cell)
+    assert str(obj.relative_to(cell)) not in {n for g in planned['views'] for n in g['already_missing']}
+    cleanup.apply(cell)
+    with pytest.raises(ValueError) as error:provision_replay(cut,tmp_path/'replay')
+    assert str(error.value)==f'snapshot_object_missing: {name} (file was deleted; continue-from-attempt is unavailable for this cut)'
+
+
+def test_recording_missing_only_receipt_and_frame_boundary(run):
+    cell,ep=run
+    folder=ep/'recording_frames'
+    for path in folder.glob('*.jpg'):path.unlink()
+    with (folder/'frames.jsonl').open('a') as stream:
+        for name in ('notes.json','camera_initial.png','camera_final.png'):
+            stream.write(json.dumps(dict(file=name))+'\n')
+    planned=cleanup.plan(cell)
+    missing={str((folder/f'{i:06d}.jpg').relative_to(cell)) for i in range(3)}
+    assert set(planned['views'][0]['already_missing'])==missing
+    assert planned['frames_deleted']==0
+    receipt=cleanup.apply(cell)
+    assert (cell/'frame-cleanup.json').is_file()
+    assert cleanup.cleaned_files(cell,receipt)==missing
+    assert cleanup.was_cleaned(folder/'000001.jpg')
+    assert receipt['frames_deleted']==receipt['bytes_freed']==0
+    assert cleanup.apply(cell)==receipt
+
+
+@pytest.mark.parametrize('keep_both_manifests', [True, False])
+def test_prior_agent_prune_recorded_in_receipt_and_consumed_by_ui_replay(run,tmp_path,keep_both_manifests):
+    cell,w,rows,ep,cut=agent(run)
+    missing=set()
+    for row in rows[1:]:
+        for base in (w.ws,w.canonical):
+            path=base/'executions/e000001'/row['filename']
+            path.unlink();missing.add(str(path.relative_to(cell)))
+        obj=w.private/'snapshots/objects'/row['sha256']
+        obj.unlink();missing.add(str(obj.relative_to(cell)))
+    if not keep_both_manifests:(w.ws/'executions/e000001/frames.json').unlink()
+    planned=cleanup.plan(cell)
+    g=next(g for g in planned['views'] if g['execution'].startswith('agent/'))
+    assert set(g['already_missing'])==missing
+    receipt=cleanup.apply(cell)
+    assert missing<=cleanup.cleaned_files(cell,receipt)
+    replay=provision_replay(cut,tmp_path/'replay')
+    assert json.loads((replay.private/'replay-origin.json').read_bytes())['frames_cleaned']==2
+    if not keep_both_manifests:
+        (w.ws/'executions/e000001/frames.json').write_bytes((w.canonical/'executions/e000001/frames.json').read_bytes())
+    name='executions/e000001/'+rows[1]['filename']
+    assert _link('/', 'frame',w.canonical,name)['label']==cleanup.CLEANED
+    with pytest.raises(cleanup.CleanedFrame,match='cleaned up'):
+        artifact(dict(artifact_dir=str(cell),dev_mode='agent'),name)
+    listing=artifact(dict(artifact_dir=str(cell),dev_mode='agent'),'executions/e000001/frames.json')[0]
+    assert listing[1]['available'] is False and listing[1]['label']==cleanup.CLEANED
+
+
+def test_cleaned_files_unions_deleted_missing_and_partial_intent(tmp_path):
+    receipt=dict(status='in_progress',views=[dict(deleted_files=['frames/a.jpg'],
+        already_missing=['frames/b.jpg'],files=['frames/a.jpg','frames/c.jpg','frames/d.jpg'])])
+    (tmp_path/'frames').mkdir();(tmp_path/'frames/d.jpg').write_bytes(b'present')
+    assert cleanup.cleaned_files(tmp_path,receipt)=={'frames/a.jpg','frames/b.jpg','frames/c.jpg'}
+    assert cleanup.cleaned_files(tmp_path,dict(views=[dict(deleted_files=['frames/a.jpg'])]))=={'frames/a.jpg'}
 
 
 def test_real_ffprobe(tmp_path):
@@ -217,10 +282,22 @@ def test_http_cleaned_frame_is_410(monkeypatch):
 def test_catalog_builder_uses_frame_rule(tmp_path):
     from benchmarks.attention_harness.memory_independent_validator import sealed_files
     for name in ('live/view.jpg','frames/view.png','recording_views/side/000000.jpg','recording_frames/1.jpeg',
-                 'camera_initial.png','camera_final.png','frames/frames.json','clip.mp4'):
+                 'camera_initial.png','camera_final.png','frames/frames.json','clip.mp4',
+                 'snapshots/objects/abc','snapshots/objects/a.png','snapshots/objects/code.py'):
         path=tmp_path/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'fixture')
     files=sealed_files(tmp_path,recursive=True)
-    assert set(files)=={'camera_initial.png','camera_final.png','frames/frames.json','clip.mp4'}
+    assert set(files)=={'camera_initial.png','camera_final.png','frames/frames.json','clip.mp4',
+                       'snapshots/objects/abc','snapshots/objects/a.png','snapshots/objects/code.py'}
+
+
+@pytest.mark.parametrize('name,expected', [
+    ('live/a.jpg',True),('frames/a.jpeg',True),('recording_frames/a.png',True),
+    ('recording_views/top/a.jpg',True),('snapshots/objects/a.png',False),
+    ('snapshots/objects/abc',False),('snapshots/objects/code.py',False),
+    ('live/camera_initial.png',False),('frames/camera_final.png',False),
+    ('a.png',False),('frames/a.json',False)])
+def test_frame_image_rule(name,expected):
+    assert cleanup.is_frame_image(name) is expected
 
 
 def test_terminal_hook_detaches_and_never_changes_outcome(run,monkeypatch):
@@ -230,9 +307,24 @@ def test_terminal_hook_detaches_and_never_changes_outcome(run,monkeypatch):
     assert calls and calls[0][1]['start_new_session'] is True
     assert str(os.getpid()) in calls[0][0]
     assert calls[0][1]['env']['PYTHONDONTWRITEBYTECODE']=='1'
+    repo=Path(cleanup.__file__).resolve().parents[2]
+    assert calls[0][1]['cwd']==repo
+    assert calls[0][1]['env']['PYTHONPATH'].split(os.pathsep)[0]==str(repo)
     monkeypatch.setattr(cleanup.subprocess,'Popen',lambda *a,**k:(_ for _ in ()).throw(OSError('spawn failed')))
     cleanup.schedule(cell)
     assert 'spawn failed' in cleanup.notices(cell)[0]
+
+
+def test_terminal_hook_resolves_release_symlink_and_preserves_pythonpath(run,tmp_path,monkeypatch):
+    cell,_=run;calls=[]
+    repo=Path(cleanup.__file__).resolve().parents[2]
+    link=tmp_path/'repos/attentionbench';link.parent.mkdir();link.symlink_to(repo,target_is_directory=True)
+    monkeypatch.setattr(cleanup,'__file__',str(link/'benchmarks/attention_harness/frame_cleanup.py'))
+    monkeypatch.setenv('PYTHONPATH','/existing/module/path')
+    monkeypatch.setattr(cleanup.subprocess,'Popen',lambda cmd,**kw:calls.append((cmd,kw)))
+    cleanup.schedule(cell)
+    assert calls[0][1]['cwd']==repo
+    assert calls[0][1]['env']['PYTHONPATH']==str(repo)+os.pathsep+'/existing/module/path'
 
 
 def test_trash_restore_rejects_tampering(run,tmp_path):
@@ -272,21 +364,43 @@ def test_cleanup_errors_are_visible_notices(run):
     assert any(n['title']=='Frame cleanup needs attention' and n['detail']=='ffprobe failed' for n in notices)
 
 
-def test_missing_frame_object_without_cleanup_receipt_fails(run,tmp_path):
+def test_missing_frame_object_without_cleanup_receipt_uses_verified_index(run,tmp_path):
     cell,w,rows,ep,cut=agent(run)
     (w.private/'snapshots/objects'/rows[1]['sha256']).unlink()
+    replay=provision_replay(cut,tmp_path/'replay')
+    assert json.loads((replay.private/'replay-origin.json').read_bytes())['frames_cleaned']==1
+    assert not (cell/'frame-cleanup.json').exists()
+
+
+def test_missing_unlisted_frame_object_still_fails(run,tmp_path):
+    cell,w,rows,ep,cut=agent(run)
+    name='executions/e000001/frames/overview-999999-sim-9.000000s.jpg'
+    entry=w.publish(name,b'unlisted frame')
+    cut=freeze_origin(w,'post-feedback-v1')
+    (w.private/'snapshots/objects'/entry['sha256']).unlink()
     with pytest.raises(FileNotFoundError):provision_replay(cut,tmp_path/'replay')
 
 
-def test_detached_cleanup_after_worker_exit(run,monkeypatch):
+def test_no_receipt_frame_skip_requires_untampered_index(run,tmp_path):
+    cell,w,rows,ep,cut=agent(run)
+    (w.private/'snapshots/objects'/rows[1]['sha256']).unlink()
+    manifest=json.loads(Path(cut['path']).read_bytes())
+    index=manifest['files']['executions/e000001/frames.json']
+    (w.private/'snapshots/objects'/index['sha256']).write_bytes(b'[]')
+    with pytest.raises(ValueError,match='snapshot_object_mismatch'):provision_replay(cut,tmp_path/'replay')
+
+
+def test_detached_cleanup_after_worker_exit(run,tmp_path,monkeypatch):
     import sys,time
     cell,ep=run
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):pytest.skip('ffmpeg/ffprobe unavailable')
     (ep/'advisor_replay.mp4').unlink()
     subprocess.run(['ffmpeg','-nostdin','-v','error','-f','lavfi','-i','color=size=16x16:rate=5',
                     '-frames:v','4','-c:v','libx264','-pix_fmt','yuv420p',str(ep/'advisor_replay.mp4')],check=True,capture_output=True)
-    code='from benchmarks.attention_harness.frame_cleanup import schedule; import sys; schedule(sys.argv[1])'
-    subprocess.run([sys.executable,'-B','-c',code,str(cell)],check=True,
+    code='import sys; sys.path.insert(0,sys.argv[2]); from benchmarks.attention_harness.frame_cleanup import schedule; schedule(sys.argv[1])'
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('PYTHONPATH',str(tmp_path))
+    subprocess.run([sys.executable,'-B','-c',code,str(cell.relative_to(tmp_path)),str(Path(cleanup.__file__).resolve().parents[2])],check=True,
                    env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1'))
     deadline=time.monotonic()+5
     while time.monotonic()<deadline:

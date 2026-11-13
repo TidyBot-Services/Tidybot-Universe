@@ -153,3 +153,28 @@ def test_devtool_serializes_summary_and_no_eval_run_remains_unchanged(workspace,
         assert cli.main() == 0
         payload = json.loads((workspace.ws/f'rpc/requests/{op}.json').read_text())['payload']
         assert payload == {'entry': 'work/main.py', 'reason': '', **({'summary': 'Adjust wrist.'} if op == 'submit' else {})}
+
+
+def test_snapshot_missing_authored_file_reaches_operator_as_4xx_json(workspace,tmp_path,monkeypatch):
+    import io
+    from types import SimpleNamespace
+    from benchmarks.attention_harness import ui_server
+    from benchmarks.attention_harness.dev_agent_replay import freeze_origin,provision_replay
+    (workspace.ws/'scratch/grasp.png').write_bytes(b'authored drawing')
+    cut=freeze_origin(workspace,'post-exec-v1')
+    manifest=json.loads(Path(cut['path']).read_bytes())
+    (workspace.private/'snapshots/objects'/manifest['files']['scratch/grasp.png']['sha256']).unlink()
+    class Bridge:
+        def post(self,path,body,**kwargs):
+            return provision_replay(cut,tmp_path/'replay')
+    monkeypatch.setattr(ui_server,'ThreadingHTTPServer',lambda address,handler:SimpleNamespace(handler=handler))
+    monkeypatch.setattr(ui_server.secrets,'token_urlsafe',lambda size:'test-control-token')
+    server=ui_server.create_server(dev_v2_bridge=Bridge(),port=0)
+    handler=object.__new__(server.handler)
+    handler.server=server
+    handler.path='/api/dev-v2/experiments'
+    handler.headers={'X-Attention-Token':'test-control-token','Content-Type':'application/json','Content-Length':'2'}
+    handler.rfile=io.BytesIO(b'{}')
+    result=[];handler._json=lambda value,status=200:result.append((value,status))
+    handler.do_POST()
+    assert result==[({'error':'snapshot_object_missing: scratch/grasp.png (file was deleted; continue-from-attempt is unavailable for this cut)'},409)]
