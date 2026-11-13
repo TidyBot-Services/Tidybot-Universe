@@ -296,7 +296,13 @@ def build(root, eid):
         if path.name != 'diagnose.json' and not path.is_symlink() and path.is_file():
             try:
                 safe_path(path, allowed)
-                files[str(path.relative_to(folder))] = path.stat().st_size
+                relative = path.relative_to(folder)
+                if relative.parts[0] == 'frames' and len(relative.parts) > 1:
+                    # Hundreds of frame images: one summary line instead of one entry each.
+                    entry = files.setdefault('frames/', dict(files=0, bytes=0))
+                    entry['files'] += 1; entry['bytes'] += path.stat().st_size
+                else:
+                    files[str(relative)] = path.stat().st_size
             except ValueError:
                 continue
     out['pointers'] = dict(lines=pointers, full_files=files)

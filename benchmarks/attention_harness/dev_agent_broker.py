@@ -681,8 +681,13 @@ class Broker:
                     if self.agent_policy_version=='agent-policy-v2' and op in ('run','submit','ask_help'):
                         eid=response.get('execution_id') or (response.get('result') or {}).get('execution_id')
                         if eid and (self.workspace.ws/'executions'/eid/'result.json').is_file():
-                            from .dev_agent_diagnose import build as build_diagnosis
-                            self.workspace.publish('executions/'+eid+'/diagnose.json',build_diagnosis(self.workspace.ws,eid))
+                            # A diagnosis problem is recorded and skipped: it never fails settlement or quarantines the run.
+                            try:
+                                from .dev_agent_diagnose import build as build_diagnosis
+                                self.workspace.publish('executions/'+eid+'/diagnose.json',build_diagnosis(self.workspace.ws,eid))
+                            except Exception as exc:
+                                try:atomic_write(self.workspace.private,'errors/diagnose-'+eid+'.json',encode(dict(error='diagnose_failed',**soft_error(exc))))
+                                except OSError:pass
                     self._publish(response)
                     self._prespawn_next()
                 except BaseException as exc:

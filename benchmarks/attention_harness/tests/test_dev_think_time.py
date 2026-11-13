@@ -365,3 +365,27 @@ def test_v1_session_evidence_stays_unchanged_v2_baseline_is_recorded(tmp_path):
     assert json.loads((private/'session.json').read_text()) == {'thread_id':'thread','turn':0}
     s.record_context_profile = True; s._save()
     assert json.loads((private/'session.json').read_text())['dev_context_profile'] == 'baseline'
+
+
+def test_broker_diagnosis_failure_never_fails_settlement():
+    # Reviewer addition (11-14): the diagnose call in settlement is isolated from the settlement try block.
+    from pathlib import Path
+    from benchmarks.attention_harness import dev_agent_broker
+    src = Path(dev_agent_broker.__file__).read_text()
+    block = src[src.index("from .dev_agent_diagnose import build as build_diagnosis") - 400:src.index("from .dev_agent_diagnose import build as build_diagnosis") + 400]
+    assert 'try:' in block and "errors/diagnose-'+eid+'.json'" in block and 'except Exception as exc' in block
+
+
+def test_frames_are_summarised_in_full_files(tmp_path):
+    import json
+    from benchmarks.attention_harness.dev_agent_diagnose import build
+    folder = tmp_path / 'executions' / 'e000001'
+    (folder / 'frames').mkdir(parents=True)
+    for i in range(50):
+        (folder / 'frames' / f'f{i:03d}.jpg').write_bytes(b'x' * 10)
+    (folder / 'result.json').write_text(json.dumps({'status': 'failed'}))
+    (folder / 'trace.json').write_text('[]')
+    out = build(tmp_path, 'e000001')
+    files = out['pointers']['full_files']
+    assert files['frames/'] == {'files': 50, 'bytes': 500}
+    assert not any(k.startswith('frames/f') for k in files)
