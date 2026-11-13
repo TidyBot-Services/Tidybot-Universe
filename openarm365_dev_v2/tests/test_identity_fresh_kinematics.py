@@ -18,7 +18,7 @@ def fake(tmp_path, offset_after_forward):
     state = {'fresh': False}
     def forward(): state['fresh'] = True
     def step(): state['fresh'] = False  # what env.step leaves behind
-    obj = NS(env=NS(sim=NS(forward=forward)), evidence=tmp_path, prepared=set(), failed=False,
+    obj = NS(env=NS(sim=NS(forward=forward)), evidence=tmp_path, prepared=set(), failed=False, names=('all',),
              upload=lambda: None, body=lambda active: {'env_id': 'robocasa365', 'current_q': []},
              client=NS(call=lambda path, body: {'poses': {f'openarm_{s}_hand_tcp': {'position': [0, 0, 0], 'quaternion_wxyz': [1, 0, 0, 0]}
                                                           for s in ('left', 'right')}} if path == '/fk' else {}))
@@ -48,3 +48,16 @@ def test_a_real_mismatch_still_fails_at_the_same_tolerance(monkeypatch, tmp_path
     with pytest.raises(IdentityError, match='differs from authenticated V2 URDF'):
         plan.MujocoV2Planner.prepare(obj, ('left',))
     assert ('left',) not in obj.prepared
+
+
+def test_alignment_uses_the_all_joint_model_and_marks_the_active_arm_prepared(monkeypatch, tmp_path):
+    """11-13 item 6: prepare() warms up and checks FK with every joint (the startup model)."""
+    obj, step, tcp = fake(tmp_path, 0.0)
+    bodies, calls = [], []
+    obj.body = lambda active: bodies.append(tuple(active)) or {'env_id': 'robocasa365', 'current_q': []}
+    inner = obj.client.call
+    obj.client = NS(call=lambda path, body: calls.append(path) or inner(path, body))
+    monkeypatch.setattr(plan, 'tcp_pose', tcp)
+    monkeypatch.setattr(plan, 'mount_pose', lambda env: np.eye(4))
+    plan.MujocoV2Planner.prepare(obj, ('left',))
+    assert bodies == [('all',)] and calls == ['/warmup', '/fk'] and obj.prepared == {('left',)}
