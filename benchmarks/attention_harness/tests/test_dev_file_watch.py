@@ -23,6 +23,7 @@ class Clock:
 
 def test_first_check_hashes_then_unchanged_files_are_not_rehashed(tmp_path, monkeypatch):
     lock, lib, src = make(tmp_path); clock = Clock()
+    monkeypatch.setattr(auth.DevFileWatch, 'RACY_NS', -10 ** 18)  # pretend every file is old
     calls = []; real = auth.verify_files
     monkeypatch.setattr(auth, 'verify_files', lambda l: (calls.append(1), real(l)))
     watch = auth.DevFileWatch(lock, clock)
@@ -68,3 +69,13 @@ def test_worker_uses_the_watch_only_for_the_dev_loop():
     text = (Path(auth.__file__).with_name('worker.py')).read_text()
     assert "DevFileWatch(lock) if (args.tier, args.boundary) == ('dev', 'dev_loop') else None" in text
     assert 'if file_watch is None:verify_files(lock)' in text
+
+
+def test_recently_changed_files_are_hashed_on_every_check(tmp_path, monkeypatch):
+    """Racy-clean rule: a write in the same timestamp tick as the stat pass must still be caught."""
+    lock, lib, src = make(tmp_path)
+    watch = auth.DevFileWatch(lock, Clock())
+    assert watch.check() == 'hashed' and watch.check() == 'hashed'
+    lib.write_text('x = 9\n')  # same size, likely same coarse timestamp
+    with pytest.raises(auth.IdentityError):
+        watch.check()

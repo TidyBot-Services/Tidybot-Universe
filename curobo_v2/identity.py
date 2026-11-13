@@ -376,6 +376,10 @@ class DevFileWatch:
     re-runs the full hash check. A full re-hash also runs at least every FULL_SECONDS.
     """
     FULL_SECONDS = 60.
+    # File timestamps are coarse: a write in the same clock tick as the stat pass can keep size,
+    # mtime and ctime. Like git's racy-clean rule, a signature with any file changed within this
+    # window of its own stat pass is never trusted; the next check hashes again.
+    RACY_NS = 2_000_000_000
 
     def __init__(self, lock: dict, clock=None):
         import time
@@ -391,11 +395,15 @@ class DevFileWatch:
             if path.is_symlink() or path.is_file() and str(path) not in self.lock['files']:
                 raise IdentityError('Unlisted or linked file in locked service/config tree: ' + str(path))
             tree.append(str(path))
-        stats = []
+        import time
+        started = time.time_ns()
+        stats, racy = [], False
         for name in self.lock['files']:
             st = os.stat(name, follow_symlinks=False)
             stats.append((name, st.st_size, st.st_mtime_ns, st.st_ctime_ns, st.st_ino, st.st_dev, st.st_mode))
-        return hashlib.sha256(canonical([sorted(tree), stats])).hexdigest()
+            racy = racy or max(st.st_mtime_ns, st.st_ctime_ns) >= started - self.RACY_NS
+        value = hashlib.sha256(canonical([sorted(tree), stats])).hexdigest()
+        return value if not racy else 'racy:' + value
 
     def check(self) -> str:
         now = self.clock()
@@ -406,12 +414,12 @@ class DevFileWatch:
                 same = self._signature() == self.signature
             except OSError:
                 same = False
-            if same:
+            if same and not self.signature.startswith('racy:'):
                 self.fast_checks += 1
                 return 'unchanged'
         before = self._signature()
         verify_files(self.lock)
-        if self._signature() != before:
+        if self._signature().removeprefix('racy:') != before.removeprefix('racy:'):
             raise IdentityError('Locked files changed during verification')
         self.signature, self.last_full = before, now
         self.full_checks += 1
