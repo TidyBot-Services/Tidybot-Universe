@@ -322,7 +322,19 @@ class NativeExecutor:
         diagnostic = held_envelope_receipt(getattr(self, "execution_settings", None))
         if diagnostic:value = dict(value, **diagnostic)
         with path.open('a') as f:
-            f.write(json.dumps(value,sort_keys=True,allow_nan=False)+'\n');f.flush();os.fsync(f.fileno())
+            f.write(json.dumps(value,sort_keys=True,allow_nan=False)+'\n');f.flush()
+            # Physics rows (one per physics step) are flushed per row and made durable once per
+            # request by sync_physics(), before that request's fsynced RPC receipt (user OK 11-14).
+            if path==getattr(self,"physics",None):self._physics_unsynced=True
+            else:os.fsync(f.fileno())
+
+    def sync_physics(self):
+        """fsync native-physics.jsonl if rows were written since the last sync."""
+        if not getattr(self,'_physics_unsynced',False):return
+        fd=os.open(self.physics,os.O_RDONLY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        self._physics_unsynced=False
 
     def held_for(self,side):
         return self.held.get(side) if getattr(self,'bimanual_collaboration','none') in ('c1','handoff') else self.held if self.held and self.held['holder']==side else None
@@ -1234,6 +1246,8 @@ class NativeExecutor:
             self.active_request=None;self.gripping=False;self.gripping_side=None;self.moving=False
 
     def close(self):
+        try:self.sync_physics()
+        except OSError:pass
         self.epoch=uuid.uuid4().hex;self.planner.ledger.invalidate('stop')
         self.env.sim.step2=self._step2
         return self.planner.close()

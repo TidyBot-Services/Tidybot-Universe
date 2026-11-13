@@ -119,6 +119,7 @@ def main():
                 with (args.evidence/'native-errors.jsonl').open('a') as f:
                     f.write(json.dumps({'request_id':rid,'traceback':traceback.format_exc()})+'\n')
             receipt_cache[rid]=(canonical,response)
+            executor.sync_physics()
             with (args.evidence/'rpc-receipts.jsonl').open('a') as f:
                 f.write(json.dumps({'request':request,'response':response},sort_keys=True)+'\n');f.flush();os.fsync(f.fileno())
             send(response)

@@ -166,7 +166,7 @@ def test_actual_worker_dispatch_receipt_and_cached_replay(monkeypatch,tmp_path,f
     scope=dict(__name__=worker.__name__,__package__=worker.__package__,c=dict(bimanual_collaboration=collaboration),
         json=json,os=os,time=time,traceback=traceback,sys=NS(stdin=[json.dumps(request)]*2),
         stop=NS(is_set=lambda:False),args=NS(agent_mode=agent,deadline=e.deadline,evidence=tmp_path),
-        receipt_cache={},executor=e,env=e.env,execution_settings=settings,fixture_enabled=fi.enabled,
+        receipt_cache={},capture=lambda *a,**k:None,executor=e,env=e.env,execution_settings=settings,fixture_enabled=fi.enabled,
         allowed_operations={group:[request['operation']]},send=sent.append,override=None,tier=None,
         receipt_fields=lambda settings:{},RecoverablePlanRejection=RecoverablePlanRejection,
         FixtureContactBaseDisplacementRejected=ft.FixtureContactBaseDisplacementRejected)
