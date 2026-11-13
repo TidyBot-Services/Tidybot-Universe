@@ -98,7 +98,11 @@ class MujocoV2Planner:
         return world,receipt
     def prepare(self, active):
         def op():
-            self.upload();body=self.body(active)
+            # 11-13 try speed-up item 6 (user approved): the TCP alignment check (both arms, 1e-5) always
+            # uses the all-joint model built at startup. It is the same URDF, measured state and locks, so
+            # the check is unchanged; an arm-only model with both tool frames is no longer built just for it.
+            # plan() still warms up its own exact model (active joints, tool frames, attachment) every time.
+            self.upload();body=self.body(self.names)
             self.client.call('/warmup',{k:v for k,v in body.items() if k!='env_id'})
             fk=self.client.call('/fk',body);errors={}
             # After env.step the site poses still describe the previous substep (MuJoCo integrates qpos last);
