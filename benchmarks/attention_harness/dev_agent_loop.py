@@ -447,6 +447,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
     from openarm365_dev_v2.dev_config import SIM_PYTHON
     cell=store.cell(key);root=Path(exp['artifact_dir'])/'cells'/key
     config=manifest['configs'][f"{cell['task_id']}:{cell['seed']}"]
+    from .dev_agent_config import context_profile
+    profile=context_profile(config,manifest)
     store.update_cell(key,state='running',owner=owner,artifact_dir=str(root),dev_mode='agent')
     ledger=None;setup_id=None
     try:
@@ -491,7 +493,8 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         providers=providers_for_run(manifest,allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
         if all(providers[r] is not None for r in ('dev','eval','advisor')):quota=None
         provider_options={'provider':providers['dev']} if 'agent_provider' in manifest else {}
-        session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'],**provider_options)
+        session=CodexAgentSession(workspace.ws,workspace.private,model=manifest['dev_model'],reasoning_effort=manifest['dev_reasoning_effort'],
+            **(dict(dev_context_profile=profile,record_context_profile=True) if config.get('agent_policy_version')=='agent-policy-v2' else {}),**provider_options)
         last_disk_check=None
         def control():
             nonlocal last_disk_check

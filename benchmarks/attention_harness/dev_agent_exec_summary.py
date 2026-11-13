@@ -58,18 +58,18 @@ def _call(index, row):
     return out
 
 
-def build(execution_id, *, outcome, trace, stdout, stderr, initial_observation, final_observation, files):
+def build(execution_id, *, outcome, trace, stdout, stderr, initial_observation, final_observation, files, full_failure=False):
     """outcome/trace/observations are the screened values written beside this summary."""
     calls = [_call(i, row) for i, row in enumerate(trace if isinstance(trace, list) else []) if isinstance(row, dict)]
     failed = [row for row in (trace if isinstance(trace, list) else []) if isinstance(row, dict)
-              and (row.get('status') == 'failed' or row.get('error')
+              and (row.get('status') == 'failed' or full_failure and row.get('status') == 'rejected' or row.get('error')
                    or (isinstance(row.get('result'), dict) and row['result'].get('rejected')))]
     shown = calls if len(calls) <= CALL_ROWS else calls[:10] + [dict(omitted=len(calls) - CALL_ROWS)] + calls[-(CALL_ROWS - 10):]
     start, end = _objects(initial_observation), _objects(final_observation)
     return dict(
         schema=SCHEMA, execution_id=execution_id, outcome=outcome,
         sdk_call_count=len(calls), failed_call_count=len(failed), sdk_calls=shown,
-        first_failure=None if not failed else (failed[0] if len(_short(failed[0], 3001)) <= 3000 else _short(failed[0], 3000)),
+        first_failure=None if not failed else (failed[0] if full_failure or len(_short(failed[0], 3001)) <= 3000 else _short(failed[0], 3000)),
         robot=dict(start=_robot(initial_observation), end=_robot(final_observation)),
         objects_moved=_moved(start, end),
         stdout_tail=(stdout or '')[-TAIL_CHARS:], stdout_chars=len(stdout or ''),

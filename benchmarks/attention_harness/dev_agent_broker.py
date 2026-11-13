@@ -462,7 +462,8 @@ class Broker:
         artifacts['summary.json'] = self.workspace.publish(base + 'summary.json', build_summary(
             eid, outcome=outcome, trace=public['trace.json'], stdout=public['stdout.txt'].decode(),
             stderr=public['stderr.txt'].decode(), initial_observation=public['initial_observation.json'],
-            final_observation=public['final_observation.json'], files=sizes))
+            final_observation=public['final_observation.json'], files=sizes,
+            full_failure=self.agent_policy_version=='agent-policy-v2'))
         self._history('executions', dict(execution_id=eid, outcome=outcome, artifacts=artifacts))
         return dict(outcome=outcome, artifacts=artifacts)
 
@@ -677,6 +678,16 @@ class Broker:
                     self._regenerate_history()
                     self.workspace.regenerate()
                     if self.on_settled:self.on_settled(response)
+                    if self.agent_policy_version=='agent-policy-v2' and op in ('run','submit','ask_help'):
+                        eid=response.get('execution_id') or (response.get('result') or {}).get('execution_id')
+                        if eid and (self.workspace.ws/'executions'/eid/'result.json').is_file():
+                            # A diagnosis problem is recorded and skipped: it never fails settlement or quarantines the run.
+                            try:
+                                from .dev_agent_diagnose import build as build_diagnosis, encode_diagnosis
+                                self.workspace.publish('executions/'+eid+'/diagnose.json',encode_diagnosis(build_diagnosis(self.workspace.ws,eid)))
+                            except Exception as exc:
+                                try:atomic_write(self.workspace.private,'errors/diagnose-'+eid+'.json',encode(dict(error='diagnose_failed',**soft_error(exc))))
+                                except OSError:pass
                     self._publish(response)
                     self._prespawn_next()
                 except BaseException as exc:

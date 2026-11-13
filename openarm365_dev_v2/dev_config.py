@@ -279,6 +279,11 @@ def validate_dev_config(c,*,expected_source_root=None,budget_boundary='dev_loop'
         if c.get('dev_mode')!='agent' or c['agent_policy_version'] not in ('agent-policy-v1','agent-policy-v2'):
             raise ValueError('agent policy version requires agent dev config')
         expected['agent_policy_version']=c['agent_policy_version']
+    if 'dev_context_profile' in c:
+        if c.get('dev_mode')!='agent' or c.get('agent_policy_version')!='agent-policy-v2':
+            raise ValueError('context profile requires agent policy v2 dev config')
+        from benchmarks.attention_harness.dev_agent_config import context_profile
+        expected['dev_context_profile']=context_profile(c)
     if 'dev_version_history' in c:
         if type(c['dev_version_history']) is not bool or tier!='dev' or budget_boundary!='dev_loop':
             raise ValueError('version history requires dev tier and dev_loop boundary')
