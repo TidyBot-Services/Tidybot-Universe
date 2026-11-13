@@ -214,7 +214,9 @@ def test_offline_ten_arm_worker_smoke(tmp_path,monkeypatch,result,models,policy_
             assert manifest[field]==manifest['selection'][field]==original[field]
         assert batch['dev_model']==dict(provider='codex',model=original['dev_model'])
         assert batch['dev_reasoning_effort']==original['dev_reasoning_effort'] and batch['eval_model']==original['eval_model']
-        assert f.model_choices==[dict(model=original['dev_model'],reasoning_effort=original['dev_reasoning_effort'])]*len(starts)
+        # v2 sessions also receive the Dev context profile (11-14 dev-think-time); it must stay the baseline default here.
+        extra=dict(dev_context_profile='baseline',record_context_profile=True) if version=='agent-policy-v2' else {}
+        assert f.model_choices==[dict(model=original['dev_model'],reasoning_effort=original['dev_reasoning_effort'],**extra)]*len(starts)
         assert f.eval_choices==[original['eval_model']]*len(starts)
         decision=f.service.decision(batch['memory_id'])
         assert decision['decision']=={'passed':'promoted','rejected':'rejected','inconclusive':'inconclusive'}[result]
