@@ -260,15 +260,19 @@ def plan(run_dir):
     blocked = set()
     for (episode, view), g in sorted(groups.items()):
         video = episode/('advisor_replay.mp4' if view == 'overview' else f'advisor_replay_{view}.mp4')
-        reason = None; expected = actual = None
-        try:
-            expected = _expected(episode, view)
-            actual = probe_count(video)
-            if actual != expected:
-                raise ValueError(f'mp4 count mismatch: expected {expected}, decoded {actual}')
-        except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
-            reason = f'{type(exc).__name__}: {exc}'
         paths = g['paths']-kept
+        nothing_to_delete = not paths and not g['already_missing']
+        reason = None; expected = actual = None
+        # Probe recordings often contain only a kept first frame and no video.
+        # Gate only groups with deletable or previously missing frame evidence.
+        if not nothing_to_delete:
+            try:
+                expected = _expected(episode, view)
+                actual = probe_count(video)
+                if actual != expected:
+                    raise ValueError(f'mp4 count mismatch: expected {expected}, decoded {actual}')
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+                reason = f'{type(exc).__name__}: {exc}'
         if reason: blocked.update(paths)
         else: eligible.update(paths)
         result.append(dict(execution=g['execution'], view=view, mp4=str(video.relative_to(root)),
@@ -276,6 +280,8 @@ def plan(run_dir):
                            files=sorted(str(p.relative_to(root)) for p in paths),
                            already_missing=sorted(str(p.relative_to(root)) for p in g['already_missing']),
                            kept_first_frames=sorted(str(p.relative_to(root)) for p in g['kept'])))
+        if nothing_to_delete:
+            result[-1]['nothing_to_delete'] = True
     eligible -= blocked
     inodes = defaultdict(list)
     for p in files:

@@ -82,6 +82,39 @@ def test_video_failures_skip_entire_view(run,monkeypatch,problem):
     cleanup.apply(cell); assert (ep/'recording_frames/000001.jpg').exists()
 
 
+@pytest.mark.parametrize('frame_count', [0, 1])
+def test_probe_owner_with_only_kept_frames_has_no_skip_or_notice(tmp_path,frame_count):
+    from benchmarks.attention_harness.tests.test_notices import ledger,Bridge
+    from benchmarks.attention_harness.notices import NoticeReader
+    cell=tmp_path/'experiment/cells/cell';cell.mkdir(parents=True)
+    bind(cell)
+    probe=cell/'agent/private/probe-owner-0001'
+    for view in ('overview','side','top','left_wrist','right_wrist'):
+        folder=probe/('recording_frames' if view=='overview' else 'recording_views/'+view)
+        folder.mkdir(parents=True)
+        rows=[dict(file='000000.jpg')]*frame_count
+        (folder/'frames.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        if frame_count:(folder/'000000.jpg').write_bytes(b'kept first frame')
+    with patch.object(cleanup,'_expected',side_effect=AssertionError('unnecessary producer check')), \
+         patch.object(cleanup,'probe_count',side_effect=AssertionError('unnecessary video check')):
+        planned=cleanup.plan(cell)
+        assert len(planned['views'])==5*frame_count
+        assert all(g['nothing_to_delete'] and not g.get('skipped') for g in planned['views'])
+        receipt=cleanup.apply(cell)
+    assert receipt['frames_deleted']==receipt['bytes_freed']==0
+    assert all(not g['files'] and not g['already_missing'] for g in receipt['views'])
+    assert len(list(probe.rglob('000000.jpg')))==5*frame_count
+    assert cleanup.notices(cell)==[]
+    notice_dir=tmp_path/'notices';notice_dir.mkdir()
+    path=ledger(notice_dir)
+    with sqlite3.connect(path) as db:
+        row=json.loads(db.execute('SELECT payload FROM v2_cells').fetchone()[0])
+        row['artifact_dir']=str(cell)
+        db.execute('UPDATE v2_cells SET payload=?',(json.dumps(row),))
+    notices=NoticeReader(Bridge(path),probe=lambda:True).read()['notices']
+    assert not any(n['title']=='Frame cleanup needs attention' for n in notices)
+
+
 @pytest.mark.parametrize('status,reason,owner',[('running',None,None),('unknown',None,None),('planned','operator_paused',None),('completed',None,{'pid':os.getpid()})])
 def test_active_paused_refused(run,status,reason,owner):
     cell,_=run
