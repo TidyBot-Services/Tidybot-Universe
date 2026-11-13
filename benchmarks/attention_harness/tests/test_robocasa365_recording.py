@@ -93,3 +93,41 @@ def test_realistic_uneven_frame_times_keep_every_decodable_frame_and_terminal_ho
     assert result['video_saved'],result['error']
     assert len(result['replay_timing']['frame_video_seconds'])==len(times)
     assert result['duration_seconds']>times[-1]+.04
+
+
+def _capture_steps(tmp_path, monkeypatch, steps):
+    import benchmarks.attention_harness.robocasa365.recording as module
+    clock=iter(10+i*.12 for i in range(len(steps)))
+    monkeypatch.setattr(module.time,'monotonic',lambda:next(clock))
+    rec=StepRecorder(tmp_path,context())
+    for i,step in enumerate(steps):
+        rec.capture({'robot0_agentview_left_image':np.full((18,32,3),i*30,dtype=np.uint8)},'ep',step)
+    monkeypatch.undo()
+
+
+def test_strided_recording_with_action_boundaries_is_accepted_and_lists_its_steps(tmp_path,monkeypatch):
+    # Every 4th step plus a boundary at step 6 (end of an action).
+    _capture_steps(tmp_path,monkeypatch,[0,4,6,8,12])
+    result=finalize_recording(tmp_path,dict(context(),frame_stride=4),'completed')
+    assert result['status']=='saved' and result['frame_stride']==4
+    assert result['replay_timing']['frame_physical_sequences']==[0,4,6,8,12]
+
+
+def test_strided_recording_still_rejects_a_gap_beyond_the_stride(tmp_path,monkeypatch):
+    _capture_steps(tmp_path,monkeypatch,[0,4,9])
+    result=finalize_recording(tmp_path,dict(context(),frame_stride=4),'completed')
+    assert result['status']=='failed' and 'sequence or clock gap' in result['error']
+
+
+def test_contexts_without_a_stride_keep_one_frame_per_step(tmp_path,monkeypatch):
+    _capture_steps(tmp_path,monkeypatch,[0,1,3])
+    result=finalize_recording(tmp_path,context(),'completed')
+    assert result['status']=='failed' and 'sequence or clock gap' in result['error']
+    assert 'frame_stride' not in result
+
+
+@pytest.mark.parametrize('stride',[0,9,'4',True])
+def test_invalid_stride_is_rejected(tmp_path,monkeypatch,stride):
+    _capture_steps(tmp_path,monkeypatch,[0,1])
+    result=finalize_recording(tmp_path,dict(context(),frame_stride=stride),'completed')
+    assert result['status']=='failed' and 'frame_stride' in result['error']

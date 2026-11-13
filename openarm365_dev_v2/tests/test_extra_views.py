@@ -171,3 +171,23 @@ def test_unknown_or_unpublished_views_are_not_found_and_cannot_escape(running,vi
     body,_,status,_=response(s,E,K,query={'view':[view]})
     assert status in (404,) or body.get('state')=='waiting_first_frame'
     assert response(s,E,K,image=True,query={'view':[view]})[2]!=200
+
+def test_strided_views_follow_the_main_recording_steps_and_list_them(tmp_path):
+    """11-13 stride 4 + action boundaries: views are captured on the same steps as the main view."""
+    env,views,ev=make(tmp_path)
+    steps=[0,4,6,8]
+    for seq in steps:views.capture(seq)
+    d=ev/'recording_frames';d.mkdir()
+    (d/'frames.jsonl').write_text(''.join(json.dumps(dict(physical_sequence=s,trace_seconds=10+i*.2))+'\n' for i,s in enumerate(steps)))
+    (ev/'advisor_replay.mp4').write_bytes(b'main video')
+    manifest=xv.finalize_extra_views(ev)['views']
+    for key in xv.VIEWS:
+        assert manifest[key]['status']=='saved' and manifest[key]['frame_count']==4
+        assert manifest[key]['physical_sequences']==steps
+
+def test_unstrided_views_keep_the_original_manifest(tmp_path):
+    env,views,ev=make(tmp_path)
+    for seq in range(3):views.capture(seq)
+    main_recording(ev,3)
+    manifest=xv.finalize_extra_views(ev)['views']
+    assert all('physical_sequences' not in manifest[key] for key in xv.VIEWS)

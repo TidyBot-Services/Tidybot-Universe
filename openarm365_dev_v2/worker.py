@@ -112,7 +112,12 @@ def main():
             from .extra_views import ExtraViews,look_target
             extra=ExtraViews(env,args.evidence,context,episode,camera_target(env,c) if fixture_enabled(execution_settings) else look_target(env))
         except Exception:extra=None
-        def capture(sequence):
+        # 11-13 (user): render every frame_stride-th control step (5 fps at stride 4), plus every action
+        # boundary (capture(..., boundary=True) after each request). Physics is still stepped and logged every step.
+        stride=context.get('frame_stride',1)
+        if type(stride) is not int or not 1<=stride<=8:raise ValueError('recording frame_stride must be an integer 1..8')
+        def capture(sequence,boundary=False):
+            if not boundary and sequence%stride:return
             capture_human_view(recorder,env,episode,sequence)
             # Copy the actual just-captured RGB, atomic metadata publication.
             if recorder.count and recorder.last_sequence==sequence:
@@ -286,6 +291,8 @@ def main():
                 response.update(fixture_receipt(executor,after_physics_step=before_physics))
             if override:response['diagnostic_budget_override']=override
             if tier:response['dev_tier_budget']=tier
+            # Action boundary: the end state of every request is always recorded (Eval/Advisor key moments).
+            if executor.sequence>before:capture(executor.sequence,boundary=True)
             receipt_cache[rid]=(canonical,response)
             with (args.evidence/'rpc-receipts.jsonl').open('a') as f:
                 f.write(json.dumps({'request':request,'response':response},sort_keys=True)+'\n');f.flush();os.fsync(f.fileno())

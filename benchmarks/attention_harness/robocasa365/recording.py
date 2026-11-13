@@ -12,6 +12,10 @@ from PIL import Image
 
 from ..ffmpeg_hold import final_hold
 
+# 11-13 (user approved 5 fps replay): new OpenArm365 dev_v2 executions render every 4th control step plus
+# every action boundary. Old contexts carry no frame_stride and keep the original one-frame-per-step rule.
+FRAME_STRIDE=4
+
 
 def _write(path, value):
     temporary=path.with_suffix('.tmp')
@@ -108,6 +112,10 @@ def finalize_recording(episode_dir, context, execution_status):
                     raise
                 journal_error='Process ended during an incomplete final frame journal write; durable earlier frames retained'
         receipt['frame_count']=len(rows)
+        stride=context.get('frame_stride',1)
+        if type(stride) is not int or not 1<=stride<=8:
+            raise ValueError('recording frame_stride must be an integer 1..8')
+        if stride!=1:receipt['frame_stride']=stride
         if len(rows)<2:
             raise ValueError('Fewer than two real control-step frames were saved; static evidence is not an execution video')
         if len(rows)>5000:
@@ -117,7 +125,8 @@ def finalize_recording(episode_dir, context, execution_status):
                 raise ValueError('recording frame identity mismatch')
             if row['file']!=f'{index:06d}.jpg' or hashlib.sha256((directory/row['file']).read_bytes()).hexdigest()!=row['sha256']:
                 raise ValueError('recording frame hash mismatch')
-            if index and (row['physical_sequence']!=rows[index-1]['physical_sequence']+1 or
+            gap_steps=row['physical_sequence']-rows[index-1]['physical_sequence'] if index else 1
+            if index and (not 1<=gap_steps<=stride or
                 row['trace_seconds']<=rows[index-1]['trace_seconds'] or row['episode_id']!=rows[0]['episode_id']):
                 raise ValueError('recording control-step sequence or clock gap')
             if (row['width'],row['height'],row.get('source')) != (rows[0]['width'],rows[0]['height'],rows[0].get('source')):
@@ -168,6 +177,9 @@ def finalize_recording(episode_dir, context, execution_status):
             frame_manifest_sha256=hashlib.sha256(journal.read_bytes()).hexdigest(),
             replay_timing=dict(basis='relative',event_clock='sdk_completion',
                 frame_trace_seconds=times,frame_video_seconds=video_times))
+        if stride!=1:
+            # Strided recordings cannot be re-derived as range(frame_count) once frame files are pruned.
+            receipt['replay_timing']['frame_physical_sequences']=[r['physical_sequence'] for r in rows]
         if receipt['source']=='official_simulator_display_rgb_after_each_control_step':
             # Human static evidence uses the same real HD captures as the replay.
             # Preserve the SDK's original policy images under explicit filenames.
