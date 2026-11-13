@@ -34,7 +34,7 @@ class MemoryView:
     @classmethod
     def service(cls, base_url: str, *, api_key: str, operator_key: str | None = None) -> "MemoryView":
         from attention_memory_service import MemoryServiceClient
-        return cls(MemoryServiceClient(base_url, api_key=api_key, operator_key=operator_key, timeout=10.0),
+        return cls(MemoryServiceClient(base_url, api_key=api_key, operator_key=operator_key, timeout=180),
                    source="service", can_operate=bool(operator_key))
 
     def public(self) -> dict[str, Any]:

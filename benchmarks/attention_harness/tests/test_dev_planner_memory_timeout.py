@@ -14,3 +14,13 @@ def test_client_for_uses_180_second_timeout(monkeypatch):
     constructor.assert_called_once_with(
         'http://memory.invalid', api_key='test-reader-key', timeout=180)
     assert client is constructor.return_value
+
+
+def test_operator_memory_view_uses_180_second_timeout(monkeypatch):
+    import attention_memory_service
+    from benchmarks.attention_harness.memory_view import MemoryView
+    constructor=Mock()
+    monkeypatch.setattr(attention_memory_service,'MemoryServiceClient',constructor)
+    MemoryView.service('http://memory.invalid',api_key='read',operator_key='operator')
+    constructor.assert_called_once_with('http://memory.invalid',api_key='read',
+                                       operator_key='operator',timeout=180)

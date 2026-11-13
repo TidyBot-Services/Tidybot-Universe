@@ -459,3 +459,17 @@ def test_monitor_exposes_live_reading_age_and_safe_refresh_fields(tmp_path,monke
     assert value['quota_refreshes']==[dict(at=1000,finished_at=1001,before_percent=10,after_percent=11,status='refreshed')]
     monkeypatch.setattr(memory_monitor.time,'time',lambda:1700)
     assert memory_monitor.automatic_checks(tmp_path)['weekly_quota_age_seconds']==700
+
+
+def test_errored_queue_does_not_block_pending_note(tmp_path):
+    d=deps(tmp_path)
+    errored=dict(memory_id='errored',version=1,title='Errored',uses=1,failure_gone=0)
+    pending=dict(memory_id='new',version=1,title='New',uses=1,failure_gone=0)
+    d.client.validation_queue=lambda:[errored]
+    set_enabled(tmp_path,True)
+    state=dict(note_errors={'errored':{'reason':'previous note error'}},
+               pending=dict(note=pending,operation='new-operation'))
+    tick(state,d)
+    assert d.runner.begun==['new']
+    assert state['current']['memory_id']=='new' and 'pending' not in state
+    assert d.runner.started==['c0']

@@ -337,7 +337,7 @@ def freeze_plan(memory_id,origin,config,context,signature,pairs,*,policy_id,budg
     if len(pairs)!=5 or dev_model['provider']!='codex':raise ValueError('five Codex pairs required')
     return dict(schema_version='attentionbench.memory-validation-plan.v2',profile='single_scene_v1',memory_id=memory_id,
         **{k:context[k] for k in SCOPE if k not in ('scene_id','object_set_id','camera_config_id','task_variant_id')},
-        **({k:context[k] for k in ('execution_profile','planner_dev_local_sha256',) if k in context}),
+        **({k:context[k] for k in ('execution_profile','planner_dev_local_sha256','planner_behavior_sha256') if k in context}),
         policy_id=policy_id,seeds=[config['seed']],cases=[dict(seed=config['seed'],**{k:context[k] for k in ('scene_id','object_set_id','camera_config_id','task_variant_id','camera_names','task_prompt')})],
         pairs=pairs,failure_signature=signature,assistance_credits=budget['assistance_credits'],arm_generation='dev_from_origin',
         origin_source_sha256=origin['sha256'],validation_config_sha256=config['sha256'],dev_model=dev_model)
@@ -704,9 +704,9 @@ def _tick(state,deps):
             closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
             closed.update(state.get('note_errors',{}))
             state['queue']=[n for n in queued if n['memory_id'] not in closed];save()
-            if queued and not state['queue'] and state.get('note_errors'):
+            if queued and not state['queue'] and state.get('note_errors') and not state.get('pending'):
                 return status(next(reversed(state['note_errors'].values()))['reason'])
-            if queued and not state['queue'] and not settings(deps.root).get('cross_seed',{}).get('enabled',False):
+            if queued and not state['queue'] and not state.get('pending') and not settings(deps.root).get('cross_seed',{}).get('enabled',False):
                 return status(next(r['origin_failure']['reason'] for r in reversed(state['results']) if r.get('origin_failure')))
             if not state.get('pending') and not state['queue']:
                 from .memory_cross_seed_worker import choose

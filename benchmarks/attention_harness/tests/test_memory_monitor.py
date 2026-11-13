@@ -93,6 +93,7 @@ def row(note_id, **changes):
 
 def request(handler_class, path):
     handler = object.__new__(handler_class)
+    handler.server = handler_class
     handler.path = path
     handler.headers = {}
     handler.wfile = io.BytesIO()
