@@ -240,7 +240,7 @@ class CuroboPlanner:
         if key not in self._models:
             logging.warning("V2 adapter model cache miss: active=%s tools=%s",active,tools)
             # Calls are serialized; keep immutable model instances bounded.
-            while len(self._models)>=2:self._models.pop(next(iter(self._models)))
+            while len(self._models)>=3:self._models.pop(next(iter(self._models)))
             optimizer_options={}
             if search is not None:
                 if search!='measured_reference_high_penalty_v1':
