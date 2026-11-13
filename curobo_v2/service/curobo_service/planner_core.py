@@ -17,6 +17,22 @@ import torch
 import yaml
 
 
+def lock_propagated(names, positions, expected):
+    """Exact lock check in the tensor's own precision.
+
+    cuRobo stores lock values as float32. A float64 expected value such as
+    -2.503 rounds by up to 1.19e-7 when stored, which used to fail the 1e-7
+    tolerance (planner 503 "lock update did not propagate"). Comparing with
+    the float32 rounding of the expected value keeps the same 1e-7 bound.
+    """
+    names = list(names)
+    if set(names) != set(expected) or len(names) != len(expected):
+        return False
+    actual = np.asarray(positions).reshape(-1).astype(np.float32)
+    want = np.asarray([expected[n] for n in names], dtype=np.float32)
+    return actual.shape == want.shape and bool(np.allclose(actual, want, rtol=0., atol=1e-7))
+
+
 class CuroboPlanner:
     """Return validated trajectories; this class never drives a simulator."""
 
@@ -346,9 +362,8 @@ class CuroboPlanner:
         expected=robot['kinematics']['lock_joints']
         for model in [planner.kinematics,checker.kinematics]:
             actual=model.lock_jointstate
-            if (actual is None or set(actual.joint_names)!=set(expected)
-                    or not np.allclose(actual.position.detach().cpu().numpy().reshape(-1),
-                        [expected[n]for n in actual.joint_names],rtol=0.,atol=1e-7)):
+            if (actual is None or not lock_propagated(actual.joint_names,
+                    actual.position.detach().cpu().numpy(),expected)):
                 raise IdentityError('Official measured lock update did not propagate')
         logging.warning('V2 public measured kinematics update: %d locked joints',len(expected))
 
