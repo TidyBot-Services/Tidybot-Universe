@@ -138,6 +138,8 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
     error('controller result',(cell.get('result') or {}).get('error'))
     error('Memory staging',cell.get('agent_memory_staging_failure'))
     for failure in cell.get('memory_errors',[]):error('Memory',failure)
+    for failure in cell.get('memory_use_errors',[]):error('Memory analysis',failure)
+    for failure in (cell.get('result') or {}).get('export_errors',[]):error('Version export',failure)
     if quota.get('error'):error('quota',quota['error'])
     base=f'{api}/experiments/{cell["experiment_id"]}/cells/{key}/agent/files/'
     def soft(root,name,default=None):
@@ -241,6 +243,23 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
                    or (selection.get('advisor_proxy') or {}).get('model')
                    or ('gpt-6-astra' if selection.get('model_source')=='codex' else None))
     version_rows=[dict(v,**v.get('agent',{})) for v in cell.get('versions',[])]
+    memory_use=[]
+    from .memory_use import analyse_version, validate_report
+    for version in version_rows:
+        number=version['version'];name=f'v{number}/memory_use.json'
+        read_errors=[]
+        try:audit=_read(Path(cell['artifact_dir']),name)
+        except (OSError,ValueError) as exc:
+            audit=None;read_errors.append(dict(file=name,error=f'unreadable: {exc}'))
+        if audit is None:
+            # Historical runs are analysed read-only. Never backfill a live run.
+            audit=analyse_version(Path(cell['artifact_dir']),number)
+        try:validate_report(audit)
+        except ValueError as exc:
+            audit=dict(notes=[],errors=[dict(error=str(exc))])
+        if read_errors:audit={**audit,'errors':[*audit.get('errors',[]),*read_errors]}
+        memory_use.append(dict(version=number,**clean(audit)))
+        for failure in audit.get('errors',[]):error('Memory analysis',dict(version=number,**failure))
     versions=[{k:v[k] for k in ('version','version_id','execution_id','valid','eval','eval_verdict','native_success','agree','agreement') if k in v} for v in version_rows]
     result=clean({k:cell.get(k) for k in ('key','experiment_id','state','reason','error','task_id','seed','policy_id','mode','budget','used','versions','jobs')})
     result.update(dev_mode='agent',versions=clean(versions),jobs=[],agent=dict(
@@ -249,7 +268,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         quota=clean(quota),dev_model=selection.get('dev_model','gpt-6-astra'),eval_model=selection.get('eval_model','gpt-6-astra'),
         advisor_model=advisor_model,
         quota_stop_percent=selection.get('quota_stop_percent',90),timeline=records,versions=clean(versions),
-        history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
+        memory_use=memory_use,history=links([('version history','history/version_history.json')]),state_basis='reset_scene'))
     if run.get('wall_unlimited'):
         result['agent'].update(wall_unlimited=True,sim_wait_seconds=round(run.get('sim_wait_seconds',0)),no_progress_seconds=7200,
             robot=clean({k:robot[k] for k in ('state','ahead','waited_seconds') if k in robot}) if robot else None,

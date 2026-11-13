@@ -124,6 +124,13 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
 
     def cut(kind,response):
         number=int(response['version_id'][1:])
+        if kind=='post-feedback':
+            from .memory_use import event_cursor
+            try:
+                with session.quiesce():cursor=event_cursor(workspace.private)
+            except Exception as exc:
+                cursor=dict(error=type(exc).__name__+': '+str(exc))
+            atomic_write(workspace.private,f'memory/v{number}/memory-use-end.json',encode(cursor))
         if kind=='pre-submit' and validation and memory:
             from .dev_agent_broker import BrokerInvariant
             try:

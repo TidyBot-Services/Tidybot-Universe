@@ -1,0 +1,11 @@
+{
+  "notes": [
+    {"memory_id":"mem-grasp","title":"Verify the grasp","level":"L1","content":"After closing lift two centimetres and verify the object follows before carrying."},
+    {"memory_id":"mem-clearance","title":"Clear cabinet first","level":"L2","content":"Back away from the cabinet before lifting the held object."},
+    {"memory_id":"mem-unused","title":"Limit base steps","level":"L3","content":"Keep each base translation within the registered single step limit."}
+  ],
+  "sources": [
+    {"file":"agent/private/turns/t000001/events.jsonl","event_index":4,"text":"I am following mem-grasp and checking the lift before transport."},
+    {"file":"v1/policy.py","line":7,"text":"# Back away from the cabinet before lifting the held object."}
+  ]
+}

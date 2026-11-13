@@ -132,6 +132,13 @@ class Exporter:
             path = memory_dir / name
             if path.is_file():
                 immutable(directory / name, json.loads(path.read_bytes()))
+        from .memory_use import record_version
+        try:
+            record_version(self.root, number)
+        except Exception as exc:
+            failures = self.store.cell(self.key).get('memory_use_errors', [])
+            self.store.update_cell(self.key, memory_use_errors=[*failures,
+                dict(version=number, error=type(exc).__name__+': '+str(exc))])
         # Invalid source or failed launch has no runner episode to import.
         if not result or not episode:
             return record

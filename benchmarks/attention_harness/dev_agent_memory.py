@@ -44,6 +44,10 @@ class Memory:
         entries = memory_run_notes.merge(packet['entries'], notes, family=self.family) if notes else packet['entries']
         view = feedback(prompt_memory_view(dict(memory=entries)))
         self.workspace.publish(f'memory/v{number}.json', view)
+        # Private provenance of the actual bounded/screened view, not all grants.
+        # Audit failures are evidence errors, never advice-delivery failures.
+        from .memory_use import record_delivery
+        record_delivery(self.workspace.private, number, entries, view)
         count = len(view['memory'])
         unvalidated = sum(e.get('unvalidated') is True or e.get('trusted_here') is False for e in entries)
         self.message = f'Memory for v{number}: memory/v{number}.json ({count} notes; {unvalidated} unvalidated)'
@@ -55,6 +59,8 @@ class Memory:
         self.number,self.previous,self.packet,self.service=number,previous,dict(EMPTY_MEMORY),None
         self.generations[number]=self.packet
         self.workspace.publish(f'memory/v{number}.json',dict(memory=[]))
+        from .memory_use import record_delivery
+        record_delivery(self.workspace.private, number, [], dict(memory=[]))
         self.message=f'Memory for v{number}: memory/v{number}.json (0 notes)'
 
     def start(self):

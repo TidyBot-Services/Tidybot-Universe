@@ -1,0 +1,67 @@
+{
+  "entries": [
+    {
+      "authority": "6c7295f2-1fb9-446a-a5e8-cb4e193ebf5f",
+      "content": "Keep base Y +.33 and try yaw near −.6 with the finger gap centered across the banana’s thick middle. TCP z=.94–.945 is unverified given the earlier collision at .952: descend from .965 in 2–3 mm increments, checking that both pads straddle the banana and clear the counter; stop and recenter if one finger contacts first. After closing successfully, lift 2–3 cm at fixed orientation and verify the banana follows before lifting higher or rotating for carry.",
+      "context": {
+        "benchmark": "AttentionBench",
+        "camera_config_id": "robocasa365:71b0bcd7e4b3c370e07a1f0d95a0f038181e1c035fcb6d3e8b748c3527e2392d",
+        "camera_names": [
+          "robot0_agentview_left",
+          "gripper0_right_eye_in_hand"
+        ],
+        "controller": "BASIC",
+        "execution_profile": "r4-20261027",
+        "namespace": "attentionbench-dev-v2-c",
+        "object_set_id": "robocasa365:pretrain:0385a2992da285a440f45f3f9c9ec918f081357cbe8a4b32caec66cb952da330",
+        "perception_mode": "sim_gt",
+        "planner_dev_local_sha256": "b3f252f923c704ea675298fe30fa27519cf350e06d84072cbcb108d95446c937",
+        "robot": "OpenArm365",
+        "scene_contract_ref": {
+          "sha256": "bb28cd3eb1334bf5baf7dd428741ed8640adfd62ecb31e6cf0379d2d1670c716",
+          "uri": "/home/truares/桌面/AttentionBench-Workspace/development/Tidybot-Universe-attention-native/openarm365_dev_v2/scene_contracts/dev-seeds-101-103-v2-20261019-kp1500.json"
+        },
+        "scene_id": "robocasa365:layout11:style34",
+        "sdk_interface_sha256": "e5ff20f8581267af6541ff29c95d9d935e7ab5ce527dcb741412c9cb91962221",
+        "sdk_sha256": "56864943d8bafea935dd32b77759e661e8bd7f9472bb5d72cd6ed5a5c30d41fd",
+        "seed": 102,
+        "suite": "robocasa365",
+        "task_id": "pick_place_counter_to_sink",
+        "task_prompt": "Pick the object from the counter and place it in the sink.",
+        "task_variant_id": "PickPlaceCounterToSink:layout11:style34:commanded_motion"
+      },
+      "created_at": 1793488528.0705526,
+      "development_id": "1890a548c379e632a32957219f757636cb45c27a8e9af524dd4f32c67caea9fe:v1",
+      "evidence_refs": [
+        "provisional:p-68eff35e4efe868eb6f7d31a"
+      ],
+      "excluded_from_results": true,
+      "grant_id": "devgrant:e7d15d94b0454ad8b5aa5d312638955b",
+      "layer": "scene",
+      "match_level": "same_scene",
+      "memory_id": "p-68eff35e4efe868eb6f7d31a",
+      "seeded_for_tests": false,
+      "source_policy_sha256": "1686734220b080c6c4654a27407aea049a09f03d06ae33d2548fb64e32cf162e",
+      "source_seed": 102,
+      "source_task_id": "pick_place_counter_to_sink",
+      "source_trace_id": "provisional:p-68eff35e4efe868eb6f7d31a",
+      "status": "provisional",
+      "trust_scope": "provisional",
+      "trusted_here": false,
+      "unvalidated": true,
+      "version": 1
+    }
+  ],
+  "excluded_from_results": true,
+  "explicit_registry_authorization": true,
+  "family_cap": 1,
+  "family_reference": true,
+  "layered": true,
+  "not_trusted_here": true,
+  "not_trusted_here_cap": 2,
+  "promotion": false,
+  "schema": "attentionbench.dev-memory.v1",
+  "seeded_for_tests": false,
+  "unvalidated": true,
+  "visibility": "same task/robot/SDK, public-only"
+}
