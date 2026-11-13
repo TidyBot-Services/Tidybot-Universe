@@ -415,7 +415,7 @@ class Broker:
     def _execution(self, eid, source, result):
         base = 'executions/' + eid + '/'
         artifacts = {}
-        for name, value in (
+        public = dict((
             ('policy.py', feedback(source.decode()).encode()),
             ('stdout.txt', feedback(result.get('stdout', '')).encode()),
             ('stderr.txt', feedback(result.get('stderr', '')).encode()),
@@ -423,7 +423,8 @@ class Broker:
             ('state_log.json', feedback(result.get('state_log', []))),
             ('final_observation.json', public_observation(result.get('final_observation', {}))),
             ('initial_observation.json', public_observation(result.get('initial_observation', {}))),
-            ('diagnostics/planner.json', [project_planner_result(d) for d in result.get('diagnostics', [])])):
+            ('diagnostics/planner.json', [project_planner_result(d) for d in result.get('diagnostics', [])])))
+        for name, value in public.items():
             artifacts[name] = self.workspace.publish(base + name, value)
         frames=[];export_deadline=self.budget.deadline
         for row in result.get('frames',[]):
@@ -434,6 +435,14 @@ class Broker:
         artifacts['frames.json']=self.workspace.publish(base+'frames.json',frames)
         outcome = public_outcome(result.get('status'), result.get('trace', []), error=result.get('error'))
         artifacts['result.json'] = self.workspace.publish(base + 'result.json', outcome)
+        # Try speed-up item 3: a few-KB first read built from the screened values above.
+        from .dev_agent_exec_summary import build as build_summary
+        sizes = {name: len(value if isinstance(value, bytes) else encode(value)) for name, value in public.items()}
+        sizes.update({'frames.json': len(encode(frames)), 'result.json': len(encode(outcome))})
+        artifacts['summary.json'] = self.workspace.publish(base + 'summary.json', build_summary(
+            eid, outcome=outcome, trace=public['trace.json'], stdout=public['stdout.txt'].decode(),
+            stderr=public['stderr.txt'].decode(), initial_observation=public['initial_observation.json'],
+            final_observation=public['final_observation.json'], files=sizes))
         self._history('executions', dict(execution_id=eid, outcome=outcome, artifacts=artifacts))
         return dict(outcome=outcome, artifacts=artifacts)
 
