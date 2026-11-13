@@ -206,7 +206,8 @@ test('the fork dialog is the normal four-step wizard with a source step 01',()=>
   // Steps 02-04 are the normal ones; only step 01 is renamed.
   assert.match(source,/const FORK_WIZARD_STEPS=\[\{\.\.\.LAUNCH_WIZARD_STEPS\[0\],key:'source',label:'Source',note:'Attempt and carry'\},\.\.\.LAUNCH_WIZARD_STEPS\.slice\(1\)\];/);
   assert.match(source,/function bindLaunchWizard\(dialog,form,steps=LAUNCH_WIZARD_STEPS\)/);
-  assert.match(source,/bindLaunchWizard\(launchDialog,form,forkStart\?FORK_WIZARD_STEPS:LAUNCH_WIZARD_STEPS\)/);
+  // The normal path keeps its original call (test_launch_wizard.cjs anchors on it); only a fork passes its steps.
+  assert.match(source,/if\(forkStart\)bindLaunchWizard\(launchDialog,form,FORK_WIZARD_STEPS\);else bindLaunchWizard\(launchDialog,form\);/);
   assert.doesNotMatch(source.slice(source.indexOf('  function bindLaunchWizard('),source.indexOf('  // 11-11 (user): the read-only limits')),/LAUNCH_WIZARD_STEPS\[/);
   // The panel exists before the wizard collects its sections, so it belongs to step 01.
   assert.match(source,/forkStart\?'<section class="ab-launch-section ab-fork" data-fork-panel><\/section>':''\}<section class="ab-launch-section" data-run-config-section="what">/);
@@ -230,9 +231,9 @@ test('the fork dialog reuses the task picker and wizard classes and defines its 
 test('the fork dialog styles use theme tokens so light and dark both work',()=>{
   const block=css.slice(css.indexOf('/* Continue from an attempt (11-14)'),css.indexOf('</style>',css.indexOf('/* Continue from an attempt (11-14)')));
   assert.ok(block.length>500);
-  // Only the amber token and the selected-card chip tints are literal colours, each with a dark counterpart.
-  const literal=[...block.matchAll(/#[0-9a-fA-F]{6}\b/g)].map(m=>m[0].toLowerCase());
-  assert.deepEqual([...new Set(literal)].sort(),['#3f6a35','#8a5a12','#a23f32','#a8691a','#b6d9a8','#e0a24a','#f0b9a9','#f0d19b']);
+  // No literal colours: tones are theme tokens, shades are color-mix of a token with black/white (test_agent_budget_ui.cjs rule).
+  assert.doesNotMatch(block,/#[0-9a-fA-F]{3,8}\b/);
+  assert.match(block,/color-mix\(in srgb,var\(--op-amber\)/);
   assert.match(block,/\[data-theme="dark"\] \.ab-launch-dialog \.ab-fork\{--fk-amber/);
   // The generated dark theme carries the lineage link colour.
   assert.match(css,/\[data-theme="dark"\] \.op-page-title \.op-lineage\{[^}]*color:var\(--orange\)|\[data-theme="dark"\] \.op-page-title \.op-lineage\{[^}]*#ec6a43/);

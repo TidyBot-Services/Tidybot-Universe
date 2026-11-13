@@ -3353,7 +3353,7 @@
         </div><footer class="ab-launch-footer"><p class="ab-launch-note" id="run-config-summary" data-launch-preview aria-live="polite"></p><div class="ab-launch-actions"><button class="ab-button-quiet" type="button" data-close-launch>Cancel</button><input name="v2_start" type="hidden" value="yes"><button class="ab-button-quiet" type="submit" data-start-no>Create only</button><button class="ab-button-primary" type="submit" data-start-yes>Start run</button></div><p role="alert" id="ab-launch-message"></p></footer></form></div>`;
       const form = launchDialog.querySelector('form');
       let fork=null;
-      bindLaunchWizard(launchDialog,form,forkStart?FORK_WIZARD_STEPS:LAUNCH_WIZARD_STEPS);
+      if(forkStart)bindLaunchWizard(launchDialog,form,FORK_WIZARD_STEPS);else bindLaunchWizard(launchDialog,form);
       // A test host may offer one lab Codex model next to PARCC; the public host never does, and then Codex is not listed.
       const labCodex=hosted&&typeof options?.hosted?.lab_codex?.model==='string'?{...options.hosted.lab_codex,label:`Lab Codex · ${options.hosted.lab_codex.model}`}:null;
       const keys = bindKeys(form,hosted?'parcc':'codex',labCodex);

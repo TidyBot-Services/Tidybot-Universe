@@ -4129,8 +4129,8 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 @media(max-width:760px){#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-source-row{grid-template-columns:1fr}#attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-source-row>.ab-model-source{grid-column:auto}}
 #attentionbench-clear .op-outcome .op-reduced b{color:var(--orange)}
 /* Continue from an attempt (11-14): the fork dialog is the normal wizard with a source step 01. Tokens only. */
-#attentionbench-clear .ab-launch-dialog .ab-fork{--fk-amber:#a8691a}
-#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .ab-fork{--fk-amber:#e0a24a}
+#attentionbench-clear .ab-launch-dialog .ab-fork{--fk-amber:color-mix(in srgb,var(--op-amber),black 10%)}
+#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .ab-fork{--fk-amber:var(--op-amber)}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section.ab-fork{padding:18px 0 6px}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-fork~[data-run-config-section=what]>.ab-run-section-head{display:none}
 #attentionbench-clear .ab-launch-dialog.ab-session-dialog .ab-launch-shell .ab-launch-section.ab-fork~[data-run-config-section=what]{border-top:0;padding-top:6px}
@@ -4154,13 +4154,13 @@ html[data-theme="dark"] .op-attn-help.op-agent-refused .op-attn-help-label{strok
 #attentionbench-clear .ab-launch-dialog .fk-reason{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12.5px}
 #attentionbench-clear .ab-launch-dialog button.tp-item.fk-att:disabled{opacity:.5;cursor:default}
 #attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip{color:inherit;border-color:currentColor}
-#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=red]{color:#f0b9a9}
-#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=green]{color:#b6d9a8}
-#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=amber]{color:#f0d19b}
+#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=red]{color:color-mix(in srgb,var(--op-red),white 63%)}
+#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=green]{color:color-mix(in srgb,var(--op-green),white 62%)}
+#attentionbench-clear .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=amber]{color:color-mix(in srgb,var(--op-amber),white 60%)}
 #attentionbench-clear[data-theme="dark"] .ab-launch-dialog button.tp-item.fk-att.is-selected .tp-title{color:var(--bg)}
-#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=red]{color:#a23f32}
-#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=green]{color:#3f6a35}
-#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=amber]{color:#8a5a12}
+#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=red]{color:color-mix(in srgb,var(--op-red),black 38%)}
+#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=green]{color:color-mix(in srgb,var(--op-green),black 45%)}
+#attentionbench-clear[data-theme="dark"] .ab-launch-dialog .fk-att.is-selected .fk-chip[data-tone=amber]{color:color-mix(in srgb,var(--op-amber),black 43%)}
 #attentionbench-clear .ab-launch-dialog .fk-task{min-width:0}
 #attentionbench-clear .ab-launch-dialog .fk-task .tp-pics{height:180px;overflow:hidden}
 #attentionbench-clear .ab-launch-dialog .fk-task .tp-pics>.tp-pic:first-child{height:100%;aspect-ratio:auto}
