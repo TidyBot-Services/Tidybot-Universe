@@ -86,3 +86,47 @@ def test_regenerating_the_dark_theme_keeps_the_run_dialog_css(tmp_path):
     page.write_text(re.sub(r'(<style id="ab-dark-theme">).*?(</style>)', r'\1\n\2', html, flags=re.S), encoding='utf-8')
     _generator().main(str(page))
     assert page.read_text(encoding='utf-8') == html
+
+
+def _luminance(hex6):
+    def chan(i):
+        c = int(hex6[i:i + 2], 16) / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * chan(1) + 0.7152 * chan(3) + 0.0722 * chan(5)
+
+
+def _contrast(a, b):
+    la, lb = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def _last_decl(css, suffix, prop):
+    """Value of `prop` in the last rule whose selector list has a selector ending with `suffix`."""
+    found = None
+    for sels, body in re.findall(r'^([^@\s}][^{]*)\{([^}]*)\}', css, re.M):
+        if not any(s.strip().endswith(suffix) for s in _generator().split_sels(sels)):
+            continue
+        for decl in body.split(';'):
+            name, _, value = decl.partition(':')
+            if name.strip() == prop:
+                found = value.strip()
+    return found
+
+
+def test_selected_task_card_text_is_readable_in_both_themes():
+    # Dark once kept a white .tp-title on the card's inverted (light) background.
+    html = (UI / 'index.html').read_text(encoding='utf-8')
+    dark = re.search(r'<style id="ab-dark-theme">\n(.*?)</style>', html, re.S).group(1)
+    light = re.sub(r'<style id="ab-dark-theme">.*?</style>\n?', '', html, flags=re.S)
+    for css in (dark, light):
+        card = 'button.tp-item.is-selected'
+        bg = _last_decl(css, card, 'background')
+        base = _last_decl(css, card, 'color')
+        assert re.fullmatch(r'#[0-9a-f]{6}', bg) and re.fullmatch(r'#[0-9a-f]{6}', base), (bg, base)
+        for part, fallback in (('.tp-title', None), ('.tp-item-sub', None)):
+            colour = _last_decl(css, card + ' ' + part, 'color')
+            assert colour, part
+            if colour in ('inherit', 'currentColor'):
+                colour = base
+            assert re.fullmatch(r'#[0-9a-f]{6}', colour), (part, colour)
+            assert _contrast(bg, colour) >= 4.5, (part, bg, colour)
