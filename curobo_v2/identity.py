@@ -443,6 +443,64 @@ def verify_files(lock: dict) -> None:
             raise IdentityError("Locked source or dependency changed: " + name)
 
 
+class DevFileWatch:
+    """Dev tier only (11-13 try speed-up item 7, user approved; formal keeps verify_files per request).
+
+    The first check hashes every locked file. Later checks stat every file and the project tree:
+    any change of size, mtime, ctime, inode or device, any new, removed or linked project entry,
+    re-runs the full hash check. A full re-hash also runs at least every FULL_SECONDS.
+    """
+    FULL_SECONDS = 60.
+    # File timestamps are coarse: a write in the same clock tick as the stat pass can keep size,
+    # mtime and ctime. Like git's racy-clean rule, a signature with any file changed within this
+    # window of its own stat pass is never trusted; the next check hashes again.
+    RACY_NS = 2_000_000_000
+
+    def __init__(self, lock: dict, clock=None):
+        import time
+        self.lock, self.clock = lock, clock or time.monotonic
+        self.signature = None
+        self.last_full = None
+        self.full_checks = self.fast_checks = 0
+
+    def _signature(self):
+        project = Path(self.lock['project_root'])
+        tree = []
+        for path in project.rglob('*'):
+            if path.is_symlink() or path.is_file() and str(path) not in self.lock['files']:
+                raise IdentityError('Unlisted or linked file in locked service/config tree: ' + str(path))
+            tree.append(str(path))
+        import time
+        started = time.time_ns()
+        stats, racy = [], False
+        for name in self.lock['files']:
+            st = os.stat(name, follow_symlinks=False)
+            stats.append((name, st.st_size, st.st_mtime_ns, st.st_ctime_ns, st.st_ino, st.st_dev, st.st_mode))
+            racy = racy or max(st.st_mtime_ns, st.st_ctime_ns) >= started - self.RACY_NS
+        value = hashlib.sha256(canonical([sorted(tree), stats])).hexdigest()
+        return value if not racy else 'racy:' + value
+
+    def check(self) -> str:
+        now = self.clock()
+        if _registry_digest is not None and digest(DEPLOYMENT_REGISTRY) != _registry_digest:
+            raise IdentityError('Deployment trust policy changed during execution')
+        if self.signature is not None and now - self.last_full < self.FULL_SECONDS:
+            try:
+                same = self._signature() == self.signature
+            except OSError:
+                same = False
+            if same and not self.signature.startswith('racy:'):
+                self.fast_checks += 1
+                return 'unchanged'
+        before = self._signature()
+        verify_files(self.lock)
+        if self._signature().removeprefix('racy:') != before.removeprefix('racy:'):
+            raise IdentityError('Locked files changed during verification')
+        self.signature, self.last_full = before, now
+        self.full_checks += 1
+        return 'hashed'
+
+
 def verify_client_imports(lock: dict) -> None:
     """A remote client may have no curobo package, but may never expose V1."""
     library = Path(lock["library_root"]).resolve()
