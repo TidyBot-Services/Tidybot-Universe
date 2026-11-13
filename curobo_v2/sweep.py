@@ -222,11 +222,15 @@ class SweepValidator:
             total+=weights[index]*delta[index]*min(1.,factor+turn+1e-12)
         return total
 
-    def certify(self,response,*,deadline=None,cancel_check=lambda:False):
-        started=time.monotonic();deadline=float('inf') if deadline is None else deadline
+    def items(self,response):
+        """Top-level command-curve intervals, in the order the serial search visits them."""
         curve=CommandCurve(response);coeff=curve.coefficients
         controls=np.array([sum(coeff[:,i]*math.comb(k,i)/math.comb(5,i)for i in range(k+1))for k in range(6)]).transpose(1,0,2)
-        stack=[(controls[i],float(curve.times[i]),float(curve.times[i+1]),0)for i in range(len(controls))][::-1]
+        return [(controls[i],float(curve.times[i]),float(curve.times[i+1]),0)for i in range(len(controls))]
+
+    def run(self,items,*,deadline=float('inf'),cancel_check=lambda:False):
+        """Depth-first certification of the given top-level intervals, in order. Returns the counters."""
+        stack=list(items)[::-1];self.departure_start_gaps={}
         checks=leaves=depth_max=0;bound_max=step_max=0.;closure_max=[0.,0.];failure=None
         while stack:
             if cancel_check()or time.monotonic()>=deadline or checks>=MAX_QUERIES:
@@ -278,6 +282,16 @@ class SweepValidator:
             if depth>=16:
                 failure=dict(reason='continuous_geometry_or_closure_uncertified',interval=[start,end],point_bound_m=bound,contacts=collisions,closure_ok=closure_ok);break
             middle=(start+end)/2;stack.extend([(right,middle,end,depth+1),(left,start,middle,depth+1)])
+        return dict(checks=checks,leaves=leaves,depth_max=depth_max,bound_max=bound_max,step_max=step_max,
+                    closure_max=closure_max,failure=failure,
+                    gaps={k:min(v)for k,v in self.departure_start_gaps.items()})
+
+    def certify(self,response,*,deadline=None,cancel_check=lambda:False,stats=None):
+        started=time.monotonic();deadline=float('inf') if deadline is None else deadline
+        if stats is None:stats=self.run(self.items(response),deadline=deadline,cancel_check=cancel_check)
+        checks,leaves,depth_max=stats['checks'],stats['leaves'],stats['depth_max']
+        bound_max,step_max,closure_max,failure=stats['bound_max'],stats['step_max'],stats['closure_max'],stats['failure']
+        self.departure_start_gaps={k:[v]for k,v in stats['gaps'].items()}
         return dict(schema=SCHEMA,result='PASS'if failure is None else'未验证',input_sha256=input_sha256(response),joint_names=self.names,
             world_sha256=hashlib.sha256(json.dumps(self.world,sort_keys=True).encode()).hexdigest(),
             clearance_m=CLEARANCE,numerical_padding_m=PADDING,certified_intervals=leaves,queries=checks,max_depth=depth_max,
@@ -300,13 +314,92 @@ class SweepValidator:
         return departure_floor(gap0)
 
 
+# 11-13 try speed-up item 5 (user approved): the top-level intervals are independent, so they are
+# certified in parallel worker processes and merged in serial order. The merge reproduces the serial
+# counters exactly (sums, maxima, first failure in order). Anything unusual (a worker error, a
+# cancellation/budget stop, a total at or over MAX_QUERIES) re-runs the original serial search.
+import os as _os
+WORKERS=max(1,min(8,(_os.cpu_count() or 2)-2))
+CHUNKS_PER_WORKER=4
+WORKER_TIMEOUT_SECONDS=300.
+_pool=None
+
+
+def merge_stats(parts):
+    total=dict(checks=0,leaves=0,depth_max=0,bound_max=0.,step_max=0.,closure_max=[0.,0.],failure=None,gaps={})
+    for part in parts:
+        total['checks']+=part['checks'];total['leaves']+=part['leaves']
+        total['depth_max']=max(total['depth_max'],part['depth_max']);total['bound_max']=max(total['bound_max'],part['bound_max'])
+        total['step_max']=max(total['step_max'],part['step_max'])
+        total['closure_max']=[max(a,b)for a,b in zip(total['closure_max'],part['closure_max'])]
+        for key,value in part['gaps'].items():total['gaps'][key]=min(value,total['gaps'].get(key,value))
+        if part['failure'] is not None:
+            total['failure']=part['failure'];break
+    return total
+
+
+class SettingsPresent:
+    """Picklable stand-in for an execution-settings object inside a worker. SweepValidator only asks
+    whether settings are present (measured-start lock and departure floor); the values ride along."""
+    def __init__(self,values):self.values=values
+
+
+def _certify_chunk(spec,response,lo,hi):
+    from .identity import install_import_guard
+    install_import_guard()  # same cuRobo-V1 import refusal as the service process
+    validator=SweepValidator(**spec);parts=[]
+    for item in validator.items(response)[lo:hi]:
+        parts.append(validator.run([item]))
+        if parts[-1]['failure'] is not None:break
+    return parts
+
+
+def _get_pool():
+    global _pool
+    if _pool is None:
+        import multiprocessing
+        from concurrent.futures import ProcessPoolExecutor
+        context=multiprocessing.get_context('forkserver')
+        context.set_forkserver_preload(['curobo_v2.sweep'])
+        _pool=ProcessPoolExecutor(max_workers=WORKERS,mp_context=context)
+    return _pool
+
+
+def parallel_stats(spec,response,count,workers=WORKERS):
+    """Merged counters from parallel chunks, or None when the serial search must decide."""
+    global _pool
+    if workers<=1 or count<2:return None
+    chunks=min(count,workers*CHUNKS_PER_WORKER);bounds=[round(i*count/chunks)for i in range(chunks+1)]
+    try:
+        import pickle
+        if spec.get('execution_settings') is not None:
+            spec=dict(spec,execution_settings=SettingsPresent(json.loads(json.dumps(spec['execution_settings'].to_dict(),default=dict))))
+        pickle.dumps((spec,response))  # fail here, before any worker sees a partial job
+        pool=_get_pool()
+        futures=[pool.submit(_certify_chunk,spec,response,lo,hi)for lo,hi in zip(bounds,bounds[1:])if hi>lo]
+        parts=[part for future in futures for part in future.result(timeout=WORKER_TIMEOUT_SECONDS)]
+    except Exception as exc:
+        import logging
+        logging.warning('Continuous gate parallel workers unavailable (%s: %s); serial certificate',type(exc).__name__,exc)
+        if _pool is not None:
+            _pool.shutdown(cancel_futures=True);_pool=None
+        return None
+    total=merge_stats(parts)
+    failure=total['failure']
+    if total['checks']>=MAX_QUERIES or (failure is not None and failure.get('reason')=='continuous_certificate_canceled_or_budget_exceeded'):
+        return None
+    return total
+
+
 def certify_trajectory(response,*,urdf,world,locks,attachment,position_limits,maximum_speed,max_acceleration,max_jerk,execution_settings=None,measured_start=True):
     started=time.monotonic();motion=dict(result='未验证');receipt=dict(schema=SCHEMA,result='未验证',input_sha256=input_sha256(response))
     try:
         curve=CommandCurve(response)
         motion=curve.certify_motion(position_limits=position_limits,maximum_speed=maximum_speed,max_acceleration=max_acceleration,max_jerk=max_jerk)
-        receipt=SweepValidator(urdf,response['joint_names'],world,locks,attachment,
-            **({} if execution_settings is None and measured_start else dict(execution_settings=execution_settings,measured_start=measured_start))).certify(response)
+        options={} if execution_settings is None and measured_start else dict(execution_settings=execution_settings,measured_start=measured_start)
+        validator=SweepValidator(urdf,response['joint_names'],world,locks,attachment,**options)
+        spec=dict(urdf=str(urdf),names=list(response['joint_names']),world=world,locks=locks,attachment=attachment,**options)
+        receipt=validator.certify(response,stats=parallel_stats(spec,response,len(validator.items(response))))
     except Exception as exc:
         receipt['failure']=dict(reason='service_continuous_validator_exception',error=f'{type(exc).__name__}: {exc}')
     if _evidence is not None:
