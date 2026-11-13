@@ -74,3 +74,14 @@ def test_old_grasp_generation_is_separate_even_with_legacy_execution():
     b=dict(experiment_id='b',manifest={'configs':{'pick:102':dict(planner_mode='ik_path',ik_candidates=8,ik_max_joint_jump=1.)}},cells=[row('b',True,'legacy')])
     value=summarize([a,b])
     assert {g['grasp_generation'] for g in value['profiles']}=={'0g','pre-0g'}
+    frozen=copy.deepcopy(b)
+    frozen['experiment_id']='frozen'
+    frozen['cells']=[row('frozen',False,'legacy')]
+    frozen['manifest']['configs']['pick:102']['grasp_freeze']={
+        'id':'grasp-v2-20261113','sha256':'f'*64}
+    value=summarize([a,b,frozen])
+    assert {g['grasp_generation'] for g in value['profiles']}=={'0g','pre-0g','grasp-v2-20261113'}
+    assert len(value['profiles'])==3
+    rates={g['grasp_generation']:g['by_policy']['autonomous']['native_success_rate'] for g in value['profiles']}
+    assert rates=={'pre-0g':0.,'0g':1.,'grasp-v2-20261113':0.}
+    assert all(g['by_policy']['autonomous']['evaluated_cells']==1 for g in value['profiles'])
