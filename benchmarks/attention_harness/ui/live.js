@@ -4761,7 +4761,9 @@
     const endReason=operatorEndReason(snapshot,maximum),took=epoch(startedAt)!=null&&epoch(endedAt)!=null?` · took ${humanDuration(epoch(endedAt)-epoch(startedAt))}`:'';
     const sub = system ? `Started ${dateTime(startedAt)} · please tell the research team` : terminal ? `${endReason==='the run ended'?'Ended':`Ended because ${endReason}`}${startedAt==null?'':` · started ${dateTime(startedAt)}`}${took}` : waiting ? `${Math.max(0,maximum-k)} attempt(s) left${pending?.created_at == null ? '' : ` · paused for ${operatorTime(Date.now()/1000-pending.created_at)}`}` : '';
     const lowered=snapshot.agent?.reduced_budget;
-    const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours · not directly comparable with the official 10-version results</p>`:'';
+    // 11-13 user: Remote runs have no time limit (agent.wall_limit is null), so the line names no hours there.
+    const timed=snapshot.agent?.wall_limit!=null;
+    const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions${timed?` · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours`:' · no time limit'} · not directly comparable with the official 10-version results</p>`:'';
     const blind=(snapshot.agent?.text_only_roles||[]).map(role=>role==='eval'?'Eval':'Advisor');
     const blindLine=blind.length?`<p class="op-reduced" data-text-only-roles><b>No images</b> · ${esc(blind.join(' and '))} did not see images in this run, so ${blind.length>1?'they':'it'} worked from text alone.</p>`:'';
     return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}${blindLine}</div></div>`;
