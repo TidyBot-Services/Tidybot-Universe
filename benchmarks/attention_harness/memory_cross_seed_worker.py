@@ -1,6 +1,6 @@
 """Cross-seed transitions called only through the M-8 gating/lock/budget loop."""
 import hashlib
-from .memory_validation_worker import settings,prepare_origin,check_dispatch_quota,daily_run_stop
+from .memory_validation_worker import settings,prepare_origin,check_dispatch_quota,daily_run_stop,isolate_queue_errors
 
 
 def progress(current):
@@ -25,10 +25,12 @@ def choose(state,deps,save,status):
         batch.update(pair_index=0,arm='control',active=False,title=waiting['title'])
         state['current']=batch;state.pop('cross_waiting');save()
         return advance(state,deps,None,save,status)
-    queued=deps.client.cross_seed_queue()
+    queued=isolate_queue_errors(state,deps.client.cross_seed_queue())
     closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
+    closed.update(state.get('note_errors',{}))
     state['cross_queue']=[n for n in queued if n['memory_id'] not in closed];state['skipped_seeds']=[];save()
     if queued and not state['cross_queue']:
+        if state.get('note_errors'):return status(next(reversed(state['note_errors'].values()))['reason'])
         return status(next(r['origin_failure']['reason'] for r in reversed(state['results']) if r.get('origin_failure')))
     pending=state.get('cross_pending')
     if not pending:

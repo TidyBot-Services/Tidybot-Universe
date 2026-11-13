@@ -9,6 +9,7 @@ import time
 from urllib.parse import quote
 from .dev_agent_workspace import read_beneath, stat_beneath
 from .dev_agent_ledger import LIMITS
+from .frame_cleanup import was_cleaned, CleanedFrame, CLEANED, receipt_for, cleaned_files
 
 # Preserve error wording except host paths/credentials. Relative evidence names stay readable.
 HOST_PATH = re.compile(r'(?<![\w:])/(?:[^\s\"\'<>:,;\]\[()]+)|[A-Za-z]:\\[^\s\"\']+')
@@ -53,7 +54,9 @@ def _size(value):
 def _link(base,label,root,name):
     """Availability without reading: an unsafe or oversize file marks only its own link."""
     try:size=stat_beneath(root,name,shared=name.endswith(FRAME_SUFFIXES))
-    except FileNotFoundError:return dict(label=label+' (not yet available)',available=False)
+    except FileNotFoundError:
+        if was_cleaned(Path(root)/name):return dict(label=CLEANED,available=False,reason=CLEANED)
+        return dict(label=label+' (not yet available)',available=False)
     except (OSError,ValueError) as exc:
         return dict(label=label+' (unavailable: unsafe file)',available=False,reason=f'unsafe file ({exc})')
     if size>DOWNLOAD_LIMIT:
@@ -86,7 +89,9 @@ def artifact(cell,name):
         linked=name.endswith(FRAME_SUFFIXES)
         raw=read_beneath(root/'ws',name,DOWNLOAD_LIMIT,shared=linked)
         canonical=read_beneath(root/'private/public',name,DOWNLOAD_LIMIT,shared=linked)
-    except FileNotFoundError:raise FileNotFoundError('Agent public evidence unavailable') from None
+    except FileNotFoundError:
+        if was_cleaned(root/'ws'/name) or was_cleaned(root/'private/public'/name):raise CleanedFrame(CLEANED) from None
+        raise FileNotFoundError('Agent public evidence unavailable') from None
     except (OSError,ValueError) as exc:raise FileNotFoundError(f'Agent public evidence unavailable: {exc}') from None
     if raw!=canonical:raise FileNotFoundError('Agent public evidence digest mismatch')
     if name.endswith(FRAME_SUFFIXES):
@@ -99,7 +104,16 @@ def artifact(cell,name):
         return raw,'image/png' if name.endswith('.png') else 'image/jpeg'
     text=raw.decode('utf-8')
     # Scrub any paths from text too. This endpoint cannot download private/raw logs.
-    return (clean(json.loads(text)),'application/json') if name.endswith('.json') else (clean(text),'text/plain; charset=utf-8')
+    if name.endswith('.json'):
+        value = clean(json.loads(text))
+        if name.endswith('/frames.json') and isinstance(value, list):
+            folder = Path(name).parent
+            cleanup_root, receipt = receipt_for(root)
+            removed = {cleanup_root/n for n in cleaned_files(cleanup_root, receipt)} if receipt else set()
+            value = [dict(row, available=False, label=CLEANED) if root/'private/public'/folder/row['filename'] in removed else row
+                     for row in value]
+        return value, 'application/json'
+    return clean(text),'text/plain; charset=utf-8'
 
 
 def _projection(store,cell,*,api='/api/dev-v2',now=None):
@@ -134,6 +148,15 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         wall_limit=None
     def error(source,value):
         if value not in (None,False,'',{},[]):errors.append(dict(source=source,error=clean(value)))
+    if cell.get('artifact_dir'):
+        cleanup_error = Path(cell['artifact_dir'])/'frame-cleanup-error.json'
+        if cleanup_error.is_file():error('frame cleanup',json.loads(cleanup_error.read_bytes()))
+        cleanup_receipt = Path(cell['artifact_dir'])/'frame-cleanup.json'
+        if cleanup_receipt.is_file():
+            receipt = json.loads(cleanup_receipt.read_bytes())
+            if receipt.get('error'):error('frame cleanup',receipt['error'])
+            for group in receipt.get('views',[]):
+                if group.get('skipped'):error('frame cleanup '+group['execution']+'/'+group['view'],group['skipped'])
     error('controller',cell.get('error'))
     error('controller result',(cell.get('result') or {}).get('error'))
     error('Memory staging',cell.get('agent_memory_staging_failure'))

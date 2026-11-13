@@ -2,6 +2,7 @@
 import argparse,hashlib,json,os,re,sqlite3,subprocess,sys,threading,time
 from pathlib import Path
 from urllib.parse import urlsplit,parse_qs
+from .frame_cleanup import was_cleaned, CleanedFrame, CLEANED
 from .execution_profile import config_metadata
 from .dev_ledger import DevV2Store,RESOURCES,encoded
 from .core.dev_store import DevConflict,DevBudgetExhausted
@@ -463,6 +464,7 @@ class DailyDevV2:
             from .dev_live_monitor import response
             return response(s,eid,key,image=kind.endswith('/frame'),query=parse_qs(parsed.query))
         directory=Path(c.get('artifact_dir','/missing')).resolve();file=(directory/name).resolve()
+        if file.is_relative_to(directory) and was_cleaned(file):raise CleanedFrame(CLEANED)
         if not file.is_relative_to(directory) or any(p.startswith('.') for p in file.relative_to(directory).parts) or not file.is_file():raise FileNotFoundError('Cell evidence unavailable')
         allowed={'policy.py','diff.patch','version.json','public-feedback.json','decision.json','help.json','bundle.json','model-input.json','model-output.json','advisor-input.json','advisor-output.json','trace.json','native_result.json','recording.json','sandbox_receipt.json','advisor_replay.mp4','simulation.mp4','config.json','session-lock.json','evaluator-review.json'}
         if file.name not in allowed and file.name!='camera_views.json' and not re.fullmatch(r'advisor_replay_(side|top|left_wrist|right_wrist)\.mp4',file.name):raise FileNotFoundError('Not display evidence')

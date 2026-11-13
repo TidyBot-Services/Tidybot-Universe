@@ -163,6 +163,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
     descriptor_ref=immutable(out/'descriptor.json',descriptor)
     files={};symlinks={};visited=set()
     def pin(path,expected=None):
+        from .frame_cleanup import is_frame_image
+        if is_frame_image(path):return
         p=Path(path);actual=None;public_state=False
         if not p.is_absolute():
             if c.get('dev_mode')!='agent':raise ValueError('only original absolute evidence paths are pinned')

@@ -170,6 +170,10 @@ class NoticeReader:
                 if snap:
                     eid = snap['experiment_id']
                     for cell in v2_cells:
+                        from .frame_cleanup import notices
+                        for i, problem in enumerate(notices(Path(cell.get('artifact_dir','/missing')))):
+                            add(f'frame-cleanup-{cell.get("key")}-{i}', 'error', 'run', 'Frame cleanup needs attention',
+                                problem, 'Video and retained evidence remain available. Check the cleanup log.', stamp)
                         state = cell.get('state')
                         if state in {'needs_review', 'failed', 'condition_invalid', 'budget_exhausted'}:
                             reason = safe_text(cell.get('reason'), 'The run needs attention.')

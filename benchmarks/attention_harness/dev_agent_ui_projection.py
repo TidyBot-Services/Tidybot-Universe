@@ -490,7 +490,10 @@ def version_evidence(cell, version, *, media=True, instruments=True):
         # Preserve the full citation; link only a recognized public filename.
         match = re.match(r'^(stdout\.txt|stderr\.txt|trace\.json|state_log\.json|diagnostics/planner\.json|frames/[A-Za-z0-9_.-]+\.(?:png|jpg))(?=$|[\s:#])', citation.get('source', ''))
         if match:
-            entry['uri'] = f'{ROOT}/executions/{eid}/'+match[1]
+            from .frame_cleanup import was_cleaned, CLEANED
+            frame = Path(cell['artifact_dir'])/'agent/private/public/executions'/eid/match[1]
+            if was_cleaned(frame):entry.update(label=CLEANED, available=False)
+            else:entry['uri'] = f'{ROOT}/executions/{eid}/'+match[1]
         citations.append(entry)
     row['citations'] = citations
     outcome = public(cell, f'executions/{eid}/result.json', {})

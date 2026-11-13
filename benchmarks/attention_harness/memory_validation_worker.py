@@ -57,6 +57,15 @@ def set_enabled(root,enabled):
     atomic(Path(root)/'autovalidate.json',value)
 
 
+def isolate_queue_errors(state, rows):
+    """Service error rows are diagnostics, never dispatchable validation work."""
+    for row in rows:
+        if row.get('status') in {'isolated', 'error'}:
+            state.setdefault('note_errors', {})[row['memory_id']] = dict(
+                status='isolated', reason=row.get('reason') or 'Historical evidence no longer verifies')
+    return rows
+
+
 def validate_daily_run_limit(limit):
     if limit is not None and (type(limit) is not int or limit<=0):
         raise ValueError('daily_run_limit must be a positive integer or null')
@@ -700,7 +709,7 @@ def _tick(state,deps):
             state['current']=None;save()
             return status((('Positive control '+outcome.replace('_',' ')+': ') if outcome in {'would_pass','would_fail'} else 'Note checked and trusted: ' if outcome=='trusted' else 'Note rejected after check: ')+current['title'])
         if current is None:
-            queued=deps.client.validation_queue()
+            queued=isolate_queue_errors(state,deps.client.validation_queue())
             closed={r['memory_id'] for r in state.get('results',[]) if r.get('origin_failure')}
             closed.update(state.get('note_errors',{}))
             state['queue']=[n for n in queued if n['memory_id'] not in closed];save()

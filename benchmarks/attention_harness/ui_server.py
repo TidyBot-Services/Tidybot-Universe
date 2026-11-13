@@ -26,6 +26,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, quote, unquote, urlsplit
 from urllib.request import Request, urlopen
 
+from .frame_cleanup import CleanedFrame
 from .core.projection import AttentionProjection
 from .core.runtime import AttentionRuntime
 from .core.store import AttentionStore, StateConflictError
@@ -802,6 +803,7 @@ def create_server(
                     self._send(raw,content,status,headers)
                 elif content.startswith('application/json'):self._send(json.dumps(value,ensure_ascii=False).encode(),content,status,headers)
                 else:self._send(value.encode() if isinstance(value,str) else value,content,status,headers)
+            except CleanedFrame as error:self._json({'error':str(error)},410)
             except FileNotFoundError as error:self._json({'error':str(error)},404)
             except (ValueError,KeyError,TypeError,DevConflict) as error:self._json({'error':str(error)},409)
             return True

@@ -1,12 +1,21 @@
 """Deterministic offline validation of sealed execution evidence; never model judgement."""
 import hashlib,json,sqlite3,tempfile
 from pathlib import Path
+from .frame_cleanup import is_frame_image
 from .dev_v2_loop import immutable
 from .gpu_meter import GpuMeter
 from openarm365_dev_v2 import scene_contract
 
 
 class Refused(ValueError):pass
+
+
+def sealed_files(root, *, recursive=False):
+    """Catalog JSON/code/video evidence, excluding disposable RGB frames."""
+    root = Path(root)
+    paths = root.rglob('*') if recursive else root.iterdir()
+    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in paths if p.is_file() and not is_frame_image(str(p.relative_to(root)))}
 
 
 def sealed(ref,root,files):
@@ -230,7 +239,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
             exposure=binding['exposure'],memory_id=binding['memory_id'] if binding['exposure']=='candidate_validation' else None,
             validation_grant_id=grant['grant_id'],costs=costs,developer_model=developer_model,budget=budget,validation_config=immutable(out/'comparison.json',comparison))
         immutable(out/'trial.json',trial)
-    catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files={str(p.relative_to(out)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (out.rglob('*') if agent else out.iterdir()) if p.is_file()})
+    catalog=dict(role='validator',root=str(out),context=executor_catalog['context'],files=sealed_files(out, recursive=bool(agent)))
     return dict(status='passed' if all(checks.values()) else 'failed',descriptor=ref,catalog=catalog,checks=checks,errors=errors,**gpu)
 
 

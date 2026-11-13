@@ -946,4 +946,7 @@ def run_cell(store,exp,m,key,through_version,owner,*,client=None,runner_factory=
         # Already claimed failures are held by provider_call/execute; no retries.
         unresolved=any(j['state'] in {'claimed','needs_review'} for j in store.cell(key)['jobs'])
         store.update_cell(key,state='needs_review' if unresolved else 'planned',reason=f'{type(exc).__name__}: {exc}');raise
-    finally:store.update_cell(key,owner=None)
+    finally:
+        store.update_cell(key,owner=None)
+        from .frame_cleanup import schedule
+        schedule(root)
