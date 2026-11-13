@@ -683,8 +683,8 @@ class Broker:
                         if eid and (self.workspace.ws/'executions'/eid/'result.json').is_file():
                             # A diagnosis problem is recorded and skipped: it never fails settlement or quarantines the run.
                             try:
-                                from .dev_agent_diagnose import build as build_diagnosis
-                                self.workspace.publish('executions/'+eid+'/diagnose.json',build_diagnosis(self.workspace.ws,eid))
+                                from .dev_agent_diagnose import build as build_diagnosis, encode_diagnosis
+                                self.workspace.publish('executions/'+eid+'/diagnose.json',encode_diagnosis(build_diagnosis(self.workspace.ws,eid)))
                             except Exception as exc:
                                 try:atomic_write(self.workspace.private,'errors/diagnose-'+eid+'.json',encode(dict(error='diagnose_failed',**soft_error(exc))))
                                 except OSError:pass

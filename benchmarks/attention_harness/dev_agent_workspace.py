@@ -467,8 +467,8 @@ for help ids, reason codes, delivery and actual fees. Practice run help remains 
 the execution history even before the first submit. Version help files index all
 help in their execution window. Eval advice and help reach the next resume message.
 '''
-) + '''diagnose eN (or numeric N): offline failure, state, contacts, movement and joint-margin JSON.
-Reads only published executions/eN/ files and docs/sdk.json; full report: executions/eN/diagnose.json.
+) + '''diagnose eN (or numeric N): offline failure, state, contacts and movement JSON.
+Reads only published executions/eN/ files; full report: executions/eN/diagnose.json.
 notes check checks work/notes.md for the latest execution id; notes template prints the section format.
 ''' + CONTEXT_RULE
 

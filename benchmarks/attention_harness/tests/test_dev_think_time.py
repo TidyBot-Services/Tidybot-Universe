@@ -46,14 +46,14 @@ def fixture(tmp_path, message='ik_path_joint_jump'):
     (folder/'stderr.txt').write_text('stderr end')
     write(folder, 'help.json', {'status': 'unavailable'})
     write(folder, 'eval.json', {'status': 'unavailable'})
-    write(root, 'docs/sdk.json', {'joint_limits': {f'openarm_left_joint{i}': [-1, 1] for i in range(1, 8)}})
+    write(root, 'docs/sdk.json', {'groups': ['left_arm', 'right_arm'], 'control_steps': 9600})
     (root/'docs/tools.md').write_text(TOOLS_V2)
     (root/'work').mkdir()
     (root/'work/notes.md').write_text('')
     return root, folder, trace
 
 
-def test_diagnose_complete_distance_contacts_movement_and_margins(tmp_path):
+def test_diagnose_complete_distance_contacts_and_movement(tmp_path):
     root, folder, trace = fixture(tmp_path)
     value = diag.diagnose(root, '7')
     assert list(value)[:2] == ['outcome', 'first_failure']
@@ -63,12 +63,13 @@ def test_diagnose_complete_distance_contacts_movement_and_margins(tmp_path):
     assert first['planner_reason'] == ['ik_path_joint_jump']
     arm = value['at_failure']['arms']['left']
     assert arm['distance_to_target_m'] == pytest.approx(.3)
-    assert arm['eef_quat'] == [0, 0, 0, 1] and arm['gripper_opening'] == [.02, .02]
+    assert 'eef_quat' not in arm and arm['gripper_opening'] == [.02, .02]
     assert value['at_failure']['row_index'] == 30
-    assert [v['row_index'] for v in value['contacts']] == list(range(10, 51))
+    assert [v['physics_step'] for v in value['contacts']] == list(range(28, 33))
+    assert all(set(v) == {'physics_step', 'unexpected_contacts', 'bilateral_contact_objects'} for v in value['contacts'])
     assert 'hidden_unrelated' not in json.dumps(value['contacts'])
     assert value['objects_moved']['cup']['moved_m'] == .02
-    assert [v['margin_rad'] for v in value['joint_margins']] == pytest.approx([.01, .1, .2])
+    assert 'joint_margins' not in value and not any('joint_margins' in n for n in value.get('notes', []))
     assert value['pointers']['full_files']['trace.json'] == (folder/'trace.json').stat().st_size
     assert 'help.json' in value['pointers']['lines'][2] and 'eval.json' in value['pointers']['lines'][3]
     assert json.loads((folder/'diagnose.json').read_text()) == value
@@ -87,6 +88,25 @@ def test_diagnose_long_failure_never_cut(tmp_path):
     assert json.loads((folder/'diagnose.json').read_text())['first_failure']['error']['message'] == message
 
 
+@pytest.mark.parametrize('as_string', [False, True])
+def test_long_result_error_and_rejection_strings_never_cut(tmp_path, as_string):
+    message = 'full error or rejection ' * 500 + 'END'
+    root, folder, trace = fixture(tmp_path)
+    trace[2].pop('error')
+    trace[2]['result'] = message if as_string else {
+        'rejected': True, 'reason': message, 'diagnostics': {'error': {'detail': message}, 'qpos': [0]*1000}}
+    write(folder, 'trace.json', trace)
+    value = diag.diagnose(root, '7')
+    shown = json.loads(tools.bounded_json(value))['first_failure']['result']
+    saved = json.loads((folder/'diagnose.json').read_text())['first_failure']['result']
+    assert shown == saved
+    if as_string:
+        assert shown['message'] == message
+    else:
+        assert shown['reason'] == message and shown['diagnostics']['error']['detail'] == message
+        assert 'qpos' not in shown['diagnostics']
+
+
 def test_missing_files_no_limits_and_fallback_are_explicit(tmp_path):
     root, folder, _ = fixture(tmp_path)
     write(root, 'docs/sdk.json', {})
@@ -98,7 +118,7 @@ def test_missing_files_no_limits_and_fallback_are_explicit(tmp_path):
     value = diag.diagnose(root, '7')
     assert value['at_failure']['row_index'] == 64
     assert 'no reliable' in value['at_failure']['alignment']
-    assert 'joint_margins' not in value and any('no named joint limits' in n for n in value['notes'])
+    assert 'joint_margins' not in value and not any('joint_margins' in n for n in value['notes'])
     assert 'distance_to_target_m' not in value['at_failure']['arms']['left']
     assert any('initial_observation.json' in n for n in value['notes'])
     for path in folder.rglob('*.json'):
@@ -135,13 +155,148 @@ def test_native_tcp_and_explicit_sequence_alignment(tmp_path):
     assert 'sequence' in value['at_failure']['alignment']
 
 
-def test_diagnose_opens_only_execution_and_sdk(tmp_path, monkeypatch):
+def public_shapes(tmp_path, failed):
+    """Real published shapes: relative trace time, no trace/state coordinates in common."""
+    root, folder, _ = fixture(tmp_path)
+    def call(source, status='completed', result=None):
+        return dict(arguments={'args': [], 'kwargs': {}}, operation='move_delta',
+                    result={'ok': True, 'rejected': False} if result is None else result,
+                    source=source, status=status, timestamp=1.25, timestamp_basis='relative')
+    trace = [call('left_gripper'), call('sensors'), failed, call('base')]
+    rows = [dict(request_id=f'request-{i//1000}', physics_step=i+1,
+                 qpos=[0]*14, qvel=[0]*14, base_qpos=[0]*3,
+                 tcp={s: [[1,0,0,.123456789+i/10000], [0,1,0,0], [0,0,1,.9], [0,0,0,1]]
+                      for s in ('left', 'right')},
+                 gripper_qpos={'left': [.0123456,.0123456], 'right': [.02,.02]},
+                 gripper_qvel={'left': [0,0], 'right': [0,0]},
+                 unexpected_contacts=[], bilateral_contact_objects={'left': [], 'right': []},
+                 held_envelope={'rotation_rad': .1, 'translation_m': .01},
+                 execution_profile='r4-20261027') for i in range(3000)]
+    if not diag.dispatched(failed):
+        for i, row in enumerate(rows):
+            row['request_id'] = f'request-{i//1500}'
+    write(folder, 'trace.json', trace)
+    write(folder, 'state_log.json', rows)
+    return root, folder, trace, rows
+
+
+def public_failure(source='left_arm', status='failed', result=None):
+    return dict(arguments={'args': [], 'kwargs': {'position': [.4,0,.9]}},
+                operation='move_delta', result={'message': 'motion failed'} if result is None else result,
+                source=source, status=status, timestamp=2.5, timestamp_basis='relative')
+
+
+@pytest.mark.parametrize('source', sorted(diag.MOVING))
+def test_request_group_failure_during_motion(tmp_path, source):
+    root, folder, trace, rows = public_shapes(tmp_path, public_failure(source))
+    value = diag.build(root, '7')
+    assert value['at_failure']['row_index'] == 1999
+    assert value['at_failure']['alignment'] == 'request group 2 of 3 (failed during motion)'
+    assert value['first_failure']['result'] == {'message': 'motion failed', 'full': 'executions/e000007/trace.json[2]'}
+    assert value['at_failure']['arms']['left']['eef_pos'] == [.3234,0,.9]
+    assert value['at_failure']['arms']['left']['gripper_opening'] == [.0123,.0123]
+    assert value['first_failure']['previous'] == [dict(call='left_gripper.move_delta', status='completed'),
+                                                dict(call='sensors.move_delta', status='completed')]
+
+
+@pytest.mark.parametrize('source,status,result', [
+    ('left_arm', 'rejected', {'rejected': True, 'reason': 'pre-dispatch refusal'}),
+    ('left_arm', 'completed', {'rejected': True, 'reason': 'pre-dispatch refusal'}),
+    ('sensors', 'failed', {'message': 'sensor failed'}),
+])
+def test_request_group_pre_dispatch_or_sensor_failure_before_more_motion(tmp_path, source, status, result):
+    root, folder, trace, rows = public_shapes(tmp_path, public_failure(source, status, result))
+    value = diag.build(root, '7')
+    assert value['at_failure']['row_index'] == 1499 < len(rows)-1
+    assert value['at_failure']['alignment'].startswith('request group 1 of 2 (previous dispatched group;')
+    assert value['first_failure']['result']['full'] == 'executions/e000007/trace.json[2]'
+    for key in result:
+        assert value['first_failure']['result'][key] == result[key]
+
+
+def test_request_group_rejection_before_any_motion_uses_first_row(tmp_path):
+    root, folder, trace, rows = public_shapes(tmp_path, public_failure(status='rejected', result={'rejected': True, 'reason': 'no motion'}))
+    trace = [trace[2], trace[0], trace[3]]
+    write(folder, 'trace.json', trace)
+    value = diag.build(root, '7')
+    assert value['at_failure']['row_index'] == 0
+    assert 'no previous dispatched group' in value['at_failure']['alignment']
+
+
+@pytest.mark.parametrize('problem,expected', [
+    ('prefix', 'dispatched moving calls through failure exceed'),
+    ('extra', 'dispatched moving calls !='),
+    ('missing', 'state row missing request_id'),
+    ('reappears', 'non-contiguous request_id group'),
+])
+def test_request_group_mapping_inconsistency_is_explained(tmp_path, problem, expected):
+    root, folder, trace, rows = public_shapes(tmp_path, public_failure())
+    if problem == 'prefix':
+        for row in rows:
+            row['request_id'] = 'only-one'
+    elif problem == 'extra':
+        rows[-1]['request_id'] = 'extra-group'
+    elif problem == 'missing':
+        rows[100].pop('request_id')
+    else:
+        rows[-1]['request_id'] = rows[0]['request_id']
+    write(folder, 'state_log.json', rows)
+    value = diag.build(root, '7')
+    assert value['at_failure']['row_index'] == 2999
+    assert value['at_failure']['alignment'].startswith('last row;')
+    assert expected in value['at_failure']['alignment']
+
+
+def test_large_public_execution_bounds_both_cli_and_file(tmp_path):
+    result = dict(rejected=True, reason='safe refusal', diagnostics={
+        'reason': 'planner refusal', 'candidate_reasons': ['collision', 'joint margin'],
+        'solver_diagnostics': [{'error_message': 'no path', 'trajectory': [0]*10000}],
+        'candidate_qpos': [[0]*14]*1000})
+    root, folder, trace, rows = public_shapes(tmp_path, public_failure(status='rejected', result=result))
+    for i, row in enumerate(rows):
+        row['unexpected_contacts'] = [{'bodies': ['arm', 'counter'], 'distance': -.001}]
+        row['bilateral_contact_objects'] = {'left': ['cup'] if i%2 else [], 'right': []}
+    write(folder, 'state_log.json', rows)
+    write(folder, 'result.json', dict(status='completed', error=None, sdk_calls=100, detail='x'*10000))
+    for i in range(500):
+        path = folder/'frames'/f'{i}.jpg'
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(b'fake frame')
+    copied_cli(root)
+    completed = subprocess.run([sys.executable, 'docs/devtool.py', 'diagnose', '7'], cwd=root, capture_output=True, text=True)
+    assert completed.returncode == 0
+    value = json.loads(completed.stdout)
+    saved = (folder/'diagnose.json').read_text()
+    assert len(completed.stdout) <= 4000 and len(saved) <= 4000
+    assert len(json.dumps(value, ensure_ascii=False)) <= 4000
+    assert json.loads(saved) == value
+    assert value['outcome'] == {'status': 'completed', 'error': None}
+    first = value['first_failure']
+    assert first['call'] == 'left_arm.move_delta' and first['arguments'] == trace[2]['arguments']
+    assert first['result'] == dict(rejected=True, reason='safe refusal', full='executions/e000007/trace.json[2]',
+                                   diagnostics={'reason': 'planner refusal', 'candidate_reasons': ['collision', 'joint margin'],
+                                                'solver_diagnostics': [{'error_message': 'no path'}]})
+    assert 0 < len(value['contacts']) <= 5
+    assert all(1479 <= r['physics_step']-1 <= 1519 for r in value['contacts'])
+    assert value['pointers']['full_files']['frames/']['files'] == 500
+    assert 'qpos' not in saved and 'candidate_qpos' not in saved
+
+
+def test_contact_selection_uses_bilateral_sets_and_global_previous_row():
+    rows = [dict(physics_step=i, unexpected_contacts=[], bilateral_contact_objects={'left': ['a','b']}) for i in range(50)]
+    rows[5]['bilateral_contact_objects']['left'] = ['b','a']
+    rows[20]['bilateral_contact_objects']['left'] = ['cup']
+    rows[22]['unexpected_contacts'] = ['collision']
+    assert [r['physics_step'] for r in diag.contact_window(rows, 40)] == [20,21,22]
+
+
+def test_diagnose_opens_only_execution(tmp_path, monkeypatch):
     root, folder, _ = fixture(tmp_path)
     opened = []
     real_open, real_path_open = builtins.open, Path.open
     def check(path):
         path = Path(path).resolve()
-        assert folder in path.parents or path == root/'docs/sdk.json', path
+        assert folder in path.parents, path
         opened.append(path)
     def guard(path, *args, **kw):
         check(path); return real_open(path, *args, **kw)
@@ -317,6 +472,8 @@ def test_broker_publishes_diagnosis_and_cli_only_reads_it(tmp_path, monkeypatch,
         eid = response['execution_id']
         folder = r.ws.ws/'executions'/eid
         assert (folder/'diagnose.json').read_bytes() == (r.ws.canonical/'executions'/eid/'diagnose.json').read_bytes()
+        assert len((folder/'diagnose.json').read_text()) <= 4000
+        assert b'\n  ' not in (folder/'diagnose.json').read_bytes()
         def no_write(*a, **kw):
             raise AssertionError('Dev must not write to the read-only execution mount')
         monkeypatch.setattr(Path,'write_text',no_write)
@@ -389,3 +546,12 @@ def test_frames_are_summarised_in_full_files(tmp_path):
     files = out['pointers']['full_files']
     assert files['frames/'] == {'files': 50, 'bytes': 500}
     assert not any(k.startswith('frames/f') for k in files)
+
+
+def test_contact_setting_labels_are_not_reported_as_contacts():
+    # Reviewer addition (11-14): constant fixture_contact_* settings appear in every published row.
+    from benchmarks.attention_harness.dev_agent_diagnose import contacts_in
+    row = {'unexpected_contacts': [['a', 'b', -0.001]], 'bilateral_contact_objects': {'left': []},
+           'fixture_contact_mode': 'record_only', 'fixture_contact_radius_m': 0.01,
+           'fixture_press_contact_radius_m': 0.035, 'fixture_contact_base_rehold_max_yaw_rad': 0.1}
+    assert set(contacts_in(row)) == {'unexpected_contacts', 'bilateral_contact_objects'}

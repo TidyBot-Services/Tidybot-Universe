@@ -1,4 +1,4 @@
-"""Offline v2 diagnostics. Inputs are exclusively screened workspace execution files and sdk.json.
+"""Offline v2 diagnostics. Inputs are exclusively screened workspace execution files.
 
 Also copied beside devtool.py; keep imports stdlib plus the copied summary helpers.
 """
@@ -8,9 +8,9 @@ from pathlib import Path
 import re
 
 try:
-    from .dev_agent_exec_summary import _call, _moved, _objects
+    from .dev_agent_exec_summary import _moved, _objects
 except ImportError:  # standalone docs/devtool.py
-    from dev_agent_exec_summary import _call, _moved, _objects
+    from dev_agent_exec_summary import _moved, _objects
 
 
 def execution_id(value):
@@ -42,7 +42,42 @@ def read_json(path, allowed, notes):
         return None
 
 
-def failure(trace, planner, notes):
+def reason_fields(value):
+    """Keep error/reason strings at any depth, without copying numeric planner data."""
+    if not isinstance(value, dict):
+        return {}
+    out = {}
+    for key, item in value.items():
+        if re.search(r'reason|error|message', key, re.I):
+            evidence = string_evidence(item)
+            if evidence is not None or item is None:
+                out[key] = evidence
+        elif isinstance(item, dict):
+            nested = reason_fields(item)
+            if nested:
+                out[key] = nested
+        elif isinstance(item, list):
+            nested = [fields for v in item if (fields := reason_fields(v))]
+            if nested:
+                out[key] = nested
+    return out
+
+
+def string_evidence(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return {k: evidence for k, v in value.items() if (evidence := string_evidence(v)) is not None}
+    if isinstance(value, list):
+        return [evidence for v in value if (evidence := string_evidence(v)) is not None]
+    return None
+
+
+def call_name(row):
+    return f"{row['source']}.{row.get('operation')}" if row.get('source') else row.get('operation')
+
+
+def failure(trace, planner, notes, trace_path='trace.json'):
     for i, row in enumerate(trace):
         if not isinstance(row, dict):
             continue
@@ -50,13 +85,20 @@ def failure(trace, planner, notes):
         if not (row.get('status') in ('failed', 'rejected') or row.get('error')
                 or isinstance(result, dict) and result.get('rejected')):
             continue
-        name = f"{row['source']}.{row.get('operation')}" if row.get('source') else row.get('operation')
-        out = dict(index=i, call=name,
-                   arguments=row.get('arguments'), previous=[_call(j, trace[j]) for j in range(max(0, i-2), i)
+        out = dict(index=i, call=call_name(row),
+                   arguments=row.get('arguments'), previous=[dict(call=call_name(trace[j]), status=trace[j].get('status')) for j in range(max(0, i-2), i)
                                                             if isinstance(trace[j], dict)])
-        for key in ('status', 'error', 'result', 'reason', 'rejection_reason'):
+        for key in ('status', 'error', 'reason', 'rejection_reason'):
             if key in row:
                 out[key] = row[key]  # Never shorten arguments, error or rejection evidence.
+        if 'result' in row:
+            result = reason_fields(row['result'])
+            if isinstance(row['result'], str):
+                result['message'] = row['result']
+            if isinstance(row['result'], dict) and 'rejected' in row['result']:
+                result['rejected'] = row['result']['rejected']
+            result['full'] = f'{trace_path}[{i}]'
+            out['result'] = result
         if 'arguments' not in row:
             notes.append('first_failure.arguments: absent in published trace')
         reasons = []
@@ -84,10 +126,46 @@ def failure(trace, planner, notes):
     return None, None
 
 
-def aligned_row(rows, call, notes, trace_index=None):
+MOVING = {'left_arm', 'right_arm', 'left_gripper', 'right_gripper', 'bimanual', 'base'}
+
+
+def dispatched(call):
+    return (isinstance(call, dict) and call.get('source') in MOVING
+            and call.get('status') in ('completed', 'failed')
+            and not mapping(call.get('result')).get('rejected'))
+
+
+def aligned_row(rows, call, notes, trace_index=None, trace=()):
     if not rows:
-        notes.append('at_failure/contacts/joint_margins: no state rows')
+        notes.append('at_failure/contacts: no state rows')
         return None, None
+    def fallback(why):
+        return len(rows)-1, dict(row=rows[-1], alignment=f'last row; no reliable trace/state alignment: {why}')
+    if any(isinstance(row, dict) and row.get('request_id') is not None for row in rows):
+        # The public trace has no shared coordinates. Physics request groups follow
+        # dispatched moving calls in trace order; rejected calls consume no group.
+        groups = {}
+        previous = None
+        for i, row in enumerate(rows):
+            request = row.get('request_id') if isinstance(row, dict) else None
+            if not isinstance(request, (str, int)):
+                return fallback('state row missing request_id')
+            if request != previous and request in groups:
+                return fallback('non-contiguous request_id group')
+            groups[request] = i
+            previous = request
+        calls = [j for j, row in enumerate(trace) if dispatched(row)]
+        through = sum(j <= trace_index for j in calls) if trace_index is not None else len(calls)
+        if through > len(groups):
+            return fallback(f'{through} dispatched moving calls through failure exceed {len(groups)} request groups')
+        if len(calls) != len(groups):
+            return fallback(f'{len(calls)} dispatched moving calls != {len(groups)} request groups')
+        if not through:
+            return 0, dict(row=rows[0], alignment=f'first row (no previous dispatched group; {len(groups)} request groups)')
+        i = list(groups.values())[through-1]
+        why = ('failed during motion' if dispatched(call) else
+               'previous dispatched group; rejected before dispatch or sensors call') if call else 'execution end; no failure'
+        return i, dict(row=rows[i], alignment=f'request group {through} of {len(groups)} ({why})')
     if call:
         # Only explicit shared coordinates, never equate list index with physics step.
         containers = [call] + [call[k] for k in ('result', 'error') if isinstance(call.get(k), dict)]
@@ -107,8 +185,7 @@ def aligned_row(rows, call, notes, trace_index=None):
             if candidates:
                 i, row = candidates[-1]
                 return i, dict(row=row, alignment='last row with matching request_id')
-    notes.append('at_failure.alignment: no reliable trace/state alignment; using last row')
-    return len(rows)-1, dict(row=rows[-1], alignment='last row; no reliable trace/state alignment')
+    return fallback('no shared coordinates or request groups')
 
 
 def vector(value, size=3):
@@ -149,14 +226,12 @@ def robot_at(row, call, trace, index, initial, notes):
     for side in ('left', 'right'):
         arm = {}
         prefix = 'robot0_' + side + '_'
-        for source, dest in (('eef_pos', 'eef_pos'), ('eef_quat', 'eef_quat'), ('gripper_qpos', 'gripper_opening')):
+        for source, dest in (('eef_pos', 'eef_pos'), ('gripper_qpos', 'gripper_opening')):
             if prefix + source in robot:
                 arm[dest] = robot[prefix + source]
         tcp = mapping(row.get('tcp')).get(side)
-        if isinstance(tcp, dict):
-            for source, dest in (('position', 'eef_pos'), ('quaternion_xyzw', 'eef_quat')):
-                if source in tcp:
-                    arm[dest] = tcp[source]
+        if isinstance(tcp, dict) and 'position' in tcp:
+            arm['eef_pos'] = tcp['position']
         if 'eef_pos' not in arm and isinstance(tcp, list) and len(tcp) == 4 and all(isinstance(v, list) and len(v) == 4 for v in tcp):
             arm['eef_pos'] = [tcp[i][3] for i in range(3)]
         if side in mapping(row.get('gripper_qpos')):
@@ -194,54 +269,78 @@ def robot_at(row, call, trace, index, initial, notes):
                     goal = [a+b for a, b in zip(before, goal['delta'])]
             if goal is not None:
                 arm['target_position'] = goal
-                arm['distance_to_target_m'] = math.dist(arm['eef_pos'], goal)
+                arm['distance_to_target_m'] = round(math.dist(arm['eef_pos'], goal), 4)
+        for key in ('eef_pos', 'gripper_opening', 'target_position'):
+            if key in arm:
+                arm[key] = rounded(arm[key])
         if arm:
             out[side] = arm
     return out
+
+
+# Constant run settings whose names contain "contact" (radius/window/mode labels) are not contact evidence.
+SETTING_KEY = re.compile(r'^fixture_(contact|press)_.*(_m|_rad|_mode|mode)$')
 
 
 def contacts_in(value):
     if not isinstance(value, dict):
         return {}
     return {k: v if 'contact' in k.lower() else contacts_in(v) for k, v in value.items()
-            if 'contact' in k.lower() or isinstance(v, dict) and contacts_in(v)}
+            if not SETTING_KEY.match(k) and ('contact' in k.lower() or isinstance(v, dict) and contacts_in(v))}
 
 
-def joint_margins(row, sdk, notes):
-    limits = sdk.get('joint_limits') if isinstance(sdk, dict) else None
-    if isinstance(limits, list) and isinstance(sdk.get('joint_names'), list) and len(limits) == len(sdk['joint_names']):
-        limits = dict(zip(sdk['joint_names'], limits))
-    if not isinstance(limits, dict) or not limits:
-        notes.append('joint_margins: docs/sdk.json contains no named joint limits')
-        return None
-    positions = row.get('joint_pos', {})
-    robot = mapping(row.get('robot', row))
-    positions = dict(positions) if isinstance(positions, dict) else {}
-    names = row.get('joint_names', sdk.get('joint_names'))
-    if isinstance(names, list) and isinstance(row.get('qpos'), list):
-        positions.update(zip(names, row['qpos']))
-    for side in ('left', 'right'):
-        joints = robot.get('robot0_'+side+'_joint_pos')
-        if isinstance(joints, list):
-            positions.update((f'openarm_{side}_joint{i+1}', q) for i, q in enumerate(joints))
-    margins = []
-    for name, bounds in limits.items():
-        if isinstance(bounds, dict):
-            bounds = [bounds.get('lower'), bounds.get('upper')]
-        q = positions.get(name)
-        if vector(bounds, 2) and type(q) in (int, float) and math.isfinite(q) and bounds[0] <= bounds[1]:
-            margins.append(dict(joint=name, margin_rad=min(q-bounds[0], bounds[1]-q)))
-    if not margins:
-        notes.append('joint_margins: no published joint positions matching named limits')
-        return None
-    return sorted(margins, key=lambda v: v['margin_rad'])[:3]
+def rounded(value):
+    if isinstance(value, list):
+        return [rounded(v) for v in value]
+    return round(value, 4) if type(value) in (int, float) else value
+
+
+def contact_set(value):
+    if isinstance(value, dict):
+        return {k: contact_set(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return sorted(set(json.dumps(v, sort_keys=True) for v in value))
+    return value
+
+
+def contact_window(rows, index):
+    entries = []
+    for j in range(max(0, index-20), min(len(rows), index+21)):
+        row = mapping(rows[j])
+        bilateral = row.get('bilateral_contact_objects')
+        before = mapping(rows[j-1]).get('bilateral_contact_objects') if j else bilateral
+        if row.get('unexpected_contacts') or contact_set(bilateral) != contact_set(before):
+            entries.append((j, dict(physics_step=row.get('physics_step'), **contacts_in(row))))
+    # Keep the five qualifying samples closest to failure, in physics order.
+    selected = sorted(entries, key=lambda entry: (abs(entry[0]-index), entry[0]))[:5]
+    return [entry for _, entry in sorted(selected)]
+
+
+def fit_output(out):
+    """Budget optional context on disk as well as in the CLI. Failure evidence is sacred."""
+    def fits():
+        # Also bound the ordinary json.dumps representation used by coverage checks.
+        return len(json.dumps(out, ensure_ascii=False, allow_nan=False)) <= 3999
+    if fits():
+        return out
+    out['pointers']['lines'] = ['stdout.txt', 'stderr.txt', 'help.json', 'eval.json']
+    while out.get('contacts') and not fits():
+        out['contacts'].pop()
+    if not out.get('contacts'):
+        out.pop('contacts', None)
+    for key in ('objects_moved', 'notes'):
+        if fits():
+            break
+        out.pop(key, None)
+    # Unusually verbose reason evidence can itself exceed the budget. It, the
+    # alignment and full file inventory are retained even in that case.
+    return out
 
 
 def build(root, eid):
-    """Read only this execution folder and docs/sdk.json, without RPC or private inputs."""
+    """Read only this execution folder, without RPC or private inputs."""
     folder = execution_folder(root, eid)
-    sdk_path = Path(root).resolve() / 'docs/sdk.json'
-    allowed = (folder, sdk_path)
+    allowed = (folder,)
     notes = []
     def read(name):
         return read_json(folder/name, allowed, notes)
@@ -250,33 +349,29 @@ def build(root, eid):
     rows = rows if isinstance(rows, list) else []
     out = {}
     if result is not None:
-        out['outcome'] = result
-    first, call = failure(trace, planner, notes)
+        out['outcome'] = reason_fields(result)
+        if isinstance(result, dict) and 'status' in result:
+            out['outcome']['status'] = result['status']
+    first, call = failure(trace, planner, notes, f'executions/{folder.name}/trace.json')
     if first is not None:
         out['first_failure'] = first
     start, end = read('initial_observation.json'), read('final_observation.json')
-    i, aligned = aligned_row(rows, call, notes, first['index'] if first else None)
+    i, aligned = aligned_row(rows, call, notes, first['index'] if first else None, trace)
     if aligned and isinstance(aligned['row'], dict):
         row = aligned['row']
         out['at_failure'] = dict(row_index=i, alignment=aligned['alignment'],
                                  arms=robot_at(row, call, trace, first['index'] if first else 0, start, notes))
-        contacts = [dict(row_index=j, fields=fields) for j in range(max(0, i-20), min(len(rows), i+21))
-                    if (fields := contacts_in(rows[j]))]
+        contacts = contact_window(rows, i)
         if contacts:
             out['contacts'] = contacts
         else:
-            notes.append('contacts: no contact fields in published window')
+            notes.append('contacts: no unexpected contacts or bilateral set changes in window')
     if isinstance(start, dict) and isinstance(end, dict):
         before, after = _objects(start), _objects(end)
         if any(vector(pos) and vector(after.get(name)) for name, pos in before.items()):
             out['objects_moved'] = _moved(before, after)
         else:
             notes.append('objects_moved: no matching published start/end object positions')
-    sdk = read_json(sdk_path, allowed, notes)
-    if aligned and isinstance(aligned['row'], dict):
-        margins = joint_margins(aligned['row'], sdk, notes)
-        if margins is not None:
-            out['joint_margins'] = margins
     pointers = []
     for name in ('stdout.txt', 'stderr.txt'):
         try:
@@ -308,7 +403,11 @@ def build(root, eid):
     out['pointers'] = dict(lines=pointers, full_files=files)
     if notes:
         out['notes'] = notes
-    return out
+    return fit_output(out)
+
+
+def encode_diagnosis(value):
+    return (json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n').encode()
 
 
 def diagnose(root, eid):
@@ -319,5 +418,5 @@ def diagnose(root, eid):
     if path.is_file():
         return json.loads(path.read_text())
     value = build(root, eid)
-    path.write_text(json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2)+'\n')
+    path.write_bytes(encode_diagnosis(value))
     return value
