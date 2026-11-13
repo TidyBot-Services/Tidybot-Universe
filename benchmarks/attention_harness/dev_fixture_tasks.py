@@ -44,11 +44,18 @@ def prepare_selection(selection):
     if selection.get('scene_contract') is not None:raise ValueError('R5 uses fixture_scene_contract, not a measured scene_contract')
     return dict(selection,rules_profile=PROFILE)
 
+def _skill_fields(task):
+    """Skill tags come from the Memory service package. Hosts without it, or with an older copy
+    (the native sim worker; the Remote gateway on qifei), list tasks without tags instead of failing."""
+    try:
+        from attention_memory_service.skill_tags import VERSION, tags_for
+    except ImportError:
+        return {}
+    return dict(skill_tags=list(tags_for(task)),skill_tags_version=VERSION)
+
 def options():
-    # Lazy: the native sim worker imports this module (via dev_config) without the Memory service on its path.
-    from attention_memory_service.skill_tags import VERSION as SKILL_TAGS_VERSION, tags_for
     return [dict(task_record(t).public(),rules_profile=PROFILE,family=family,family_label=label,
-        held_out=t in HELD_OUT,skill_tags=list(tags_for(t)),skill_tags_version=SKILL_TAGS_VERSION,explicit_only=True,rules_label='fixture rules (R5)',
+        held_out=t in HELD_OUT,**_skill_fields(t),explicit_only=True,rules_label='fixture rules (R5)',
         seed_options=[dict({'seed':s,'enabled':exclusion(t,s) is None},**({} if exclusion(t,s) is None else exclusion(t,s))) for s in PILOT_SEEDS[t]])
         for family,(label,tasks) in FAMILIES.items() for t in tasks if t not in SET_ASIDE]
 
