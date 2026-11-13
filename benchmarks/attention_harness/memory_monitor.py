@@ -137,7 +137,13 @@ def automatic_checks(root=None,gateway=None):
                 value['errors'].append('Cross-seed feed unavailable: memory gateway has no '+method)
                 cross_available=False
         try:
-            value['queue']=[{k:r.get(k) for k in ('memory_id','title','uses','failure_gone')} for r in gateway.validation_queue()]
+            value['queue']=[dict({k:r.get(k) for k in ('memory_id','title','uses','failure_gone')},
+                                 **({'status':r['status'],'reason':safe_detail(r.get('reason'))}
+                                    if r.get('status') in {'isolated','error'} else {}))
+                            for r in gateway.validation_queue()]
+            for row in value['queue']:
+                if row.get('status') in {'isolated','error'}:
+                    value['errors'].append('Isolated note '+safe_text(row['memory_id'])+': '+safe_detail(row.get('reason')))
             scopes={};events=[]
             for r in gateway.memory_events(after=0):
                 event={k:r.get(k) for k in ('seq','memory_id','title','event','reason','time')};mid=r['memory_id']
@@ -148,6 +154,9 @@ def automatic_checks(root=None,gateway=None):
             if cross_available:
                 for row in gateway.cross_seed_queue():cross_notes[row['memory_id']]=row
                 for mid,row in list(cross_notes.items()):
+                    if row.get('status') in {'isolated','error'}:
+                        value['errors'].append('Isolated cross-seed note '+safe_text(mid)+': '+safe_detail(row.get('reason')))
+                        continue
                     cross_notes[mid]=dict(title=row.get('title'),**gateway.cross_seed_status(memory_id=mid))
         except Exception as exc:value['errors'].append('Automatic checks service feed unavailable: '+safe_detail(str(exc)))
     for mid,row in cross_notes.items():

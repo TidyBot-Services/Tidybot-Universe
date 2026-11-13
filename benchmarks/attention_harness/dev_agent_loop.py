@@ -532,6 +532,9 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         store.update_cell(key,state='failed' if reason=='quota_stop' else 'needs_review',reason=reason,error=str(exc),owner=None)
         print('agent cell %s ended: state=failed reason=%s error=%s'%(key,reason,exc),file=sys.stderr,flush=True)
         return dict(state='failed',reason=reason,error=str(exc))
+    finally:
+        from .frame_cleanup import schedule
+        schedule(root)
 
 
 def run_agent_experiment(store, exp_id, *, max_cells, client=None, runner_factory=None, allow_private_hosts=(), public_gateway_mode=False, sim_lock=None, **unused):

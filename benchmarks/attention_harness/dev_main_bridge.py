@@ -2,6 +2,7 @@
 
 One existing goal ledger, no daily source switch, budget renewal or forked loop.
 """
+from .frame_cleanup import was_cleaned, CleanedFrame, CLEANED
 import hashlib
 import json
 import os
@@ -308,6 +309,7 @@ class DevMainBridge:
             from .dev_live_monitor import response
             return response(self.store,eid,key,image=kind.endswith('/frame'),query=parse_qs(parsed.query))
         root=Path(c.get('artifact_dir','/missing')).resolve();p=(root/unquote(name)).resolve()
+        if p.is_relative_to(root) and was_cleaned(p):raise CleanedFrame(CLEANED)
         allowed={'policy.py','diff.patch','version.json','public-feedback.json','decision.json','help.json','bundle.json','model-input.json','model-output.json','advisor-input.json','advisor-output.json','trace.json','native_result.json','recording.json','sandbox_receipt.json','advisor_replay.mp4','simulation.mp4','config.json','session-lock.json','human-review-needed.json','human-decision-receipt.json','memory-input.json','memory-result.json','memory-candidate-proposal.json','advisor-independent-preparation.json','human-independent-preparation.json'}
         if not p.is_relative_to(root) or any(n.startswith('.') for n in p.relative_to(root).parts) or p.name not in allowed or not p.is_file():raise FileNotFoundError('unavailable public UI artifact')
         return p,'video/mp4' if p.suffix=='.mp4' else 'application/json' if p.suffix=='.json' else 'text/plain; charset=utf-8'

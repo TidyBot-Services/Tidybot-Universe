@@ -1,4 +1,5 @@
 """Isolated Dev v2 operator UI/API; never restarts/deploys the daily UI."""
+from .frame_cleanup import was_cleaned, CleanedFrame, CLEANED
 import argparse,json,os,secrets,re,subprocess,sys,threading,time
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
@@ -247,6 +248,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     else:self.obj({**row,'active_version':c['active_version']})
                     return
                 directory=Path(c.get('artifact_dir','/missing')).resolve();file=(directory/name).resolve()
+                if file.is_relative_to(directory) and was_cleaned(file):raise CleanedFrame(CLEANED)
                 if not file.is_relative_to(directory) or any(n.startswith('.') for n in file.relative_to(directory).parts) or not file.is_file():raise FileNotFoundError('cell file unavailable')
                 allowed={'human-review-needed.json','human-decision-receipt.json','memory-input.json','memory-result.json','memory-candidate-proposal.json','advisor-independent-preparation.json','human-independent-preparation.json','candidate-public-feedback.json','session-lock.json','config.json','policy.py','diff.patch','public-feedback.json','bundle.json','version.json','decision.json','help.json','model-input.json','model-output.json','advisor-input.json','advisor-output.json','trace.json','native_result.json','sandbox_receipt.json','recording.json','simulation.mp4','advisor_replay.mp4'}
                 if file.name not in allowed:raise FileNotFoundError('not public UI artifact')
@@ -265,6 +267,7 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                     f.seek(start);left=end-start+1
                     while left:
                         chunk=f.read(min(left,262144));self.wfile.write(chunk);left-=len(chunk)
+            except CleanedFrame as exc:self.obj({'error':str(exc)},410)
             except (FileNotFoundError,DevConflict) as exc:self.obj({'error':str(exc)},404)
             except (ValueError,KeyError,TypeError) as exc:self.obj({'error':str(exc)},400)
             except (BrokenPipeError,ConnectionResetError):pass
