@@ -76,8 +76,11 @@ class Broker:
     def __init__(self, workspace, *, executor, prober, evaluator, helper=None, budget=None,
                  agent_mode=False, timeouts=None, quota=None, on_cut=None, on_version=None,
                  on_execution=None, on_settled=None, quiesce=nullcontext, memory=None, before_step=lambda kind:True,
-                 agent_policy_version='agent-policy-v1', validation=False, sim_token=None):
+                 agent_policy_version='agent-policy-v1', validation=False, sim_token=None, prespawn=False):
         if agent_mode is not True: raise ValueError('agent_mode_required')
+        # Try speed-up 2: pre-starting the next execution's worker is opt-in, local runs only (never Remote).
+        if prespawn and (sim_token is not None or validation):raise ValueError('prespawn is for local runs only')
+        self.prespawn_enabled=prespawn is True
         # Remote time-share only (sim_timeshare.SimToken): each execution waits its turn for the host's one robot.
         self.sim_token=sim_token
         if agent_policy_version not in ('agent-policy-v1','agent-policy-v2'):
@@ -335,6 +338,7 @@ class Broker:
         while Dev thinks. Remote time-share (sim_token) never pre-starts. Any failure is recorded and
         the next execution simply starts cold."""
         prespawn=getattr(self.executor,'prespawn',None)
+        if getattr(self,'prespawn_enabled',False) is not True:return
         if prespawn is None or self.sim_token is not None or self.closing.is_set() or self.quarantined:return
         if self.stop_reason is not None:return
         try:

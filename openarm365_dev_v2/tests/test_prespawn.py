@@ -352,7 +352,7 @@ def broker(tmp_path, **kw):
     from benchmarks.attention_harness.dev_agent_broker import Broker
     calls = []
     ex = SimpleNamespace(prespawn=lambda d, log=None: calls.append((d, log)))
-    b = SimpleNamespace(executor=ex, sim_token=None, closing=threading.Event(), quarantined=False, stop_reason=None,
+    b = SimpleNamespace(executor=ex, prespawn_enabled=True, sim_token=None, closing=threading.Event(), quarantined=False, stop_reason=None,
                         budget=SimpleNamespace(counts=dict(executions=3), limits=dict(executions=40)),
                         workspace=SimpleNamespace(private=tmp_path))
     b.__dict__.update(kw)
@@ -364,7 +364,7 @@ def test_broker_prestarts_the_next_execution_id_locally(tmp_path):
     assert broker(tmp_path) == [(tmp_path / 'executions' / 'e000004', tmp_path / 'prespawn-log.jsonl')]
 
 
-@pytest.mark.parametrize('change', [dict(sim_token=object()), dict(quarantined=True), dict(stop_reason='run_complete'),
+@pytest.mark.parametrize('change', [dict(prespawn_enabled=False), dict(sim_token=object()), dict(quarantined=True), dict(stop_reason='run_complete'),
                                     dict(budget=SimpleNamespace(counts=dict(executions=40), limits=dict(executions=40)))])
 def test_broker_does_not_prestart_on_remote_or_after_the_run(tmp_path, change):
     assert broker(tmp_path, **change) == []
@@ -373,7 +373,7 @@ def test_broker_does_not_prestart_on_remote_or_after_the_run(tmp_path, change):
 def test_broker_records_a_prespawn_failure_and_continues(tmp_path):
     from benchmarks.attention_harness.dev_agent_broker import Broker
     def fail(d, log=None):raise OSError('disk full')
-    b = SimpleNamespace(executor=SimpleNamespace(prespawn=fail), sim_token=None, closing=threading.Event(), quarantined=False,
+    b = SimpleNamespace(executor=SimpleNamespace(prespawn=fail), prespawn_enabled=True, sim_token=None, closing=threading.Event(), quarantined=False,
                         stop_reason=None, budget=SimpleNamespace(counts=dict(executions=0), limits=dict(executions=40)),
                         workspace=SimpleNamespace(private=tmp_path))
     Broker._prespawn_next(b)
@@ -404,3 +404,48 @@ def test_stale_folder_from_an_earlier_process_is_moved_out(executor):
     assert e.ex.prespawn(d, log=e.log) is True                                 # a new prespawn clears it first
     wait_started(e.ex)
     assert e.ex.clear_stale_prespawn(d) is None and d.is_dir()               # its own pending folder is kept
+
+
+# --- switch: opt-in for the local service only, never Remote (user decision 11-14) ----------
+
+def test_switch_is_off_by_default_and_on_only_for_local_opt_in():
+    from benchmarks.attention_harness.dev_agent_prespawn import prespawn_allowed
+    local = dict(sim_lock=None, public_gateway_mode=False, validation=None)
+    assert prespawn_allowed(**local, environ={}) is False
+    assert prespawn_allowed(**local, environ={'ATTENTIONBENCH_PRESPAWN': '1'}) is False
+    assert prespawn_allowed(**local, environ={'ATTENTIONBENCH_PRESPAWN': 'local'}) is True
+
+
+@pytest.mark.parametrize('remote', [dict(sim_lock='/data/sim.lock'), dict(public_gateway_mode=True), dict(validation={'arm': 'x'})])
+def test_switch_is_always_off_for_remote_or_validation_even_with_the_opt_in(remote):
+    from benchmarks.attention_harness.dev_agent_prespawn import prespawn_allowed
+    kw = dict(sim_lock=None, public_gateway_mode=False, validation=None, environ={'ATTENTIONBENCH_PRESPAWN': 'local'})
+    kw.update(remote)
+    assert prespawn_allowed(**kw) is False
+
+
+def test_broker_refuses_prespawn_with_a_remote_time_share_token(tmp_path):
+    from benchmarks.attention_harness.dev_agent_broker import Broker
+    with pytest.raises(ValueError, match='local runs only'):
+        Broker(SimpleNamespace(private=tmp_path), executor=None, prober=None, evaluator=None, agent_mode=True,
+               sim_token=object(), prespawn=True)
+
+
+REMOTE_UNITS = ['remote_gateway/deploy/attentionbench-public-harness.service',
+                'remote_gateway/deploy/campus/attentionbench-public-harness.service',
+                'remote_gateway/deploy/run_host_harness.py']
+
+
+@pytest.mark.parametrize('unit', REMOTE_UNITS)
+def test_remote_deployments_never_opt_in_and_always_time_share(unit):
+    text = (Path(__file__).resolve().parents[2] / unit).read_text()
+    assert 'ATTENTIONBENCH_PRESPAWN' not in text
+    assert '--sim-lock' in text          # Remote runs always carry the host lock -> prespawn forced off
+
+
+def test_the_agent_loop_passes_the_switch_from_prespawn_allowed():
+    import ast
+    from benchmarks.attention_harness import dev_agent_loop
+    src = Path(dev_agent_loop.__file__).read_text()
+    assert 'prespawn=prespawn_allowed(sim_lock=sim_lock,public_gateway_mode=public_gateway_mode,validation=validation)' in src
+    assert src.count('prespawn=prespawn)') == 2      # into drive(...) and from drive into Broker(...)
