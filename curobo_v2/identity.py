@@ -274,7 +274,82 @@ def approved_deployment(lock, lock_sha, path, *, tier=None, boundary=None):
     return _approval_source(lock, lock_sha, path, tier=tier, boundary=boundary) is not None
 
 
+# 11-13 (user approved, try speed-up item 4): within one process, a dev-tier approval is reused while
+# every input that decided it is byte-identical. The key holds the lock digest and the digests of all
+# trust-policy JSON files read on the way (repository registry, official parent lock, local registry and
+# the locks it names, and a dev-local snapshot's base lock); any change misses the cache and re-runs the
+# full check. Formal/legacy tiers are never cached. The file contents the approval vouches for are
+# still verified by verify_files on every service request.
+_approval_cache = {}
+
+
+def _file_sha(path):
+    try:
+        path = Path(path)
+        if any(p.is_symlink() for p in (path, *path.parents)):
+            return 'link'
+        stat = path.stat()  # ownership and permissions are part of the local policy check
+        return (hashlib.sha256(path.read_bytes()).hexdigest(), stat.st_mode, stat.st_uid)
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def _tree_shape(root):
+    """Names, kinds and links of every entry under a snapshot (no file reads): an added, removed,
+    renamed or linked entry changes it. File contents are verify_files' job on every request."""
+    shape = []
+    try:
+        pending = [Path(root)]
+        while pending:
+            directory = pending.pop()
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    link = entry.is_symlink()
+                    folder = not link and entry.is_dir(follow_symlinks=False)
+                    shape.append((str(Path(entry.path).relative_to(root)), link, folder))
+                    if folder:
+                        pending.append(Path(entry.path))
+    except OSError:
+        return 'unreadable'
+    return hashlib.sha256(canonical(sorted(shape))).hexdigest()
+
+
+def _approval_key(lock, lock_sha, path, tier, boundary):
+    if tier != 'dev' or boundary != 'dev_loop':
+        return None
+    policy = [_file_sha(DEPLOYMENT_REGISTRY), _file_sha(OFFICIAL_PARENT_LOCK)]
+    local = _local_registry_path()
+    if local is not None:
+        policy.append(_file_sha(local))
+        try:
+            registry = json.loads(Path(local).read_bytes())
+            for keys in (('official_parent',), ('chain', 'd05'), ('chain', 'd06')):
+                entry = registry
+                for key in keys:
+                    entry = entry[key]
+                policy.append(_file_sha(entry['lock_path']))
+        except (OSError, ValueError, KeyError, TypeError):
+            policy.append('unreadable')
+    provenance = lock.get('provenance') if isinstance(lock, dict) else None
+    if isinstance(provenance, dict) and provenance.get('deployment_kind') == 'dev-local':
+        policy.append(_file_sha(provenance.get('base_deployment_lock_path')))
+        policy.append(_tree_shape(Path(path).parent))
+    return (lock_sha, str(path), str(Path(path).resolve()), tuple(policy))
+
+
 def _approval_source(lock, lock_sha, path, *, tier=None, boundary=None):
+    key = _approval_key(lock, lock_sha, path, tier, boundary)
+    if key is not None and key in _approval_cache:
+        cached_lock, source = _approval_cache[key]
+        if cached_lock == lock:
+            return source
+    source = _approval_source_checked(lock, lock_sha, path, tier=tier, boundary=boundary)
+    if key is not None and source is not None:
+        _approval_cache[key] = (json.loads(json.dumps(lock)), source)
+    return source
+
+
+def _approval_source_checked(lock, lock_sha, path, *, tier=None, boundary=None):
     if _registered_deployment(lock, lock_sha, path, tier=tier, boundary=boundary):
         return 'repository'
     if tier == 'dev' and boundary == 'dev_loop':
