@@ -284,6 +284,8 @@ class Workspace:
         if config.get('agent_policy_version')=='agent-policy-v2':
             # 11-13 try speed-up item 3: short first reads; frozen v1 TOOLS bytes stay unchanged.
             tools+=OUTPUT_RULE
+            for module in ('dev_agent_diagnose.py', 'dev_agent_exec_summary.py'):
+                self.publish('docs/'+module, Path(__file__).with_name(module).read_bytes())
         if not (config.get('agent_policy_version')=='agent-policy-v2' and config.get('agent_policy_id')=='trace_aware_hint_only'):
             tools += MEMORY_CITATION_RULE
         if config_enabled(config):tools+='\nfind_fixtures: {}. Reset-scene task fixture states and interaction parts in WORLD coordinates; no physics steps.\n'
@@ -297,6 +299,8 @@ class Workspace:
         else:
             self.publish('docs/tools.md', tools.encode())
         self.publish('docs/guide.md', b'Use docs/devtool.py for all simulator interaction. Read task.json and docs/sdk.md.\nKeep notes in work/notes.md. Every moving attempt starts from the registered reset scene.\n')
+        if config.get('agent_policy_version')=='agent-policy-v2':
+            self.publish('docs/guide.md', (self.canonical/'docs/guide.md').read_bytes()+CONTEXT_RULE.encode())
         for name in ('versions', 'executions', 'probes'):
             self.publish('history/' + name + '.jsonl', b'')
         self.publish('history/version_history.json', [])
@@ -411,6 +415,11 @@ moved and stdout/stderr tails. All full files stay beside it (state_log.json is 
 read only the part you need, e.g. with python json slicing, instead of printing whole files.
 devtool.py prints at most 4000 characters: long arrays are elided and the line names the
 full response file (rpc/responses/ID.json). Add --full, or run: devtool.py wait ID --full.
+First failures are never truncated, even when they alone exceed the print limit.
+'''
+
+CONTEXT_RULE = '''If your context was compacted, first read work/notes.md and the latest executions/eN/summary.json.
+Read large files in slices (python json slicing or devtool.py show); do not print whole state_log.json / trace.json.
 '''
 
 # Keep TOOLS above byte-for-byte for manifests without the v2 marker.
@@ -458,7 +467,10 @@ for help ids, reason codes, delivery and actual fees. Practice run help remains 
 the execution history even before the first submit. Version help files index all
 help in their execution window. Eval advice and help reach the next resume message.
 '''
-)
+) + '''diagnose eN (or numeric N): offline failure, state, contacts, movement and joint-margin JSON.
+Reads only published executions/eN/ files and docs/sdk.json; full report: executions/eN/diagnose.json.
+notes check checks work/notes.md for the latest execution id; notes template prints the section format.
+''' + CONTEXT_RULE
 
 
 MEMORY_CITATION_RULE = """

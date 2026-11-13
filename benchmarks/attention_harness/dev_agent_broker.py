@@ -462,7 +462,8 @@ class Broker:
         artifacts['summary.json'] = self.workspace.publish(base + 'summary.json', build_summary(
             eid, outcome=outcome, trace=public['trace.json'], stdout=public['stdout.txt'].decode(),
             stderr=public['stderr.txt'].decode(), initial_observation=public['initial_observation.json'],
-            final_observation=public['final_observation.json'], files=sizes))
+            final_observation=public['final_observation.json'], files=sizes,
+            full_failure=self.agent_policy_version=='agent-policy-v2'))
         self._history('executions', dict(execution_id=eid, outcome=outcome, artifacts=artifacts))
         return dict(outcome=outcome, artifacts=artifacts)
 
@@ -677,6 +678,11 @@ class Broker:
                     self._regenerate_history()
                     self.workspace.regenerate()
                     if self.on_settled:self.on_settled(response)
+                    if self.agent_policy_version=='agent-policy-v2' and op in ('run','submit','ask_help'):
+                        eid=response.get('execution_id') or (response.get('result') or {}).get('execution_id')
+                        if eid and (self.workspace.ws/'executions'/eid/'result.json').is_file():
+                            from .dev_agent_diagnose import build as build_diagnosis
+                            self.workspace.publish('executions/'+eid+'/diagnose.json',build_diagnosis(self.workspace.ws,eid))
                     self._publish(response)
                     self._prespawn_next()
                 except BaseException as exc:
