@@ -2,7 +2,7 @@
 import math
 
 NO_HELP_POLICIES={'autonomous','demo_first'}
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','dev_context_profile'}
 # The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
 DEFAULT_VERSIONS=10
 DEFAULT_WALL_SECONDS=21600
@@ -105,6 +105,17 @@ def agent_limits(value):
     return dict(versions=versions,wall_seconds=wall)
 
 
+def context_profile(config, manifest=None):
+    """Absent means baseline, including old manifests. Slim is exclusively v2."""
+    profile=config.get('dev_context_profile',(manifest or {}).get('dev_context_profile','baseline'))
+    if profile not in ('baseline','slim'):raise ValueError('unsupported_dev_context_profile')
+    if manifest and 'dev_context_profile' in config and profile!=manifest.get('dev_context_profile','baseline'):
+        raise ValueError('dev_context_profile_mismatch')
+    if profile=='slim' and config.get('agent_policy_version')!='agent-policy-v2':
+        raise ValueError('slim_requires_agent_policy_v2')
+    return profile
+
+
 def normalize(selection, *, validation_origin=None):
     reject_secret_fields(selection)
     if selection.get('dev_mode')!='agent':raise ValueError('agent_mode_required')
@@ -133,6 +144,8 @@ def normalize(selection, *, validation_origin=None):
     version=selection.get('agent_policy_version','agent-policy-v1')
     if version not in ('agent-policy-v1','agent-policy-v2'):raise ValueError('unsupported_agent_policy_version')
     if version=='agent-policy-v2':result['agent_policy_version']=version
+    profile=context_profile(selection)
+    if 'dev_context_profile' in selection and version=='agent-policy-v2':result['dev_context_profile']=profile
     if 'agent_provider' in selection:
         result['agent_provider']=provider_roles(selection['agent_provider'])
         roles=result['agent_provider']['roles']

@@ -15,6 +15,11 @@ from .dev_agent_parcc_bridge import PARCC_DEV_MODELS, ParccBridge, ChatBridge, p
 
 class SessionError(RuntimeError): pass
 
+COMPACT_PROMPT = ('Summarize the session for continuation. List the path work/notes.md and the last 3 '
+                  'execution ids. Keep the first failure of the latest execution verbatim, including '
+                  'its arguments and full error or rejection reason. Read work/notes.md and the latest '
+                  'executions/eN/summary.json after compaction.')
+
 
 class AgentSession(ABC):
     @abstractmethod
@@ -29,16 +34,20 @@ class AgentSession(ABC):
 
 class CodexAgentSession(AgentSession):
     def __init__(self, workspace, private, *, model='gpt-6-astra', reasoning_effort='high',
-                 command_factory=None, provider=None):
+                 command_factory=None, provider=None, dev_context_profile='baseline', record_context_profile=False):
         from .dev_agent_isolation import controller_command
         self.workspace,self.private=Path(workspace),Path(private)
         self.model,self.reasoning_effort=model,reasoning_effort
+        if dev_context_profile not in ('baseline','slim'):raise ValueError('unsupported_dev_context_profile')
+        self.dev_context_profile=dev_context_profile
+        self.record_context_profile=record_context_profile
         self.command_factory=command_factory or controller_command
         self.provider=provider
         self.process=None;self.thread_id=None;self.turn=0;self.usage='unknown';self.cancelled=None;self.bridge=None
         self.state_path=self.private/'session.json'
         if self.state_path.exists():
             state=json.loads(self.state_path.read_bytes())
+            if state.get('dev_context_profile','baseline')!=self.dev_context_profile:raise SessionError('dev_context_profile_changed')
             self.thread_id=state['thread_id'];self.turn=state['turn']
         self.messages=[]
         self._quiesce_lock=threading.RLock();self._quiesce_depth=0
@@ -57,6 +66,10 @@ class CodexAgentSession(AgentSession):
             command[i:i]=provider_args(self.bridge.base_url)
         i=next(i for i,v in enumerate(command) if v.startswith('model_reasoning_effort='))
         command[i]='model_reasoning_effort='+json.dumps(self.reasoning_effort)
+        if self.dev_context_profile=='slim':
+            i=command.index('-c')
+            command[i:i]=['-c','model_auto_compact_token_limit=80000','-c','tool_output_token_limit=4000',
+                          '-c','compact_prompt='+json.dumps(COMPACT_PROMPT)]
         if resumed:
             i=command.index('-C');del command[i:i+2]
             i=command.index('exec'); command[i+1:i+1]=['resume',self.thread_id]
@@ -64,7 +77,12 @@ class CodexAgentSession(AgentSession):
         return command
 
     def _save(self):
-        atomic_write(self.private,'session.json',encode(dict(thread_id=self.thread_id,turn=self.turn)))
+        atomic_write(self.private,'session.json',encode(dict(thread_id=self.thread_id,turn=self.turn,
+            **self._profile_evidence())))
+
+    def _profile_evidence(self):
+        # v1 baseline evidence retains its original bytes; v2 records even the default.
+        return dict(dev_context_profile=self.dev_context_profile) if self.record_context_profile or self.dev_context_profile=='slim' else {}
 
     def start(self, public_bootstrap, workspace=None, identity=None):
         if self.thread_id:raise SessionError('session_already_started')
@@ -79,7 +97,7 @@ class CodexAgentSession(AgentSession):
         self.turn+=1; self.usage='unknown';self.cancelled=None;self.messages.append(prompt);self._save()
         directory=self.private/'turns'/('t%06d'%self.turn);directory.mkdir(parents=True,exist_ok=False)
         command=self.command(resumed)
-        atomic_write(directory,'input.json',encode(dict(prompt=prompt,command=command)))
+        atomic_write(directory,'input.json',encode(dict(prompt=prompt,command=command,**self._profile_evidence())))
         completed=False;failure=None;inbox=queue.Queue(); eof=False
         with (directory/'events.jsonl').open('wb') as raw, (directory/'stderr.txt').open('wb') as errors:
             try:

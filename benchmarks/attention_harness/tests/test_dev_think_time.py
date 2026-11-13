@@ -12,7 +12,10 @@ import pytest
 
 from benchmarks.attention_harness import dev_agent_diagnose as diag, dev_agent_tools as tools
 from benchmarks.attention_harness.dev_agent_exec_summary import build as summary
+from benchmarks.attention_harness.dev_agent_session import CodexAgentSession, COMPACT_PROMPT, SessionError
 from benchmarks.attention_harness.dev_agent_workspace import TOOLS, TOOLS_V2, Workspace
+from benchmarks.attention_harness.dev_agent_config import context_profile, normalize
+from benchmarks.attention_harness.tests.test_dev_agent_configuration import SELECTION
 from benchmarks.attention_harness.tests.c21_fixtures import base, r4_deployment, offline_dev_identity
 
 
@@ -229,6 +232,65 @@ def test_copied_standalone_cli_diagnose_and_notes(tmp_path):
     assert run('diagnose','7').returncode == 2
 
 
+def command_factory(root, prompt):
+    return ['codex','-a','never','exec','-C',str(root),'--json','-m','gpt-6-astra',
+            '-c','model_reasoning_effort="low"','-c','default_permissions="ws"',prompt]
+
+
+@pytest.mark.parametrize('resumed',[False,True])
+def test_baseline_byte_identical_and_slim_exactly_three_flags(tmp_path, resumed):
+    # Execute the task's fixed base revision as the command oracle, even after commits.
+    source = subprocess.check_output(['git','show','9fa75be:benchmarks/attention_harness/dev_agent_session.py'], text=True)
+    old = types.ModuleType('benchmarks.attention_harness._session_before_think')
+    old.__package__ = 'benchmarks.attention_harness'
+    exec(compile(source,'old_session','exec'), old.__dict__)
+    baseline = CodexAgentSession(tmp_path, tmp_path/'base', command_factory=command_factory)
+    oracle = old.CodexAgentSession(tmp_path, tmp_path/'old', command_factory=command_factory)
+    slim = CodexAgentSession(tmp_path, tmp_path/'slim', command_factory=command_factory, dev_context_profile='slim')
+    for session in (baseline, oracle, slim): session.thread_id = 'exact-thread'
+    expected = oracle.command(resumed)
+    assert json.dumps(baseline.command(resumed)) == json.dumps(expected)
+    command = slim.command(resumed)
+    added = ['-c','model_auto_compact_token_limit=80000','-c','tool_output_token_limit=4000','-c','compact_prompt='+json.dumps(COMPACT_PROMPT)]
+    i = command.index(added[1])-1
+    assert command[i:i+6] == added and command[:i]+command[i+6:] == expected
+    assert 'work/notes.md' in COMPACT_PROMPT and 'last 3 execution ids' in COMPACT_PROMPT and 'verbatim' in COMPACT_PROMPT
+
+
+def test_profiles_refused_unknown_v1_slim_and_resume_drift(tmp_path):
+    for value in ('invalid', None, 3):
+        with pytest.raises(ValueError): CodexAgentSession(tmp_path,tmp_path/'private',dev_context_profile=value)
+        with pytest.raises(ValueError): normalize(dict(SELECTION,dev_context_profile=value))
+    with pytest.raises(ValueError,match='v2'): normalize(dict(SELECTION,dev_context_profile='slim'))
+    assert context_profile({}) == 'baseline'
+    assert normalize(dict(SELECTION,agent_policy_version='agent-policy-v2',dev_context_profile='slim'))['dev_context_profile'] == 'slim'
+    private = tmp_path/'private'; private.mkdir()
+    s = CodexAgentSession(tmp_path,private,command_factory=command_factory,dev_context_profile='slim')
+    s.thread_id = 'thread'; s._save()
+    assert json.loads((private/'session.json').read_text())['dev_context_profile'] == 'slim'
+    with pytest.raises(SessionError,match='changed'): CodexAgentSession(tmp_path,private)
+    assert CodexAgentSession(tmp_path,private,dev_context_profile='slim').thread_id == 'thread'
+
+
+def test_profile_manifest_and_configs_frozen(tmp_path, offline_dev_identity):
+    from benchmarks.attention_harness.dev_ledger import DevV2Store
+    from benchmarks.attention_harness import dev_experiment as exp
+    from benchmarks.attention_harness.dev_agent_policy_freeze import validate_comparison
+    store = DevV2Store(tmp_path/'db')
+    result = exp.create(store,tmp_path/'runs',dict(SELECTION,dev_context_profile='slim'))
+    manifest = exp.verify_manifest(result)
+    assert manifest['dev_context_profile'] == manifest['selection']['dev_context_profile'] == 'slim'
+    for config in manifest['configs'].values():
+        assert context_profile(config,manifest) == 'slim'
+        from openarm365_dev_v2.dev_config import validate_dev_config
+        with pytest.raises(ValueError, match='unsupported_dev_context_profile'):
+            validate_dev_config(dict(config, dev_context_profile='unknown'))
+        with pytest.raises(ValueError, match='requires agent policy v2'):
+            validate_dev_config(dict(config, agent_policy_version='agent-policy-v1'))
+    changed = copy.deepcopy(manifest); changed['dev_context_profile'] = 'baseline'
+    with pytest.raises(ValueError,match='mismatch'): context_profile(next(iter(manifest['configs'].values())),changed)
+    with pytest.raises(ValueError,match='comparison_conditions'): validate_comparison([manifest,changed])
+
 
 def test_v1_tools_bytes_fixed_base_and_v2_guide(tmp_path):
     source = subprocess.check_output(['git','show','9fa75be:benchmarks/attention_harness/dev_agent_workspace.py'],text=True)
@@ -265,6 +327,21 @@ def test_broker_publishes_diagnosis_and_cli_only_reads_it(tmp_path, monkeypatch,
         r.close()
 
 
+def test_session_turn_evidence_records_profile_on_start_and_resume(tmp_path):
+    from benchmarks.attention_harness.tests.test_dev_agent_d2 import fake_session, CONFIG
+    ws = Workspace(tmp_path/'agent').prepare({},dict(CONFIG,agent_policy_version='agent-policy-v2'))
+    s = fake_session(ws,['pass','pass'])
+    s.dev_context_profile = 'slim'
+    list(s.start('start'))
+    list(s.resume(s.thread_id,'resume'))
+    for turn in ('t000001','t000002'):
+        evidence = json.loads((ws.private/'turns'/turn/'input.json').read_text())
+        assert evidence['dev_context_profile'] == 'slim'
+        assert 'model_auto_compact_token_limit=80000' in evidence['command']
+        assert 'tool_output_token_limit=4000' in evidence['command']
+        assert any(v.startswith('compact_prompt=') for v in evidence['command'])
+
+
 def test_late_help_refreshes_published_diagnosis(tmp_path):
     from benchmarks.attention_harness.tests.test_dev_agent_policy_v2_flow import Rig
     r = Rig(tmp_path)
@@ -279,3 +356,12 @@ def test_late_help_refreshes_published_diagnosis(tmp_path):
         assert any('help.json: executions/' in line for line in after['pointers']['lines'])
     finally:
         r.close()
+
+
+def test_v1_session_evidence_stays_unchanged_v2_baseline_is_recorded(tmp_path):
+    private = tmp_path/'private'; private.mkdir()
+    s = CodexAgentSession(tmp_path,private,command_factory=command_factory)
+    s.thread_id = 'thread'; s._save()
+    assert json.loads((private/'session.json').read_text()) == {'thread_id':'thread','turn':0}
+    s.record_context_profile = True; s._save()
+    assert json.loads((private/'session.json').read_text())['dev_context_profile'] == 'baseline'

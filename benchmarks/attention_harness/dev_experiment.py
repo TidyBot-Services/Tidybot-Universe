@@ -16,7 +16,7 @@ from openarm365_dev_v2.diag_budget import DEV_TIER_BUDGET_SCALE,task_limits
 # connectivity retries are declared separately in the manifest and request.
 MODEL={'model':'parcc/GLM','temperature':0,'max_tokens':8192,'reasoning_effort':'low','provider_retries':0}
 CELL_BUDGET=dict(LIMITS,dev_calls=2,advisor_calls=1,executions=2,provider_tokens=60000,input_tokens=60000,output_tokens=20480,sdk_calls=160,control_steps=4800,help_credits=1,help_count=1,execution_seconds=1000,model_seconds=360,help_wait_seconds=180)
-ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','bimanual_collaboration','rules_profile','arm_motion'}|FIELDS
+ALLOWED_SELECTION_FIELDS={'request_key','tasks','seeds','policies','help_budget','mode','policy_parameters','trace_visible','configuration','name_suffix','eval_agent','advisor_proxy','human_proxy','budget_tier','model_source','fork','planner_source','dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','bimanual_collaboration','rules_profile','arm_motion','dev_context_profile'}|FIELDS
 def validate_selection_fields(selection):
     if isinstance(selection,dict) and 'test_fixture' in selection:raise ValueError('product run creation rejects test_fixture')
     if not isinstance(selection,dict) or set(selection)-ALLOWED_SELECTION_FIELDS:raise ValueError('bounded explicit experiment selection required')
@@ -96,7 +96,7 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         selection={**selection,**agent_options,'model_source':'codex'}
     else:
         if agent_policy_version is not None:raise ValueError('agent_options_require_agent_mode')
-        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits')):raise ValueError('agent_options_require_agent_mode')
+        if any(k in selection for k in ('dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','dev_context_profile')):raise ValueError('agent_options_require_agent_mode')
         if 'dev_mode' in selection:selection={k:v for k,v in selection.items() if k!='dev_mode'}
     if validation_origin is not None and (validation_origin.get('dev_mode')=='agent' or validation_origin.get('config',{}).get('dev_mode')=='agent'):
         if not agent_options:raise ValueError('agent_memory_validation_unsupported')
@@ -364,6 +364,8 @@ def create(store,artifact_root,selection,*,validation_origin=None,agent_policy_v
         if 'agent_provider' in agent_options:
             for config in configs.values():config['agent_provider']=copy.deepcopy(agent_options['agent_provider'])
         manifest.update(agent_options,source_size_limit_bytes=131072,agent_accounting='attentionbench.agent-ledger.v1')
+        if 'dev_context_profile' in agent_options:
+            for config in configs.values():config['dev_context_profile']=agent_options['dev_context_profile']
         reduced=agent_options.get('agent_limits')  # absent = the official 10 versions / 6 hours
         manifest['schedule']=([dict(cell=c['key'],through_version=1) for c in cells] if validation_origin is not None else [dict(cell=cells[0]['key'],through_version=reduced['versions'] if reduced else 10)])
         manifest['model']=dict(model=agent_options['dev_model'],reasoning_effort=agent_options['dev_reasoning_effort'],provider_retries=0)
@@ -458,10 +460,11 @@ def validate_fairness(m):
         validate_comparison(m)
         return True
     if m.get('dev_mode')=='agent':
-        from .dev_agent_config import normalize
+        from .dev_agent_config import normalize, context_profile
         from .dev_agent_prompts import manifest_fields
         if any(m.get(k)!=v for k,v in manifest_fields().items()):raise ValueError('agent_prompt_drift')
         options=normalize(m['selection'],validation_origin=m.get('validation_origin'))
+        for config in m['configs'].values():context_profile(config,m)
         if m.get('validation_experiment'):
             from .memory_agent_validation import validate_manifest
             validate_manifest(m)
