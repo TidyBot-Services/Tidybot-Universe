@@ -217,6 +217,9 @@ def finalize_extra_views(episode):
                 rows = [json.loads(line) for line in journal.read_text().splitlines() if line.strip().endswith('}')]
                 rows = [r for r in rows if r['physical_sequence'] in times_by_sequence]
                 entry['frame_count'] = len(rows)
+                sequences = [r['physical_sequence'] for r in rows]
+                if sequences != list(range(len(rows))):
+                    entry['physical_sequences'] = sequences  # strided recording (see recording.FRAME_STRIDE)
                 if len(rows) < 2:
                     entry['error'] = 'fewer than two frames on the recording timeline'; continue
                 times = [times_by_sequence[r['physical_sequence']] for r in rows]

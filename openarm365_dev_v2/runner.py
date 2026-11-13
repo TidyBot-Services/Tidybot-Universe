@@ -5,7 +5,7 @@ from .dev_config import validate_dev_config as validate_config
 from openarm365_dev.sandbox import probe_sandbox,execute_formal_policy,_json_safe
 from .owner import NativeOwnerV2 as NativeOwner
 from openarm365_dev.owner import OutcomeUnknown,build_sdk
-from benchmarks.attention_harness.robocasa365.recording import finalize_recording
+from benchmarks.attention_harness.robocasa365.recording import finalize_recording,FRAME_STRIDE
 from .diag_budget import diagnostic_budget,dev_tier_budget,task_limits
 
 def write(path,value):
@@ -89,7 +89,8 @@ class OpenArm365DevRunnerV2:
         (episode/'policy.py').write_bytes(request.policy_code_path.read_bytes())
         (episode/'config.json').write_bytes(request.config_path.read_bytes())
         recording_context=dict(**ids,camera_name='robot0_agentview_left',started_monotonic=started,
-            origin='native_pipe://owned-openarm365-v2',dev_version=dev_version_label(request.attempt_id))
+            origin='native_pipe://owned-openarm365-v2',dev_version=dev_version_label(request.attempt_id),
+            frame_stride=FRAME_STRIDE)
         write(episode/'recording_context.json',recording_context)
         owner=NativeOwner(python=self.python,config=episode/'config.json',evidence=episode,deadline=deadline,
             cancel_check=self.cancel_event.is_set,process_observer=self.process_observer,**({"agent_mode":True} if agent else {}))

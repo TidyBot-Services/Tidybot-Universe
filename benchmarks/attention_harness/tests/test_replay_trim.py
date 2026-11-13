@@ -536,3 +536,17 @@ def test_a_sidecar_cut_by_the_overview_only_rule_is_not_served_and_gets_rebuilt(
 def test_invalid_all_views_value_refused(tmp_path):
     root=execution(tmp_path/'episode')
     with pytest.raises(ValueError,match='invalid_trim_parameter'):trim.analyze(root,all_views=2)
+
+
+def test_pruned_strided_frames_keep_their_recorded_control_steps(tmp_path):
+    """Frame files pruned and journal gone: strided recordings use the listed steps, not range(count)."""
+    from benchmarks.attention_harness.dev_agent_recording import recording_frames
+    root=execution(tmp_path/'episode',views=())
+    steps=[0,4,6,8]  # the fixture records four frames and no frame journal
+    receipt=json.loads((root/'camera_recording.json').read_text())
+    receipt['replay_timing']['frame_physical_sequences']=steps
+    (root/'camera_recording.json').write_text(json.dumps(receipt))
+    assert not (root/'recording_frames').exists()
+    restored=list(recording_frames(root,20))
+    assert [r['physical_sequence'] for r in restored][:len(steps)]==steps
+    assert restored[1]['sim_seconds']==pytest.approx(4/20)

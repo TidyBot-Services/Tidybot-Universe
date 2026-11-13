@@ -30,10 +30,14 @@ def recording_frames(episode, control_freq):
             receipt = json.loads(read_beneath(root, 'camera_recording.json', 16*1024*1024))
             if receipt.get('initial_frame_saved') is not True: raise ValueError('missing_simulation_time_mapping')
             count=receipt['frame_count']
+            sequences=(receipt.get('replay_timing') or {}).get('frame_physical_sequences')
             if view != 'overview':
                 views=json.loads(read_beneath(root,'camera_views.json',16*1024*1024))
                 count=views['views'][view]['frame_count']
-            rows = [dict(physical_sequence=i) for i in range(count)]
+                sequences=views['views'][view].get('physical_sequences')
+            # Strided recordings list their control steps; older ones recorded every step.
+            if sequences is not None and len(sequences)!=count: raise ValueError('recording_frame_count_mismatch')
+            rows = [dict(physical_sequence=i) for i in (range(count) if sequences is None else sequences)]
         else:
             rows = [json.loads(line) for line in read_beneath(folder, 'frames.jsonl', 32*1024*1024).splitlines()]
         missing = any(not (folder/row.get('file','missing')).is_file() for row in rows)
