@@ -1,6 +1,5 @@
 """Explicit screened R5 product selections; pilot and historical records stay frozen."""
 from dataclasses import replace
-from attention_memory_service.skill_tags import VERSION as SKILL_TAGS_VERSION, tags_for
 import json
 from curobo_v2.fixture_interaction import PROFILE,PILOT_SEEDS
 from openarm365_dev_v2.fixture_contract import checked,contract_ref
@@ -46,6 +45,8 @@ def prepare_selection(selection):
     return dict(selection,rules_profile=PROFILE)
 
 def options():
+    # Lazy: the native sim worker imports this module (via dev_config) without the Memory service on its path.
+    from attention_memory_service.skill_tags import VERSION as SKILL_TAGS_VERSION, tags_for
     return [dict(task_record(t).public(),rules_profile=PROFILE,family=family,family_label=label,
         held_out=t in HELD_OUT,skill_tags=list(tags_for(t)),skill_tags_version=SKILL_TAGS_VERSION,explicit_only=True,rules_label='fixture rules (R5)',
         seed_options=[dict({'seed':s,'enabled':exclusion(t,s) is None},**({} if exclusion(t,s) is None else exclusion(t,s))) for s in PILOT_SEEDS[t]])
