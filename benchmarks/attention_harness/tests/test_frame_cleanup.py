@@ -397,6 +397,25 @@ def test_cleanup_errors_are_visible_notices(run):
     assert any(n['title']=='Frame cleanup needs attention' and n['detail']=='ffprobe failed' for n in notices)
 
 
+def test_queued_cell_without_artifact_dir_has_no_cleanup_errors(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from benchmarks.attention_harness.dev_agent_view import projection
+    store=SimpleNamespace(path=tmp_path/'ledger.sqlite3')
+    cell=dict(key='queued',experiment_id='experiment',dev_mode='agent',state='planned',versions=[])
+    with sqlite3.connect(store.path) as db:
+        db.execute('CREATE TABLE v2_experiments(id TEXT PRIMARY KEY,payload TEXT)')
+        db.execute('INSERT INTO v2_experiments VALUES (?,?)',
+                   (cell['experiment_id'],json.dumps(dict(selection={}))))
+    # An unset artifact directory must not fall back to the current directory.
+    monkeypatch.chdir(tmp_path)
+    write(tmp_path/'frame-cleanup-error.json',dict(error='unrelated cleanup failure'))
+    write(tmp_path/'frame-cleanup.json',dict(error='unrelated receipt failure'))
+    view=projection(store,cell,now=123)
+    assert view['state']=='planned'
+    assert view['agent']['errors']==[]
+    assert view['dev_v2_compat']['versions']==[]
+
+
 def test_missing_frame_object_without_cleanup_receipt_uses_verified_index(run,tmp_path):
     cell,w,rows,ep,cut=agent(run)
     (w.private/'snapshots/objects'/rows[1]['sha256']).unlink()

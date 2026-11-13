@@ -148,14 +148,15 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         wall_limit=None
     def error(source,value):
         if value not in (None,False,'',{},[]):errors.append(dict(source=source,error=clean(value)))
-    cleanup_error = Path(cell['artifact_dir'])/'frame-cleanup-error.json'
-    if cleanup_error.is_file():error('frame cleanup',json.loads(cleanup_error.read_bytes()))
-    cleanup_receipt = Path(cell['artifact_dir'])/'frame-cleanup.json'
-    if cleanup_receipt.is_file():
-        receipt = json.loads(cleanup_receipt.read_bytes())
-        if receipt.get('error'):error('frame cleanup',receipt['error'])
-        for group in receipt.get('views',[]):
-            if group.get('skipped'):error('frame cleanup '+group['execution']+'/'+group['view'],group['skipped'])
+    if cell.get('artifact_dir'):
+        cleanup_error = Path(cell['artifact_dir'])/'frame-cleanup-error.json'
+        if cleanup_error.is_file():error('frame cleanup',json.loads(cleanup_error.read_bytes()))
+        cleanup_receipt = Path(cell['artifact_dir'])/'frame-cleanup.json'
+        if cleanup_receipt.is_file():
+            receipt = json.loads(cleanup_receipt.read_bytes())
+            if receipt.get('error'):error('frame cleanup',receipt['error'])
+            for group in receipt.get('views',[]):
+                if group.get('skipped'):error('frame cleanup '+group['execution']+'/'+group['view'],group['skipped'])
     error('controller',cell.get('error'))
     error('controller result',(cell.get('result') or {}).get('error'))
     error('Memory staging',cell.get('agent_memory_staging_failure'))
