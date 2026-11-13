@@ -68,6 +68,9 @@ def main():
             from .agent_executor import AgentExecutor as NativeExecutor
         tier=dev_tier_budget() if c['runner_boundary']=='dev_loop' and c.get('budget_tier','legacy')=='dev' else None
         if override and c['runner_boundary']!='dev_loop':raise ValueError('diagnostic budget cannot enter formal worker')
+        if c['runner_boundary']=='formal' and any(key in os.environ for key in (
+                'ATTN_PLANNER_MODE','ATTN_IK_CANDIDATES','ATTN_IK_MAX_JOINT_JUMP','ATTN_DIAG_CONTACT_EXEMPT')):
+            raise ValueError('planner diagnostic overrides cannot enter formal worker')
         identity=OfficialEnvironmentIdentity({
             'robocasa':get_str('sim.robocasa_root'),
             'robosuite':get_str('sim.robosuite_root')},

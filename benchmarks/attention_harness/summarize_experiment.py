@@ -177,6 +177,8 @@ def summarize(experiment):
             # Pre-0g and 0g legacy conditions remain separate as well.
             generation=('0g' if config is not None and all(k in config for k in
                 ('planner_mode','ik_candidates','ik_max_joint_jump')) else 'pre-0g')
+            if config is not None and 'grasp_freeze' in config:
+                generation=config['grasp_freeze']['id']
             grouped[(metadata['execution_profile'],generation,metadata.get('deployment_kind','registered'),metadata.get('dev_sdk_sha256','unsealed'),metadata.get('dev_sdk_description','base stationary'))].append((exp,dict(cell,**metadata)))
     if not grouped:
         value=_summarize_one(experiments[0]);value.update(manifest_metadata(experiments[0].get('manifest',{})))

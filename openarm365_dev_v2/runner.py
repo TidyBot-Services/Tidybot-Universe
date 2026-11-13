@@ -2,6 +2,7 @@
 import hashlib,json,threading,time,uuid
 from pathlib import Path
 from .dev_config import validate_dev_config as validate_config
+from .formal_config import grasp_generation
 from openarm365_dev.sandbox import probe_sandbox,execute_formal_policy,_json_safe
 from .owner import NativeOwnerV2 as NativeOwner
 from openarm365_dev.owner import OutcomeUnknown,build_sdk
@@ -155,6 +156,7 @@ class OpenArm365DevRunnerV2:
         trace=dict(schema_version='attentionbench.formal-trace.v1',**binding,status=status,sdk_events=events,
             backend_steps=public_steps,robot='OpenArm365',execution_arm='both',controller=c['controller'],
             perception_mode='sim_gt',error=error,runner_boundary=self.runner_boundary)
+        if self.runner_boundary=='formal':trace['grasp_generation']=grasp_generation(c)
         if validation_receipt and outcome is not None:trace['memory_validation']=validation_receipt
         receipt=dict(**ids,**execution_labels,elapsed_seconds=time.monotonic()-started,deadline_seconds=seconds,service_stop=cleanup,
             sandbox_probe=probe,policy_process=outcome.__dict__ if outcome else None,camera_recording=recording,control_steps=max((r.get('sequence',0) for r in owner.ledger),default=0),
@@ -184,4 +186,5 @@ class OpenArm365DevRunnerV2:
             result.update(trust_source='local-dev-registry', deployment_kind='dev-local', formal_eligible=False)
         if override:result['diagnostic_budget_override']=override
         if tier:result['dev_tier_budget']=tier
+        if self.runner_boundary=='formal':result['grasp_generation']=trace['grasp_generation']
         write(episode/'result.json',result);return result

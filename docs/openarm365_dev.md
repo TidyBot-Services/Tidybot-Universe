@@ -32,7 +32,9 @@ are separate evidence and are not counted as this RoboCasa365 Dev loop.
 
 ## `ik_path` move_delta
 
-Since 2026-10-24 new Dev v2 configs freeze `planner_mode=ik_path` (8 IK candidates, max joint jump 1.0 rad) together with `contact_exempt_objects=movable_objects`; configs without these fields keep `plan` mode. In `ik_path` mode (frozen, or `ATTN_PLANNER_MODE=ik_path`), `move_delta(dx,dy,dz, rotation_delta)`
+Since 2026-10-24 new Dev v2 configs freeze `planner_mode=ik_path` (8 IK candidates, max joint jump 1.0 rad) together with `contact_exempt_objects=movable_objects`; configs without these fields keep `plan` mode.
+
+**Formal tier (2026-11-13, freeze `grasp-v2-20261113`).** New formal configs carry `grasp_freeze={id, sha256}` pointing at `openarm365_dev_v2/formal_freezes/grasp-v2-20261113.json` (read-only, its sha256 is hard-coded in `formal_config.py`). `validate_formal_config` accepts exactly three formal cases: the frozen record (the four values must match it exactly, including type), an unmarked config with the same four values (generation `0g`), and an old config with `contact_exempt_objects='none'` and no planner keys (`pre-0g`, `plan` mode). Anything else is rejected. Formal results and traces carry `grasp_generation`; summaries group by it and never pool generations. The planner pin stays deployment-05 (`0058f2d4…`), which serves `/plan/ik_path` with at most 16 IK candidates. Dev-tier behaviour is unchanged. In `ik_path` mode (frozen, or `ATTN_PLANNER_MODE=ik_path`), `move_delta(dx,dy,dz, rotation_delta)`
 targets the requested tool **endpoint pose**. The service checks the endpoint
 within 4 mm position and 0.03 rad orientation, then continuously certifies the
 actual quintic joint-space path against the geometry. The tool path need not be
@@ -49,7 +51,7 @@ Dev v2 冻结配置 `held_reference_mode` 默认 `fixed`：闭爪固定 20 控�
 
 附着诊断开关 `ATTN_DIAG_ATTACHMENT_DUMP=1` 默认关闭；设置为其它值（包括空字符串）会报错。开启后，每次构造非空附着规划上下文都会在该次运行的 evidence 目录写 `attachment-dump-*.json`。文件包含目标 body 及后代的全部 geom、与目标 geom 相关的所有 MuJoCo 接触（包括正距离接触及法向/六维接触力）、每个目标 geom 到非目标且非机器人 geom 的 5 cm 距离查询及最近 10 项、全局最近 10 项、最终 `support_names` 和各世界形状的纳入/排除原因；邻近纳入项的 reason 为 `proximity_within_10mm`，并记录 `proximity_distance_m`。距离等于 5 cm 时为查询上限，不能推断更远的精确距离。`overlapping_cover_cells` 当前为 `null`，因为本地没有服务端在起点判定的附着覆盖单元与障碍逐项碰撞结果。未设置诊断开关时不写文件。
 
-`contact_exempt_objects` 默认为 `none`，可由 `ATTN_DIAG_CONTACT_EXEMPT` 覆盖最终值。最终值为 `movable_objects` 时，物理监控允许机器人手指、手掌、连杆或车体与任务 `obj_body_id` 中具有独立 free joint 的物体及其子 body 接触，包括目标物、`distr_counter` 和 `distr_sink`。机器人碰台面、柜子、咖啡机、墙、地板、水槽等固定件仍会中止；机器人自碰撞和其他物理监控判据保持原样。底座路径预检查继续使用完整世界。
+`contact_exempt_objects` 自 2026-10-24 起在新配置中默认为 `movable_objects`；没有这三项规划键且值为 `none` 的旧配置保持原行为。Dev 层可由 `ATTN_DIAG_CONTACT_EXEMPT` 覆盖最终值；正式层（`runner_boundary='formal'`）自 2026-11-13 起拒绝这个以及 `ATTN_PLANNER_MODE`、`ATTN_IK_CANDIDATES`、`ATTN_IK_MAX_JOINT_JUMP` 覆盖，worker 直接报错退出。最终值为 `movable_objects` 时，物理监控允许机器人手指、手掌、连杆或车体与任务 `obj_body_id` 中具有独立 free joint 的物体及其子 body 接触，包括目标物、`distr_counter` 和 `distr_sink`。机器人碰台面、柜子、咖啡机、墙、地板、水槽等固定件仍会中止；机器人自碰撞和其他物理监控判据保持原样。底座路径预检查继续使用完整世界。
 
 `native-actions.jsonl` 的 `contact_exemption` 事件在最终豁免开启时写 `physical_monitor_allows_movable_contacts: true`。已有 `movable_contact_begin/end` 事件仍记录接触开始和结束，沿用每动作 200 条上限。`native-physics.jsonl` 仅在豁免开启且该步有放行接触时写 `expected_movable_contacts`，每项为 `[机器人 geom 名, 物体 geom 名, 距离 m]`。默认关闭时物理日志字段和原接触失败规则不变。
 
