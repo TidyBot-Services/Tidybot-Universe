@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Runs · Attention Bench</title>
+<script>try{if((localStorage.getItem('attention.theme')||localStorage.getItem('attention.memory.theme'))==='dark')document.documentElement.dataset.theme='dark'}catch(e){}addEventListener('unhandledrejection',function(e){var r=e.reason;if(r&&r.name==='AbortError'&&/transition/i.test(r.message))e.preventDefault()})</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="./shell.css"><link rel="stylesheet" href="./guest.css"></head>
+<body>
+<!-- The Run page for a visitor without an invite code (Remote only, 11-14): everyone's runs as a gallery, and New run to the invite page. -->
+<header class="top ab-shell-top"><a class="logo ab-shell-logo" data-shell-page="run" href="/ui/home.html" aria-label="Tidybot Attention Bench">ATTENTION BENCH</a><nav class="ab-pages" data-shell-pages="run" aria-label="Pages"><a href="/ui/home.html" data-page="home">Home</a><a href="/ui/" data-page="run">Run</a><a href="/ui/memory.html" data-page="memory">Memory<b class="ab-badge" hidden></b></a></nav><span class="ab-shell-sp"></span><div class="ab-shell-actions"><div class="ab-themes" data-shell-themes><button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button></div><a class="gg-new" href="/login" data-guest-new-run><span class="gg-tri" aria-hidden="true"></span>New run</a></div></header>
+<main class="gg" id="guest-gallery">
+<section class="gg-hero">
+<div class="gg-bg" id="gg-bg" aria-hidden="true"></div><div class="gg-shade" aria-hidden="true"></div>
+<div class="gg-hero-copy">
+<p class="gg-eyebrow" id="gg-robot"><span class="gg-dot dim" aria-hidden="true"></span>CHECKING THE ROBOT</p>
+<h1>You are watching <em>as a guest</em></h1>
+<p class="gg-lead">Every run on this robot is open to watch. Pick one below to see its replay and result. New run asks for your invite code first.</p>
+<div class="gg-cta"><a class="gg-go" href="/login" data-guest-new-run><span class="gg-tri" aria-hidden="true"></span>New run</a><a class="gg-ghost" id="gg-watch" href="#gg-runs" hidden>Watch a solved run</a></div>
+<div class="gg-stats" id="gg-stats" aria-label="Runs so far"></div>
+</div>
+</section>
+<p class="gg-error" id="gg-error" role="alert" hidden></p>
+<section class="gg-how" aria-label="How it works">
+<div><b>01</b><h2>Pick a kitchen task</h2><p>Open a cabinet, press a button, put a mug in the sink. Each has a fixed start and a checked finish.</p></div>
+<div><b>02</b><h2>The AI tries, up to <span data-gg-tries>5</span> times</h2><p>It reads the scene, writes the robot’s plan and runs it. Everyone shares one robot, so runs take turns.</p></div>
+<div><b>03</b><h2>It asks you when stuck</h2><p>You get <span data-gg-wait>two minutes</span> to answer. We measure how much each answer moved it toward done.</p></div>
+</section>
+<section class="gg-runs" id="gg-runs" aria-label="Everyone’s runs">
+<div class="gg-runs-head"><h2>Everyone’s runs</h2><div class="gg-filters" id="gg-filters" role="group" aria-label="Show"></div></div>
+<div class="gg-grid" id="gg-grid" aria-live="polite"></div>
+</section>
+</main>
+<script src="./shell.js" defer></script>
+<script src="./guest.js" defer></script>
+</body></html>
