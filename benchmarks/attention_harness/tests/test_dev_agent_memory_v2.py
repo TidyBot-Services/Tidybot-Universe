@@ -12,9 +12,10 @@ from benchmarks.attention_harness import dev_agent_memory as agent, memory_auto_
 from benchmarks.attention_harness.dev_agent_attention import Helper
 from benchmarks.attention_harness.dev_agent_broker import Broker, FakeEvaluator
 from benchmarks.attention_harness.dev_agent_export import Exporter
-from benchmarks.attention_harness.dev_agent_help_interval import interval_help, freeze_help
+from benchmarks.attention_harness.dev_agent_help_interval import interval_help, freeze_help, answer_projection
 from benchmarks.attention_harness.dev_agent_ledger import LedgerBudget
 from benchmarks.attention_harness.dev_agent_workspace import atomic_write
+from benchmarks.attention_harness.dev_v2_loop import immutable
 from benchmarks.attention_harness.tests.test_dev_agent_d1 import request
 from benchmarks.attention_harness.tests.test_dev_agent_d7 import fixture, Executor, events
 from benchmarks.attention_harness.tests.test_dev_agent_memory_phase1 import prepare
@@ -27,6 +28,7 @@ V2 = 'agent-policy-v2'
 @pytest.fixture
 def rig(fixture, monkeypatch):
     f = fixture
+    f.config['agent_policy_version'] = V2
     prepare(f, monkeypatch)
     # This fixture originally has a one-help budget; expand its synthetic run.
     f.ledger.limits['help'] = 10
@@ -35,11 +37,16 @@ def rig(fixture, monkeypatch):
         f.ledger._put_run(db, run)
 
     brokers = []
-    def make(policy='agent_initiated_help', parameters=None):
+    def make(policy='agent_initiated_help', parameters=None, *, success_at=None):
         f.store.update_cell('cell', policy_id=policy, agent_policy_version=V2)
         class Moving(Executor):
             def execute(self, *args, **kwargs):
                 value = super().execute(*args, **kwargs)
+                if success_at is not None:
+                    self.native_result_ref = immutable(self.episode/'native_result.json',
+                        dict(evaluated=True, native_success=self.calls == success_at))
+                if self.calls == success_at:
+                    return value
                 public = REJECTED if self.calls == 1 else TIMEOUT
                 path = self.episode / 'trace.json'; path.chmod(0o644)
                 path.write_text(json.dumps(dict(status='failed', error=public['public_error'], sdk_events=public['action_trace'])))
@@ -93,6 +100,50 @@ def proposal(f):
     queued = [e for e in events(f, 'planner_memory_offline_queued') if e['kind'] == 'provisional']
     assert len(queued) == 1, events(f, 'planner_memory_provisional_skipped')
     return json.loads(Path(queued[0]['queue']['uri']).read_bytes())
+
+
+@pytest.mark.parametrize('with_help', [True, False])
+def test_successful_final_version_freezes_interval(rig, with_help):
+    from benchmarks.attention_harness.dev_agent_loop import drive
+    from benchmarks.attention_harness.dev_agent_ui_projection import help_evidence
+    from benchmarks.attention_harness.tests.test_dev_agent_d2 import fake_session
+    f = rig(success_at=2)
+    f.store.update_cell('cell', task_id='fake')
+    f.broker.close()
+    script = "tool('submit')"
+    if with_help:
+        script += "; tool('ask_help', '--question', 'How to lift?')"
+    session = fake_session(f.ws, [script, "tool('submit')"])
+    result = drive(f.ws, session, f.ledger, executor=f.executor, prober=Prober(),
+        helper=f.helper, exporter=f.exporter, agent_policy_version=V2,
+        policy='agent_initiated_help')
+    assert result['state'] == 'completed' and result['reason'] == 'native_success', result
+    assert not result.get('export_errors'), result
+    # Completion intentionally skips the next attention decision boundary.
+    assert json.loads((f.ws.canonical/'versions/v0002/help.json').read_bytes()) == dict(status='not_requested')
+    assert not (f.ws.canonical/'versions/v0002/decision.json').exists()
+    assert help_evidence(f.store.cell('cell'), 'v0002') is None
+    frozen = json.loads((f.root/'v2/help.json').read_bytes())
+    previous = json.loads((f.ws.canonical/'versions/v0001/help.json').read_bytes())
+    assert frozen != previous
+    assert json.loads((f.root/'v2/memory_use.json').read_bytes()) == dict(notes=[])
+    assert not events(f, 'planner_memory_provisional_skipped')
+    matches = interval_help(f.ledger.jobs(), 2)
+    if with_help:
+        assert len(matches) == 1
+        assert frozen == answer_projection(matches[0]['receipt'], 2)
+        value = proposal(f)
+        payload = importer.provisional_payload(value, 'test')
+        verify(payload['origin'], payload['guidance'], payload['agent_evidence'])
+        note = json.loads((f.root/'v2/memory-run-note.json').read_bytes())
+        assert note['help_version'] == value['help_version'] == 2
+        assert note['content'] == frozen['content']
+        assert len(events(f, 'planner_memory_run_note_created')) == 1
+    else:
+        assert matches == []
+        assert frozen == dict(status='not_requested', agent_policy_version=V2, help_execution_ids=[])
+        assert not events(f, 'planner_memory_offline_queued')
+        assert not (f.root/'v2/memory-run-note.json').exists()
 
 
 @pytest.mark.parametrize('mode', ['manual', 'run', 'forced', 'fallback', 'random', 'trace', 'full_trace'])

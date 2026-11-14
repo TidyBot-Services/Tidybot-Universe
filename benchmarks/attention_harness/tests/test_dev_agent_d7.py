@@ -357,6 +357,27 @@ def test_drive_generations_export_and_resume_messages(fixture):
     assert {r['development_id'] for r in imports}=={'cell:v1','cell:v2'}
 
 
+@pytest.mark.parametrize('policy_version', [None, 'agent-policy-v1'])
+def test_legacy_export_keeps_previous_help_record(fixture, policy_version):
+    f = fixture
+    if policy_version is not None:
+        f.config['agent_policy_version'] = policy_version
+    previous = dict(status='delivered', provider='advisor', content='Legacy hint', version_id='v0001')
+    f.ws.publish('versions/v0001/help.json', previous)
+    # A help-record marker cannot opt a legacy run into interval projection.
+    f.ws.publish('versions/v0002/help.json', dict(status='not_requested', agent_policy_version='agent-policy-v2'))
+    exporter = Exporter(f.store, 'cell', f.ws, f.config, f.ledger)
+    for number in (1, 2):
+        atomic_write(f.ws.private, f'sources/r{number}.py', SOURCE)
+        response = dict(op='submit', request_id=f'r{number}', version_id=f'v{number:04d}')
+        exporter.capture(response, dict(version=number, valid=True), Executor())
+        exporter.settle(response)
+    assert json.loads((f.root/'v1/help.json').read_bytes()) == dict(status='not_requested')
+    assert json.loads((f.root/'v2/help.json').read_bytes()) == previous
+    exporter.settle(response)
+    assert json.loads((f.root/'v2/help.json').read_bytes()) == previous
+
+
 def test_export_failure_is_recorded_not_fatal(fixture):
     # r6 policy: export is a per-version step; the run outcome stands and the
     # failure is surfaced on the cell/result (the importer refuses that version).
