@@ -438,6 +438,7 @@ def _apply(root, *, trash_dir=None):
             return dict(schema=SCHEMA, cells=rows)
         result = plan(root)
     destination = None
+    resume = None
     if resuming:
         # Older trash receipts require the operator's original --trash-dir;
         # new receipts always carry the exact destination across restarts.
@@ -450,6 +451,8 @@ def _apply(root, *, trash_dir=None):
             destination = safe(Path(trash_dir)/root.name)
         if destination and not (destination.is_dir() and (destination/'restore.json').is_file()):
             raise ValueError('cleanup trash run/restore.json is missing; refusing to unlink: '+str(destination))
+        resume = dict(at=datetime.now(timezone.utc).isoformat(), deleted_files=0,
+                      already_missing=0, bytes_deleted=0, newly_skipped_views=0)
         for g in result['views']:
             if g.get('skipped') or not g['files']: continue
             try:
@@ -462,7 +465,9 @@ def _apply(root, *, trash_dir=None):
                 g.update(expected_count=expected, decoded_count=actual)
             except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
                 g['skipped'] = f'{type(exc).__name__}: {exc}'
-        result.setdefault('resumed_at', []).append(datetime.now(timezone.utc).isoformat())
+                resume['newly_skipped_views'] += 1
+        result.setdefault('resumed_at', []).append(resume['at'])
+        result.setdefault('resumes', []).append(resume)
     elif trash_dir is not None:
         destination = safe(trash_dir)
         if destination.is_relative_to(root) or root.is_relative_to(destination):
@@ -476,8 +481,9 @@ def _apply(root, *, trash_dir=None):
         for g in result['views']: g['bytes_reclaimable'] = g['bytes_freed']
     if destination:
         result['trash_run'] = str(destination)
-        result['bytes_freed'] = 0
-        for g in result['views']: g['bytes_freed'] = 0
+        if not resuming:
+            result['bytes_freed'] = 0
+            for g in result['views']: g['bytes_freed'] = 0
     consumers = defaultdict(list)
     for g in result['views']:
         if not g.get('skipped'):
@@ -494,6 +500,7 @@ def _apply(root, *, trash_dir=None):
     for name in names:
         path = _beneath(root, name)
         if not path.exists():
+            if resume is not None:resume['already_missing'] += 1
             for g in consumers[name]:
                 g.setdefault('already_missing', []).append(name)
             continue
@@ -533,6 +540,9 @@ def _apply(root, *, trash_dir=None):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 os.rename(path, target)
             else: path.unlink()
+            if resume is not None:
+                resume['deleted_files'] += 1
+                resume['bytes_deleted'] += record['bytes']
             for g in consumers[name]:g['deleted_files'].append(name)
             # Missing files are recoverable from intent after an abrupt exit.
             # Bound checkpoint frequency for receipts listing hundreds of thousands of files.
@@ -555,11 +565,14 @@ def _apply(root, *, trash_dir=None):
                 if len(rows) == rows[0]['nlink']:freed[min(r['name'] for r in rows)] = rows[0]['bytes']
         sizes = {r['name']: r['bytes'] for r in previous.values()}
         for g in result['views']:
-            g['delete_count'] = len(g['deleted_files'])
             g['deleted_bytes'] = sum(sizes.get(n, 0) for n in g['deleted_files'])
-            g['bytes_freed'] = sum(freed.pop(n, 0) for n in g['deleted_files'])
-        result['frames_deleted'] = len(removed)
-        result['bytes_freed'] = sum(g['bytes_freed'] for g in result['views'])
+            # Resume passes preserve the receipt's original accounting totals.
+            if not resuming:
+                g['delete_count'] = len(g['deleted_files'])
+                g['bytes_freed'] = sum(freed.pop(n, 0) for n in g['deleted_files'])
+        if not resuming:
+            result['frames_deleted'] = len(removed)
+            result['bytes_freed'] = sum(g['bytes_freed'] for g in result['views'])
         atomic(receipt_path, result)
     return result
 

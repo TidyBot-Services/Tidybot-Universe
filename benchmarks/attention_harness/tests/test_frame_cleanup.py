@@ -56,6 +56,9 @@ def test_apply_receipt_first_frame_readonly_idempotent(run):
     receipt=cleanup.apply(cell)
     raw=(cell/'frame-cleanup.json').read_bytes()
     assert receipt['schema']==cleanup.SCHEMA and receipt['status']=='completed'
+    assert receipt['bytes_freed']==200 and receipt['frames_deleted']==2
+    assert receipt['views'][0]['bytes_freed']==200 and receipt['views'][0]['delete_count']==2
+    assert 'resumes' not in receipt and 'resumed_at' not in receipt
     assert len(receipt['views'][0]['deleted_files'])==2
     assert (ep/'recording_frames/000000.jpg').exists() and (ep/'camera_initial.png').exists()
     assert (ep/'recording_frames/frames.jsonl').exists() and (ep/'advisor_replay.mp4').exists()
@@ -532,11 +535,19 @@ def interrupt_cleanup(cell, monkeypatch, *, trash=None):
     return value
 
 
+def cleanup_totals(value):
+    keys = ('bytes_freed', 'frames_deleted', 'delete_count', 'bytes_reclaimable')
+    return [{k: row[k] for k in keys if k in row} for row in (value, *value['views'])]
+
+
 def test_resume_interrupted_cleanup(run, monkeypatch):
     cell, ep = run
     before = interrupt_cleanup(cell, monkeypatch)
     value = cleanup.apply(cell)
     assert value['status'] == 'completed' and len(value['resumed_at']) == 1
+    assert cleanup_totals(value) == cleanup_totals(before)
+    assert value['resumes'] == [dict(at=value['resumed_at'][0], deleted_files=1,
+                                    already_missing=1, bytes_deleted=100, newly_skipped_views=0)]
     assert len(value['views'][0]['deleted_files']) == 2
     assert before['views'][0]['deleted_files'][0] in value['views'][0]['already_missing']
     assert (ep/'recording_frames/000000.jpg').exists()
@@ -571,6 +582,9 @@ def test_resume_trash_same_directory_and_restore(run, tmp_path, monkeypatch):
     before = interrupt_cleanup(cell, monkeypatch, trash=trash)
     value = cleanup.apply(cell)  # No caller-supplied trash destination on restart.
     assert value['status'] == 'completed' and value['trash_run'] == before['trash_run']
+    assert cleanup_totals(value) == cleanup_totals(before)
+    assert value['resumes'] == [dict(at=value['resumed_at'][0], deleted_files=1,
+                                    already_missing=1, bytes_deleted=100, newly_skipped_views=0)]
     restore = cleanup.load(Path(value['trash_run'])/'restore.json')
     assert len(restore['files']) == 2
     cleanup.restore(trash)
@@ -589,13 +603,16 @@ def test_resume_missing_trash_refuses_unlink(run, tmp_path, monkeypatch):
 @pytest.mark.parametrize('failure', ['count', 'missing', 'decode', 'producer'])
 def test_resume_reverifies_and_skips_failed_video(run, monkeypatch, failure):
     cell, ep = run
-    interrupt_cleanup(cell, monkeypatch)
+    before = interrupt_cleanup(cell, monkeypatch)
     if failure == 'count':monkeypatch.setattr(cleanup, 'probe_count', lambda p:3)
     if failure == 'missing':(ep/'advisor_replay.mp4').unlink()
     if failure == 'decode':monkeypatch.setattr(cleanup, 'probe_count', lambda p:(_ for _ in ()).throw(ValueError('decode error')))
     if failure == 'producer':(ep/'recording_frames/frames.jsonl').write_text('{}\n')
     value = cleanup.apply(cell)
     assert value['status'] == 'completed' and value['views'][0]['skipped']
+    assert cleanup_totals(value) == cleanup_totals(before)
+    assert value['resumes'] == [dict(at=value['resumed_at'][0], deleted_files=0,
+                                    already_missing=0, bytes_deleted=0, newly_skipped_views=1)]
     assert (ep/'recording_frames/000002.jpg').exists()
 
 
@@ -606,6 +623,8 @@ def test_resume_never_reconsiders_skipped_group(run):
     cleanup.atomic(cell/'frame-cleanup.json', value)
     after = cleanup.apply(cell)
     assert after['views'][0]['skipped'] == 'previous verification failure'
+    assert cleanup_totals(after) == cleanup_totals(value)
+    assert after['resumes'][0]['newly_skipped_views'] == 0
     assert (ep/'recording_frames/000001.jpg').exists()
 
 
@@ -695,15 +714,32 @@ def test_live_cleanup_process_is_an_owner_even_before_lock(run):
     finally:child.communicate(timeout=3)
 
 
-def test_resume_missing_only_and_second_interruption(run,monkeypatch):
+@pytest.mark.parametrize('trash_mode', [False, True])
+def test_resume_missing_only_and_second_interruption(run,tmp_path,monkeypatch,trash_mode):
     cell, ep = run
-    interrupt_cleanup(cell,monkeypatch)
+    planned = cleanup.plan(cell)
+    before = interrupt_cleanup(cell,monkeypatch,trash=tmp_path/'trash' if trash_mode else None)
+    # Preserve the original planned totals, as in a receipt checkpointed before
+    # the interrupted run's final accounting.
+    for saved, original in zip((before, *before['views']), (planned, *planned['views'])):
+        for key in ('bytes_freed', 'frames_deleted', 'delete_count'):
+            if key in original and not (trash_mode and key == 'bytes_freed'):
+                saved[key] = original[key]
+    prior = dict(at='2026-11-14T00:00:00+00:00', deleted_files=0,
+                 already_missing=1, bytes_deleted=0, newly_skipped_views=0)
+    before.update(resumed_at=[prior['at']], resumes=[prior])
+    cleanup.atomic(cell/'frame-cleanup.json', before)
     # Simulate another abrupt exit after unlink but before progress is checkpointed.
     (ep/'recording_frames/000002.jpg').unlink()
     value=cleanup.apply(cell)
     assert value['status']=='completed'
+    assert cleanup_totals(value) == cleanup_totals(before)
+    assert value['resumed_at'] == [prior['at'], value['resumes'][1]['at']]
+    assert value['resumes'] == [prior, dict(at=value['resumed_at'][1], deleted_files=0,
+                                          already_missing=2, bytes_deleted=0, newly_skipped_views=0)]
     assert len(value['views'][0]['already_missing'])==2
     assert len(value['views'][0]['deleted_files'])==1
+    assert cleanup.load(cell/'frame-cleanup.json') == value
 
 
 def test_startup_sweep_thread_failure_is_notice_not_server_failure(run,monkeypatch):
