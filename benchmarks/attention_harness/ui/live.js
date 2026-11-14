@@ -1992,12 +1992,20 @@
   function fatalStopMessage(snapshot) {
     const cause=snapshot.agent?.fatal_cause;
     let raw='';try{raw=JSON.stringify([snapshot.agent?.errors,snapshot.agent?.reason,snapshot.dev_session?.reason,snapshot.dev_session?.error,snapshot.eval?.stopped_reason]);}catch(_){raw='';}
+    if(/quota_unreadable_after_probe/.test(raw)||snapshot.agent?.quota?.error==='quota_unreadable_after_probe')
+      return 'Quota reading unavailable: after the weekly reset, one minimal Codex probe still could not read the weekly quota. The run stopped for review. (quota_unreadable_after_probe)';
     if(/scene_contract_mismatch/i.test(raw)){
       const seed=snapshot.run?.seed??snapshot.dev_session?.seed;
       return `Could not start: this scene${seed!=null?` (seed ${seed})`:''} does not load correctly on the robot computer, so the robot never moved. Start a new run with another seed.${cause?` (error code: ${cause})`:''}`;
     }
     if(cause)return `Stopped: the run hit an internal error and cannot continue on its own. This was not caused by anything you did; start a new run, and tell the lab if it happens again. (error code: ${cause})`;
     return 'Stopped: the run stopped unexpectedly and cannot continue on its own. Start a new run, and tell the lab if it happens again.';
+  }
+  function quotaProbeNotice(snapshot) {
+    const probe=snapshot.agent?.quota?.quota_probe;
+    if(!probe)return '';
+    const usage=probe.usage,tokens=usage?.total_tokens??(usage?Number(usage.input_tokens)+Number(usage.output_tokens):null);
+    return `<small data-quota-reset-probe>Weekly reset quota probe: ${esc(probe.status)}${Number.isFinite(tokens)?` · ${tokens.toLocaleString('en-US')} tokens charged to this run`:''}.</small>`;
   }
   function attemptCopy(attempt) {
     return {running:'Running',failed:'Unsuccessful',succeeded:'Succeeded',cancelled:'Stopped',timed_out:'Timed out',unknown:'Unconfirmed'}[attempt.status] || 'Unconfirmed';
@@ -2412,7 +2420,11 @@
 
   // Values shared by the visible limits and the independent Dev v2 ledger.
   function codexQuotaText(quota) {
+    if(quota?.reason==='quota_unreadable_after_probe'||quota?.error==='quota_unreadable_after_probe')
+      return {text:'Quota reading unavailable: after the weekly reset, the last run’s minimal Codex probe still could not read the weekly quota. (quota_unreadable_after_probe)',low:false};
     const used=quota?.used_percent;
+    if(quota?.reason==='quota_reading_unavailable_after_reset'||(quota?.window_minutes===10080&&Number(quota.resets_at)<=Date.now()/1000))
+      return {text:'Quota reading unavailable after the weekly reset. A new run will make one minimal Codex probe, charged to that run, before checking its quota limits. If the reading is still unavailable, it stops for review.',low:false};
     if(typeof used!=='number'||!Number.isFinite(used)||used<0||used>100)return {text:'Quota unavailable',low:false};
     const date=new Date(Number(quota.resets_at)*1000);
     const reset=Number.isFinite(date.getTime())&&quota.resets_at!=null
@@ -3357,7 +3369,7 @@
       // hidden key-mode radios that bindKeys owns. Choosing here sets them; their own events paint this row back.
       const keyMode=()=>form.querySelector('[data-keys-mode]:checked')?.value||'lab';
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab'||hosted; // A shared host does not read this machine's quota.
+        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab';
         if(!quotaLine.hidden){
           const message=codexQuotaText(dialogQuota);
           quotaLine.textContent=message.text;
@@ -3401,7 +3413,7 @@
           note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:labCodex?form[`${role}_model`]?.value||'lab':'lab'}`).join(' · ');
         }
       }
-      if(!hosted)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
+      fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
         dialogQuota=value;
         if(launchDialog.open)showQuota();
       }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});
@@ -5357,7 +5369,7 @@
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${quotaProbeNotice(snapshot)}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -6485,6 +6497,7 @@
       wall_stop:'time limit reached',
       quota_stop:'quota limit reached',
       quota_unavailable:'quota unavailable',
+      quota_unreadable_after_probe:'quota reading unavailable after the weekly reset probe',
       assistance_budget_exhausted:'help budget exhausted',
       public_view_unavailable:'the help context is unavailable',
       run_end:'the run ended',

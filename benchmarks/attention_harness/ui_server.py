@@ -596,6 +596,12 @@ def create_server(
                       'read_at': datetime.now(timezone.utc).isoformat()}
                      if isinstance(used, (int, float)) and not isinstance(used, bool) and math.isfinite(used) and 0 <= used <= 100
                      else {'available': False})
+            if window==10080 and (type(reset) not in (int,float) or not math.isfinite(reset) or reset<=time.time()):
+                value={'available':False,'reason':'quota_reading_unavailable_after_reset'}
+            if value.get('available') is False and getattr(dev_v2_bridge,'root',None) is not None:
+                from .dev_agent_quota import latest_probe_failure
+                failure=latest_probe_failure(dev_v2_bridge.root,since=reset if type(reset) in (int,float) and reset<=time.time() else 0)
+                if failure:value['reason']=failure
         except Exception:
             value = {'available': False}
         with quota_lock:

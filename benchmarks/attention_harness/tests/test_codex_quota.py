@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 
 from benchmarks.attention_harness.codex_quota import read_quota, run_quota_usage
 from benchmarks.attention_harness import ui_server
@@ -50,7 +51,7 @@ def test_public_quota_route_is_cached_and_never_leaks_credits(tmp_path, monkeypa
     clock[0] += 11
     assert get() == {'available': False}
     row = {'timestamp': '2026-10-20T02:00:00Z', 'payload': {'rate_limits': {
-        'primary': {'used_percent': 72, 'window_minutes': 10080, 'resets_at': 1793200000},
+        'primary': {'used_percent': 72, 'window_minutes': 10080, 'resets_at': time.time()+86400},
         'plan_type': 'pro', 'credits': {'balance': 12345}, 'account_id': 'private-id'}}}
     path.write_text('garbled\n'+json.dumps(row)+'\n')
     assert get() == {'available': False}
@@ -106,3 +107,27 @@ def test_recent_logs_give_the_same_reading_as_all_logs(tmp_path):
     try:read_quota(tmp_path)
     finally:type(old).open=real
     assert opened==['rollout-new.jsonl']                      # the old log is not parsed again
+
+
+def test_new_run_quota_api_explains_reset_and_failed_probe(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from benchmarks.attention_harness.dev_agent_ledger import AgentLedger
+    monkeypatch.setattr(ui_server,'ThreadingHTTPServer',OfflineServer)
+    now=time.time()
+    monkeypatch.setattr(ui_server,'read_quota',lambda:dict(used_percent=76,window_minutes=10080,resets_at=now-1))
+    root=tmp_path/'runs';run=root/'devexp-fake';run.mkdir(parents=True)
+    server=ui_server.create_server(port=0,dev_v2_bridge=SimpleNamespace(root=root))
+    status,body,_=request(server,'/api/codex-quota')
+    assert status==200 and json.loads(body)==dict(available=False,reason='quota_reading_unavailable_after_reset')
+    ledger=AgentLedger(run/'ledger.sqlite3','synthetic')
+    ledger.quota(dict(at=now,error='quota_unreadable_after_probe',private_field='must-not-leak'))
+    # A new offline server has an empty cache, without sleeps or a live port.
+    server=ui_server.create_server(port=0,dev_v2_bridge=SimpleNamespace(root=root))
+    status,body,_=request(server,'/api/codex-quota')
+    assert status==200 and json.loads(body)==dict(available=False,reason='quota_unreadable_after_probe')
+    assert 'must-not-leak' not in body.decode() and str(tmp_path) not in body.decode()
+    monkeypatch.setattr(ui_server,'read_quota',lambda:dict(used_percent=2,window_minutes=10080,resets_at=now+604800))
+    server=ui_server.create_server(port=0,dev_v2_bridge=SimpleNamespace(root=root))
+    status,body,_=request(server,'/api/codex-quota')
+    value=json.loads(body)
+    assert status==200 and value['used_percent']==2 and 'reason' not in value
