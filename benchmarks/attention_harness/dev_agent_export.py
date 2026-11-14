@@ -112,7 +112,9 @@ class Exporter:
         immutable(directory / 'policy.py', read_beneath(self.workspace.private,
             'sources/' + response['request_id'] + '.py').decode('utf-8'))
         incoming = self.workspace.canonical / f'versions/v{number - 1:04d}/help.json'
-        if help_value.get('agent_policy_version') == 'agent-policy-v2':
+        # Completion skips the attention boundary, leaving the final live help
+        # record without a policy marker. The frozen run config is authoritative.
+        if self.config.get('agent_policy_version', 'agent-policy-v1') == 'agent-policy-v2':
             from .dev_agent_help_interval import freeze_help
             from .memory_provisional import NotStaged
             # Reuse the sealed interval on replay, never sample later help.
