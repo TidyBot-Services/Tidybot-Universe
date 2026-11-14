@@ -297,7 +297,9 @@ class Handler(BaseHTTPRequestHandler):
             raise policy.Refused('csrf_token_required', 'Reload the page and try again.', 403)
         # 11-10 (user): the site opens on Home; its New run leads a visitor to the invite page.
         if path in ('/', '/ui'):return self.redirect('/ui/home.html', 302)
-        if path == '/ui/' and self.command == 'GET':return self.page(session)
+        # 11-14 (user): a visitor without an invite who opens the Run page itself gets everyone's runs as a gallery;
+        # a link to one run (?dev=…) still opens the run page. Nothing more is readable than before.
+        if path == '/ui/' and self.command == 'GET':return self.page(session, 'guest.html' if session is None and not parts.query else 'index.html')
         if path in policy.UI_PAGES and self.command == 'GET':return self.page(session, policy.UI_PAGES[path])
         if path == '/ui/free_view.html' and self.command == 'GET':return self.free_view()
         if path.startswith('/ui/') and self.command == 'GET':return self.asset(path[4:])
