@@ -13,6 +13,8 @@ import re
 import sqlite3
 import sys
 import time
+import threading
+from collections import OrderedDict
 from pathlib import Path
 
 from .dev_loop import sha
@@ -131,9 +133,12 @@ def automatic_checks(root=None,gateway=None,*,experiments_root=None):
         except Exception as exc:value['errors'].append('Reuse notes unavailable: '+str(exc))
     reuse = value['reuse']
     if reuse.get('notes'):
-        # The reuse detail predates lifecycle/provider fields. Join the existing
-        # public catalogue, without inferring trust from source verification.
-        if callable(getattr(gateway, 'list_dev_v2_memories', None)):
+        # Prefer metadata on the already verified reuse response. Legacy service
+        # versions omit lifecycle fields and still need the public catalogue;
+        # that endpoint verifies every public note, including unrelated sources.
+        missing_status = any('status' not in n for pair in reuse['notes']
+            for n in (pair.get('original'), pair.get('generalized')) if n)
+        if missing_status and callable(getattr(gateway, 'list_dev_v2_memories', None)):
             try:
                 catalogue = {r['memory_id']: r for r in gateway.list_dev_v2_memories()}
                 for pair in reuse['notes']:
@@ -205,8 +210,45 @@ def short(value, length):
 
 # Bounded file/ledger caches are invalidated by file metadata, including WAL
 # changes. Never open a writer or instantiate a store on historical runs.
-_HISTORY_FILES = {}
-_HISTORY_LEDGERS = {}
+class _HistoryCache:
+    """LRU bounded by both entries and serialized payload bytes.
+
+    Values are private, read-only snapshots. Never hold the lock across I/O or
+    parsing; concurrent misses may compute twice but cannot corrupt the cache.
+    """
+    def __init__(self, entries, byte_limit=16 * 1024 * 1024):
+        self.entries, self.byte_limit = entries, byte_limit
+        self.lock = threading.RLock()
+        self.clear()
+
+    def clear(self):
+        with self.lock:
+            self.data, self.bytes = OrderedDict(), 0
+
+    def get(self, key):
+        with self.lock:
+            item = self.data.get(key)
+            if item is not None:
+                self.data.move_to_end(key)
+                return item[0]
+
+    def put(self, key, value):
+        size = len(json.dumps(value, ensure_ascii=True).encode('utf-8')) + len(str(key))
+        with self.lock:
+            old = self.data.pop(key, None)
+            if old:self.bytes -= old[1]
+            if size > self.byte_limit:return
+            self.data[key] = (value, size)
+            self.bytes += size
+            while len(self.data) > self.entries or self.bytes > self.byte_limit:
+                _, (_, removed) = self.data.popitem(last=False)
+                self.bytes -= removed
+
+
+_HISTORY_FILES = _HistoryCache(4096)
+_HISTORY_LEDGERS = _HistoryCache(200)
+_HISTORY_DELIVERIES = _HistoryCache(4096)
+_HISTORY_TURNS = _HistoryCache(512)
 HISTORY_BYTES = 8 * 1024 * 1024
 HISTORY_CELLS = 32
 HISTORY_VERSIONS = 64
@@ -230,8 +272,7 @@ def _history_json(path):
     if cached and cached[0] == stamp:return cached[1]
     value = json.loads(path.read_bytes())
     if not isinstance(value, dict):raise ValueError(path.name+' must contain an object')
-    if len(_HISTORY_FILES) >= 4096:_HISTORY_FILES.clear()
-    _HISTORY_FILES[key] = (stamp, value)
+    _HISTORY_FILES.put(key, (stamp, value))
     return value
 
 
@@ -252,8 +293,40 @@ def _history_ledger(path):
             if len(versions) > HISTORY_VERSIONS or len(jobs) > HISTORY_VERSIONS*4:
                 raise ValueError('history ledger version/job limit exceeded')
             result.append((cell, versions, jobs))
-    if len(_HISTORY_LEDGERS) >= EXPERIMENT_LIMIT:_HISTORY_LEDGERS.clear()
-    _HISTORY_LEDGERS[str(path)] = (stamp, result)
+    _HISTORY_LEDGERS.put(str(path), (stamp, result))
+    return result
+
+
+def _history_delivery(public, private):
+    """Cheap exact-ID index; an unchanged packet is never opened again.
+
+    Keep packet errors even when IDs cannot be recovered. Public packets keep
+    precedence over private copies, including when public JSON is malformed.
+    """
+    paths = [p/name for name in ('memory-input.json', 'memory-run-notes-input.json')
+             for p in (public, private) if p is not None]
+    stamp = tuple((str(p), _history_stamp(p)) for p in paths)
+    key = tuple(str(p) for p in paths)
+    cached = _HISTORY_DELIVERIES.get(key)
+    if cached and cached[0] == stamp:return cached[1]
+    entries, errors = {}, []
+    for name in ('memory-input.json', 'memory-run-notes-input.json'):
+        path = next((p for p, s in zip(paths, stamp) if p.name == name and s[1] is not None), None)
+        if path is None:
+            if name == 'memory-input.json':errors.append('memory-input.json is missing')
+            continue
+        try:
+            packet = _history_json(path)
+            rows = packet.get('entries', packet.get('notes'))
+            if not isinstance(rows, list) or len(rows) > LIMIT:raise ValueError('invalid delivery entries or delivery limit exceeded')
+            for entry in rows:
+                if not isinstance(entry, dict):raise ValueError('invalid delivery note')
+                mid = entry.get('note_id') if name == 'memory-run-notes-input.json' else entry.get('memory_id')
+                if not isinstance(mid, str):raise ValueError('invalid delivery note ID')
+                entries[mid] = entry
+        except (OSError, ValueError, TypeError) as exc:errors.append(name+': '+str(exc))
+    result = entries, errors
+    _HISTORY_DELIVERIES.put(key, (stamp, result))
     return result
 
 
@@ -360,15 +433,24 @@ def _history_turn_use(directory, number, numbers):
     end = _history_json(end_path) if end_path else event_cursor(private)
     if not end:raise FileNotFoundError('Dev turn log is missing')
     if len(end) > HISTORY_VERSIONS:raise ValueError('turn log stream limit exceeded')
-    total = 0
+    total, streams = 0, []
     for name in end:
         # _events validates cursor paths and offsets again before parsing.
         if not re.fullmatch(r'turns/t\d+/events.jsonl', name):raise ValueError('invalid event cursor path')
         stamp = _history_stamp(private/name)
         if stamp is None:raise FileNotFoundError('Dev turn log is missing')
         total += stamp[2]
+        streams.append((name, stamp))
     if total > HISTORY_BYTES:raise ValueError('turn log history size limit exceeded')
-    return validate_report(analyse(notes, _events(private, start, end)))
+    key = (str(directory), number)
+    stamp = (_history_stamp(saved/'memory-delivered.json'), _history_stamp(saved/'memory-use-start.json'),
+             str(end_path), _history_stamp(end_path) if end_path else None,
+             tuple(sorted(end.items())), tuple(streams))
+    cached = _HISTORY_TURNS.get(key)
+    if cached and cached[0] == stamp:return cached[1]
+    result = validate_report(analyse(notes, _events(private, start, end)))
+    _HISTORY_TURNS.put(key, (stamp, result))
+    return result
 
 
 def _history_source(root, note):
@@ -449,26 +531,16 @@ def note_history(root, memory_ids, *, notes=()):
                         if len(value['errors']) >= HISTORY_ROWS:
                             value['errors'] = value['errors'][:HISTORY_ROWS] + [error('Note history error limit reached')]
                             return value
-                        errors = []
                         row_context = dict(context, version=number)
-                        entries = {}
-                        for name in ('memory-input.json', 'memory-run-notes-input.json'):
-                            candidates = [p/name for p in (public.get(number), private.get(number)) if p]
-                            path = next((p for p in candidates if p.exists()), None)
-                            if path is None:
-                                if name == 'memory-input.json':errors.append('memory-input.json is missing')
-                                continue
-                            try:
-                                packet = _history_json(path)
-                                rows = packet.get('entries', packet.get('notes'))
-                                if not isinstance(rows, list) or len(rows) > LIMIT:raise ValueError('invalid delivery entries or delivery limit exceeded')
-                                for entry in rows:
-                                    if not isinstance(entry, dict):raise ValueError('invalid delivery note')
-                                    # Local run packets use note_id; service packets use memory_id.
-                                    mid = entry.get('note_id') if name == 'memory-run-notes-input.json' else entry.get('memory_id')
-                                    if not isinstance(mid, str):raise ValueError('invalid delivery note ID')
-                                    entries[mid] = entry
-                            except (OSError, ValueError, TypeError) as exc:errors.append(name+': '+str(exc))
+                        entries, packet_errors = _history_delivery(public.get(number), private.get(number))
+                        errors = list(packet_errors)
+                        matched = ids & entries.keys()
+                        if not matched:
+                            # Discover recipients using packets only. Audits,
+                            # authored logs and results of other versions are
+                            # never opened, even on a cold request.
+                            value['errors'].extend(error(e, **row_context) for e in errors)
+                            continue
                         audit_notes = {}
                         audit_path = public.get(number, directory/f'v{number}')/'memory_use.json'
                         audit_present = audit_path.exists()
@@ -485,13 +557,6 @@ def note_history(root, memory_ids, *, notes=()):
                                 audit_notes = {n['memory_id']: n for n in audit['notes']}
                             except (OSError, ValueError, TypeError, KeyError) as exc:
                                 errors.append('memory_use.json is missing; citation audit pending: '+str(exc))
-                        matched = ids & (entries.keys() | audit_notes.keys())
-                        if not matched:
-                            # A corrupt packet has no recoverable IDs. Surface it
-                            # globally, but do not hash unrelated native bundles.
-                            value['errors'].extend(error(e, **row_context) for e in errors
-                                if not e.startswith('memory_use.json is missing'))
-                            continue
                         version = next((v for v in versions if v.get('version') == number), dict(version=number))
                         try:outcomes = _history_results(cell, version, jobs)
                         except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
