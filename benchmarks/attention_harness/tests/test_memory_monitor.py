@@ -456,6 +456,21 @@ def test_automatic_checks_joins_history_by_original_and_generalized_ids(history_
     assert pair['generalized']['status'] == 'trusted'
 
 
+def test_automatic_checks_reuse_metadata_avoids_full_catalogue(history_runs):
+    root, _, original, generalized = history_runs
+    class Gateway:
+        def reuse_notes_list(self):
+            return dict(notes=[dict(original=dict(memory_id=original, status='disabled', provider='advisor'),
+                generalized=dict(memory_id=generalized, status='provisional', expires_at=123))], errors=[])
+        def list_dev_v2_memories(self):
+            raise AssertionError('full catalogue verifies unrelated source evidence')
+    value = memory_monitor.automatic_checks(gateway=Gateway(), experiments_root=root)
+    pair = value['reuse']['notes'][0]
+    assert pair['original']['status'] == 'disabled' and pair['original']['provider'] == 'advisor'
+    assert pair['generalized']['expires_at'] == 123
+    assert not value['reuse']['errors']
+
+
 def test_project_passes_metadata_and_current_run_citations(RUN):
     bridge = Bridge(RUN/'ledger.sqlite3')
     with sqlite3.connect(RUN/'ledger.sqlite3') as db:
@@ -541,6 +556,9 @@ def test_note_history_turn_log_fallback_reuses_export_detector(history_runs, mon
     assert calls and row['use'] == expected and row['reason'] == reason
     assert row['decision_source'] == 'turn_log' and not row['errors']
     assert before == {p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    # Polling an unchanged version must reuse the export detector's result.
+    assert memory_monitor.note_history(root, [mid])['rows'][0] == row
+    assert len(calls) == 1
     # A later delivery bounds this version; subsequent messages cannot change it.
     next_delivery = saved.parent/'v2'
     next_delivery.mkdir()
@@ -589,3 +607,87 @@ def test_source_identity_errors_are_visible_and_origin_provider_needs_no_inferen
     pair = dict(original=dict(memory_id=original, origin=dict(provider='advisor')))
     memory_monitor.join_reuse_history(dict(notes=[pair]), dict(rows=[], errors=[]))
     assert pair['original']['provider'] == 'advisor'
+
+
+def test_note_history_opens_only_recipient_evidence_and_indexes_packets(tmp_path, monkeypatch):
+    """50 runs, two versions each: unrelated audits/logs/results stay unopened."""
+    from benchmarks.attention_harness.memory_use import analyse
+    directories = []
+    for index in range(50):
+        run = tmp_path / f'devexp-{index:024x}'
+        directory = run/'artifacts/cell'
+        store = DevV2Store(run/'ledger.sqlite3')
+        cell = dict(key='cell', experiment_id=run.name, artifact_dir=str(directory),
+                    memory_family=index != 49, run_notes=False)
+        with store.tx() as db:
+            db.execute('INSERT INTO v2_cells VALUES (?,?,?)', ('cell', run.name, json.dumps(cell)))
+            for number in (1, 2):
+                db.execute('INSERT INTO v2_versions VALUES (?,?,?)', ('cell', number, json.dumps(dict(version=number))))
+                target = directory/f'v{number}'
+                target.mkdir(parents=True)
+                mid = 'p-requested' if (index, number) == (0, 1) else f'p-other-{index}-{number}'
+                note = dict(memory_id=mid, title=mid, level='same_task')
+                (target/'memory-input.json').write_text(json.dumps(dict(entries=[note])))
+                (target/'memory_use.json').write_text(json.dumps(analyse([note], [])))
+        directories.append(directory)
+    reads = []
+    read = Path.read_bytes
+    def tracked(path):
+        reads.append(path)
+        if path.name not in ('memory-input.json', 'memory-run-notes-input.json'):
+            assert path == directories[0]/'v1/memory_use.json'
+        assert not path.is_relative_to(directories[49])  # Not opted in.
+        return read(path)
+    monkeypatch.setattr(Path, 'read_bytes', tracked)
+    turn_use = memory_monitor._history_turn_use
+    def recipient_log(directory, number, numbers):
+        assert directory == directories[1] and number == 2  # Changed recipient below only.
+        return turn_use(directory, number, numbers)
+    monkeypatch.setattr(memory_monitor, '_history_turn_use', recipient_log)
+    first = memory_monitor.note_history(tmp_path, ['p-requested'])
+    assert len(first['rows']) == 1 and not first['errors']
+    assert len(reads) == 99  # 98 cheap packets, exactly one recipient audit.
+    reads.clear()
+    assert memory_monitor.note_history(tmp_path, ['p-requested']) == first
+    assert not reads  # Warm index/file caches never reopen unrelated files.
+    # Changed packets must update the recipient index immediately.
+    target = directories[1]/'v2'
+    note = dict(memory_id='p-requested', title='Requested', level='same_task')
+    (target/'memory-input.json').write_text(json.dumps(dict(entries=[note])))
+    (target/'memory_use.json').unlink()
+    second = memory_monitor.note_history(tmp_path, ['p-requested'])
+    assert len(second['rows']) == 2
+    assert target/'memory-input.json' in reads
+
+
+def test_project_history_is_scoped_to_viewed_run(RUN, monkeypatch):
+    history = memory_monitor.note_history
+    calls = []
+    def scoped(root, *args, **kwargs):
+        calls.append(root)
+        assert root == RUN
+        return history(root, *args, **kwargs)
+    monkeypatch.setattr(memory_monitor, 'note_history', scoped)
+    memory_monitor.project(Bridge(RUN/'ledger.sqlite3'), Memory([row('p-current')]), EXPERIMENT)
+    assert calls == [RUN]
+
+
+def test_history_cache_is_bounded_lru_and_thread_safe():
+    from concurrent.futures import ThreadPoolExecutor
+    cache = memory_monitor._HistoryCache(3, byte_limit=300)
+    cache.put('first', 'value')
+    cache.put('second', 'value')
+    cache.put('third', 'value')
+    assert cache.get('first') == 'value'
+    cache.put('fourth', 'value')
+    assert cache.get('second') is None
+    cache.put('too-large', 'x'*301)
+    assert cache.get('too-large') is None
+    def poll(index):
+        cache.put(str(index % 7), dict(index=index))
+        cache.get(str((index+1) % 7))
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(poll, range(200)))
+    assert len(cache.data) <= 3 and cache.bytes <= 300
+    cache.clear()
+    assert cache.bytes == 0 and not cache.data
