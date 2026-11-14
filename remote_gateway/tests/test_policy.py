@@ -144,6 +144,8 @@ def test_settings_refuse_what_could_never_be_honoured(tmp_path):
 def test_a_help_reply_is_rebuilt_from_named_fields():
     cell = 'a' * 64
     assert policy.help_reply(dict(cell=cell, execution_id='e000010', content='Lower it.', extra=1)) == dict(cell=cell, execution_id='e000010', content='Lower it.')
+    assert policy.help_reply(dict(cell=cell, execution_id='e000010', content='Lower it.', assisted=True, replied_by='spoofed')) == dict(cell=cell, execution_id='e000010', content='Lower it.', assisted=True)
+    with pytest.raises(policy.Refused):policy.help_reply(dict(cell=cell, execution_id='e000010', content='Lower it.', assisted='false'))
     assert policy.help_reply(dict(cell=cell, execution_id='e000010', skip=True, content='x')) == dict(cell=cell, execution_id='e000010', skip=True)
     for bad in (dict(cell='x', execution_id='e000010', content='a'), dict(cell=cell, execution_id='../x', content='a'), dict(cell=cell, execution_id='e000010', content=' '),
                 dict(cell=cell, execution_id='e000010', content='a' * 2001), dict(cell=cell, execution_id='e000010'), []):

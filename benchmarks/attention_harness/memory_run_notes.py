@@ -49,7 +49,7 @@ def _skip(store, key, version, reason, **extra):
 title = note_title
 
 
-def create(store, key, version, directory):
+def create(store, key, version, directory, *, agent_help_evidence=None):
     """Safely create one immutable note, or record why an answer did not qualify."""
     try:
         cell = store.cell(key)
@@ -65,13 +65,19 @@ def create(store, key, version, directory):
         if version < 2:
             raise NotStaged('version_before_2')
         if answer.get('provider') not in PROVIDERS:
-            raise NotStaged('provider_not_source')
+            raise NotStaged('assisted_reply_not_source' if answer.get('provider') == 'human_assisted' else 'provider_not_source')
+        if answer['provider'] == 'human':
+            if agent_help_evidence is None or cell.get('dev_mode') != 'agent':
+                raise NotStaged('human_requires_dev_agent')
+            from .memory_provisional import verify_agent_help
+            verify_agent_help(key, version, directory, agent_help_evidence)
         content = answer.get('content')
         if answer.get('rejected') or not isinstance(content, str) or not content.strip():
             raise NotStaged('help_rejected_or_empty')
         refs = dict(help=_ref(help_path),
                     origin_public_feedback=_ref(directory.parent / f'v{version - 1}' / 'public-feedback.json'),
                     help_public_feedback=_ref(directory / 'public-feedback.json'))
+        if answer['provider'] == 'human':refs['agent_help_evidence'] = agent_help_evidence
         origin = json.loads(Path(refs['origin_public_feedback']['uri']).read_bytes())
         helped = json.loads(Path(refs['help_public_feedback']['uri']).read_bytes())
         signature = derive_signature(origin)
@@ -108,6 +114,10 @@ def create(store, key, version, directory):
                     title=heading, content=content, failure_signature=signature, effective_reason=reason,
                     origin_progress=progress(origin), help_progress=progress(helped), refs=refs,
                     run_local=True, unvalidated=True, excluded_from_results=True)
+        if answer['provider'] == 'human':
+            from .memory_provisional import HUMAN_ATTRIBUTION
+            note.update({k: answer[k] for k in HUMAN_ATTRIBUTION})
+            note['origin'] = dict(channel='dev_agent', provider='human', **{k: answer[k] for k in HUMAN_ATTRIBUTION})
         if saved is None or 'layer' in saved:
             note['layer'] = 'run'
         if saved is not None and saved != note:

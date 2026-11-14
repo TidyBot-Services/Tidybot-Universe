@@ -118,6 +118,10 @@ def provisional_payload(proposal, namespace, *, taken=(), ledger=None):
                    title=unique_title(note_title(guidance, proposal['failure_signature'], task_id=context['task_id']), taken, proposal['help_version']))
     if agent:
         origin['channel'] = 'dev_agent'
+        if proposal['provider'] == 'human':
+            from .memory_provisional import HUMAN_ATTRIBUTION
+            if proposal['origin'].get('provider') != 'human':raise Refused('human origin provider differs')
+            origin.update({k: proposal['origin'][k] for k in HUMAN_ATTRIBUTION})
         payload['agent_evidence'] = agent_evidence(proposal)
         from attention_memory_service.agent_provisional import verify
         verify(origin, guidance, payload['agent_evidence'])

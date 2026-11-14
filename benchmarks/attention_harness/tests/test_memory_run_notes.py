@@ -55,7 +55,7 @@ def test_effective_creation_immutable_idempotent_and_changed_answer(tmp_path):
 
 @pytest.mark.parametrize('answer,origin,helped,reason', [
     (None, REJECTED, TIMEOUT, None),
-    ({'provider':'human','content':'Hint.'}, REJECTED, TIMEOUT, 'provider_not_source'),
+    ({'provider':'human','content':'Hint.'}, REJECTED, TIMEOUT, 'human_requires_dev_agent'),
     (dict(ADVICE, rejected=True), REJECTED, TIMEOUT, 'help_rejected_or_empty'),
     (dict(ADVICE, content=' '), REJECTED, TIMEOUT, 'help_rejected_or_empty'),
     (ADVICE, REJECTED, SAME, 'not_effective'),

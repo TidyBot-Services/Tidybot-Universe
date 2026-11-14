@@ -241,10 +241,11 @@ def help_reply(body):
     if not isinstance(body, dict) or not isinstance(body.get('cell'), str) or not CELL.fullmatch(body['cell']):raise Refused('invalid_body', 'Invalid request.', 400)
     if not isinstance(body.get('execution_id'), str) or not EXECUTION.fullmatch(body['execution_id']):raise Refused('invalid_body', 'Invalid request.', 400)
     result = dict(cell=body['cell'], execution_id=body['execution_id'])
+    if type(body.get('assisted', False)) is not bool:raise Refused('invalid_reply', 'assisted must be a boolean.', 400)
     if body.get('skip') is True:return dict(result, skip=True)
     content = body.get('content')
     if not isinstance(content, str) or not 0 < len(content.strip()) <= 2000:raise Refused('invalid_reply', 'A reply is 1 to 2000 characters.', 400)
-    return dict(result, content=content)
+    return dict(result, content=content, **({'assisted':body['assisted']} if 'assisted' in body else {}))
 
 
 def audit_route(path):

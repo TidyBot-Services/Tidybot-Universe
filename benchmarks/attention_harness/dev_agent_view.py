@@ -316,6 +316,8 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
             ask_required=[r for r in records if r.get('error')=='ask_required'])
     from .dev_agent_ui_projection import compat, error_groups
     result['agent']['failure_errors'], result['agent']['details'] = error_groups(errors, records)
+    from .dev_agent_ledger import attention_summary
+    result['agent']['attention'] = attention_summary(jobs)
     result['dev_v2_compat']=compat(cell,result['agent'],jobs)
     if not cell.get('artifact_dir') and not run and experiment.get('manifest') and cell.get('state')=='planned' and not experiment.get('cancelled'):
         # Creation has no cell workspace yet. Read configuration from the frozen

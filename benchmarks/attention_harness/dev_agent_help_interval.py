@@ -12,12 +12,13 @@ V2 = 'agent-policy-v2'
 
 
 def delivered(answer):
-    return (answer.get('provider') == 'advisor' and answer.get('delivered') is True
+    # Assisted replies are delivered and frozen too; staging explicitly excludes them.
+    return (answer.get('provider') in ('advisor', 'human', 'human_assisted') and answer.get('delivered') is True
             and answer.get('status') == 'delivered' and not answer.get('cache_hit')
             and not answer.get('rejected'))
 
 
-def interval_help(jobs, version):
+def interval_help(jobs, version, *, eligible=True):
     """Use reservation order at accepted submits, including equal clock ticks.
 
     Reopened help uses its new reservation timestamp. A submit's own proactive
@@ -39,7 +40,7 @@ def interval_help(jobs, version):
         boundaries.append((job['reserved_at'], i))
     return [j for i, j in enumerate(jobs)
             if j['kind'] == 'help' and j['state'] == 'settled'
-            and re.fullmatch(r'help:e\d+', j['id']) and delivered(j.get('receipt', {}))
+            and re.fullmatch(r'help:e\d+', j['id']) and (not eligible or delivered(j.get('receipt', {})))
             and boundaries[0] < (j['reserved_at'], i) < boundaries[1]
             and boundaries[0][0] <= j.get('claimed_at', float('-inf'))
                 <= j.get('settled_at', float('inf')) <= boundaries[1][0]]

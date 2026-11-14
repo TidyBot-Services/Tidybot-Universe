@@ -395,7 +395,14 @@ class HelperV2(Helper):
         reply = None if fallback else self._human_reply(eid, view, deadline)
         record=None;usage=None
         if reply is not None:
-            row.update(status='delivered', delivered=True, provider='human', content=reply, **human_seconds(view, reply))
+            folder = self.workspace.private/'help'/eid
+            outcome = json.loads((folder/human_reply.OUTCOME).read_bytes())
+            wait = json.loads((folder/human_reply.WAIT).read_bytes())
+            assisted = outcome.get('assisted') is True
+            cost = human_seconds(view, reply)
+            row.update(status='delivered', delivered=True, provider='human_assisted' if assisted else 'human',
+                content=reply, replied_by=outcome['replied_by'],
+                actual_human_seconds=0 if assisted else outcome['at']-wait['started_at'], **cost)
             atomic_write(self.workspace.private, 'help/'+eid+'/human.json', encode(dict(content=reply)))
         else:
             try:
