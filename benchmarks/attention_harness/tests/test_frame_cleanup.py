@@ -6,6 +6,8 @@ from pathlib import Path
 import shutil
 import sqlite3
 import subprocess
+import sys
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -743,15 +745,80 @@ def test_idle_check_receipt_layouts_fail_closed(tmp_path, layout, contents):
     assert 'invalid escape sequence' not in done.stderr
 
 
-def test_live_cleanup_process_is_an_owner_even_before_lock(run):
-    import sys
+@pytest.mark.parametrize('argv,busy', [
+    (['bash', '-c', 'pytest benchmarks/attention_harness/tests/test_frame_cleanup.py {root} worker'], False),
+    (['bash', '-c', 'grep benchmarks.attention_harness.frame_cleanup {root}'], False),
+    (['python', '-m', 'pytest', 'benchmarks/attention_harness/tests/test_frame_cleanup.py', '{root}'], False),
+    (['python', '-c', 'pass', 'benchmarks.attention_harness.frame_cleanup', '{root}'], False),
+    (['python', '-m', 'benchmarks.attention_harness.frame_cleanup.extra', '{root}'], False),
+    (['python', 'frame_cleanup.py', '{root}'], False),
+    (['bash', 'frame_cleanup_backfill.py', '--runs-root', '{root}'], False),
+    (['python', '-m', 'benchmarks.attention_harness.frame_cleanup', '{root}', '123'], True),
+    (['/venv/bin/python3', '/tools/frame_cleanup_backfill.py', '--runs-root', '{root}'], True),
+    (['python', 'state_log_dedupe.py', '--runs-root={root}'], True),
+])
+def test_cleanup_process_checks_use_argv(run, tmp_path, monkeypatch, capsys, argv, busy):
     cell, _ = run
-    child=subprocess.Popen([sys.executable,'-B','-c','import sys; sys.stdin.read()',
-                            'benchmarks.attention_harness.frame_cleanup',str(cell)],stdin=subprocess.PIPE)
-    try:
-        assert cleanup.state(cell)['active']
-        with pytest.raises(ValueError,match='no live'):cleanup.apply(cell)
-    finally:child.communicate(timeout=3)
+    args = [arg.format(root=cell) for arg in argv]
+    proc = tmp_path/'proc'
+    (proc/'123').mkdir(parents=True)
+    (proc/'123/cmdline').write_bytes(b'\0'.join(arg.encode() for arg in args)+b'\0')
+    own = proc/str(os.getpid());own.mkdir()
+    (own/'cmdline').write_bytes(b'python\0-m\0benchmarks.attention_harness.frame_cleanup\0'+str(cell).encode()+b'\0')
+    (proc/'456').mkdir()  # Exited before cmdline could be read.
+    (proc/'789').mkdir();(proc/'789/cmdline').write_bytes(b'')
+    processes = cleanup._processes
+    monkeypatch.setattr(cleanup, '_processes', lambda: processes(proc))
+    assert cleanup._cleanup_alive(cell) is busy
+    assert cleanup.state(cell)['active'] is busy
+    if busy:
+        with pytest.raises(ValueError, match='no live'): cleanup.apply(cell)
+
+    # Execute the shell script's actual inline Python with the same fake /proc.
+    script = Path(__file__).resolve().parents[3]/'scripts/attentionbench/idle-check.sh'
+    source = script.read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+    setup, body = source.split('busy = False', 1)
+    namespace = {}
+    exec(compile(setup, str(script), 'exec'), namespace)
+    idle_processes = namespace['_processes']
+    namespace['_processes'] = lambda: idle_processes(proc)
+    namespace['subprocess'] = SimpleNamespace(run=lambda *a, **kw: SimpleNamespace(stdout=''))
+    monkeypatch.setattr(sys, 'argv', ['-', str(tmp_path/'no-receipts')])
+    with pytest.raises(SystemExit) as result:
+        exec(compile('busy = False'+body, str(script), 'exec'), namespace)
+    assert result.value.code == int(busy)
+    output = capsys.readouterr().out
+    assert ('frame cleanup:' in output) is busy
+    if busy: assert cell.parent.parent.name in output
+
+
+def test_cleanup_process_root_scope_and_relative_path(run, tmp_path, monkeypatch):
+    cell, _ = run
+    proc = tmp_path/'proc/123';proc.mkdir(parents=True)
+    (proc/'cwd').symlink_to(cell.parent)
+    args = ['python', '-m', 'benchmarks.attention_harness.frame_cleanup', cell.name, '0']
+    monkeypatch.setattr(cleanup, '_processes', lambda: iter([(proc, args)]))
+    assert cleanup._cleanup_alive(cell)
+    assert cleanup._cleanup_alive(cell.parent.parent)
+    assert not cleanup._cleanup_alive(tmp_path/'unrelated')
+    args[:] = ['python', 'frame_cleanup_backfill.py', '--runs-root', str(cell.parent.parent)]
+    assert cleanup._cleanup_alive(cell)
+    assert not cleanup._cleanup_alive(tmp_path/'unrelated')
+
+
+@pytest.mark.parametrize('argv,active', [
+    (['bash', '-c', 'worker dev_experiment {run_id}'], False),
+    (['python', '-m', 'pytest', '-k', 'worker', '{root}'], False),
+    (['python', '-m', 'benchmarks.attention_harness.dev_experiment', 'run', '--experiment', '{run_id}'], True),
+    (['python', '-m', 'benchmarks.attention_harness.daily_dev_v2', '--worker', '{run_id}'], True),
+    (['python', '-m', 'benchmarks.attention_harness.daily_dev_v2', '--worker', '{run_id}-other'], False),
+    (['python', '-m', 'benchmarks.attention_harness.dev_agent_loop', '{root}', '--log', 'frame_cleanup.log'], True),
+])
+def test_state_matches_worker_argv(run, monkeypatch, argv, active):
+    cell, _ = run
+    args = [arg.format(root=cell, run_id=cell.parent.parent.name) for arg in argv]
+    monkeypatch.setattr(cleanup, '_processes', lambda: iter([(Path('/proc/123'), args)]))
+    assert cleanup.state(cell)['active'] is active
 
 
 @pytest.mark.parametrize('trash_mode', [False, True])

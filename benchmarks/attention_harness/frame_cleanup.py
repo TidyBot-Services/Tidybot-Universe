@@ -328,28 +328,47 @@ def state(run_dir):
         owners = [c.get('owner') for c in cells]+[exps[c['experiment_id']].get('owner') for c in cells]
         active = any(_owner_alive(o) for o in owners if o) or _cleanup_alive(root)
         tokens = {str(root), root.name, *(c['key'] for c in cells), *(c['experiment_id'] for c in cells)}
-        for proc in Path('/proc').glob('[0-9]*/cmdline'):
-            if int(proc.parent.name) == os.getpid(): continue
-            try: command = proc.read_bytes().replace(b'\0', b' ').decode(errors='replace')
-            except (FileNotFoundError, PermissionError, ProcessLookupError): continue
-            if 'frame_cleanup' in command: continue
-            if any(w in command for w in ('worker', 'scheduler', 'dev_experiment', 'dev_agent_loop')) and any(t in command for t in tokens):
+        for proc, args in _processes():
+            if _is_cleanup_process(args): continue
+            modules = {'benchmarks.attention_harness.'+name for name in ('daily_dev_v2', 'dev_experiment', 'dev_agent_loop')}
+            scripts = {'daily_dev_v2.py', 'dev_experiment.py', 'dev_agent_loop.py'}
+            runner = (Path(args[0]).name.startswith('python') and
+                      (any(a == '-m' and b in modules for a, b in zip(args, args[1:])) or
+                       any(Path(arg).name in scripts for arg in args)))
+            if runner and any(arg in tokens or tokens.intersection(Path(arg).parts) for arg in args):
                 active = True
         return dict(terminal=all(c['state'] in TERMINAL for c in cells), paused=bool(paused), active=active,
                     mode='agent' if any((Path(c['artifact_dir'])/'agent').is_dir() for c in cells) else 'one-call')
     raise ValueError('no UI ledger state bound to this run')
 
 
-def _cleanup_alive(root):
-    for proc in Path('/proc').glob('[0-9]*/cmdline'):
+def _processes(proc_root=Path('/proc')):
+    for proc in proc_root.glob('[0-9]*/cmdline'):
         if int(proc.parent.name) == os.getpid(): continue
         try: args = proc.read_bytes().decode(errors='replace').split('\0')
-        except (OSError, ProcessLookupError): continue
-        for index, arg in enumerate(args[:-1]):
-            if arg != 'benchmarks.attention_harness.frame_cleanup' and Path(arg).name != 'frame_cleanup.py':continue
+        except OSError: continue
+        if args and args[-1] == '': args.pop()
+        if args: yield proc.parent, args
+
+
+def _is_cleanup_process(args):
+    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+                for a, b in zip(args, args[1:])) or
+            bool(args and Path(args[0]).name.startswith('python') and
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+
+
+def _cleanup_alive(root):
+    for proc, args in _processes():
+        if not _is_cleanup_process(args): continue
+        roots = [args[i+2] for i in range(len(args)-2)
+                 if args[i:i+2] == ['-m', 'benchmarks.attention_harness.frame_cleanup']]
+        roots += [args[i+1] for i in range(len(args)-1) if args[i] == '--runs-root']
+        roots += [arg.split('=', 1)[1] for arg in args if arg.startswith('--runs-root=')]
+        for arg in roots:
             try:
-                owned = Path(args[index+1])
-                if not owned.is_absolute():owned = Path(os.readlink(proc.parent/'cwd'))/owned
+                owned = Path(arg)
+                if not owned.is_absolute():owned = Path(os.readlink(proc/'cwd'))/owned
                 owned = Path(os.path.abspath(owned))
                 if owned == root or owned.is_relative_to(root) or root.is_relative_to(owned):return True
             except OSError:continue

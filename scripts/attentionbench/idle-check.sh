@@ -8,11 +8,28 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+
+def _processes(proc_root=Path('/proc')):
+    for proc in proc_root.glob('[0-9]*/cmdline'):
+        if int(proc.parent.name) == os.getpid(): continue
+        try: args = proc.read_bytes().decode(errors='replace').split('\0')
+        except OSError: continue
+        if args and args[-1] == '': args.pop()
+        if args: yield proc.parent, args
+
+def _is_cleanup_process(args):
+    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+                for a, b in zip(args, args[1:])) or
+            bool(args and Path(args[0]).name.startswith('python') and
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+
 busy = False
-for label, pattern in [('run workers', '[d]aily_dev_v2 --worker'), ('frame cleanup', r'[f]rame_cleanup(\.py)?( |$)')]:
-    result = subprocess.run(['pgrep', '-af', pattern], capture_output=True, text=True)
-    if result.stdout.strip():
-        print(label+':\n'+result.stdout.strip()); busy = True
+result = subprocess.run(['pgrep', '-af', '[d]aily_dev_v2 --worker'], capture_output=True, text=True)
+if result.stdout.strip():
+    print('run workers:\n'+result.stdout.strip()); busy = True
+for proc, args in _processes():
+    if _is_cleanup_process(args):
+        print('frame cleanup:\n'+proc.name+' '+repr(args)); busy = True
 root = Path(sys.argv[1])
 budget = 100000
 def entries(path):

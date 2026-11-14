@@ -93,14 +93,29 @@ def workers():
     return len(lines), ids
 
 
+def _processes(proc_root=Path('/proc')):
+    for proc in proc_root.glob('[0-9]*/cmdline'):
+        if int(proc.parent.name) == os.getpid(): continue
+        try: args = proc.read_bytes().decode(errors='replace').split('\0')
+        except OSError: continue
+        if args and args[-1] == '': args.pop()
+        if args: yield proc.parent, args
+
+
+def _is_cleanup_process(args):
+    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+                for a, b in zip(args, args[1:])) or
+            bool(args and Path(args[0]).name.startswith('python') and
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+
+
 def cleanup_workers(cfg):
     """Count cleanup runs once across processes and bounded run/cell receipts."""
-    done = run(['pgrep', '-af', '[b]enchmarks.attention_harness.frame_cleanup'], capture_output=True)
     ids = set()
-    for line in done.stdout.splitlines():
-        if not line.strip(): continue
-        match = re.search(r'devexp-[A-Za-z0-9_-]+', line)
-        ids.add(match[0] if match else 'pid:'+line.split()[0])
+    for proc, args in _processes():
+        if not _is_cleanup_process(args): continue
+        run_ids = {match[0] for arg in args for match in re.finditer(r'devexp-[A-Za-z0-9_-]+', arg)}
+        ids.update(run_ids or {'pid:'+proc.name})
     roots = cfg.get('runs_roots', [cfg['data']/'harness/runs', cfg['test_data']/'runs'])
     budget = 100000
     def entries(path):

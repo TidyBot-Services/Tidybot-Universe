@@ -30,6 +30,7 @@ def host(tmp_path, monkeypatch):
     git('clone', '-q', '--bare', str(src), str(ws/'git/attentionbench.git'), cwd=tmp_path)
     monkeypatch.setattr(abctl, 'HOME', tmp_path)
     monkeypatch.setattr(abctl, 'DEFAULTS', dict(abctl.DEFAULTS, ws=str(ws), data=str(data), test_data=str(tmp_path/'test')))
+    monkeypatch.setattr(abctl, '_processes', lambda: iter(()))
     return abctl.config(), src
 
 
@@ -138,13 +139,13 @@ def test_cleanup_receipts_and_processes_count_as_busy(host, monkeypatch, store, 
         runs_root = cfg['data']/'harness/runs' if store == 'campus' else cfg['test_data']/'runs'
     receipt = runs_root/'devexp-one'/layout;receipt.parent.mkdir(parents=True)
     receipt.write_text(json.dumps(dict(status='in_progress')))
-    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
     assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
-    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],0,stdout='123 python -m benchmarks.attention_harness.frame_cleanup '+str(receipt.parent)+' 0\n',stderr=''))
+    monkeypatch.setattr(abctl, '_processes', lambda: iter([(Path('/proc/123'),
+        ['python', '-m', 'benchmarks.attention_harness.frame_cleanup', str(receipt.parent), '0'])]))
     assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
     receipt.write_text(json.dumps(dict(status='completed')))
     assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
-    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    monkeypatch.setattr(abctl, '_processes', lambda: iter(()))
     assert abctl.cleanup_workers(cfg) == (0,[])
 
 
@@ -203,3 +204,37 @@ def test_status_prints_cleanup_run_ids(host,monkeypatch,capsys):
         receipt.parent.mkdir(parents=True);receipt.write_text(json.dumps(dict(status='in_progress')))
     abctl.cmd_status(cfg,abctl.argparse.Namespace())
     assert 'cleaning frames 2 (devexp-a devexp-b)' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('argv,busy', [
+    (['bash', '-c', 'pytest benchmarks/attention_harness/tests/test_frame_cleanup.py'], False),
+    (['bash', '-c', 'grep benchmarks.attention_harness.frame_cleanup devexp-false'], False),
+    (['pytest', 'benchmarks/attention_harness/tests/test_frame_cleanup.py'], False),
+    (['python', '-m', 'pytest', 'benchmarks/attention_harness/tests/test_frame_cleanup.py'], False),
+    (['python', '-c', 'pass', 'benchmarks.attention_harness.frame_cleanup'], False),
+    (['python', '-m', 'benchmarks.attention_harness.frame_cleanup_extra'], False),
+    (['python', 'frame_cleanup.py'], False),
+    (['bash', 'frame_cleanup_backfill.py'], False),
+    (['python', '-m', 'benchmarks.attention_harness.frame_cleanup', '/runs/devexp-one', '123'], True),
+    (['/venv/bin/python3.11', '/tools/frame_cleanup_backfill.py', '--runs-root', '/runs/devexp-one'], True),
+    (['python', 'state_log_dedupe.py', '--runs-root=/runs/devexp-one'], True),
+])
+def test_cleanup_process_argv(tmp_path, monkeypatch, argv, busy):
+    proc = tmp_path/'proc'
+    (proc/'123').mkdir(parents=True)
+    (proc/'123/cmdline').write_bytes(b'\0'.join(os_arg.encode() for os_arg in argv)+b'\0')
+    # A live cleanup command belonging to this very process must be ignored.
+    own = proc/str(abctl.os.getpid());own.mkdir()
+    (own/'cmdline').write_bytes(b'python\0-m\0benchmarks.attention_harness.frame_cleanup\0/runs/devexp-self\0')
+    (proc/'456').mkdir()  # A process that exited before cmdline could be read.
+    (proc/'789').mkdir();(proc/'789/cmdline').write_bytes(b'')
+    processes = abctl._processes
+    monkeypatch.setattr(abctl, '_processes', lambda: processes(proc))
+    cfg = dict(data=tmp_path/'data', test_data=tmp_path/'test')
+    expected = ['devexp-one' if any('devexp-one' in arg for arg in argv) else 'pid:123'] if busy else []
+    assert abctl.cleanup_workers(cfg) == (len(expected), expected)
+
+
+def test_cleanup_process_without_run_id_reports_pid(tmp_path, monkeypatch):
+    monkeypatch.setattr(abctl, '_processes', lambda: iter([(Path('/proc/123'), ['python', 'frame_cleanup_backfill.py'])]))
+    assert abctl.cleanup_workers(dict(data=tmp_path, test_data=tmp_path)) == (1, ['pid:123'])
