@@ -451,7 +451,7 @@ def _apply(root, *, trash_dir=None):
         if destination and not (destination.is_dir() and (destination/'restore.json').is_file()):
             raise ValueError('cleanup trash run/restore.json is missing; refusing to unlink: '+str(destination))
         for g in result['views']:
-            if g.get('skipped'): continue
+            if g.get('skipped') or not g['files']: continue
             try:
                 video = _beneath(root, g['mp4'])
                 if not video.is_file(): raise ValueError('mp4 missing')

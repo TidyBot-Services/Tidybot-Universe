@@ -543,6 +543,29 @@ def test_resume_interrupted_cleanup(run, monkeypatch):
     assert not (ep/'recording_frames/000002.jpg').exists()
 
 
+def test_resume_no_files_group_with_missing_video_has_no_skip_or_notice(run):
+    cell, ep = run
+    probe = cell/'agent/private/probe-owner-0001'
+    frames = probe/'recording_frames'
+    frames.mkdir(parents=True)
+    (frames/'000000.jpg').write_bytes(b'kept first frame')
+    (frames/'frames.jsonl').write_text(json.dumps(dict(file='000000.jpg'))+'\n')
+    value = cleanup.plan(cell)
+    group = next(g for g in value['views'] if g['execution'] == str(probe.relative_to(cell)))
+    assert group['files'] == [] and not group.get('skipped')
+    assert not (cell/group['mp4']).exists()
+    value['status'] = 'in_progress'
+    cleanup.atomic(cell/'frame-cleanup.json', value)
+
+    after = cleanup.apply(cell)
+    group = next(g for g in after['views'] if g['execution'] == str(probe.relative_to(cell)))
+    assert after['status'] == 'completed'
+    assert not group.get('skipped')
+    assert cleanup.notices(cell) == []
+    assert (frames/'000000.jpg').exists()
+    assert not (ep/'recording_frames/000002.jpg').exists()
+
+
 def test_resume_trash_same_directory_and_restore(run, tmp_path, monkeypatch):
     cell, ep = run; trash = tmp_path/'trash'
     before = interrupt_cleanup(cell, monkeypatch, trash=trash)
