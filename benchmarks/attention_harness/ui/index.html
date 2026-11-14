@@ -2459,6 +2459,16 @@ html #attentionbench-clear[data-operator-view="true"] .ab-sidebar article[data-c
 .op-agent-card-head .op-continue-ghost:hover:not(:disabled),#attentionbench-clear.ab-industrial .op-agent-card-head .op-continue-ghost:hover:not(:disabled){border-color:var(--op-orange,#d94d27);transform:none;box-shadow:none}
 .op-agent-card-head .op-continue-ghost:focus-visible{outline:2px solid var(--op-orange,#d94d27);outline-offset:2px}
 #attentionbench-clear .op-title-actions{flex-wrap:wrap}
+/* 11-14 (user picked B): Run again + Continue share one card-coloured split pill beside NEW RUN, in its condensed caps.
+   Shell tokens only (--sh-*), so Light | Dark both come from shell.css. Either button alone is a whole pill. */
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)){display:inline-flex;align-items:center;gap:9px;height:52px;min-height:0;margin:0;padding:0 22px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-card);background-image:none;box-shadow:var(--sh-shadow);color:var(--sh-ink);font:700 16px/1 "Barlow Condensed",sans-serif;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transform:none;transition:background-color var(--sh-t1) var(--sh-ease),color var(--sh-t1) var(--sh-ease)}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)):hover:not(:disabled){background:var(--sh-panel);color:var(--sh-acc);transform:none;box-shadow:var(--sh-shadow)}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)):focus-visible{outline:2px solid var(--sh-acc);outline-offset:2px}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again]::before{content:"\21BB";font-size:19px;color:var(--sh-acc)}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-continue:not(.op-continue-ghost) svg{color:var(--sh-acc);flex:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again]:has(+ button.op-continue:not(.op-continue-ghost)){border-right:0;border-radius:999px 0 0 999px}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-run-pair{display:inline-flex;flex-wrap:nowrap;gap:0}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again] + button.op-continue:not(.op-continue-ghost){border-left-color:var(--sh-line2);border-radius:0 999px 999px 0}
 #attentionbench-clear .op-page-title .op-excluded{display:inline-flex;margin:3px 0 3px 8px;padding:3px 10px;border-radius:999px;background:#f5e6cf;color:#7d5210;letter-spacing:.06em}
 #attentionbench-clear .op-page-title .op-lineage+.op-excluded{margin-left:0}
 #attentionbench-clear .op-run-notes{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -3669,6 +3679,13 @@ html[data-theme="dark"] .op-agent-card-head .op-continue-ghost,#attentionbench-c
 html[data-theme="dark"] .op-agent-card-head .op-continue-ghost svg{color:var(--op-orange,#ec6a43)}
 html[data-theme="dark"] .op-agent-card-head .op-continue-ghost:hover:not(:disabled),#attentionbench-clear[data-theme="dark"].ab-industrial .op-agent-card-head .op-continue-ghost:hover:not(:disabled){border-color:var(--op-orange,#ec6a43);box-shadow:none}
 html[data-theme="dark"] .op-agent-card-head .op-continue-ghost:focus-visible{outline:2px solid var(--op-orange,#ec6a43)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)){border:1px solid var(--sh-line);background:var(--sh-card);background-image:none;box-shadow:var(--sh-shadow);color:var(--sh-ink)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)):hover:not(:disabled){background:var(--sh-panel);color:var(--sh-acc);box-shadow:var(--sh-shadow)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title :is(button[data-open-run-again],button.op-continue:not(.op-continue-ghost)):focus-visible{outline:2px solid var(--sh-acc)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again]::before{color:var(--sh-acc)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-continue:not(.op-continue-ghost) svg{color:var(--sh-acc)}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again]:has(+ button.op-continue:not(.op-continue-ghost)){border-right:0}
+html[data-theme="dark"] body #attentionbench-clear[data-operator-view="true"] .op-page-title button[data-open-run-again] + button.op-continue:not(.op-continue-ghost){border-left-color:var(--sh-line2)}
 #attentionbench-clear[data-theme="dark"] .op-page-title .op-excluded{background:#443722;color:#ecbb6e}
 #attentionbench-clear[data-theme="dark"] .op-run-notes .op-excluded{background:#443722;color:#ecbb6e}
 html[data-theme="dark"] .op-agent-story-entry,#attentionbench-clear[data-theme="dark"].ab-industrial .op-agent-story-entry{border:1px solid var(--op-line,#33383d);background:transparent;background-image:none;box-shadow:none;color:var(--op-ink,#ecebe6)}
