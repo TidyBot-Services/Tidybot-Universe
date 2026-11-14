@@ -94,45 +94,24 @@ html[data-theme="dark"] #automatic-checks{--ac-fail:#e08670}
 #automatic-checks .ac-family summary{cursor:pointer}
 
 /* reuse-note-light */
-#reuse-notes{margin:24px 0;color:var(--sh-ink)}
-#reuse-notes details{border:1px solid var(--sh-line2);background:var(--sh-panel);margin:12px 0;padding:14px;border-radius:12px}
+#reuse-notes{margin:24px 0;color:#242822}
+#reuse-notes details{border:1px solid #c5c8b8;background:#f8f6f0;margin:12px 0;padding:14px}
 #reuse-notes summary{cursor:pointer;font-weight:600}
 #reuse-notes .reuse-pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-#reuse-notes article{background:var(--sh-sunk);padding:12px;overflow-wrap:anywhere;border-radius:8px}
+#reuse-notes article{background:#ece9e2;padding:12px;overflow-wrap:anywhere}
 #reuse-notes label{display:block;margin:10px 0}
-#reuse-notes textarea,#reuse-notes input,#reuse-notes select{display:block;width:100%;box-sizing:border-box;font:inherit;color:var(--sh-ink);background:var(--sh-card);border:1px solid var(--sh-line2);padding:8px}
+#reuse-notes textarea,#reuse-notes input,#reuse-notes select{display:block;width:100%;font:inherit;color:#242822;background:#ffffff;border:1px solid #c5c8b8;padding:8px}
 #reuse-notes textarea{min-height:100px}
 #reuse-notes .reuse-actions{display:flex;flex-wrap:wrap;gap:8px}
-#reuse-notes button{padding:8px 12px;color:var(--sh-ink);background:var(--sh-panel);border:1px solid var(--sh-line2)}
-#reuse-notes [role=alert]{color:var(--sh-badink)}
-#reuse-notes .note-history{overflow-x:auto;margin:16px 0}
-#reuse-notes table{width:100%;border-collapse:collapse;text-align:left;font-size:13px;line-height:1.5}
-#reuse-notes caption{text-align:left;font-weight:600;padding:8px 0;color:var(--sh-ink)}
-#reuse-notes th,#reuse-notes td{padding:10px;vertical-align:top;border-bottom:1px solid var(--sh-line2);overflow-wrap:anywhere;min-width:120px}
-#reuse-notes td:first-child{max-width:270px}
-#reuse-notes small{display:block;color:var(--sh-mut)}
-#reuse-notes .turn-log-tag{display:table;margin-top:6px;padding:3px 7px;border:1px solid var(--sh-line2);border-radius:6px;background:var(--sh-sunk);color:var(--sh-mut)}
-#reuse-notes a{color:var(--sh-acc)}
-#reuse-notes .note-metadata{font-size:13px}
-#reuse-notes .note-metadata p{margin:6px 0}
+#reuse-notes button{padding:8px 12px;color:#242822;background:#f8f6f0;border:1px solid #c5c8b8}
+#reuse-notes [role=alert]{color:#a23f32}
 @media(max-width:700px){#reuse-notes .reuse-pair{grid-template-columns:1fr}}
 /* reuse-note-light-end */
 /* reuse-note-dark */
-html[data-theme="dark"] #reuse-notes{color:var(--sh-ink)}
-html[data-theme="dark"] #reuse-notes details{border:1px solid var(--sh-line2);background:var(--sh-panel)}
-html[data-theme="dark"] #reuse-notes article{background:var(--sh-sunk)}
-html[data-theme="dark"] #reuse-notes textarea,html[data-theme="dark"] #reuse-notes input,html[data-theme="dark"] #reuse-notes select{color:var(--sh-ink);background:var(--sh-card);border:1px solid var(--sh-line2)}
-html[data-theme="dark"] #reuse-notes button{color:var(--sh-ink);background:var(--sh-panel);border:1px solid var(--sh-line2)}
-html[data-theme="dark"] #reuse-notes [role=alert]{color:var(--sh-badink)}
-html[data-theme="dark"] #reuse-notes caption{color:var(--sh-ink)}
-html[data-theme="dark"] #reuse-notes th,html[data-theme="dark"] #reuse-notes td{border-bottom:1px solid var(--sh-line2)}
-html[data-theme="dark"] #reuse-notes small{color:var(--sh-mut)}
-html[data-theme="dark"] #reuse-notes .turn-log-tag{border:1px solid var(--sh-line2);background:var(--sh-sunk);color:var(--sh-mut)}
-html[data-theme="dark"] #reuse-notes a{color:var(--sh-acc)}
+html[data-theme="dark"] #reuse-notes{color:#ecebe6}
+html[data-theme="dark"] #reuse-notes details{border:1px solid #3a3f45;background:#1d2024}
+html[data-theme="dark"] #reuse-notes article{background:#15171a}
+html[data-theme="dark"] #reuse-notes textarea,html[data-theme="dark"] #reuse-notes input,html[data-theme="dark"] #reuse-notes select{color:#ecebe6;background:#23272c;border:1px solid #3a3f45}
+html[data-theme="dark"] #reuse-notes button{color:#ecebe6;background:#1d2024;border:1px solid #3a3f45}
+html[data-theme="dark"] #reuse-notes [role=alert]{color:#e08670}
 /* reuse-note-dark-end */
-
-#monitor .note-metadata,#monitor .dev-note-use{font-size:12px;overflow-wrap:anywhere}
-#monitor .note-metadata p,#monitor .dev-note-use p{margin:6px 0}
-#monitor .note-metadata a{color:var(--chvink)}
-#monitor .dev-note-use [role=alert],#monitor #warning [role=alert]{color:var(--cx)}
-#monitor .dev-note-use .turn-log-tag{display:table;padding:3px 7px;border:1px solid var(--sh-line2);border-radius:6px;background:var(--sh-sunk);color:var(--sh-mut)}

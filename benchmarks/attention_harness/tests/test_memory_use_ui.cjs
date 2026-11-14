@@ -74,32 +74,3 @@ test('declined citations are counted separately and their evidence is visible',(
   assert.match(text,/Not using note mem-1: no carried &lt;object&gt;/);
   assert.match(text,/v1\/policy.py:9/);
 });
-
-test('Memory monitor cards show generic source metadata and the selected version citation',()=>{
- const monitor=require('../ui/memory.js');
- const data=monitor.adapt({notes:[{id:'p-1',status:'unvalidated',level:'same_task',source_verified:true,
-  provider:'future-provider',skill_tags:['cabinet'],applies_when:'Inside <cabinet>',source_run:'devexp-'+'1'.repeat(24),source_version:3,
-  dev_use:[{version:1,memory_id:'p-1',use:'not_mentioned'},
-    {version:2,memory_id:'p-1',use:'used',reason:'Using: retreat <slowly>',errors:['broken <audit>']},
-    {version:3,memory_id:'p-1',use:'considered_not_used',reason:'Not using: no object'}]}]});
- const card=monitor.cardHtml(data.notes[0],false,false,2);
- for(const text of ['Skills: cabinet','Reuse level: same_task','Inside &lt;cabinet&gt;','Provider: future-provider','Dev v2: Using note p-1','retreat &lt;slowly&gt;','broken &lt;audit&gt;'])assert.ok(card.includes(text),text);
- assert.doesNotMatch(card,/Dev v1:|Dev v3:|<slowly>|<audit>/);
- assert.match(monitor.cardHtml(data.notes[0],false,false,3),/Dev v3: Not using note p-1/);
- assert.match(monitor.cardHtml(data.notes[0]),/Dev v1: Not mentioned/);
- const local=monitor.adapt({run_notes:[{id:'r-1',help_version:2,dev_use:[{version:3,memory_id:'r-1',use:'pending',errors:['memory_use.json is missing']}]}]}).notes[0];
- assert.match(monitor.cardHtml(local),/Dev v3: Audit pending/);
- assert.match(monitor.historyErrorsHtml([{experiment_id:'run',version:2,error:'bad <json>'}]),/run · v2 · bad &lt;json&gt;/);
-});
-
-test('current-run prefix follows explicit not-used over a simultaneous reference',()=>{
- const monitor=require('../ui/memory.js');
- const row={version:4,memory_id:'r-1',use:'used',considered_not_used:true,reason:'Not using: alternate trials failed.'};
- const card=monitor.cardHtml(monitor.adapt({run_notes:[{id:'r-1',dev_use:[row]}]}).notes[0],false,true,4);
- assert.match(card,/Dev v4: Not using note r-1 — alternate trials failed\./);
- assert.doesNotMatch(card,/Dev v4: Using|— Not using:|Also considered/);
- const fallback=monitor.devUseHtml([{...row,decision_source:'turn_log'}]);
- assert.match(fallback,/class="turn-log-tag"/);
- assert.match(fallback,/from Dev's turn log, not yet audited/);
- assert.doesNotMatch(fallback,/role="alert"/);
-});

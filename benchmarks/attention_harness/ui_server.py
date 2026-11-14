@@ -845,8 +845,7 @@ def create_server(
                 return
             if urlsplit(self.path).path == '/api/dev-v2/automatic-checks':
                 from .memory_monitor import automatic_checks
-                self._json(automatic_checks(gateway=memory_view.gateway if memory_view is not None else None,
-                    experiments_root=getattr(dev_v2_bridge, 'root', None)))
+                self._json(automatic_checks(gateway=memory_view.gateway if memory_view is not None else None))
                 return
             if urlsplit(self.path).path == '/api/notices':
                 params = parse_qs(urlsplit(self.path).query)
