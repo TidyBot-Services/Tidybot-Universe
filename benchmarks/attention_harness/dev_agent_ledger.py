@@ -248,9 +248,7 @@ class AgentLedger:
             extra=dict(active_seconds=active,idle_seconds=max(0,active-run.get('progress_active_seconds',0)),no_progress_seconds=NO_PROGRESS_SECONDS)
         return dict(run, **extra, used=used, held=held, remaining={k:self.limits[k]-used[k]-held[k] for k in self.limits}, wall_remaining=remaining,
                     model_turns=sum(r['resources'].get('model_turns',0) for r in rows if r['state']!='released'),
-                    attention=dict(help_count=used['help'],hint_human_seconds=sum(
-                        (r.get('receipt') or {}).get('hint_human_seconds',0) for r in rows
-                        if r['kind']=='help' and r['state'] in ('settled','unknown'))))
+                    attention=dict(help_count=used['help'], **attention_summary(rows)))
 
     def quota(self, sample):
         with self.tx() as db:
@@ -276,3 +274,15 @@ class LedgerBudget:
     def claim(self, rid): self.ledger.claim('request:'+rid)
     def settle(self, rid, response):
         self.ledger.settle('request:'+rid,response,unknown=response['status']=='needs_review')
+
+
+def attention_summary(jobs):
+    """Keep assisted deliveries visible without charging them as human attention."""
+    helps = [j for j in jobs if j['kind'] == 'help' and j['state'] in ('settled', 'unknown')]
+    return dict(hint_human_seconds=sum((j.get('receipt') or {}).get('hint_human_seconds', 0)
+                    for j in helps if (j.get('receipt') or {}).get('provider') != 'human_assisted'),
+                actual_human_seconds=sum((j.get('receipt') or {}).get('actual_human_seconds', 0)
+                    for j in helps if (j.get('receipt') or {}).get('provider') == 'human'),
+                help_by_provider={provider: sum(j['state'] == 'settled' and
+                    (j.get('receipt') or {}).get('provider') == provider for j in helps)
+                    for provider in ('advisor', 'human', 'human_assisted')})

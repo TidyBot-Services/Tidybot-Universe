@@ -42,8 +42,8 @@ def _settle(folder, outcome):
 def answer(private, execution_id, *, question, seconds, poll=.5, clock=time.time, sleep=time.sleep):
     """Wait up to seconds for a person. Returns their words, or None when the Advisor should answer."""
     folder = _folder(private, execution_id);folder.mkdir(parents=True, exist_ok=True)
-    deadline = clock()+seconds
-    (folder/WAIT).write_text(json.dumps(dict(execution_id=execution_id, question=question, deadline_at=deadline, seconds=seconds)), encoding='utf-8')
+    started = clock();deadline = started+seconds
+    (folder/WAIT).write_text(json.dumps(dict(execution_id=execution_id, question=question, started_at=started, deadline_at=deadline, seconds=seconds)), encoding='utf-8')
     while clock() < deadline and not (folder/OUTCOME).exists():sleep(poll)
     outcome = _settle(folder, dict(kind='timed_out', at=clock()))
     return outcome.get('content') if outcome.get('kind') == 'reply' else None
@@ -59,14 +59,16 @@ def pending(private, cell=None):
     return None
 
 
-def submit(private, execution_id, *, content=None, skip=False):
+def submit(private, execution_id, *, content=None, skip=False, replied_by='operator', assisted=False):
     """One reply or skip from the page, on the run's open wait."""
     folder = _folder(private, execution_id)
+    if not isinstance(replied_by, str) or not replied_by.strip():raise ValueError('Reply operator is required.')
+    if type(assisted) is not bool:raise ValueError('assisted must be a boolean.')
     if skip is not True and (not isinstance(content, str) or not content.strip() or len(content) > MAX_REPLY):
         raise ValueError(f'A reply is 1 to {MAX_REPLY} characters.')
     wait = _read(folder/WAIT)
     if not wait or wait['deadline_at'] <= time.time():raise DevConflict('This request is no longer waiting for a reply.')
-    outcome = dict(kind='skip', at=time.time()) if skip is True else dict(kind='reply', at=time.time(), content=content.strip())
+    outcome = dict(kind='skip', at=time.time()) if skip is True else dict(kind='reply', at=time.time(), content=content.strip(), replied_by=replied_by, assisted=assisted)
     if skip is not True:
         try:public_screen(content)
         except ValueError:raise ValueError('This reply cannot be sent: it quotes evaluation text.') from None

@@ -44,7 +44,7 @@ def fixture(tmp_path, monkeypatch):
     with store.tx() as db:
         store.put(db, 'experiments', 'exp', dict(manifest=manifest,selection={}))
         db.execute('INSERT INTO v2_cells VALUES (?,?,?)', ('cell', 'exp', json.dumps(dict(
-            key='cell', experiment_id='exp', dev_mode='agent', policy_id='autonomous',
+            key='cell', experiment_id='exp', dev_mode='agent', policy_id='autonomous', task_id='fake', seed=102,
             artifact_dir=str(root), memory_authority=SETTINGS, mode='interactive'))))
     monkeypatch.setattr(store, 'start_cell_clock', lambda key: None)
     context = dict(task_id='fake', benchmark='AttentionBench', suite='robocasa365', robot='fake',

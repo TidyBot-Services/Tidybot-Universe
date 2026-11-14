@@ -473,6 +473,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.relay(self.path, headers={'Range': self.headers['Range']} if 'Range' in self.headers else None)
         if not self.gateway.store.owns(self.user, experiment_id):raise UNOWNED
         if self.command == 'POST' and suffix == 'help-reply' and not parts.query:
+            # relay signs self.user; the harness records that login as replied_by.
+            # Browser-supplied identities are discarded by help_reply.
             return self.relay(self.path, json.dumps(policy.help_reply(self.read_json())).encode())
         if self.command != 'POST' or suffix not in policy.COMMANDS or parts.query:raise UNOWNED
         if self.read_json() != {}:raise policy.Refused('invalid_body', 'This command takes no settings.', 400)

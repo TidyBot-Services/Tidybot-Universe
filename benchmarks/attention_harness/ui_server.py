@@ -1173,6 +1173,7 @@ def create_server(
                                         desc.setdefault('base_url_host',known[desc['credential']]['base_url_host'])
                     human=bool(human_token and secrets.compare_digest(self.headers.get('X-Attention-Human-Token',''),human_token))
                     self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human,
+                        **({'replied_by':owner_of(self) if public_gateway else 'operator'} if urlsplit(self.path).path.endswith('/help-reply') else {}),
                         keys=RunCredentials(vault,owner_of(self),allow_custom,allow_private_hosts)))
                 except PermissionError as error:self._json({'error':str(error)},403)
                 except FileNotFoundError as error:self._json({'error':str(error)},404)

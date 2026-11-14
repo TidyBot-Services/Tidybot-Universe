@@ -162,7 +162,8 @@ def test_a_run_is_public_to_read_and_only_its_owner_may_act(link):
         assert str(link.root) not in json.dumps(answer), 'a host path reached the browser'
 
 
-def test_a_reply_reaches_the_owners_waiting_run_and_nobody_elses(link):
+@pytest.mark.parametrize('assisted', [False, True])
+def test_a_reply_reaches_the_owners_waiting_run_and_nobody_elses(link, assisted):
     from benchmarks.attention_harness import dev_agent_human_reply as human
     from benchmarks.attention_harness.dev_experiment import DevV2Store
     alice, bob = link.person(), link.person()
@@ -173,11 +174,13 @@ def test_a_reply_reaches_the_owners_waiting_run_and_nobody_elses(link):
     store.update_cell(key, artifact_dir=str(link.root/'cell'))
     folder = private/'help/e000010';folder.mkdir(parents=True)
     (folder/human.WAIT).write_text(json.dumps(dict(execution_id='e000010', question='What next?', deadline_at=time.time()+60)))
-    path, reply = f'/api/dev-v2/experiments/{eid}/help-reply', dict(cell=key, execution_id='e000010', content='Lower it.')
+    path, reply = f'/api/dev-v2/experiments/{eid}/help-reply', dict(cell=key, execution_id='e000010', content='Lower it.', assisted=assisted, replied_by='spoofed')
     assert bob.json('POST', path, reply)[0] == 404
     status, value = alice.json('POST', path, reply)
     assert status == 200 and value == dict(status='received', kind='reply'), value
-    assert json.loads((folder/human.OUTCOME).read_bytes())['content'] == 'Lower it.'
+    outcome = json.loads((folder/human.OUTCOME).read_bytes())
+    assert outcome['content'] == 'Lower it.' and outcome['assisted'] is assisted
+    assert outcome['replied_by'] == alice.json('GET', '/api/session')[1]['user']
     assert alice.json('POST', path, reply)[0] == 409
 
 
