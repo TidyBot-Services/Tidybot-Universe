@@ -3347,13 +3347,15 @@ async function switchViewingRun(page,id){
   await page.locator('#ab-live-run').selectOption(id);
 }
 
-test('SIDEBAR-03: history view retains executing-run stop target when navigation is collapsed',async t=>{
+// 11-14 (user): the sticky Running / Stop bar is gone. A run that is still executing is reached from its rail entry;
+// its own page carries Stop and Pause.
+test('SIDEBAR-03: history view has no running bar; the executing run stays in the rail',async t=>{
   const {page,state,tick}=await fixture(t,{beforeNavigate:(_,s)=>{controlFixture(_,s);s.snapshots.history=snapshot('history','completed');s.snapshots.history.requests=[];s.runs.push({...s.snapshots.history.run,display_name:'Recorded history'});}});
   await switchViewingRun(page,'history');await page.locator('[data-run-overview=history]').waitFor();
   if(await page.locator('[data-sidebar]').isVisible())await page.locator('[data-sidebar-toggle]').click();
-  assert.equal(await page.locator('[data-running-status]').isVisible(),true);
-  assert.match(await page.locator('[data-running-status]').innerText(),/Executing.*OpenArm/s);
-  assert.equal(await page.locator('[data-running-status] [data-stop-executing]').getAttribute('data-stop-executing'),'old');
+  assert.equal(await page.locator('[data-running-status]').count(),0);
+  await page.locator('[data-sidebar-toggle]').click();
+  assert.equal(await page.locator('[data-sidebar] [data-run-entry=old]').count(),1);
   assert.equal(state.posts.length,0);
 });
 test('POLICY-UI-03: switch preserves Hint draft, selection and focus without submission',async t=>{

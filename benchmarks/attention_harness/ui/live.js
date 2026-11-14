@@ -130,7 +130,7 @@
     event.preventDefault();
     preference('attention.sidebar-width',String(sidebarWidth(sidebar.getBoundingClientRect().width+(event.key==='ArrowRight'?16:-16))));
   });
-  const runningStatus=document.createElement('section');runningStatus.dataset.runningStatus='';runningStatus.className='ab-running-status';workspace.before(runningStatus);
+  // 11-14 (user): the sticky Running / Stop bar above the workspace is gone; a running run is opened from its rail card, and its own page has Stop and Pause.
   let deferredSelection = null;
   const pendingControls = new Set();
   const submissionReceipts = new Map();
@@ -547,24 +547,6 @@
     const path=segments.map(s=>policyTitle(s.policy_id));
     return `<details data-run-path="${esc(item.run_id)}"><summary>${esc(path.length>2?`${path[0]} → ${path.at(-1)} · ${path.length-1} switches`:path.join(' → '))}</summary><ol>${segments.map(s=>`<li>${esc(policyTitle(s.policy_id))}<small>${s.effective_at?esc(dateTime(s.effective_at)):'Start time not recorded'}</small></li>`).join('')}</ol></details>`;
   }
-  function renderRunningStatus(){
-    // Viewing someone else's Remote run: the read-only bar already shows your own run (Lobby.banner), so this bar stays empty.
-    const viewingOthers=Boolean(currentSnapshot?.lobby&&!currentSnapshot.lobby.mine);
-    const executing=viewingOthers?[]:navigationRecords().filter(r=>recordIsActive(r)&&r.run_id!==(selectedDev||selectedRun)&&window.Lobby.isMine(r));
-    runningStatus.hidden=!executing.length;
-    // 11-09 option A: one quiet row per run; the stage and elapsed time replace the old Hints count (always 0 for Agent runs).
-    runningStatus.classList.add('ab-run-banner-a');
-    runningStatus.innerHTML=executing.map(r=>{
-      const since=Number(r.started_at||r.created_at||0),minutes=since?Math.max(0,Math.round((Date.now()/1000-since)/60)):null;
-      const stage=r.interrupt?.state?label(r.interrupt.state):r.lifecycle?recordStatus(r):'';
-      const meta=[stage,minutes===null?'':minutes<1?'just started':`${minutes} min`].filter(Boolean).join(' · ');
-      return `<div><span class="ab-run-dot" aria-hidden="true"></span><span class="ab-run-chip">${r.interrupt?'Stopping':'Running'}</span><span class="ab-run-task" title="${esc(displayRun(r))}">${esc(customRunName(r)||resolvedTask(r)||'Run')}</span><span class="ab-run-meta">${esc(meta)}</span><button type="button" ${r.development?'data-view-dev-running':'data-view-running'}="${esc(r.run_id)}">View run →</button><button type="button" class="danger" ${r.development?'data-stop-dev':'data-stop-executing'}="${esc(r.run_id)}" ${r.interrupt?'disabled':''} title="Stop target: ${esc(displayRun(r))} (${esc(r.run_id)})">Stop</button></div>`;}).join('');
-    runningStatus.querySelectorAll('button').forEach(b=>b.addEventListener('pointerdown',e=>e.preventDefault()));
-    runningStatus.querySelectorAll('[data-view-dev-running]').forEach(b=>b.addEventListener('click',()=>navigateRecord(b.dataset.viewDevRunning)));
-    runningStatus.querySelectorAll('[data-stop-dev]').forEach(b=>b.addEventListener('click',()=>{const session=devSessions.find(s=>s.session_id===b.dataset.stopDev);return sidebarWrite(session?.channel==='dev_v2'?`/api/dev-v2/experiments/${session.experiment_id}/cancel`:`/api/dev/sessions/${encodeURIComponent(b.dataset.stopDev)}/stop`,{});}));
-    runningStatus.querySelectorAll('[data-view-running]').forEach(b=>b.addEventListener('click',()=>navigateRun(b.dataset.viewRunning)));
-    runningStatus.querySelectorAll('[data-stop-executing]').forEach(b=>b.addEventListener('click',()=>sidebarWrite(`/api/runs/${encodeURIComponent(b.dataset.stopExecuting)}/interrupt`,{})));
-  }
   function sidebarTaskSummary(rows,run){
     const executing=rows.filter(recordIsActive).length;
     const suite=rows.groupTitle?'':({robocasa365:'RoboCasa365',robocasa:'RoboCasa',robosuite:'Robosuite'}[rows[0].suite]||rows[0].suite);
@@ -688,7 +670,6 @@
   bindSidebarPress(sidebar,window,f=>setTimeout(f,0));
   function renderSidebar(){
     if(sidebarPressHeld(renderSidebar))return;
-    renderRunningStatus();
     const c=currentSnapshot?.attention_control;
     const run=currentSnapshot?.run;
     const history=run&&stored(`attention.history:${run.run_id}`)&&stored(`attention.history:${run.run_id}`)!=='live';
