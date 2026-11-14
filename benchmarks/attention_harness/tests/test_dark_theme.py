@@ -21,6 +21,14 @@ def test_dark_block_is_in_sync_with_light_css():
     assert block.group(1) == _generator().build(light), 'light CSS changed: run python3 scripts/gen_dark_theme.py'
 
 
+def test_memory_reuse_dark_block_is_in_sync_with_light_css():
+    css = (UI / 'memory.css').read_text(encoding='utf-8')
+    light = re.search(r'/\* reuse-note-light \*/(.*?)/\* reuse-note-light-end \*/', css, re.S)
+    dark = re.search(r'/\* reuse-note-dark \*/\n(.*?)/\* reuse-note-dark-end \*/', css, re.S)
+    assert light and dark
+    assert dark.group(1) == _generator().convert(light.group(1))+'\n'
+
+
 def test_dark_rules_are_scoped_to_the_dark_theme():
     html = (UI / 'index.html').read_text(encoding='utf-8')
     css = re.search(r'<style id="ab-dark-theme">\n(.*?)</style>', html, re.S).group(1)
