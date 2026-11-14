@@ -326,3 +326,266 @@ def test_projection_shows_unvalidated_uses_expiry_and_other_scene_reference(RUN)
     assert notes['same-scene']['reference'] is False and notes['same-scene']['uses'] is None
     assert payload['run']['unvalidated_used'] is False
     assert 'top-secret' not in json.dumps(payload)
+
+
+@pytest.fixture
+def history_runs(tmp_path):
+    from benchmarks.attention_harness.memory_use import analyse
+    original, generalized = 'p-history', 'p-history-g'
+    runs = []
+    for index, (mid, level, text) in enumerate([
+        ('r-history', 'same_task', 'Using note r-history: local advice.'),
+        (original, 'same_task', 'Using note p-history: retreat before lifting.'),
+        (generalized, 'same_skill', 'Not using note p-history-g: no held object.'),
+    ], 1):
+        run = tmp_path / ('devexp-' + str(index)*24)
+        directory = run/'artifacts'/run.name/'cells'/'cell'
+        exported = directory/'v1'
+        private = directory/'agent/private/memory/v1'
+        exported.mkdir(parents=True)
+        private.mkdir(parents=True)
+        entry = dict(memory_id=mid, title='Retreat', level=level)
+        for target in (exported, private):
+            (target/'memory-input.json').write_text(json.dumps(dict(entries=[entry])))
+        audit = analyse([entry], [dict(file='v1/policy.py', line=1, text=text)])
+        (exported/'memory_use.json').write_text(json.dumps(audit))
+        store = DevV2Store(run/'ledger.sqlite3')
+        cell = dict(key='cell', experiment_id=run.name, task_id='cabinet' if index<3 else 'condiments',
+                    seed=100+index, memory_family=True, run_notes=True, artifact_dir=str(directory))
+        version = dict(version=1, agent=dict(native_success=False, eval=dict(status='completed', passed=index==2)))
+        with store.tx() as db:
+            db.execute('INSERT INTO v2_cells VALUES (?,?,?)', ('cell', run.name, json.dumps(cell)))
+            db.execute('INSERT INTO v2_versions VALUES (?,?,?)', ('cell', 1, json.dumps(version)))
+        runs.append((run, directory))
+    return tmp_path, runs, original, generalized
+
+
+def test_note_history_exact_ids_levels_decisions_and_results(history_runs):
+    root, runs, original, generalized = history_runs
+    before = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    value = memory_monitor.note_history(root, [original, generalized])
+    assert not value['errors']
+    rows = sorted(value['rows'], key=lambda r:r['experiment_id'])
+    assert len(rows) == 2  # No invented r- to p- alias and no private/public duplicate.
+    assert [(r['memory_id'], r['level'], r['use']) for r in rows] == [
+        (original, 'same_task', 'used'), (generalized, 'same_skill', 'considered_not_used')]
+    assert rows[0]['reason'] == 'Using: retreat before lifting.'
+    assert rows[1]['reason'] == 'Not using: no held object.'
+    assert [(r['native'], r['eval']) for r in rows] == [('failed', 'passed'), ('failed', 'failed')]
+    assert before == {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    assert len(memory_monitor.note_history(runs[0][0], ['r-history'])['rows']) == 1
+
+
+def test_note_history_not_mentioned_both_decisions_and_mtime_cache(history_runs):
+    root, runs, original, generalized = history_runs
+    audit_path = runs[1][1]/'v1/memory_use.json'
+    first = memory_monitor.note_history(root, [original])['rows'][0]
+    assert first['use'] == 'used'
+    audit = json.loads(audit_path.read_text())
+    audit['notes'][0].update(referenced='none', evidence=[])
+    audit_path.write_text(json.dumps(audit))
+    assert memory_monitor.note_history(root, [original])['rows'][0]['use'] == 'not_mentioned'
+    from benchmarks.attention_harness.memory_use import analyse
+    audit = analyse([dict(memory_id=original, title='Retreat', level='same_task')], [dict(file='policy.py', line=1,
+        text='Using note p-history: '+ 'x'*300+'\nNot using note p-history: later.')])
+    audit_path.write_text(json.dumps(audit))
+    row = memory_monitor.note_history(root, [original])['rows'][0]
+    assert row['use'] == 'considered_not_used' and row['considered_not_used'] is True
+    assert row['reason'] == 'Not using: later.'
+    assert len(row['reason']) <= 200
+    # Ledger changes invalidate cached opt-in metadata too.
+    with sqlite3.connect(runs[1][0]/'ledger.sqlite3') as db:
+        cell = json.loads(db.execute('SELECT payload FROM v2_cells').fetchone()[0])
+        cell.update(memory_family=False, run_notes=False)
+        db.execute('UPDATE v2_cells SET payload=?', (json.dumps(cell),))
+    assert not memory_monitor.note_history(root, [original])['rows']
+
+
+def test_note_history_private_pending_corruption_and_missing_audit(history_runs):
+    root, runs, original, generalized = history_runs
+    directory = runs[2][1]
+    for path in (directory/'v1').iterdir():path.unlink()
+    row = memory_monitor.note_history(root, [generalized])['rows'][0]
+    assert row['use'] == 'pending' and any('audit pending' in e for e in row['errors'])
+    (directory/'v1/memory-input.json').write_text('{bad')
+    value = memory_monitor.note_history(root, [generalized])
+    assert not value['rows']  # Corrupt public input must not fall back to a stale private copy.
+    assert any('memory-input.json' in e['error'] for e in value['errors'])
+    (directory/'v1/memory-input.json').unlink()
+    (directory/'v1/memory_use.json').write_text('{bad audit')
+    row = memory_monitor.note_history(root, [generalized])['rows'][0]
+    assert row['use'] == 'pending' and any('memory_use.json' in e for e in row['errors'])
+    (directory/'v1/memory_use.json').write_text(json.dumps(dict(notes=[], errors=[dict(error='analysis failure')])))
+    row = memory_monitor.note_history(root, [generalized])['rows'][0]
+    assert 'analysis failure' in row['errors']
+    assert 'Delivered note is absent from memory_use.json' in row['errors']
+    (runs[0][0]/'ledger.sqlite3').write_bytes(b'broken database')
+    value = memory_monitor.note_history(root, [original])
+    assert any(e.get('experiment_id') == runs[0][0].name for e in value['errors'])
+
+
+def test_note_history_bounds_root_and_native_identity(history_runs, monkeypatch):
+    root, runs, original, generalized = history_runs
+    assert memory_monitor.note_history(None, [original])['errors']
+    assert not memory_monitor.note_history(None, [])['errors']
+    monkeypatch.setattr(memory_monitor, 'EXPERIMENT_LIMIT', 1)
+    assert any('limited to 1' in e['error'] for e in memory_monitor.note_history(root, [original])['errors'])
+    monkeypatch.setattr(memory_monitor, 'EXPERIMENT_LIMIT', 200)
+    bundle = runs[1][1]/'v1/bundle.json'
+    bundle.write_text(json.dumps(dict(native_success=True)))
+    job = dict(version=1, state='settled', kind='execute', receipt=dict(execution_status='completed',
+        bundle=dict(uri=str(bundle), sha256=memory_monitor.sha(bundle))))
+    with sqlite3.connect(runs[1][0]/'ledger.sqlite3') as db:
+        db.execute('INSERT INTO v2_jobs VALUES (?,?,?,?,?,?)', ('job', 'cell', 1, 'execute', 'settled', json.dumps(job)))
+    row = memory_monitor.note_history(root, [original])['rows'][0]
+    assert row['native'] == 'unavailable'
+    assert any('identity' in e for e in row['errors'])
+
+
+def test_automatic_checks_joins_history_by_original_and_generalized_ids(history_runs):
+    root, runs, original, generalized = history_runs
+    class Gateway:
+        def reuse_notes_list(self):
+            return dict(notes=[dict(original=dict(memory_id=original), generalized=dict(memory_id=generalized))], errors=[])
+        def list_dev_v2_memories(self):
+            return [dict(memory_id=original, status='disabled', provider='generic-source'), dict(memory_id=generalized, status='trusted')]
+    value = memory_monitor.automatic_checks(gateway=Gateway(), experiments_root=root)
+    pair = value['reuse']['notes'][0]
+    assert {r['memory_id'] for r in pair['history']} == {original, generalized}
+    assert pair['original']['status'] == 'disabled' and pair['original']['provider'] == 'generic-source'
+    assert pair['generalized']['status'] == 'trusted'
+
+
+def test_project_passes_metadata_and_current_run_citations(RUN):
+    bridge = Bridge(RUN/'ledger.sqlite3')
+    with sqlite3.connect(RUN/'ledger.sqlite3') as db:
+        cell = json.loads(db.execute('SELECT payload FROM v2_cells').fetchone()[0])
+        cell['memory_family'] = True
+        directory = RUN/'artifacts'/RUN.name/'cells'/cell['key']/'v2'
+        directory.mkdir(parents=True)
+        (directory/'memory-input.json').write_text(json.dumps(dict(entries=[dict(memory_id='p-current', level='same_task')])))
+        (directory/'memory_use.json').write_text(json.dumps(dict(notes=[dict(memory_id='p-current', title='Retreat', level='same_task',
+            delivered=True, referenced='explicit', evidence=[dict(file='v2/policy.py', line=1, excerpt='Using note p-current: clear the door.')])], errors=[])))
+        db.execute('UPDATE v2_cells SET payload=?', (json.dumps(cell),))
+    metadata = dict(level='same_task', skill_tags=['cabinet'], applies_when='Carrying', source_run=EXPERIMENT,
+                    source_version=1, source_verified=True, provider='future-provider', status='trusted')
+    value = memory_monitor.project(bridge, Memory([row('p-current', **metadata)]), EXPERIMENT)
+    note = value['notes'][0]
+    assert {k:note[k] for k in metadata if k!='status'} == {k:v for k,v in metadata.items() if k!='status'}
+    assert note['note_status'] == 'trusted'
+    assert note['dev_use'][0]['version'] == 2 and note['dev_use'][0]['use'] == 'used'
+
+
+def test_automatic_checks_route_passes_bridge_history_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(ui_server, 'ThreadingHTTPServer', lambda address, handler: handler)
+    received = {}
+    def checks(**kwargs):
+        received.update(kwargs)
+        return dict(reuse=dict(notes=[], errors=[]))
+    monkeypatch.setattr(memory_monitor, 'automatic_checks', checks)
+    memory = Memory([])
+    handler = ui_server.create_server(dev_v2_bridge=SimpleNamespace(root=tmp_path), memory_view=memory)
+    status, raw, _ = request(handler, '/api/dev-v2/automatic-checks')
+    assert status == 200 and json.loads(raw)['reuse']['notes'] == []
+    assert received == dict(gateway=memory.gateway, experiments_root=tmp_path)
+
+
+def test_note_history_local_packet_schema_and_visible_malformed_results(history_runs):
+    root, runs, original, generalized = history_runs
+    directory = runs[0][1]
+    for target in (directory/'v1', directory/'agent/private/memory/v1'):
+        (target/'memory-input.json').write_text(json.dumps(dict(entries=[])))
+        (target/'memory-run-notes-input.json').write_text(json.dumps(dict(entries=[dict(note_id='r-history', layer='run', level='same_task')])))
+    value = memory_monitor.note_history(root, ['r-history'])
+    assert len(value['rows']) == 1 and not value['rows'][0]['errors']
+    with sqlite3.connect(runs[0][0]/'ledger.sqlite3') as db:
+        db.execute('UPDATE v2_versions SET payload=?', (json.dumps(dict(version=1, agent=['invalid'])),))
+    value = memory_monitor.note_history(root, ['r-history'])
+    assert value['rows'][0]['native'] == 'unavailable'
+    assert value['rows'][0]['errors']
+
+
+def test_history_reason_prefers_explicit_decision_over_generic_citation():
+    note = dict(memory_id='p-1', evidence=[dict(excerpt='An earlier generic citation of p-1.'),
+                dict(excerpt='Using note p-1: retreat first.')])
+    assert memory_monitor._history_reason(note) == 'Using: retreat first.'
+
+
+@pytest.mark.parametrize('index, expected, reason', [(1, 'used', 'Using: test the other closing direction.'),
+    (2, 'considered_not_used', 'Not using: no held object.')])
+def test_note_history_turn_log_fallback_reuses_export_detector(history_runs, monkeypatch, index, expected, reason):
+    from benchmarks.attention_harness import memory_use
+    root, runs, original, generalized = history_runs
+    directory = runs[index][1]
+    mid = original if index == 1 else generalized
+    (directory/'v1/memory_use.json').unlink()
+    saved = directory/'agent/private/memory/v1'
+    entry = json.loads((saved/'memory-input.json').read_text())['entries'][0]
+    (saved/'memory-delivered.json').write_text(json.dumps(dict(notes=[entry])))
+    (saved/'memory-use-start.json').write_text('{}')
+    log = directory/'agent/private/turns/t000001/events.jsonl'
+    log.parent.mkdir(parents=True)
+    decision = ('Using note '+mid+': test the other closing direction.' if index == 1 else
+                'Not using note '+mid+': no held object.')
+    events = [dict(type='item.completed', item=dict(type='command_execution', aggregated_output='Using note '+mid+': tool output is not a citation.')),
+              dict(type='item.completed', item=dict(type='reasoning', text=decision))]
+    log.write_text(''.join(json.dumps(e)+'\n' for e in events))
+    calls = []
+    analyse = memory_use.analyse
+    def detector(*args, **kwargs):
+        calls.append(True)
+        return analyse(*args, **kwargs)
+    monkeypatch.setattr(memory_use, 'analyse', detector)
+    before = {p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    row = memory_monitor.note_history(root, [mid])['rows'][0]
+    assert calls and row['use'] == expected and row['reason'] == reason
+    assert row['decision_source'] == 'turn_log' and not row['errors']
+    assert before == {p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    # A later delivery bounds this version; subsequent messages cannot change it.
+    next_delivery = saved.parent/'v2'
+    next_delivery.mkdir()
+    (next_delivery/'memory-use-start.json').write_text(json.dumps({'turns/t000001/events.jsonl':log.stat().st_size}))
+    log.write_text(log.read_text()+json.dumps(dict(type='item.completed', item=dict(type='agent_message',
+        text='Not using note '+mid+': later version.')))+'\n')
+    row = memory_monitor.note_history(root, [mid])['rows'][0]
+    assert row['use'] == expected and row['reason'] == reason
+    # Unreadable/malformed authored evidence remains a visible pending error.
+    log.write_text('{broken event\n')
+    row = memory_monitor.note_history(root, [mid])['rows'][0]
+    assert row['use'] == 'pending' and row['errors']
+    log.unlink()
+    row = memory_monitor.note_history(root, [mid])['rows'][0]
+    assert row['use'] == 'pending' and row['errors']
+
+
+@pytest.mark.parametrize('evidence', ['run_note', 'help', 'origin', 'absent'])
+def test_history_source_row_and_provider_are_recorded_not_inferred(history_runs, evidence):
+    root, runs, original, generalized = history_runs
+    run, directory = runs[0]
+    metadata = dict(memory_id=original, source_run=run.name, source_version=1, level='same_task')
+    if evidence == 'run_note':
+        (directory/'v1/memory-run-note.json').write_text(json.dumps(dict(experiment_id=run.name,
+            cell='cell', help_version=1, provider='advisor')))
+    elif evidence == 'help':
+        (directory/'v1/help.json').write_text(json.dumps(dict(provider='advisor')))
+    elif evidence == 'origin':metadata['origin'] = dict(provider='advisor')
+    class Gateway:
+        def reuse_notes_list(self):
+            return dict(notes=[dict(original=metadata, generalized=dict(metadata, memory_id=generalized))], errors=[])
+    pair = memory_monitor.automatic_checks(gateway=Gateway(), experiments_root=root)['reuse']['notes'][0]
+    source = pair['history'][0]
+    assert (source['use'], source['experiment_id'], source['version']) == ('source', run.name, 1)
+    assert len([r for r in pair['history'] if r['use'] == 'source']) == 1
+    assert (pair['original'].get('provider'), pair['generalized'].get('provider')) == ((None, None) if evidence == 'absent' else ('advisor', 'advisor'))
+    assert not memory_monitor.note_history(root, [original])['rows'][0]['use'] == 'source'
+
+
+def test_source_identity_errors_are_visible_and_origin_provider_needs_no_inference(history_runs):
+    root, runs, original, _ = history_runs
+    value = memory_monitor.note_history(root, [original], notes=[dict(memory_id=original,
+        source_run='../outside', source_version=1)])
+    assert any('source identity' in e['error'] for e in value['errors'])
+    assert not any(r['use'] == 'source' for r in value['rows'])
+    pair = dict(original=dict(memory_id=original, origin=dict(provider='advisor')))
+    memory_monitor.join_reuse_history(dict(notes=[pair]), dict(rows=[], errors=[]))
+    assert pair['original']['provider'] == 'advisor'

@@ -26,7 +26,7 @@ EXPERIMENT_LIMIT = 200
 CACHE_SECONDS = 5
 
 
-def automatic_checks(root=None,gateway=None):
+def automatic_checks(root=None,gateway=None,*,experiments_root=None):
     """Public worker state only: no requests, guidance, keys, or evidence paths."""
     import os
     from .memory_validation_worker import settings
@@ -129,6 +129,24 @@ def automatic_checks(root=None,gateway=None):
     if callable(getattr(gateway,'reuse_notes_list',None)):
         try:value['reuse']=gateway.reuse_notes_list()
         except Exception as exc:value['errors'].append('Reuse notes unavailable: '+str(exc))
+    reuse = value['reuse']
+    if reuse.get('notes'):
+        # The reuse detail predates lifecycle/provider fields. Join the existing
+        # public catalogue, without inferring trust from source verification.
+        if callable(getattr(gateway, 'list_dev_v2_memories', None)):
+            try:
+                catalogue = {r['memory_id']: r for r in gateway.list_dev_v2_memories()}
+                for pair in reuse['notes']:
+                    for key in ('original', 'generalized'):
+                        note = pair.get(key)
+                        if note:
+                            metadata = catalogue.get(note['memory_id'], {})
+                            note.update({k: metadata[k] for k in ('status', 'provider', 'expires_at') if k in metadata})
+            except Exception as exc:reuse.setdefault('errors', []).append(dict(error='Note status unavailable: '+safe_detail(str(exc))))
+        ids = [n['memory_id'] for pair in reuse['notes'] for n in (pair.get('original'), pair.get('generalized')) if n]
+        notes = [n for pair in reuse['notes'] for n in (pair.get('original'), pair.get('generalized')) if n]
+        history = note_history(experiments_root, ids, notes=notes)
+        join_reuse_history(reuse, history)
     value['family']=dict(fixtures=[],candidates=[],events=[])
     if gateway is not None:
         if callable(getattr(gateway,'family_list',None)):
@@ -183,6 +201,343 @@ def _log_failure(error, context):
 
 def short(value, length):
     return str(value)[:length] if value is not None else None
+
+
+# Bounded file/ledger caches are invalidated by file metadata, including WAL
+# changes. Never open a writer or instantiate a store on historical runs.
+_HISTORY_FILES = {}
+_HISTORY_LEDGERS = {}
+HISTORY_BYTES = 8 * 1024 * 1024
+HISTORY_CELLS = 32
+HISTORY_VERSIONS = 64
+HISTORY_ROWS = 5000
+
+
+def _history_stamp(path):
+    try:
+        stat = path.stat()
+        return stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size
+    except FileNotFoundError:
+        return None
+
+
+def _history_json(path):
+    stamp = _history_stamp(path)
+    if stamp is None:raise FileNotFoundError(path.name+' is missing')
+    if stamp[2] > HISTORY_BYTES:raise ValueError(path.name+' exceeds history size limit')
+    key = str(path)
+    cached = _HISTORY_FILES.get(key)
+    if cached and cached[0] == stamp:return cached[1]
+    value = json.loads(path.read_bytes())
+    if not isinstance(value, dict):raise ValueError(path.name+' must contain an object')
+    if len(_HISTORY_FILES) >= 4096:_HISTORY_FILES.clear()
+    _HISTORY_FILES[key] = (stamp, value)
+    return value
+
+
+def _history_ledger(path):
+    stamp = (_history_stamp(path), _history_stamp(Path(str(path)+'-wal')))
+    if stamp[0] is None:raise FileNotFoundError('ledger.sqlite3 is missing')
+    cached = _HISTORY_LEDGERS.get(str(path))
+    if cached and cached[0] == stamp:return cached[1]
+    with sqlite3.connect(path.resolve().as_uri()+'?mode=ro', uri=True) as db:
+        cells = [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_cells ORDER BY id LIMIT ?', (HISTORY_CELLS+1,))]
+        if len(cells) > HISTORY_CELLS:raise ValueError('history cell limit exceeded')
+        result = []
+        for cell in cells:
+            if not isinstance(cell, dict):raise ValueError('invalid history cell')
+            if cell.get('memory_family') is not True and cell.get('run_notes') is not True:continue
+            versions = [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_versions WHERE cell=? ORDER BY version LIMIT ?', (cell['key'], HISTORY_VERSIONS+1))]
+            jobs = [dict(json.loads(r[0]), state=r[1]) for r in db.execute('SELECT payload,state FROM v2_jobs WHERE cell=? ORDER BY version,kind LIMIT ?', (cell['key'], HISTORY_VERSIONS*4+1))]
+            if len(versions) > HISTORY_VERSIONS or len(jobs) > HISTORY_VERSIONS*4:
+                raise ValueError('history ledger version/job limit exceeded')
+            result.append((cell, versions, jobs))
+    if len(_HISTORY_LEDGERS) >= EXPERIMENT_LIMIT:_HISTORY_LEDGERS.clear()
+    _HISTORY_LEDGERS[str(path)] = (stamp, result)
+    return result
+
+
+def _history_reason(note):
+    evidence = (note.get('considered_not_used_evidence', []) if note.get('considered_not_used') else note.get('evidence', []))
+    # Explicit not-used evidence wins over generic and affirmative citations.
+    reasons, excerpts = [], []
+    pattern = re.compile(r'(?P<no>Not )?using note\s+`?'+re.escape(note['memory_id'])+r'`?\s*:\s*(.*)', re.I)
+    for pointer in evidence:
+        excerpt = pointer['excerpt']
+        match = pattern.search(excerpt)
+        target = reasons if match else excerpts
+        text = ('Not using: ' if match['no'] else 'Using: ')+match[2] if match else excerpt
+        if text not in target:target.append(text)
+    return short(' · '.join(reasons or excerpts), 200) or ''
+
+
+def join_reuse_history(reuse, history):
+    """Attach exact linked IDs; one source row per recorded run/cell/version."""
+    reuse.setdefault('errors', []).extend(history['errors'])
+    for pair in reuse['notes']:
+        ids = {n['memory_id'] for n in (pair.get('original'), pair.get('generalized')) if n}
+        pair['history'], sources = [], set()
+        for row in history['rows']:
+            if row['memory_id'] not in ids:continue
+            if row['use'] == 'source':
+                key = (row['experiment_id'], row['cell'], row['version'])
+                if key in sources:continue
+                sources.add(key)
+            pair['history'].append(row)
+        pair['history'].sort(key=lambda r:r['use'] != 'source')
+        for note in (pair.get('original'), pair.get('generalized')):
+            if note and not note.get('provider'):
+                origin = note.get('origin_summary') or note.get('origin') or {}
+                note['provider'] = origin.get('provider') or next((r['provider'] for r in history['rows']
+                    if r['memory_id'] == note['memory_id'] and r.get('provider')), None)
+    return reuse
+
+
+def _history_results(cell, version, jobs):
+    """Separate native success from execution completion and Eval verdict."""
+    agent = version.get('agent') or {}
+    native = agent.get('native_success')
+    if native is not None and type(native) is not bool:raise ValueError('invalid persisted native result')
+    review = agent.get('eval') or {}
+    if not isinstance(review, dict):raise ValueError('invalid persisted Eval result')
+    if review.get('status') == 'completed' and type(review.get('passed')) is not bool:raise ValueError('invalid completed Eval result')
+    evaluated = review.get('passed') if review.get('status') == 'completed' else None
+    for job in jobs:
+        if job.get('version') != version.get('version') or job.get('state') != 'settled':continue
+        receipt = job.get('receipt') or {}
+        if job.get('kind') == 'execute' and receipt.get('bundle'):
+            ref = receipt['bundle'];path = Path(ref['uri'])
+            bundle = _history_json(path)
+            if sha(path) != ref.get('sha256'):raise ValueError('native bundle digest mismatch')
+            expected = f"attempt:{cell['key']}:{version['version'] - 1}"
+            evaluator = bundle.get('native_evaluator') or {}
+            if not (bundle.get('run_id') == 'run:'+cell['key'] and bundle.get('attempt_id') == expected
+                    and bundle.get('dev_version') == version['version']
+                    and bundle.get('config_sha256') == version.get('config_sha256')
+                    and bundle.get('policy_sha256') == (version.get('source') or {}).get('sha256')
+                    and bundle.get('formal_eligible') is False and evaluator.get('run_id') == bundle['run_id']
+                    and evaluator.get('attempt_id') == expected and evaluator.get('evaluated') is True):
+                raise ValueError('native bundle identity/evaluation unavailable')
+            native = bundle.get('native_success')
+            if type(native) is not bool:raise ValueError('invalid native bundle success')
+        if job.get('kind') == 'eval':
+            ref = receipt.get('eval_review') or receipt.get('review')
+            if ref:
+                path = Path(ref['uri'])
+                review = _history_json(path)
+                if sha(path) != ref.get('sha256'):raise ValueError('Eval review digest mismatch')
+                if review.get('status') == 'completed' and type(review.get('passed')) is not bool:raise ValueError('invalid completed Eval review')
+                evaluated = review.get('passed') if review.get('status') == 'completed' else None
+    label = lambda value: 'passed' if value is True else 'failed' if value is False else 'pending'
+    return dict(native=label(native), eval=label(evaluated))
+
+
+def _history_detail(message):
+    from .notices import safe_detail
+    # Preserve the audit filename after the general notice scrubber humanizes
+    # underscores. It identifies which input needs attention.
+    return safe_detail(str(message)).replace('memory use.json', 'memory_use.json') or 'History data unavailable'
+
+
+def _history_turn_use(directory, number, numbers):
+    """Use export's exact authored-event parser and citation detector, read-only.
+
+    A paused version ends at the current cursor, or the next delivery cursor if
+    that exists. Never include a later version's events in an earlier decision.
+    """
+    from .memory_use import analyse, _events, event_cursor, validate_report
+    private = directory/'agent/private'
+    saved = private/'memory'/f'v{number}'
+    delivered = _history_json(saved/'memory-delivered.json')
+    notes = delivered['notes']
+    if not isinstance(notes, list) or len(notes) > LIMIT:raise ValueError('invalid delivered note limit')
+    if delivered.get('errors'):raise ValueError('Memory delivery has errors')
+    start = _history_json(saved/'memory-use-start.json')
+    end_path = saved/'memory-use-end.json'
+    if not end_path.exists():
+        later = [n for n in numbers if n > number]
+        end_path = private/'memory'/f'v{min(later)}'/'memory-use-start.json' if later else None
+    end = _history_json(end_path) if end_path else event_cursor(private)
+    if not end:raise FileNotFoundError('Dev turn log is missing')
+    if len(end) > HISTORY_VERSIONS:raise ValueError('turn log stream limit exceeded')
+    total = 0
+    for name in end:
+        # _events validates cursor paths and offsets again before parsing.
+        if not re.fullmatch(r'turns/t\d+/events.jsonl', name):raise ValueError('invalid event cursor path')
+        stamp = _history_stamp(private/name)
+        if stamp is None:raise FileNotFoundError('Dev turn log is missing')
+        total += stamp[2]
+    if total > HISTORY_BYTES:raise ValueError('turn log history size limit exceeded')
+    return validate_report(analyse(notes, _events(private, start, end)))
+
+
+def _history_source(root, note):
+    """Resolve only recorded source identities; no r-/p- alias inference."""
+    origin = note.get('origin_summary') or note.get('origin') or {}
+    rid = note.get('source_run') or origin.get('experiment_id')
+    number = note.get('source_version') or origin.get('help_version')
+    provider = note.get('provider') or origin.get('provider')
+    if rid is None or number is None:return None, provider
+    if not isinstance(rid, str) or not EXPERIMENT.fullmatch(rid) or type(number) is not int or not 1 <= number <= HISTORY_VERSIONS:
+        raise ValueError('invalid note source identity')
+    root = Path(root)
+    run = (root.parent if EXPERIMENT.fullmatch(root.name) else root)/rid
+    cells = _history_ledger(run/'ledger.sqlite3')
+    key = note.get('source_cell') or origin.get('cell')
+    candidates = [c for c in cells if not key or c[0]['key'] == key]
+    if len(candidates) != 1:raise ValueError('note source cell is unavailable or ambiguous')
+    cell, versions, jobs = candidates[0]
+    directory = Path(cell.get('artifact_dir') or run/'artifacts'/rid/'cells'/cell['key'])
+    if not directory.resolve().is_relative_to(run.resolve()):raise ValueError('source artifacts are outside their run')
+    source = directory/f'v{number}'
+    if not provider:
+        for name in ('memory-run-note.json', 'help.json'):
+            if not (source/name).exists():continue
+            evidence = _history_json(source/name)
+            if name == 'memory-run-note.json' and (evidence.get('experiment_id'), evidence.get('cell'), evidence.get('help_version')) != (rid, cell['key'], number):
+                raise ValueError('source run note identity mismatch')
+            provider = evidence.get('provider')
+            if provider:break
+    version = next((v for v in versions if v.get('version') == number), dict(version=number))
+    row = dict(experiment_id=rid, cell=cell['key'], version=number, memory_id=note.get('memory_id', note.get('id')),
+        task_id=cell.get('task_id'), seed=cell.get('seed'), level=note.get('level'), use='source', reason='',
+        provider=provider, errors=[], **_history_results(cell, version, jobs))
+    return row, provider
+
+
+def note_history(root, memory_ids, *, notes=()):
+    """Read exact note IDs across opted-in runs; no alias or outcome inference.
+
+    Public vN files win over private delivery snapshots. The latter keep paused,
+    pre-export deliveries visible. Original/generalized IDs are joined by the
+    caller using catalogue links, never by stripping a suffix or a prefix.
+    """
+    from .memory_use import validate_report
+    value = dict(rows=[], errors=[])
+    ids = set(memory_ids)
+    metadata = {n.get('memory_id', n.get('id')): dict(n) for n in notes if n.get('memory_id', n.get('id')) in ids}
+    if not ids:return value
+    def error(message, **context):
+        return dict(**context, error=_history_detail(message))
+    if root is None:
+        value['errors'].append(error('Note history unavailable: daily experiment root is not configured'))
+        return value
+    root = Path(root)
+    try:
+        if not root.is_dir():raise FileNotFoundError('history root is unavailable')
+        runs = [root] if EXPERIMENT.fullmatch(root.name) else sorted(
+            (p for p in root.glob('devexp-*') if EXPERIMENT.fullmatch(p.name)),
+            key=lambda p: p.stat().st_mtime_ns, reverse=True)
+        if len(runs) > EXPERIMENT_LIMIT:
+            value['errors'].append(error(f'Note history limited to {EXPERIMENT_LIMIT} newest runs'))
+        for run in reversed(runs[:EXPERIMENT_LIMIT]):
+            context = dict(experiment_id=run.name)
+            try:cells = _history_ledger(run/'ledger.sqlite3')
+            except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error) as exc:
+                value['errors'].append(error(exc, **context));continue
+            for cell, versions, jobs in cells:
+                context = dict(experiment_id=run.name, cell=cell['key'])
+                try:
+                    directory = Path(cell.get('artifact_dir') or run/'artifacts'/run.name/'cells'/cell['key'])
+                    if not directory.resolve().is_relative_to(run.resolve()):raise ValueError('history artifacts are outside their run')
+                    public = {int(p.name[1:]): p for p in directory.glob('v[0-9]*') if re.fullmatch(r'v[1-9][0-9]*', p.name)}
+                    private = {int(p.name[1:]): p for p in (directory/'agent/private/memory').glob('v[0-9]*') if re.fullmatch(r'v[1-9][0-9]*', p.name)}
+                    numbers = sorted(public.keys() | private.keys() | {v['version'] for v in versions})
+                    if len(numbers) > HISTORY_VERSIONS:
+                        value['errors'].append(error('history version limit exceeded', **context))
+                    for number in numbers[:HISTORY_VERSIONS]:
+                        if len(value['errors']) >= HISTORY_ROWS:
+                            value['errors'] = value['errors'][:HISTORY_ROWS] + [error('Note history error limit reached')]
+                            return value
+                        errors = []
+                        row_context = dict(context, version=number)
+                        entries = {}
+                        for name in ('memory-input.json', 'memory-run-notes-input.json'):
+                            candidates = [p/name for p in (public.get(number), private.get(number)) if p]
+                            path = next((p for p in candidates if p.exists()), None)
+                            if path is None:
+                                if name == 'memory-input.json':errors.append('memory-input.json is missing')
+                                continue
+                            try:
+                                packet = _history_json(path)
+                                rows = packet.get('entries', packet.get('notes'))
+                                if not isinstance(rows, list) or len(rows) > LIMIT:raise ValueError('invalid delivery entries or delivery limit exceeded')
+                                for entry in rows:
+                                    if not isinstance(entry, dict):raise ValueError('invalid delivery note')
+                                    # Local run packets use note_id; service packets use memory_id.
+                                    mid = entry.get('note_id') if name == 'memory-run-notes-input.json' else entry.get('memory_id')
+                                    if not isinstance(mid, str):raise ValueError('invalid delivery note ID')
+                                    entries[mid] = entry
+                            except (OSError, ValueError, TypeError) as exc:errors.append(name+': '+str(exc))
+                        audit_notes = {}
+                        audit_path = public.get(number, directory/f'v{number}')/'memory_use.json'
+                        audit_present = audit_path.exists()
+                        if audit_present:
+                            try:
+                                audit = validate_report(_history_json(audit_path))
+                                if len(audit['notes']) > LIMIT:raise ValueError('audit note limit exceeded')
+                                audit_notes = {n['memory_id']: n for n in audit['notes']}
+                                errors.extend(e['error'] for e in audit.get('errors', []))
+                            except (OSError, ValueError, TypeError, KeyError) as exc:errors.append('memory_use.json: '+str(exc))
+                        elif ids & entries.keys():
+                            try:
+                                audit = _history_turn_use(directory, number, numbers)
+                                audit_notes = {n['memory_id']: n for n in audit['notes']}
+                            except (OSError, ValueError, TypeError, KeyError) as exc:
+                                errors.append('memory_use.json is missing; citation audit pending: '+str(exc))
+                        matched = ids & (entries.keys() | audit_notes.keys())
+                        if not matched:
+                            # A corrupt packet has no recoverable IDs. Surface it
+                            # globally, but do not hash unrelated native bundles.
+                            value['errors'].extend(error(e, **row_context) for e in errors
+                                if not e.startswith('memory_use.json is missing'))
+                            continue
+                        version = next((v for v in versions if v.get('version') == number), dict(version=number))
+                        try:outcomes = _history_results(cell, version, jobs)
+                        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                            outcomes = dict(native='unavailable', eval='unavailable');errors.append('Version result: '+str(exc))
+                        for mid in sorted(matched):
+                            entry = entries.get(mid, {})
+                            metadata.setdefault(mid, {}).update({k: v for k, v in entry.items()
+                                if k not in metadata.get(mid, {})})
+                            audit = audit_notes.get(mid)
+                            row_errors = list(errors)
+                            if audit_present and audit is None:row_errors.append('Delivered note is absent from memory_use.json')
+                            used = ('considered_not_used' if audit.get('considered_not_used') else
+                                    'used' if audit['referenced'] == 'explicit' else 'not_mentioned') if audit else 'pending'
+                            if not audit_present and audit is None and not errors:
+                                row_errors.append('Dev turn log has no delivered note; citation audit pending')
+                            level = entry.get('level') or (audit or {}).get('level')
+                            if level is None:
+                                level = {'same_scene':'same_task','same_task':'same_task','same_skill':'same_skill','general':'general',
+                                         'scene':'same_task','task':'same_task','skill':'same_skill','run':'same_task','run_note':'same_task'}.get(entry.get('match_level') or entry.get('layer'))
+                            if level is None:row_errors.append('Delivery level is unavailable')
+                            value['rows'].append(dict(**row_context, memory_id=mid, task_id=cell.get('task_id'), seed=cell.get('seed'),
+                                level=level, use=used, considered_not_used=bool((audit or {}).get('considered_not_used')),
+                                decision_source='audit' if audit_present else 'turn_log' if audit else None,
+                                reason=_history_reason(audit) if audit else '', **outcomes,
+                                errors=[_history_detail(e) for e in row_errors]))
+                        # Unattributable corrupt files still surface, rather than
+                        # disappearing because their IDs could not be parsed.
+                        value['errors'].extend(error(e, **row_context) for e in errors)
+                        if len(value['rows']) >= HISTORY_ROWS:
+                            value['rows'] = value['rows'][:HISTORY_ROWS]
+                            value['errors'].append(error('Note history row limit reached'))
+                            return value
+                except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:value['errors'].append(error(exc, **context))
+    except (OSError, ValueError) as exc:value['errors'].append(error(exc))
+    sources = []
+    for mid, note in metadata.items():
+        try:
+            source, provider = _history_source(root, dict(note, memory_id=mid))
+            if source and (not EXPERIMENT.fullmatch(root.name) or source['experiment_id'] == root.name):sources.append(source)
+            if provider:
+                for row in value['rows']:
+                    if row['memory_id'] == mid:row['provider'] = provider
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error) as exc:
+            value['errors'].append(error('Note source: '+str(exc), memory_id=mid))
+    value['rows'] = sorted(sources, key=lambda r:(r['experiment_id'], r['version'], r['memory_id'])) + value['rows']
+    return value
 
 
 def effect(row):
@@ -601,7 +956,13 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                       'summary': short(row.get('summary'), 180), 'group': short(row.get('group') or 'General', 40),
                       'status': status(row), 'effect': validation, 'lift_pt': lift, 'reads': reads,
                       'last_used_at': last, 'test_seeded': row.get('seeded_for_tests') is True})
-        notes[-1].update({k:row[k] for k in ('level','skill_tags','applies_when','source_run','source_version','source_verified','generalized_from','generalized_copy') if k in row})
+        notes[-1].update({k:row[k] for k in ('level','skill_tags','applies_when','source_run','source_version','source_verified','provider','generalized_from','generalized_copy') if k in row})
+        notes[-1]['note_status'] = row.get('status')
+        origin = row.get('origin_summary') or row.get('origin') or {}
+        if not notes[-1].get('provider') and origin.get('provider'):notes[-1]['provider'] = origin['provider']
+        if origin.get('cell'):notes[-1]['source_cell'] = origin['cell']
+        for key, source in (('source_run', 'experiment_id'), ('source_version', 'help_version')):
+            if key not in notes[-1] and source in origin:notes[-1][key] = origin[source]
         if row.get('origin_summary', {}).get('provider') == 'human':
             notes[-1]['origin'] = row['origin_summary']
         profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
@@ -639,6 +1000,8 @@ def project(bridge, memory_view, experiment_id, *, now=None):
             gone = {e['version'] for k, e in history if k == PREFIX + 'outcome'
                     and e['note_id'] == note_id and e['failure_gone']}
             run_notes.append(dict(id=note_id, cell=cell['key'], layer='run',
+                                  source_run=experiment_id, source_version=event['help_version'],
+                                  level='same_task', note_status='disabled' if note_id in off else 'provisional',
                                   path=f"{_learned(dict(experiment_id=experiment_id, help_version=event['help_version']))} → this run only", title=short(event['title'], 80),
                                   help_version=event['help_version'], from_version=event['help_version'] + 1,
                                   uses=len(uses), failure_gone=len(gone), off=note_id in off))
@@ -648,6 +1011,11 @@ def project(bridge, memory_view, experiment_id, *, now=None):
             except EXTRA_ERRORS as error:
                 _log_failure(error, 'run note source')
                 if not warnings:warnings.append('Some note details are unavailable.')
+    current_history = note_history(Path(store.path).parent, [n['id'] for n in notes + run_notes], notes=notes + run_notes)
+    for note in notes + run_notes:
+        rows = [r for r in current_history['rows'] if r['memory_id'] == note['id']]
+        note['dev_use'] = [r for r in rows if r['use'] != 'source']
+        if not note.get('provider'):note['provider'] = next((r['provider'] for r in rows if r.get('provider')), None)
     from .dev_memory_view import scope_projection
     scopes = [scope_projection(store, cell) for cell in cells]
     # A multi-cell run must still explain any cell restricted to references.
@@ -658,4 +1026,5 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                     'memory_scope': scope, 'can_operate_run_notes': local_enabled,
                     'family_reference': any(cell.get('memory_family') is True for cell in cells),
                     'layer_counts': {layer: sum(n.get('layer') == layer for n in notes + run_notes) for layer in LAYERS}},
-            'notes': notes, 'run_notes': run_notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings}
+            'notes': notes, 'run_notes': run_notes, 'events': events[-EVENT_LIMIT:], 'warnings': warnings,
+            'history_errors': current_history['errors']}

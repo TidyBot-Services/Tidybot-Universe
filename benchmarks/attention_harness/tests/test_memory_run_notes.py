@@ -265,7 +265,9 @@ def test_monitor_and_kill_switch_endpoint_auth(tmp_path, monkeypatch):
     payload = memory_monitor.project(bridge, None, cell['experiment_id'])
     assert [v['note_ids'] for v in payload['run']['versions']] == [[],[],[note['note_id']]]
     assert payload['run_notes'] == [dict(id=note['note_id'],cell=cell['key'],layer='run',
-        path=f"Learned in {cell['experiment_id'][:15]}… v2 → this run only",title=note['title'],help_version=2,from_version=3,uses=1,failure_gone=1,off=False)]
+        source_run=cell['experiment_id'],source_version=2,level='same_task',note_status='provisional',
+        path=f"Learned in {cell['experiment_id'][:15]}… v2 → this run only",title=note['title'],help_version=2,from_version=3,uses=1,failure_gone=1,off=False,
+        dev_use=[],provider=None)]
     assert any(e['text'] == 'v2 learned: '+note['title'] for e in payload['events'])
     path = '/api/dev-v2/experiments/'+cell['experiment_id']+'/run-note-off'
     body = dict(cell=cell['key'],note_id=note['note_id'])
