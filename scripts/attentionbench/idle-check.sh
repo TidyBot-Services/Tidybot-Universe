@@ -4,23 +4,49 @@ set -eu
 runs_root=${1:-/home/truares/Documents/Codex/2026-10-14/goal-attentionbench-robocasa365-dev-v2-home/outputs/daily-experiments}
 python3 - "$runs_root" <<'PY'
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 busy = False
-for label, pattern in [('run workers', '[d]aily_dev_v2 --worker'), ('frame cleanup', '[f]rame_cleanup(\.py)?( |$)')]:
+for label, pattern in [('run workers', '[d]aily_dev_v2 --worker'), ('frame cleanup', r'[f]rame_cleanup(\.py)?( |$)')]:
     result = subprocess.run(['pgrep', '-af', pattern], capture_output=True, text=True)
     if result.stdout.strip():
         print(label+':\n'+result.stdout.strip()); busy = True
 root = Path(sys.argv[1])
+budget = 100000
+def entries(path):
+    global budget
+    try:
+        with os.scandir(path) as rows:
+            for entry in rows:
+                budget -= 1
+                if budget < 0: raise ValueError('receipt scan limit exceeded')
+                if entry.is_dir(follow_symlinks=False): yield Path(entry.path)
+    except FileNotFoundError: return
+def inspect(folder, run_id):
+    global busy
+    receipt = folder/'frame-cleanup.json'
+    try:
+        with receipt.open('rb') as stream: raw = stream.read(1024*1024*1024+1)
+        if len(raw) > 1024*1024*1024: raise ValueError('receipt too large')
+        value = json.loads(raw)
+        if not isinstance(value, dict): raise ValueError('cleanup receipt must be an object')
+        if value.get('status') == 'in_progress':
+            print('in_progress cleanup: '+run_id+' '+str(receipt)); busy = True
+    except FileNotFoundError: pass
+    except (OSError, ValueError) as exc:
+        print('cannot check cleanup: '+run_id+' '+str(receipt)+': '+str(exc)); busy = True
+def inspect_run(folder, run_id):
+    inspect(folder, run_id)
+    for cell in entries(folder/'cells'):
+        inspect(cell, run_id)
 try:
-    for receipt in root.rglob('frame-cleanup.json'):
-        try:
-            if json.loads(receipt.read_bytes()).get('status') == 'in_progress':
-                print('in_progress cleanup: '+str(receipt)); busy = True
-        except (OSError, ValueError) as exc:
-            print('cannot check cleanup: '+str(receipt)+': '+str(exc)); busy = True
-except OSError as exc:
+    for folder in entries(root):
+        inspect_run(folder, folder.name)
+        for artifact in entries(folder/'artifacts'):
+            inspect_run(artifact, folder.name)
+except (OSError, ValueError) as exc:
     print('cannot scan runs: '+str(exc)); busy = True
 if not busy: print('idle')
 sys.exit(1 if busy else 0)

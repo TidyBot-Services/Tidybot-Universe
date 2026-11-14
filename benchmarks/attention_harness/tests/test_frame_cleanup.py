@@ -49,6 +49,21 @@ def run(tmp_path, monkeypatch):
     return cell, episode
 
 
+@pytest.fixture
+def nested_run(run, tmp_path, request):
+    """The host layout: runs/<devexp>/artifacts/<devexp>/cells/<64hex>."""
+    cell, episode = run
+    experiment = cell.parent.parent
+    root = tmp_path/getattr(request, 'param', 'runs')
+    artifact = root/experiment.name/'artifacts'/experiment.name
+    artifact.parent.mkdir(parents=True)
+    shutil.move(str(experiment), str(artifact))
+    episode = artifact/episode.relative_to(experiment)
+    cell = artifact/'cells'/cell.name
+    bind(cell)
+    return root, cell, episode
+
+
 def test_apply_receipt_first_frame_readonly_idempotent(run):
     cell, ep = run
     frame = ep/'recording_frames/000001.jpg'; frame.chmod(0o444)
@@ -677,12 +692,14 @@ def test_backfill_inventory_marks_in_progress_and_resumes(run, tmp_path, monkeyp
     assert cleanup.apply(cell.parent.parent)['cells'][0]['status'] == 'completed'
 
 
-def test_startup_sweep_background_resume_and_notice(run, tmp_path, monkeypatch):
-    cell, _ = run;interrupt_cleanup(cell, monkeypatch)
+@pytest.mark.parametrize('nested_run', ['runs', 'daily-experiments'], indirect=True)
+def test_startup_sweep_background_resume_and_notice(nested_run, monkeypatch):
+    root, cell, _ = nested_run;interrupt_cleanup(cell, monkeypatch)
     calls=[]
     monkeypatch.setattr(cleanup, 'schedule', lambda root, **kw:calls.append((root,kw)))
-    bad=tmp_path/'broken/frame-cleanup.json';bad.parent.mkdir();bad.write_text('{')
-    thread=cleanup.startup_sweep(tmp_path);thread.join(3)
+    bad=root/'devexp-broken/artifacts/devexp-broken/cells'/('c'*64)/'frame-cleanup.json'
+    bad.parent.mkdir(parents=True);bad.write_text('{')
+    thread=cleanup.startup_sweep(root);thread.join(3)
     assert not thread.is_alive()
     assert calls==[(cell,dict(wait_parent=False))]
     assert cleanup.notices(bad.parent)
@@ -695,12 +712,35 @@ def test_startup_schedule_does_not_wait_for_server(run, monkeypatch):
     assert calls[0][-1] == '0'
 
 
-def test_idle_check_reports_in_progress_receipt(run, tmp_path):
-    cell, _ = run
+@pytest.mark.parametrize('nested_run', ['runs', 'daily-experiments'], indirect=True)
+def test_idle_check_reports_in_progress_receipt(nested_run):
+    root, cell, _ = nested_run
     write(cell/'frame-cleanup.json',dict(status='in_progress'))
     script=Path(__file__).resolve().parents[3]/'scripts/attentionbench/idle-check.sh'
-    done=subprocess.run(['bash',str(script),str(tmp_path)],capture_output=True,text=True)
+    done=subprocess.run(['bash',str(script),str(root)],capture_output=True,text=True)
     assert done.returncode==1 and 'in_progress cleanup:' in done.stdout
+    assert str(cell/'frame-cleanup.json') in done.stdout
+    assert cell.parent.parent.name in done.stdout
+    assert 'invalid escape sequence' not in done.stderr
+
+
+@pytest.mark.parametrize('layout', [
+    'frame-cleanup.json',
+    'cells/'+'b'*64+'/frame-cleanup.json',
+    'artifacts/devexp-one/frame-cleanup.json',
+    'artifacts/devexp-one/cells/'+'b'*64+'/frame-cleanup.json',
+])
+@pytest.mark.parametrize('contents', ['{"status":"in_progress"}', '{', '[]'])
+def test_idle_check_receipt_layouts_fail_closed(tmp_path, layout, contents):
+    root=tmp_path/'daily-experiments'
+    receipt=root/'devexp-one'/layout
+    receipt.parent.mkdir(parents=True);receipt.write_text(contents)
+    script=Path(__file__).resolve().parents[3]/'scripts/attentionbench/idle-check.sh'
+    done=subprocess.run(['bash',str(script),str(root)],capture_output=True,text=True)
+    assert done.returncode==1
+    assert str(receipt) in done.stdout and 'devexp-one' in done.stdout
+    assert ('in_progress cleanup:' if contents.startswith('{"status"') else 'cannot check cleanup:') in done.stdout
+    assert 'invalid escape sequence' not in done.stderr
 
 
 def test_live_cleanup_process_is_an_owner_even_before_lock(run):
@@ -773,23 +813,23 @@ def test_both_ui_servers_schedule_startup_roots(tmp_path,monkeypatch):
     assert calls==[(tmp_path,tmp_path/'runs'),(tmp_path,)]
 
 
-def test_real_startup_resume_completes_while_server_parent_is_alive(run,tmp_path,monkeypatch):
+def test_real_startup_resume_completes_while_server_parent_is_alive(nested_run,monkeypatch):
     import sys
     if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):pytest.skip('ffmpeg/ffprobe unavailable')
-    cell,ep=run;interrupt_cleanup(cell,monkeypatch)
+    root,cell,ep=nested_run;interrupt_cleanup(cell,monkeypatch)
     (ep/'advisor_replay.mp4').unlink()
     subprocess.run(['ffmpeg','-nostdin','-v','error','-f','lavfi','-i','color=size=16x16:rate=5',
         '-frames:v','4','-c:v','libx264','-pix_fmt','yuv420p',str(ep/'advisor_replay.mp4')],check=True,capture_output=True)
     code='''import json,sys,time
 from pathlib import Path
 from benchmarks.attention_harness.frame_cleanup import startup_sweep
-root=Path(sys.argv[1]);startup_sweep(root)
+root=Path(sys.argv[1]);cell=Path(sys.argv[2]);startup_sweep(root)
 end=time.monotonic()+5
 while time.monotonic()<end:
- if json.loads((root/'frame-cleanup.json').read_bytes()).get('status')=='completed':break
+ if json.loads((cell/'frame-cleanup.json').read_bytes()).get('status')=='completed':break
  time.sleep(.05)
-assert json.loads((root/'frame-cleanup.json').read_bytes())['status']=='completed'
+assert json.loads((cell/'frame-cleanup.json').read_bytes())['status']=='completed'
 '''
-    done=subprocess.run([sys.executable,'-B','-c',code,str(cell)],capture_output=True,text=True,timeout=8)
+    done=subprocess.run([sys.executable,'-B','-c',code,str(root),str(cell)],capture_output=True,text=True,timeout=8)
     assert done.returncode==0,done.stdout+done.stderr
     assert not (ep/'recording_frames/000002.jpg').exists()

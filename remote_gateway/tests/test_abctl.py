@@ -122,11 +122,24 @@ def test_prune_never_removes_the_rollback_target(host):
     assert prev.exists() and live.exists() and not extra.exists(), 'a newer test-only release goes first'
 
 
-def test_cleanup_receipts_and_processes_count_as_busy(host, monkeypatch):
+@pytest.mark.parametrize('store', ['campus', 'test', 'daily-experiments'])
+@pytest.mark.parametrize('layout', [
+    'frame-cleanup.json',
+    'cells/'+'b'*64+'/frame-cleanup.json',
+    'artifacts/devexp-one/frame-cleanup.json',
+    'artifacts/devexp-one/cells/'+'b'*64+'/frame-cleanup.json',
+])
+def test_cleanup_receipts_and_processes_count_as_busy(host, monkeypatch, store, layout):
     cfg, _ = host
-    root = cfg['data']/'harness/runs/devexp-one'
-    receipt = root/'cells/cell/frame-cleanup.json';receipt.parent.mkdir(parents=True)
+    if store == 'daily-experiments':
+        runs_root = cfg['ws']/'daily-experiments'
+        cfg['runs_roots'] = [runs_root]
+    else:
+        runs_root = cfg['data']/'harness/runs' if store == 'campus' else cfg['test_data']/'runs'
+    receipt = runs_root/'devexp-one'/layout;receipt.parent.mkdir(parents=True)
     receipt.write_text(json.dumps(dict(status='in_progress')))
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
     monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],0,stdout='123 python -m benchmarks.attention_harness.frame_cleanup '+str(receipt.parent)+' 0\n',stderr=''))
     assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
     receipt.write_text(json.dumps(dict(status='completed')))
@@ -137,7 +150,7 @@ def test_cleanup_receipts_and_processes_count_as_busy(host, monkeypatch):
 
 def test_wait_idle_waits_for_receipt_without_process(host, monkeypatch, capsys):
     cfg, _ = host
-    receipt=cfg['test_data']/'runs/devexp-interrupted/frame-cleanup.json';receipt.parent.mkdir(parents=True)
+    receipt=cfg['test_data']/('runs/devexp-interrupted/artifacts/devexp-interrupted/cells/'+'b'*64+'/frame-cleanup.json');receipt.parent.mkdir(parents=True)
     receipt.write_text(json.dumps(dict(status='in_progress')))
     monkeypatch.setattr(abctl, 'workers', lambda:(0,[]))
     monkeypatch.setattr(abctl, 'run', lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
@@ -159,11 +172,21 @@ def test_now_mentions_cleanup_and_requires_confirmation(host, monkeypatch):
     assert 'cleaning frames 1 (devexp-cleaning)' in prompts[0] and 'interrupts frame cleanup' in prompts[0]
 
 
-def test_cleanup_scan_does_not_ignore_bad_receipt(host,monkeypatch):
+@pytest.mark.parametrize('contents', ['{', '[]'])
+def test_cleanup_scan_does_not_ignore_bad_receipt(host,monkeypatch,contents):
     cfg,_=host
-    receipt=cfg['test_data']/'runs/devexp-bad/frame-cleanup.json';receipt.parent.mkdir(parents=True);receipt.write_text('{')
+    receipt=cfg['test_data']/('runs/devexp-bad/artifacts/devexp-bad/cells/'+'b'*64+'/frame-cleanup.json')
+    receipt.parent.mkdir(parents=True);receipt.write_text(contents)
     monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
     assert abctl.cleanup_workers(cfg)==(1,['devexp-bad:unreadable-cleanup'])
+
+
+def test_cleanup_scan_stays_out_of_cell_contents(host,monkeypatch):
+    cfg,_=host
+    cell=cfg['data']/('harness/runs/devexp-one/artifacts/devexp-one/cells/'+'b'*64)
+    receipt=cell/'v0001/frame-cleanup.json';receipt.parent.mkdir(parents=True);receipt.write_text('{')
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    assert abctl.cleanup_workers(cfg)==(0,[])
 
 
 def test_status_prints_cleanup_run_ids(host,monkeypatch,capsys):
@@ -174,6 +197,9 @@ def test_status_prints_cleanup_run_ids(host,monkeypatch,capsys):
     monkeypatch.setattr(abctl,'listening',lambda port:True)
     monkeypatch.setattr(abctl,'key_loaded',lambda cfg:False)
     monkeypatch.setattr(abctl,'workers',lambda:(0,[]))
-    monkeypatch.setattr(abctl,'cleanup_workers',lambda cfg:(2,['devexp-a','devexp-b']))
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    for run_id in ('devexp-a','devexp-b'):
+        receipt=cfg['data']/'harness/runs'/run_id/'artifacts'/run_id/'cells'/('b'*64)/'frame-cleanup.json'
+        receipt.parent.mkdir(parents=True);receipt.write_text(json.dumps(dict(status='in_progress')))
     abctl.cmd_status(cfg,abctl.argparse.Namespace())
     assert 'cleaning frames 2 (devexp-a devexp-b)' in capsys.readouterr().out

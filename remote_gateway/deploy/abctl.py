@@ -122,12 +122,16 @@ def cleanup_workers(cfg):
             if value.get('status') == 'in_progress': ids.add(run_id)
         except FileNotFoundError: pass
         except (OSError, ValueError): ids.add(run_id+':unreadable-cleanup')
+    def inspect_run(folder, run_id):
+        inspect(folder/'frame-cleanup.json', run_id)
+        for cell in entries(folder/'cells'):
+            inspect(cell/'frame-cleanup.json', run_id)
     for root in roots:
         try:
             for folder in entries(Path(root)):
-                inspect(folder/'frame-cleanup.json', folder.name)
-                for cell in entries(folder/'cells'):
-                    inspect(cell/'frame-cleanup.json', folder.name)
+                inspect_run(folder, folder.name)
+                for artifact in entries(folder/'artifacts'):
+                    inspect_run(artifact, folder.name)
         except (OSError, ValueError) as exc: ids.add('cleanup-scan:'+str(exc))
     return len(ids), sorted(ids)
 
