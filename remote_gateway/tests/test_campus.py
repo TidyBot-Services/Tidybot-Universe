@@ -42,6 +42,7 @@ def app(tmp_path):
     now = [1700000000.0]
     ui = tmp_path / 'ui';ui.mkdir()
     (ui / 'index.html').write_text('<html><head></head><body data-mode="live"></body></html>')
+    (ui / 'guest.html').write_text('<html><head></head><body><main id="guest-gallery"></main></body></html>')  # what a visitor gets at /ui/ (11-14)
     gateway = server.Gateway(Config(state_dir=tmp_path / 'state', upstream='http://127.0.0.1:1', ui_dir=ui), secret=b's' * 48, clock=lambda: now[0])
     rows, calls = [], []
 
