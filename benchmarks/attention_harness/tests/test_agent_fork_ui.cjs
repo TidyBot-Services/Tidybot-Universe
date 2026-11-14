@@ -11,7 +11,7 @@ const snapshot=()=>({run:{status:'completed',seed:102},dev_v2_selection:{dev_mod
   dev_v2:{experiment_id:'devexp-'+'a'.repeat(24),key:'b'.repeat(64),seed:102,versions:[{version:1,valid:true},{version:2,valid:false},{version:3,valid:true}]}});
 function api(extra={}) {
   // fn('continueButton') also carries the FORK_CHECK_LABELS constant that follows it in live.js.
-  return vm.runInNewContext(['canContinue','forkIcon','continueButton','runAgainButton','operatorTitle','agentAttemptCard','forkCheckChip','forkAttemptVerdict','forkLineHtml','forkPanel',
+  return vm.runInNewContext(['canContinue','forkIcon','continueButton','runAgainButton','runPair','operatorTitle','agentAttemptCard','forkCheckChip','forkAttemptVerdict','forkLineHtml','forkPanel',
     'fixtureTaskKey','taskPickerCards','runConfigDefaultsFromSelection','runConfigSource','launchSourceProfile','launchSourceNotice'].map(fn).join('\n')+
     '\n({canContinue,forkLineHtml,continueButton,runAgainButton,operatorTitle,agentAttemptCard,forkCheckChip,forkAttemptVerdict,forkPanel,runConfigDefaultsFromSelection,runConfigSource,launchSourceProfile,launchSourceNotice})',{
       esc,root:{dataset:{}},launchOptions:{dev_v2:{continue_from_attempt:true}},isTerminal:s=>s.run.status==='completed',

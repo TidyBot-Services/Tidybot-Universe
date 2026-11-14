@@ -1710,6 +1710,11 @@
     return snapshot?.dev_v2 && isTerminal(snapshot) && snapshot.dev_v2_selection?.dev_mode==='agent'
       ? '<button type="button" data-open-run-again>Run again with the same settings</button>' : '';
   }
+  // Run again + Continue read as one split pill (11-14, user picked B), so they wrap to a new line together.
+  function runPair(snapshot) {
+    const inner=runAgainButton(snapshot)+continueButton(snapshot);
+    return inner?`<span class="op-run-pair">${inner}</span>`:'';
+  }
   function canContinue(snapshot) {
     return Boolean(snapshot?.dev_v2 && snapshot.dev_v2_selection?.dev_mode==='agent' && isTerminal(snapshot)
       && root.dataset.remote!=='1' && snapshot.lobby?.mine!==false && launchOptions?.dev_v2?.continue_from_attempt
@@ -5394,7 +5399,7 @@
     const forkSource = fork ? navigationRecords().find(r => r.session_id === `v2-${fork.cell}`) : null;
     const forkWhen = forkSource ? relativeTime(forkSource.created_at) : '';
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">${forkIcon(13)}Continued from Attempt ${esc(fork.version)}${forkWhen ? ` · ${esc(forkWhen)}` : ''}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}${snapshot.dev_v2_selection?.dev_mode==='agent'?runAgainButton(snapshot)+continueButton(snapshot):''}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}${snapshot.dev_v2_selection?.dev_mode==='agent'?runPair(snapshot):''}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
