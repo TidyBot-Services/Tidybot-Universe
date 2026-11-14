@@ -8,7 +8,7 @@ import time
 import traceback
 from .dev_agent_broker import Broker, FakeEvaluator
 from .dev_agent_ledger import AgentLedger, LedgerBudget
-from .dev_agent_quota import QuotaMonitor
+from .dev_agent_quota import QuotaMonitor, probe_weekly_quota, quota_stop_reason
 from .dev_agent_replay import freeze_origin
 from .dev_agent_session import CodexAgentSession
 from .dev_agent_workspace import Workspace, atomic_write, encode
@@ -118,6 +118,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if agent_policy_version!='agent-policy-v2' or not helper or not hasattr(helper,'finish'):return
         cause=fatal_cause(broker,session_failures) if reason=='fatal_error' else None
         trigger=('pause' if reason=='operator_paused' else 'cancel' if reason=='operator_cancel' else
+                 'quota_unavailable' if reason=='quota_unreadable_after_probe' else
                  'session_failure' if cause=='session_failure' else 'fatal' if reason=='fatal_error' else
                  reason if reason in ('wall_stop','quota_stop','quota_unavailable') else 'run_end')
         deadline=time.monotonic()+ledger.snapshot()['wall_remaining']
@@ -317,7 +318,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
                     if quota and time.monotonic()-last_sample>=quota_interval:
                         try:quota.check('during_turn')
                         except Exception as exc:
-                            broker.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                            broker.stop_reason=quota_stop_reason(exc)
                         last_sample=time.monotonic()
                     if ledger.snapshot()['wall_remaining']<=0 or (external_deadline is not None and time.time()>=external_deadline):
                         broker.stop_reason='wall_stop';broker.closing.set()
@@ -353,7 +354,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         if watching:watching.set()
         finish_v2(stop)
         if stop=='operator_paused':ledger.pause()
-        result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable') else 'failed',
+        result=dict(state='completed' if stop=='native_success' else 'planned' if stop=='operator_paused' else 'cancelled' if stop=='operator_cancel' else 'needs_review' if stop in ('fatal_error','quota_unavailable','quota_unreadable_after_probe') else 'failed',
                     reason=stop,resources=ledger.snapshot())
         if stop=='no_progress':result['stop_detail']=NO_PROGRESS_MESSAGE
         if export_errors:result['export_errors']=export_errors
@@ -369,7 +370,7 @@ def drive(workspace, session, ledger, *, executor, prober, evaluator=None, helpe
         return result
     except Exception as exc:
         if agent_policy_version!='agent-policy-v2':raise
-        stop=('quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable' if 'quota' in str(exc) else
+        stop=(quota_stop_reason(exc) if 'quota' in str(exc) else
               'wall_stop' if str(exc)=='wall_stop' else 'fatal_error')
         finish_v2(stop)
         return dict(state='failed' if stop in ('quota_stop','wall_stop') else 'needs_review',
@@ -489,7 +490,7 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         if identity_path.exists() and json.loads(identity_path.read_bytes())!=identity:raise IsolationUnavailable('runtime_identity_changed')
         atomic_write(workspace.private,'codex-identity.json',encode(identity))
         ledger.settle(setup_id,dict(status='prepared'));setup_id=None
-        quota=QuotaMonitor(workspace.private,ledger,stop_percent=manifest['quota_stop_percent'])
+        quota=QuotaMonitor(workspace.private,ledger,stop_percent=manifest['quota_stop_percent'],probe=probe_weekly_quota)
         providers=providers_for_run(manifest,allow_private_hosts=allow_private_hosts,public_gateway_mode=public_gateway_mode)
         if all(providers[r] is not None for r in ('dev','eval','advisor')):quota=None
         provider_options={'provider':providers['dev']} if 'agent_provider' in manifest else {}
@@ -548,10 +549,11 @@ def run_agent_cell(store, exp, manifest, key, through_version=None, owner=None, 
         traceback.print_exc()
         if setup_id and ledger and any(j['id']==setup_id and j['state']=='claimed' for j in ledger.jobs()):
             ledger.settle(setup_id,dict(status='setup_failed',error=str(exc)))
-        reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable' if 'quota' in str(exc) else 'isolation_unavailable' if isinstance(exc,IsolationUnavailable) else 'fatal_error'
-        store.update_cell(key,state='failed' if reason=='quota_stop' else 'needs_review',reason=reason,error=str(exc),owner=None)
-        print('agent cell %s ended: state=failed reason=%s error=%s'%(key,reason,exc),file=sys.stderr,flush=True)
-        return dict(state='failed',reason=reason,error=str(exc))
+        reason=quota_stop_reason(exc) if 'quota' in str(exc) else 'isolation_unavailable' if isinstance(exc,IsolationUnavailable) else 'fatal_error'
+        state='failed' if reason=='quota_stop' else 'needs_review'
+        store.update_cell(key,state=state,reason=reason,error=str(exc),owner=None)
+        print('agent cell %s ended: state=%s reason=%s error=%s'%(key,state,reason,exc),file=sys.stderr,flush=True)
+        return dict(state=state,reason=reason,error=str(exc))
     finally:
         from .frame_cleanup import schedule
         schedule(root)

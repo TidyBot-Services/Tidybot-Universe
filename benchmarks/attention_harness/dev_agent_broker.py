@@ -7,6 +7,7 @@ subsequent work. The caller never retries an ambiguous moving execution.
 from contextlib import contextmanager, nullcontext
 import concurrent.futures
 import fcntl
+from .dev_agent_quota import quota_stop_reason
 import hashlib
 import json
 import math
@@ -178,7 +179,7 @@ class Broker:
                 if self.quota:
                     try:self.quota.check('broker:retry:'+op)
                     except Exception as exc:
-                        self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                        self.stop_reason=quota_stop_reason(exc)
                 record = self.records[rid]
                 if record['digest'] != digest:
                     # Do not overwrite the first request's authoritative receipt.
@@ -194,7 +195,7 @@ class Broker:
             if self.quota:
                 try:self.quota.check('broker:'+op)
                 except Exception as exc:
-                    self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                    self.stop_reason=quota_stop_reason(exc)
                     return reject(self.stop_reason)
             if self.stop_reason and op!='status':return reject(self.stop_reason)
             if self.validation and op=='ask_help':return reject('policy_denied')
