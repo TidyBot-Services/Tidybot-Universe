@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from benchmarks.attention_harness.frame_cleanup import plan, apply, restore, state, safe, _scan
+from benchmarks.attention_harness.frame_cleanup import plan, apply, restore, state, safe, _scan, load
 
 
 def inventory(runs_root):
@@ -15,9 +15,12 @@ def inventory(runs_root):
     runs = sorted({p.parent for p in root.rglob('manifest.json') if p.parent.name.startswith('devexp-')})
     rows = []
     for run in runs:
-        row = dict(run_id=run.name, path=str(run), mode='unknown', terminal=False, active=True)
+        row = dict(run_id=run.name, path=str(run), mode='unknown', terminal=False, active=True, cleanup_status='unknown')
         try:
-            row.update(state(run)); p = plan(run)
+            row.update(state(run))
+            receipts = [load(p).get('status', 'unknown') for p in run.rglob('frame-cleanup.json')]
+            row['cleanup_status'] = 'in_progress' if 'in_progress' in receipts else ','.join(sorted(set(receipts))) or 'none'
+            p = plan(run)
             row.update(bytes_now=p['bytes_now'], bytes_freed=p['bytes_freed'], frames_deleted=p['frames_deleted'],
                        skipped=[dict(execution=g['execution'], view=g['view'], reason=g['skipped']) for g in p['views'] if g['skipped']])
         except (OSError, ValueError, KeyError, sqlite3.Error) as exc:
@@ -37,12 +40,12 @@ def inventory(runs_root):
 
 
 def markdown(value):
-    lines = ['| Run | Mode | Terminal | Active | Bytes now | Bytes freed | Frames | Skipped views / reasons |',
-             '| --- | --- | --- | --- | ---: | ---: | ---: | --- |']
+    lines = ['| Run | Mode | Terminal | Active | Cleanup | Bytes now | Bytes freed | Frames | Skipped views / reasons |',
+             '| --- | --- | --- | --- | --- | ---: | ---: | ---: | --- |']
     for r in value['runs']:
         reason = r.get('error') or '; '.join(g['view']+': '+g['reason'] for g in r['skipped'])
         lines.append('| '+' | '.join(str(v).replace('|','/').replace('\n',' ') for v in (
-            r['run_id'], r['mode'], r['terminal'], r['active'], r['bytes_now'], r['bytes_freed'], r['frames_deleted'], reason))+' |')
+            r['run_id'], r['mode'], r['terminal'], r['active'], r['cleanup_status'], r['bytes_now'], r['bytes_freed'], r['frames_deleted'], reason))+' |')
     lines.append('\nTotals: '+json.dumps(value['totals'], sort_keys=True))
     return '\n'.join(lines)+'\n'
 
@@ -74,7 +77,11 @@ def main():
             if len(candidates) != 1:parser.error('run is missing or ambiguous: '+name)
             matches.append(candidates[0])
         # Resolve every requested run before the first mutation.
-        value['applied'] = [apply(r['path'], trash_dir=args.trash_dir) for r in matches]
+        value['applied'] = []
+        for row in matches:
+            try: result = apply(row['path'], trash_dir=args.trash_dir)
+            except Exception as exc: result = dict(run=row['path'], status='refused: '+str(exc))
+            value['applied'].append(result)
     args.output.write_text(json.dumps(value,indent=2)+'\n')
     table = markdown(value); args.output.with_suffix('.md').write_text(table)
     print(table)

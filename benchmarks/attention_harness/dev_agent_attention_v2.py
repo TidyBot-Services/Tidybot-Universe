@@ -178,11 +178,11 @@ class HelperV2(Helper):
         return transition
 
     def _ref(self, name):
-        raw = read_beneath(self.workspace.canonical, name, LIMIT)
+        raw = read_beneath(self.workspace.canonical, name, LIMIT, shared=shared_name(name))
         return dict(path=name, sha256=digest(raw))
 
     def _read_bytes_ref(self, ref):
-        raw = read_beneath(self.workspace.canonical, ref['path'], LIMIT)
+        raw = read_beneath(self.workspace.canonical, ref['path'], LIMIT, shared=shared_name(ref['path']))
         if digest(raw) != ref['sha256']:raise ValueError('public evidence digest mismatch')
         return raw
 

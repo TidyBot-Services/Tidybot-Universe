@@ -40,7 +40,7 @@ def test_frame_is_one_read_only_inode_and_hash_is_unchanged(run):
     assert inode(canonical) == inode(ws) and os.lstat(canonical).st_nlink == 2
     assert os.lstat(canonical).st_mode & 0o777 == 0o444
     assert receipt['sha256'] == hashlib.sha256(PNG).hexdigest() == hashlib.sha256(ws.read_bytes()).hexdigest()
-    # Only frames are shared; every other public file keeps its own private 0600 copy.
+    # Frames and state logs are shared; stdout keeps its own private 0600 copy.
     other = 'executions/e000001/stdout.txt'
     assert os.lstat(w.canonical/other).st_nlink == 1 and os.lstat(w.canonical/other).st_mode & 0o777 == 0o600
     assert shared_name(FRAME) and not shared_name('executions/e000001/frames.json') and not shared_name('work/x.png')
@@ -150,3 +150,96 @@ def test_real_preflight_fails_closed_without_read_only_mount(run, monkeypatch):
         with pytest.raises(isolation.IsolationUnavailable, match='boundary_check_failed'):
             isolation.verify_runtime(w.ws, w.private, planner_port=listener.getsockname()[1])
     assert hashlib.sha256((w.canonical/FRAME).read_bytes()).hexdigest() == hashlib.sha256(PNG).hexdigest()
+
+
+STATE = 'executions/e000001/state_log.json'
+
+
+def test_state_log_shared_publish_restore_snapshot_replay_and_readers(run,tmp_path):
+    from benchmarks.attention_harness.dev_agent_view import artifact, _link
+    from benchmarks.attention_harness.dev_agent_ui_projection import public
+    from benchmarks.attention_harness.dev_agent_attention_v2 import HelperV2
+    from benchmarks.attention_harness.dev_agent_diagnose import build as diagnose
+    w,_=run
+    rows=[dict(physics_step=23,robot=dict(eef_pos=[.1,.2,.3]))]
+    ref=w.publish(STATE,rows);raw=(w.canonical/STATE).read_bytes()
+    assert inode(w.canonical/STATE)==inode(w.ws/STATE)
+    assert (w.canonical/STATE).stat().st_mode & 0o777==0o444
+    assert shared_name(STATE) and not shared_name('state_log.json')
+    assert not shared_name('executions/not-an-id/state_log.json')
+    (w.ws/STATE).unlink();(w.ws/STATE).write_text('forged')
+    w.regenerate()
+    assert inode(w.canonical/STATE)==inode(w.ws/STATE)
+    cut=freeze_origin(w,'post-exec-v1')
+    assert inode(w.private/'snapshots/objects'/ref['sha256'])==inode(w.canonical/STATE)
+    replay=provision_replay(cut,tmp_path/'replay')
+    assert (replay.ws/STATE).read_bytes()==raw
+    assert inode(replay.ws/STATE)==inode(replay.canonical/STATE)
+    cell=dict(artifact_dir=str(w.root.parent),dev_mode='agent')
+    assert artifact(cell,STATE)==(rows,'application/json')
+    assert public(cell,STATE)==rows
+    assert _link('/','state log',w.canonical,STATE)['available']
+    helper=object.__new__(HelperV2);helper.workspace=w
+    assert helper._ref(STATE)==ref and helper._read_bytes_ref(ref)==raw
+    assert helper._artifact(dict(execution_id='e000001',artifacts={'state_log.json':ref}),'state_log.json')[0]==raw
+    assert not any('state_log.json: unavailable' in str(v) for v in diagnose(w.ws,'e000001').values())
+
+
+def test_eval_state_log_stays_an_independent_writable_copy(run):
+    w,_=run
+    w.publish(STATE,[dict(physics_step=7)])
+    original=(w.canonical/STATE).read_bytes()
+    ev=build_workspace(w,dict(version_id='v0001',execution_id='e000001'))
+    assert (ev/'state_log.json').read_bytes()==original
+    assert inode(ev/'state_log.json')!=inode(w.canonical/STATE)
+    assert (ev/'state_log.json').stat().st_nlink==1
+    (ev/'state_log.json').write_bytes(b'changed by Eval')
+    assert (w.canonical/STATE).read_bytes()==original
+
+
+def test_state_log_cross_filesystem_copy_and_writable_hardlink_rejected(run,monkeypatch):
+    w,_=run
+    original_link=os.link
+    def refuse(*a,**kw):raise OSError(errno.EXDEV,'cross filesystem')
+    monkeypatch.setattr(workspace_module.os,'link',refuse)
+    w.publish(STATE,[dict(physics_step=3)])
+    assert inode(w.canonical/STATE)!=inode(w.ws/STATE)
+    assert (w.ws/STATE).stat().st_mode & 0o777==0o444
+    # Even a recognized shared name cannot authorize a writable linked inode.
+    (w.canonical/STATE).chmod(0o644)
+    original_link(w.canonical/STATE,w.private/'linked-state.json')
+    with pytest.raises(ValueError,match='unsafe_file'):
+        read_beneath(w.canonical,STATE,shared=shared_name(STATE))
+    assert read_beneath(w.ws,STATE,shared=shared_name(STATE))==(w.ws/STATE).read_bytes()
+
+
+def test_state_log_http_endpoint_returns_200(run,monkeypatch):
+    from types import SimpleNamespace
+    from benchmarks.attention_harness import ui_server
+    from benchmarks.attention_harness.dev_agent_view import artifact
+    w,_=run;rows=[dict(physics_step=99)];w.publish(STATE,rows)
+    cell=dict(artifact_dir=str(w.root.parent),dev_mode='agent')
+    class Bridge:
+        def get(self,path):return artifact(cell,STATE)
+    monkeypatch.setattr(ui_server,'ThreadingHTTPServer',lambda address,handler:SimpleNamespace(handler=handler))
+    server=ui_server.create_server(dev_v2_bridge=Bridge(),port=0)
+    handler=object.__new__(server.handler)
+    handler.path='/api/dev-v2/experiments/devexp-'+'a'*24+'/cells/'+'b'*64+'/agent/files/'+STATE
+    result=[];handler._send=lambda raw,content,status=200,headers=None:result.append((json.loads(raw),status))
+    assert handler._v2_get() is True and result==[(rows,200)]
+
+
+def test_snapshot_same_bytes_under_nonshared_name_keep_strict_reader(run,tmp_path):
+    w,_=run
+    rows=[dict(physics_step=42)]
+    ref=w.publish(STATE,rows)
+    first=freeze_origin(w,'post-exec-v1')
+    obj=w.private/'snapshots/objects'/ref['sha256']
+    assert inode(obj)==inode(w.canonical/STATE)
+    w.publish('task.json',rows)
+    second=freeze_origin(w,'post-feedback-v1')
+    assert obj.stat().st_nlink==1
+    assert inode(obj)!=inode(w.canonical/STATE)
+    assert json.loads((provision_replay(first,tmp_path/'replay-first').ws/STATE).read_bytes())==rows
+    replay=provision_replay(second,tmp_path/'replay-second')
+    assert json.loads((replay.ws/'task.json').read_bytes())==rows

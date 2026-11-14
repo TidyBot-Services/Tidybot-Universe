@@ -168,9 +168,9 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         p=Path(path);actual=None;public_state=False
         if not p.is_absolute():
             if c.get('dev_mode')!='agent':raise ValueError('only original absolute evidence paths are pinned')
-            from .dev_agent_workspace import digest_beneath
+            from .dev_agent_workspace import digest_beneath, shared_name
             base=Path(c['artifact_dir'])/'agent/private/public'
-            actual=digest_beneath(base,str(p),shared=True)
+            actual=digest_beneath(base,str(p),shared=shared_name(str(p)))
             if actual!=expected:raise DevConflict('agent public evidence digest drift')
             # Broker._execution publishes numeric physics samples here, not a
             # reference container (dev_agent_adapters.Executor). Do not re-read

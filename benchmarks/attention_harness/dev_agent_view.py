@@ -7,7 +7,7 @@ import sqlite3
 import threading
 import time
 from urllib.parse import quote
-from .dev_agent_workspace import read_beneath, stat_beneath
+from .dev_agent_workspace import read_beneath, stat_beneath, shared_name
 from .dev_agent_ledger import LIMITS
 from .frame_cleanup import was_cleaned, CleanedFrame, CLEANED, receipt_for, cleaned_files
 
@@ -43,7 +43,7 @@ FRAME_SUFFIXES=('.png','.jpg')  # .png: runs before 11-08; .jpg: exported frames
 
 
 def _read(root,name,default=None):
-    try:return json.loads(read_beneath(root,name,VIEW_LIMIT))
+    try:return json.loads(read_beneath(root,name,VIEW_LIMIT,shared=shared_name(name)))
     except FileNotFoundError:return default
 
 
@@ -53,7 +53,7 @@ def _size(value):
 
 def _link(base,label,root,name):
     """Availability without reading: an unsafe or oversize file marks only its own link."""
-    try:size=stat_beneath(root,name,shared=name.endswith(FRAME_SUFFIXES))
+    try:size=stat_beneath(root,name,shared=shared_name(name))
     except FileNotFoundError:
         if was_cleaned(Path(root)/name):return dict(label=CLEANED,available=False,reason=CLEANED)
         return dict(label=label+' (not yet available)',available=False)
@@ -86,7 +86,7 @@ def artifact(cell,name):
     if not _public_name(name):raise FileNotFoundError('Not an agent public artifact')
     root=Path(cell['artifact_dir'])/'agent'
     try:
-        linked=name.endswith(FRAME_SUFFIXES)
+        linked=shared_name(name)
         raw=read_beneath(root/'ws',name,DOWNLOAD_LIMIT,shared=linked)
         canonical=read_beneath(root/'private/public',name,DOWNLOAD_LIMIT,shared=linked)
     except FileNotFoundError:

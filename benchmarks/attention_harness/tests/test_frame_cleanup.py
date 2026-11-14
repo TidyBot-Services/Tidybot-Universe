@@ -512,3 +512,225 @@ def test_monitor_displays_isolation_reason_without_reverifying_row():
     value=automatic_checks(root=None,gateway=gateway)
     assert value['queue'][0]['status']=='isolated'
     assert any('registered evidence file missing' in error for error in value['errors'])
+
+
+def interrupt_cleanup(cell, monkeypatch, *, trash=None):
+    original = os.rename if trash else Path.unlink
+    calls = []
+    def interrupted(*args, **kw):
+        source = Path(args[0])
+        if source.suffix == '.jpg':
+            calls.append(source)
+            if len(calls) == 2:raise KeyboardInterrupt('power loss')
+        return original(*args, **kw)
+    with monkeypatch.context() as patcher:
+        patcher.setattr(os if trash else Path, 'rename' if trash else 'unlink', interrupted)
+        with pytest.raises(KeyboardInterrupt):cleanup.apply(cell, trash_dir=trash)
+    value = cleanup.load(cell/'frame-cleanup.json')
+    assert value['status'] == 'in_progress'
+    assert len(value['views'][0]['deleted_files']) == 1
+    return value
+
+
+def test_resume_interrupted_cleanup(run, monkeypatch):
+    cell, ep = run
+    before = interrupt_cleanup(cell, monkeypatch)
+    value = cleanup.apply(cell)
+    assert value['status'] == 'completed' and len(value['resumed_at']) == 1
+    assert len(value['views'][0]['deleted_files']) == 2
+    assert before['views'][0]['deleted_files'][0] in value['views'][0]['already_missing']
+    assert (ep/'recording_frames/000000.jpg').exists()
+    assert not (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_resume_trash_same_directory_and_restore(run, tmp_path, monkeypatch):
+    cell, ep = run; trash = tmp_path/'trash'
+    before = interrupt_cleanup(cell, monkeypatch, trash=trash)
+    value = cleanup.apply(cell)  # No caller-supplied trash destination on restart.
+    assert value['status'] == 'completed' and value['trash_run'] == before['trash_run']
+    restore = cleanup.load(Path(value['trash_run'])/'restore.json')
+    assert len(restore['files']) == 2
+    cleanup.restore(trash)
+    assert (ep/'recording_frames/000001.jpg').exists() and (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_resume_missing_trash_refuses_unlink(run, tmp_path, monkeypatch):
+    cell, ep = run; trash = tmp_path/'trash'
+    before = interrupt_cleanup(cell, monkeypatch, trash=trash)
+    shutil.rmtree(trash)
+    with pytest.raises(ValueError, match='trash.*missing'):cleanup.apply(cell)
+    assert (ep/'recording_frames/000002.jpg').exists()
+    assert cleanup.load(cell/'frame-cleanup.json') == before
+
+
+@pytest.mark.parametrize('failure', ['count', 'missing', 'decode', 'producer'])
+def test_resume_reverifies_and_skips_failed_video(run, monkeypatch, failure):
+    cell, ep = run
+    interrupt_cleanup(cell, monkeypatch)
+    if failure == 'count':monkeypatch.setattr(cleanup, 'probe_count', lambda p:3)
+    if failure == 'missing':(ep/'advisor_replay.mp4').unlink()
+    if failure == 'decode':monkeypatch.setattr(cleanup, 'probe_count', lambda p:(_ for _ in ()).throw(ValueError('decode error')))
+    if failure == 'producer':(ep/'recording_frames/frames.jsonl').write_text('{}\n')
+    value = cleanup.apply(cell)
+    assert value['status'] == 'completed' and value['views'][0]['skipped']
+    assert (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_resume_never_reconsiders_skipped_group(run):
+    cell, ep = run
+    value = cleanup.plan(cell);value['status'] = 'in_progress'
+    value['views'][0]['skipped'] = 'previous verification failure'
+    cleanup.atomic(cell/'frame-cleanup.json', value)
+    after = cleanup.apply(cell)
+    assert after['views'][0]['skipped'] == 'previous verification failure'
+    assert (ep/'recording_frames/000001.jpg').exists()
+
+
+@pytest.mark.parametrize('status', ['completed', 'error'])
+def test_finished_receipts_untouched(run, status):
+    cell, _ = run
+    value = dict(status=status, views=[]);cleanup.atomic(cell/'frame-cleanup.json', value)
+    before = (cell/'frame-cleanup.json').read_bytes()
+    assert cleanup.apply(cell) == value
+    assert (cell/'frame-cleanup.json').read_bytes() == before
+
+
+def test_cleanup_lock_refuses_second_process(run):
+    cell, _ = run
+    with cleanup.run_lock(cell):
+        with pytest.raises(ValueError, match='another frame_cleanup'):cleanup.apply(cell)
+    assert cleanup.apply(cell)['status'] == 'completed'
+
+
+def test_resume_guard_still_refuses_paused_run(run, monkeypatch):
+    cell, ep = run;interrupt_cleanup(cell, monkeypatch)
+    bind(cell, state='paused')
+    with pytest.raises(ValueError, match='terminal, unpaused'):cleanup.apply(cell)
+    assert (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_backfill_continues_past_refused_run(run, tmp_path, monkeypatch):
+    from scripts.attentionbench import frame_cleanup_backfill as backfill
+    cell, _ = run
+    original = cell.parent.parent
+    refused = tmp_path/'devexp-refused';refused.mkdir()
+    write(refused/'manifest.json', {})
+    runs = [dict(run_id='devexp-refused',path=str(refused)),dict(run_id=original.name,path=str(original))]
+    monkeypatch.setattr(backfill, 'inventory', lambda root:dict(runs=runs, totals={}))
+    monkeypatch.setattr(backfill, 'markdown', lambda value:'report')
+    approved=tmp_path/'approved.json';write(approved,[r['run_id'] for r in runs])
+    output=tmp_path/'report.json'
+    monkeypatch.setattr(__import__('sys'), 'argv', ['backfill','--runs-root',str(tmp_path),'--runs',str(approved),
+        '--apply','--trash-dir',str(tmp_path/'trash'),'--output',str(output)])
+    backfill.main()
+    result=cleanup.load(output)['applied']
+    assert result[0]['status'].startswith('refused:')
+    assert result[1]['cells'][0]['status']=='completed'
+
+
+def test_backfill_inventory_marks_in_progress_and_resumes(run, tmp_path, monkeypatch):
+    from scripts.attentionbench.frame_cleanup_backfill import inventory
+    cell, _ = run;interrupt_cleanup(cell, monkeypatch)
+    assert inventory(tmp_path)['runs'][0]['cleanup_status'] == 'in_progress'
+    assert cleanup.apply(cell.parent.parent)['cells'][0]['status'] == 'completed'
+
+
+def test_startup_sweep_background_resume_and_notice(run, tmp_path, monkeypatch):
+    cell, _ = run;interrupt_cleanup(cell, monkeypatch)
+    calls=[]
+    monkeypatch.setattr(cleanup, 'schedule', lambda root, **kw:calls.append((root,kw)))
+    bad=tmp_path/'broken/frame-cleanup.json';bad.parent.mkdir();bad.write_text('{')
+    thread=cleanup.startup_sweep(tmp_path);thread.join(3)
+    assert not thread.is_alive()
+    assert calls==[(cell,dict(wait_parent=False))]
+    assert cleanup.notices(bad.parent)
+
+
+def test_startup_schedule_does_not_wait_for_server(run, monkeypatch):
+    cell, _ = run;interrupt_cleanup(cell, monkeypatch)
+    calls=[];monkeypatch.setattr(cleanup.subprocess,'Popen',lambda cmd,**kw:calls.append(cmd))
+    cleanup.schedule(cell, wait_parent=False)
+    assert calls[0][-1] == '0'
+
+
+def test_idle_check_reports_in_progress_receipt(run, tmp_path):
+    cell, _ = run
+    write(cell/'frame-cleanup.json',dict(status='in_progress'))
+    script=Path(__file__).resolve().parents[3]/'scripts/attentionbench/idle-check.sh'
+    done=subprocess.run(['bash',str(script),str(tmp_path)],capture_output=True,text=True)
+    assert done.returncode==1 and 'in_progress cleanup:' in done.stdout
+
+
+def test_live_cleanup_process_is_an_owner_even_before_lock(run):
+    import sys
+    cell, _ = run
+    child=subprocess.Popen([sys.executable,'-B','-c','import sys; sys.stdin.read()',
+                            'benchmarks.attention_harness.frame_cleanup',str(cell)],stdin=subprocess.PIPE)
+    try:
+        assert cleanup.state(cell)['active']
+        with pytest.raises(ValueError,match='no live'):cleanup.apply(cell)
+    finally:child.communicate(timeout=3)
+
+
+def test_resume_missing_only_and_second_interruption(run,monkeypatch):
+    cell, ep = run
+    interrupt_cleanup(cell,monkeypatch)
+    # Simulate another abrupt exit after unlink but before progress is checkpointed.
+    (ep/'recording_frames/000002.jpg').unlink()
+    value=cleanup.apply(cell)
+    assert value['status']=='completed'
+    assert len(value['views'][0]['already_missing'])==2
+    assert len(value['views'][0]['deleted_files'])==1
+
+
+def test_startup_sweep_thread_failure_is_notice_not_server_failure(run,monkeypatch):
+    cell,_=run
+    monkeypatch.setattr(cleanup.threading.Thread,'start',lambda self:(_ for _ in ()).throw(RuntimeError('thread unavailable')))
+    assert cleanup.startup_sweep(cell) is None
+    assert 'thread unavailable' in cleanup.notices(cell)[0]
+
+
+def test_backfill_resumes_unlink_receipt_with_trash_option(run,tmp_path,monkeypatch):
+    from scripts.attentionbench import frame_cleanup_backfill as backfill
+    cell,ep=run;interrupt_cleanup(cell,monkeypatch)
+    approved=tmp_path/'approved.json';write(approved,[cell.parent.parent.name])
+    output=tmp_path/'report.json';trash=tmp_path/'unused-trash'
+    monkeypatch.setattr(__import__('sys'),'argv',['backfill','--runs-root',str(tmp_path),'--apply',
+        '--runs',str(approved),'--trash-dir',str(trash),'--output',str(output)])
+    backfill.main()
+    assert cleanup.load(cell/'frame-cleanup.json')['status']=='completed'
+    assert not trash.exists() and not (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_both_ui_servers_schedule_startup_roots(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from benchmarks.attention_harness import ui_server,dev_ui_server
+    calls=[];monkeypatch.setattr(cleanup,'startup_sweep',lambda *roots:calls.append(roots))
+    monkeypatch.setattr(ui_server,'ThreadingHTTPServer',lambda *args:SimpleNamespace())
+    monkeypatch.setattr(dev_ui_server,'ThreadingHTTPServer',lambda *args:SimpleNamespace())
+    monkeypatch.setattr(dev_ui_server,'harden_process',lambda:None)
+    ui_server.create_server(artifact_root=tmp_path,dev_v2_bridge=SimpleNamespace(root=tmp_path/'runs'),port=0)
+    dev_ui_server.serve(SimpleNamespace(path=tmp_path/'ledger.sqlite3'),tmp_path,0)
+    assert calls==[(tmp_path,tmp_path/'runs'),(tmp_path,)]
+
+
+def test_real_startup_resume_completes_while_server_parent_is_alive(run,tmp_path,monkeypatch):
+    import sys
+    if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):pytest.skip('ffmpeg/ffprobe unavailable')
+    cell,ep=run;interrupt_cleanup(cell,monkeypatch)
+    (ep/'advisor_replay.mp4').unlink()
+    subprocess.run(['ffmpeg','-nostdin','-v','error','-f','lavfi','-i','color=size=16x16:rate=5',
+        '-frames:v','4','-c:v','libx264','-pix_fmt','yuv420p',str(ep/'advisor_replay.mp4')],check=True,capture_output=True)
+    code='''import json,sys,time
+from pathlib import Path
+from benchmarks.attention_harness.frame_cleanup import startup_sweep
+root=Path(sys.argv[1]);startup_sweep(root)
+end=time.monotonic()+5
+while time.monotonic()<end:
+ if json.loads((root/'frame-cleanup.json').read_bytes()).get('status')=='completed':break
+ time.sleep(.05)
+assert json.loads((root/'frame-cleanup.json').read_bytes())['status']=='completed'
+'''
+    done=subprocess.run([sys.executable,'-B','-c',code,str(cell)],capture_output=True,text=True,timeout=8)
+    assert done.returncode==0,done.stdout+done.stderr
+    assert not (ep/'recording_frames/000002.jpg').exists()

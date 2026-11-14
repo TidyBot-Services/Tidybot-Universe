@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import re
 import sqlite3
 import subprocess
 import sys
@@ -92,6 +93,45 @@ def workers():
     return len(lines), ids
 
 
+def cleanup_workers(cfg):
+    """Count cleanup runs once across processes and bounded run/cell receipts."""
+    done = run(['pgrep', '-af', '[b]enchmarks.attention_harness.frame_cleanup'], capture_output=True)
+    ids = set()
+    for line in done.stdout.splitlines():
+        if not line.strip(): continue
+        match = re.search(r'devexp-[A-Za-z0-9_-]+', line)
+        ids.add(match[0] if match else 'pid:'+line.split()[0])
+    roots = cfg.get('runs_roots', [cfg['data']/'harness/runs', cfg['test_data']/'runs'])
+    budget = 100000
+    def entries(path):
+        nonlocal budget
+        try:
+            with os.scandir(path) as rows:
+                for entry in rows:
+                    budget -= 1
+                    if budget < 0: raise ValueError('receipt scan limit exceeded')
+                    if entry.is_dir(follow_symlinks=False): yield Path(entry.path)
+        except FileNotFoundError: return
+    def inspect(path, run_id):
+        try:
+            # Refuse oversize/malformed receipts instead of declaring idle.
+            with path.open('rb') as stream: raw = stream.read(1024*1024*1024+1)
+            if len(raw) > 1024*1024*1024: raise ValueError('receipt too large')
+            value = json.loads(raw)
+            if not isinstance(value, dict):raise ValueError('cleanup receipt must be an object')
+            if value.get('status') == 'in_progress': ids.add(run_id)
+        except FileNotFoundError: pass
+        except (OSError, ValueError): ids.add(run_id+':unreadable-cleanup')
+    for root in roots:
+        try:
+            for folder in entries(Path(root)):
+                inspect(folder/'frame-cleanup.json', folder.name)
+                for cell in entries(folder/'cells'):
+                    inspect(cell/'frame-cleanup.json', folder.name)
+        except (OSError, ValueError) as exc: ids.add('cleanup-scan:'+str(exc))
+    return len(ids), sorted(ids)
+
+
 def listening(port):
     return f':{port} ' in run(['ss', '-ltn'], capture_output=True).stdout
 
@@ -147,6 +187,8 @@ def cmd_status(cfg, args):
     say(f'PARCC key in campus harness: {"yes" if key_loaded(cfg) else "NO"}')
     count, ids = workers()
     say(f'executing {count} worker(s) {" ".join(ids)}')
+    cleaning, runs = cleanup_workers(cfg)
+    say(f'cleaning frames {cleaning} ({" ".join(runs)})')
     say(f'new runs  {"PAUSED (" + str(cfg["stop_file"]) + ")" if cfg["stop_file"].exists() else "open"}')
     free = shutil.disk_usage(cfg['data']).free / 1e9
     say(f'disk free {free:.0f} GB (gateway refuses new runs under {json.loads(cfg["gateway_json"].read_text()).get("min_free_gb")} GB)')
@@ -286,16 +328,20 @@ class Lock:
 
 
 def wait_idle(cfg, args):
-    count, ids = workers()
+    def busy():
+        count, ids = workers()
+        cleaning, runs = cleanup_workers(cfg)
+        return count + cleaning, f'{count} run worker(s) executing ({" ".join(ids)}); cleaning frames {cleaning} ({" ".join(runs)})'
+    count, detail = busy()
     if not count:return
     if args.now:
-        if not confirm(f'{count} run worker(s) are executing ({" ".join(ids)}); restarting now stops them.'):raise SystemExit('not deployed')
+        if not confirm(detail+'; restarting now stops workers and interrupts frame cleanup.'):raise SystemExit('not deployed')
         return
     deadline = time.time() + float(args.wait_hours or cfg['idle_wait_hours']) * 3600
     while count:
-        if time.time() > deadline:raise SystemExit(f'still busy after {args.wait_hours or cfg["idle_wait_hours"]} h: {" ".join(ids)} — not deployed')
-        say(f'{datetime.datetime.now():%H:%M} waiting: {count} run worker(s) executing ({" ".join(ids)}); checking again in 2 min')
-        time.sleep(120);count, ids = workers()
+        if time.time() > deadline:raise SystemExit(f'still busy after {args.wait_hours or cfg["idle_wait_hours"]} h: {detail} — not deployed')
+        say(f'{datetime.datetime.now():%H:%M} waiting: {detail}; checking again in 2 min')
+        time.sleep(120);count, detail = busy()
 
 
 def backup_db(cfg):
@@ -484,7 +530,7 @@ def main(argv=None):
     adopt = sub.add_parser('adopt');adopt.add_argument('ref', nargs='?', default='main')
     restart = sub.add_parser('restart-all')
     for p in (deploy, rollback, adopt, restart):
-        p.add_argument('--now', action='store_true', help='do not wait for running runs (asks you to type yes)')
+        p.add_argument('--now', action='store_true', help='do not wait for workers or frame cleanup (asks you to type yes)')
         p.add_argument('--wait-hours', type=float)
     deploy.add_argument('--allow-drop', action='store_true')
     workspace = sub.add_parser('workspace');workspace.add_argument('name');workspace.add_argument('--base', default='main')

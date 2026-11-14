@@ -8,7 +8,7 @@ import signal
 import subprocess
 import threading
 import time
-from .dev_agent_workspace import atomic_write, encode, read_beneath, share
+from .dev_agent_workspace import atomic_write, encode, read_beneath, share, shared_name
 from .dev_agent_prompts import EVAL_PROMPT
 from .dev_agent_diagnostics import FORBIDDEN
 
@@ -72,9 +72,11 @@ def build_workspace(workspace, execution, success_condition=None):
     root = workspace.private/'eval'/vid
     ws = root/'ws'; ws.mkdir(parents=True,exist_ok=False)
     def copy(source,destination):
-        raw=read_beneath(workspace.canonical,source,512*1024*1024)
+        raw=read_beneath(workspace.canonical,source,512*1024*1024,shared=shared_name(source))
         atomic_write(ws,destination,raw)
     copy('task.json','task.json')
+    # state_log.json stays a private copy: Eval's workspace root is writable.
+    # Sharing here would require a read-only file mount and its own fail-closed preflight.
     for name in PUBLIC_FILES: copy('executions/'+eid+'/'+name,name)
     copy('versions/'+vid+'/bundle.py','bundle.py')
     for path in sorted((workspace.canonical/'versions'/vid/'sources').glob('*.py')):

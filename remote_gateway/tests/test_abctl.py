@@ -120,3 +120,60 @@ def test_prune_never_removes_the_rollback_target(host):
     extra = cfg['releases']/'zz-test';git('--git-dir', str(cfg['bare']), 'worktree', 'add', '--detach', str(extra), 'main', cwd=cfg['ws'])
     abctl.prune(cfg)
     assert prev.exists() and live.exists() and not extra.exists(), 'a newer test-only release goes first'
+
+
+def test_cleanup_receipts_and_processes_count_as_busy(host, monkeypatch):
+    cfg, _ = host
+    root = cfg['data']/'harness/runs/devexp-one'
+    receipt = root/'cells/cell/frame-cleanup.json';receipt.parent.mkdir(parents=True)
+    receipt.write_text(json.dumps(dict(status='in_progress')))
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],0,stdout='123 python -m benchmarks.attention_harness.frame_cleanup '+str(receipt.parent)+' 0\n',stderr=''))
+    assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
+    receipt.write_text(json.dumps(dict(status='completed')))
+    assert abctl.cleanup_workers(cfg) == (1,['devexp-one'])
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    assert abctl.cleanup_workers(cfg) == (0,[])
+
+
+def test_wait_idle_waits_for_receipt_without_process(host, monkeypatch, capsys):
+    cfg, _ = host
+    receipt=cfg['test_data']/'runs/devexp-interrupted/frame-cleanup.json';receipt.parent.mkdir(parents=True)
+    receipt.write_text(json.dumps(dict(status='in_progress')))
+    monkeypatch.setattr(abctl, 'workers', lambda:(0,[]))
+    monkeypatch.setattr(abctl, 'run', lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    sleeps=[]
+    def tick(seconds):
+        sleeps.append(seconds);receipt.write_text(json.dumps(dict(status='completed')))
+    monkeypatch.setattr(abctl.time,'sleep',tick)
+    abctl.wait_idle(cfg,abctl.argparse.Namespace(now=False,wait_hours=1))
+    assert sleeps==[120] and 'cleaning frames 1 (devexp-interrupted)' in capsys.readouterr().out
+
+
+def test_now_mentions_cleanup_and_requires_confirmation(host, monkeypatch):
+    cfg, _ = host
+    monkeypatch.setattr(abctl, 'workers', lambda:(0,[]))
+    monkeypatch.setattr(abctl, 'cleanup_workers', lambda cfg:(1,['devexp-cleaning']))
+    prompts=[];monkeypatch.setattr(abctl,'confirm',lambda question:prompts.append(question) or False)
+    with pytest.raises(SystemExit,match='not deployed'):
+        abctl.wait_idle(cfg,abctl.argparse.Namespace(now=True,wait_hours=None))
+    assert 'cleaning frames 1 (devexp-cleaning)' in prompts[0] and 'interrupts frame cleanup' in prompts[0]
+
+
+def test_cleanup_scan_does_not_ignore_bad_receipt(host,monkeypatch):
+    cfg,_=host
+    receipt=cfg['test_data']/'runs/devexp-bad/frame-cleanup.json';receipt.parent.mkdir(parents=True);receipt.write_text('{')
+    monkeypatch.setattr(abctl,'run',lambda *a,**kw:subprocess.CompletedProcess([],1,stdout='',stderr=''))
+    assert abctl.cleanup_workers(cfg)==(1,['devexp-bad:unreadable-cleanup'])
+
+
+def test_status_prints_cleanup_run_ids(host,monkeypatch,capsys):
+    cfg,_=host
+    cfg['gateway_json'].write_text(json.dumps(dict(min_free_gb=10)))
+    monkeypatch.setattr(abctl,'live_commit',lambda cfg:None)
+    monkeypatch.setattr(abctl,'systemctl',lambda *a,**kw:'active')
+    monkeypatch.setattr(abctl,'listening',lambda port:True)
+    monkeypatch.setattr(abctl,'key_loaded',lambda cfg:False)
+    monkeypatch.setattr(abctl,'workers',lambda:(0,[]))
+    monkeypatch.setattr(abctl,'cleanup_workers',lambda cfg:(2,['devexp-a','devexp-b']))
+    abctl.cmd_status(cfg,abctl.argparse.Namespace())
+    assert 'cleaning frames 2 (devexp-a devexp-b)' in capsys.readouterr().out

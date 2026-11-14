@@ -39,8 +39,15 @@ def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
                     if authored_total>TREE_LIMIT:raise ValueError('snapshot_oversize')
                 total+=len(raw)
                 digest=hashlib.sha256(raw).hexdigest()
-                if not (store/'objects'/digest).exists():
-                    # A frame object is the same read-only inode as the canonical frame.
+                obj = store/'objects'/digest
+                if obj.exists() and not linked and obj.lstat().st_nlink > 1:
+                    # Identical bytes can have both shared and non-shared logical
+                    # names. Keep that object private so the strict reader still works.
+                    existing = read_beneath(store, 'objects/'+digest, PUBLIC_FILE_LIMIT, shared=True)
+                    if hashlib.sha256(existing).hexdigest() != digest:raise ValueError('snapshot_object_mismatch')
+                    atomic_write(store, 'objects/'+digest, raw)
+                if not obj.exists():
+                    # Shared evidence objects reuse the canonical read-only inode.
                     if linked:share(root,name,store,'objects/'+digest)
                     else:atomic_write(store,'objects/'+digest,raw)
                 files[name]=dict(sha256=digest,bytes=len(raw),mode=0o600)

@@ -351,6 +351,8 @@ def serve(store,artifact_root,port,budget_file=None,*,allow_custom=None,allow_pr
                 if str(exc)=='role_not_supported_yet':self.provider_error(ProviderError('role_not_supported_yet',str(exc)),409)
                 else:self.obj({'error':str(exc)},400)
     server=ThreadingHTTPServer(('127.0.0.1',port),Handler)
+    from .frame_cleanup import startup_sweep
+    startup_sweep(artifact_root)
     server.public_gateway_mode=public_gateway_mode;server.gateway_secret=gateway_secret;server.gateway_clock=gateway_clock
     return server
 

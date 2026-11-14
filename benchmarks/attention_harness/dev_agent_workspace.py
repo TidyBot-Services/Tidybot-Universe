@@ -24,7 +24,7 @@ COPY_ERRORS = (errno.EXDEV, errno.EPERM, errno.EMLINK, errno.EOPNOTSUPP)
 
 
 def shared_name(name):
-    return bool(re.fullmatch(r'executions/e\d+/frames/[^/]+\.(?:png|jpg)', name))
+    return bool(re.fullmatch(r'executions/e\d+/(?:state_log\.json|frames/[^/]+\.(?:png|jpg))', name))
 
 
 def encode(value):
@@ -57,7 +57,7 @@ def directory(root, components=(), *, create=False):
 
 
 def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
-    """shared=True also accepts a read-only shared frame inode (nlink > 1, no write bits)."""
+    """shared=True also accepts a read-only shared evidence inode (nlink > 1, no write bits)."""
     components = parts(name)
     parent = directory(root, components[:-1])
     try:
@@ -151,7 +151,7 @@ def atomic_write(root, name, data, mode=0o600):
 
 
 def share(source_root, name, root, destination=None):
-    """Hardlink one read-only canonical frame to root/destination; copy across filesystems.
+    """Hardlink one read-only canonical evidence file to root/destination; copy across filesystems.
 
     Returns 'linked', 'present' (already the same inode) or 'copied'.
     """

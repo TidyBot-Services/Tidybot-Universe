@@ -626,6 +626,8 @@ def create_server(
         authorization = json.loads(dev_v2_authorization.read_bytes()) if dev_v2_authorization else None
         dev_v2_bridge = DailyDevV2(dev_v2_root, profiles, authorization,
                                   per_run_budget=dev_v2_per_run_budget,memory=dev_v2_memory,sim_lock=sim_lock,run_slots=run_slots)
+    from .frame_cleanup import startup_sweep
+    startup_sweep(artifact_root, getattr(dev_v2_bridge, 'root', None))
     if lobby is not None:
         from . import lobby_http
         lobby = lobby_http.prepare(lobby, dev_v2_bridge)
