@@ -50,6 +50,39 @@ def read_weekly_quota(home=None, *, now=None):
 class QuotaUnavailable(RuntimeError): pass
 
 
+def quota_stop_reason(exc):
+    reason=str(exc)
+    return reason if reason in ('quota_stop','quota_unreadable_after_probe') else 'quota_unavailable'
+
+
+def probe_weekly_quota(private, on_event):
+    """One short, isolated Codex turn; keep its rollout for quota/token recovery."""
+    from .dev_agent_session import CodexAgentSession
+    root=private/'quota-probe'
+    ws=root/'ws';ws.mkdir(parents=True,exist_ok=True)
+    session=CodexAgentSession(ws,root,model='gpt-6.1-sol',reasoning_effort='low')
+    deadline=time.monotonic()+60
+    try:
+        for event in session.start('Reply with only OK. Do not use tools, read files or perform any other work.'):
+            if event:on_event(event)
+            if time.monotonic()>=deadline:raise TimeoutError('quota_probe_timeout')
+    finally:session.cancel('quota_probe_finished')
+
+
+def latest_probe_failure(root, *, since=0):
+    """Public reason only, from the newest quota sample; never initialize a run DB."""
+    import sqlite3
+    latest={}
+    for path in Path(root).glob('devexp-*/ledger.sqlite3'):
+        try:
+            with sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True) as db:
+                row=db.execute('SELECT payload FROM v2_agent_quota ORDER BY seq DESC LIMIT 1').fetchone()
+            sample=json.loads(row[0]) if row else {}
+            if sample.get('at',0)>max(since,latest.get('at',0)):latest=sample
+        except (sqlite3.Error,OSError,ValueError):continue
+    return latest.get('error') if latest.get('error')=='quota_unreadable_after_probe' else None
+
+
 # User 11-08: one run may use at most this many points of the weekly Codex quota.
 # User 11-11: the points are the run's OWN use. Runs open at the same time share the one weekly counter, so its rise
 # says nothing about one run (three runs open together were each stopped for the 5 points the three used together).
@@ -99,7 +132,7 @@ def rollout_tokens(thread_id, home=None):
 
 class QuotaMonitor:
     def __init__(self, private, ledger, *, stop_percent=90, reader=None, clock=time.time, run_cap_points=RUN_CAP_POINTS,
-                 tokens_per_point=TOKENS_PER_POINT, rollout_reader=None):
+                 tokens_per_point=TOKENS_PER_POINT, rollout_reader=None, probe=None):
         if type(stop_percent) not in (int,float) or not math.isfinite(stop_percent) or not 0<stop_percent<=100:
             raise ValueError('invalid_quota_stop_percent')
         self.private,self.ledger,self.stop_percent=private,ledger,stop_percent
@@ -117,6 +150,51 @@ class QuotaMonitor:
         self.tokens_per_point=tokens_per_point; self.rollout_reader=rollout_reader or rollout_tokens
         own=self.private/'quota-own.json'
         self.own=json.loads(own.read_bytes()) if own.exists() else dict(threads={},call_tokens=0)
+        # Only the production controller supplies a real probe. Offline callers must inject a fake.
+        self.probe=probe
+        self.probe_path=self.private/'quota-probe.json'
+
+    def _record(self, sample):
+        with (self.private/'quota.jsonl').open('a') as stream:
+            stream.write(json.dumps(sample,sort_keys=True)+'\n');stream.flush()
+        self.ledger.quota(sample)
+
+    def _probe_once(self, reason):
+        """Persist intent before dispatch, including across controller restarts."""
+        from .dev_agent_workspace import atomic_write,encode
+        if self.probe_path.exists() or self.probe is None:return
+        row=dict(at=self.clock(),event='quota_probe_after_reset',reason='quota_probe_after_reset',
+                 trigger=reason,status='started')
+        jid='quota_probe_after_reset'
+        self.ledger.reserve(jid,'quota_probe',{})
+        self.ledger.claim(jid)
+        atomic_write(self.private,self.probe_path.name,encode(row))
+        self._record(row)
+        thread=None;usage=None
+        def event(value):
+            nonlocal thread,usage
+            if value.get('type')=='thread.started':thread=value.get('thread_id')
+            self.event(value,session=True)
+            if value.get('type')=='turn.completed':
+                usage=value.get('usage')
+                if not isinstance(usage,dict) or any(type(v) is not int or v<0 for v in usage.values()):usage=None
+                tokens=_tokens(usage)
+                if tokens is not None:
+                    # This is exactly one turn. Its reported usage also provides a floor when
+                    # the rollout has not been flushed yet; never count both sources twice.
+                    if thread in self.own['threads']:
+                        seen=self.own['threads'][thread]
+                        seen.update(tokens=max(tokens,seen['tokens']),found=True);self._save_own()
+                    else:self.spent(usage)
+        try:
+            self.probe(self.private,event)
+            row['status']='completed'
+        except Exception as exc:
+            row.update(status='failed',error=type(exc).__name__)
+        finally:
+            row.update(finished_at=self.clock(),usage=usage,thread_id=thread)
+            atomic_write(self.private,self.probe_path.name,encode(row))
+            self.ledger.settle(jid,row,usage=usage)
 
     def _save_own(self):
         from .dev_agent_workspace import atomic_write,encode
@@ -188,7 +266,29 @@ class QuotaMonitor:
             except Exception:error='quota_unreadable'
             now=self.clock()
             candidates=[r for r in (reading,self.latest) if self._valid(r,now)]
+            if not candidates and self.probe is not None:
+                tokens,_=self.own_tokens()
+                # Even with a missing session, the already-accounted subtotal is a lower bound.
+                known=self.own['call_tokens']+sum(v.get('tokens',0) for v in self.own['threads'].values())
+                at_cap=self.run_cap_points is not None and known/self.tokens_per_point>=self.run_cap_points
+                if self.stopped or at_cap:
+                    self.capped=self.capped or at_cap;self.stopped=True
+                    self._record(dict(at=now,reason=reason,error='quota_stop',stopped=True,
+                                      run_tokens=tokens,run_cap_points=self.run_cap_points))
+                    raise ValueError('quota_stop')
+                self._probe_once(reason)
+                try:reading=self.reader()
+                except Exception:reading=None
+                now=self.clock()
+                candidates=[r for r in (reading,self.latest) if self._valid(r,now)]
+            if self.probe_path.exists():
+                probe=json.loads(self.probe_path.read_bytes())
+                self.own_tokens()  # Recover usage even if the probe timed out before turn.completed.
+                seen=self.own['threads'].get(probe.get('thread_id'),{})
+                if _tokens(probe.get('usage')) is None and not seen.get('found'):
+                    candidates=[]  # A fresh reading cannot excuse an unaccounted probe.
             if candidates:
+                self.failure=None
                 reset=max(r['resets_at'] for r in candidates)
                 window=latest_quota_readings([r for r in candidates if r['resets_at']>=reset-RESET_JITTER_SECONDS])
                 used=max(r['used_percent'] for r in window)
@@ -210,21 +310,29 @@ class QuotaMonitor:
                 tokens,why=self.own_tokens()
                 # Without a count of its own the run falls back to the rise of the shared counter (stops early, never late).
                 run_points=account_points if tokens is None else tokens/self.tokens_per_point
+                source='account_rise:'+why if tokens is None else 'own_tokens'
+                if tokens is None and self.probe_path.exists():
+                    known=self.own['call_tokens']+sum(v.get('tokens',0) for v in self.own['threads'].values())
+                    if known/self.tokens_per_point>run_points:
+                        run_points=known/self.tokens_per_point;source='known_tokens:'+why
                 self.capped=self.capped or (self.run_cap_points is not None and run_points>=self.run_cap_points)
                 self.stopped=self.stopped or used>=self.stop_percent or self.capped
                 # Usage only moves when Codex runs, and every local Codex turn writes a fresh
                 # reading; an old reading (e.g. during a long execution) is used but flagged.
                 sample=dict(at=now,reason=reason,used_percent=used,resets_at=reset,stop_percent=self.stop_percent,
                             run_points=run_points,run_cap_points=self.run_cap_points,run_cap_reached=self.capped,
-                            run_points_source='account_rise:'+why if tokens is None else 'own_tokens',run_tokens=tokens,
+                            run_points_source=source,run_tokens=tokens,
                             tokens_per_point=self.tokens_per_point,account_points=account_points,
                             stopped=self.stopped,observed_at=observed,stale=now-observed>WEEKLY_READING_MAX_AGE)
             else:
-                self.failure=error or 'quota_stale_or_unavailable'
-                sample=dict(at=now,reason=reason,error=self.failure,stop_percent=self.stop_percent)
-            with (self.private/'quota.jsonl').open('a') as stream:
-                stream.write(json.dumps(sample,sort_keys=True)+'\n');stream.flush()
-            self.ledger.quota(sample)
+                self.failure=('quota_unreadable_after_probe' if self.probe_path.exists()
+                              else error or 'quota_stale_or_unavailable')
+                tokens,_=self.own_tokens()
+                sample=dict(at=now,reason=reason,error=self.failure,stop_percent=self.stop_percent,
+                            run_tokens=tokens,run_points=tokens/self.tokens_per_point if tokens is not None else None,
+                            run_cap_points=self.run_cap_points)
+            if self.probe_path.exists():sample['quota_probe']=json.loads(self.probe_path.read_bytes())
+            self._record(sample)
             if self.failure:raise QuotaUnavailable(self.failure)
             return sample
 

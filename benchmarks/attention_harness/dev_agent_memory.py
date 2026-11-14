@@ -142,14 +142,23 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
             if len(matches) > 1:
                 raise provisional.NotStaged('multiple_helps_in_interval')
             if not matches:
+                candidates = interval_help(jobs, version, eligible=False)
+                if candidates:
+                    receipt = candidates[0].get('receipt', {})
+                    reason = ('help_cache_hit' if receipt.get('cache_hit') else 'help_rejected' if receipt.get('rejected')
+                              else 'help_not_delivered_source')
+                    raise provisional.NotStaged(reason)
                 return None
             raw_job = matches[0]
             if answer != answer_projection(raw_job['receipt'], version):
                 raise provisional.NotStaged('execution_help_receipt_drift')
-        if (answer.get('provider') != 'advisor' or answer.get('delivered') is not True
+        if answer.get('provider') == 'human_assisted':
+            memory_run_notes.create(store, key, version, directory)
+            raise provisional.NotStaged('assisted_reply_not_source')
+        if (answer.get('provider') not in ('advisor', 'human') or answer.get('delivered') is not True
                 or answer.get('status') != 'delivered' or answer.get('cache_hit')
                 or answer.get('rejected')):
-            return None
+            raise provisional.NotStaged('help_not_delivered_source')
         vid = f'v{version - 1:04d}'
         if not v2:
             jobs = ledger.jobs()
@@ -157,8 +166,11 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
         help_identity = answer['help_execution_id'] if v2 else vid
         evidence_dir = directory / 'agent-help'
         refs = dict(request_view=provisional._ref(workspace.private / 'help' / help_identity / 'request-view.json'),
-                    advisor=provisional._ref(workspace.private / 'help' / help_identity / 'advisor.json'),
                     help_job=immutable(evidence_dir / 'help-job.json', help_job))
+        source_files = (dict(human_reply='human.json', human_wait='human-wait.json', human_outcome='human-outcome.json')
+                        if answer['provider'] == 'human' else dict(advisor='advisor.json'))
+        refs.update({name: provisional._ref(workspace.private / 'help' / help_identity / filename)
+                     for name, filename in source_files.items()})
         for label, number in (('origin', version - 1), ('help', version)):
             record = json.loads((directory.parent / f'v{number}' / 'version.json').read_bytes())
             checked(record['source'])
@@ -193,20 +205,12 @@ def stage_provisional(store, key, version, directory, workspace, ledger):
             schema_version='attentionbench.agent-help-evidence.v1', channel='dev_agent',
             origin_version=version - 1, help_version=version, refs=refs))
         # The importer and Service share the same byte and interval verifier.
-        from .memory_auto_import import agent_evidence
-        proposal_refs = dict(agent_help_evidence=evidence, help=provisional._ref(directory / 'help.json'))
-        for label, number in (('origin', version - 1), ('help', version)):
-            base = directory.parent / f'v{number}'
-            proposal_refs[label + '_source'] = provisional._ref(base / 'policy.py')
-            proposal_refs[label + '_public_feedback'] = provisional._ref(base / 'public-feedback.json')
-        from attention_memory_service.agent_provisional import verify
-        verify(dict(origin_version=version - 1, help_version=version, provider=answer['provider'], cell=key,
-                    digests={name: ref['sha256'] for name, ref in proposal_refs.items()}),
-               answer['content'], agent_evidence(dict(refs=proposal_refs)))
-        memory_run_notes.create(store, key, version, directory)
+        provisional.verify_agent_help(key, version, directory, evidence)
+        memory_run_notes.create(store, key, version, directory, agent_help_evidence=evidence)
         return provisional.stage(store, key, version, directory, agent_help_evidence=evidence)
     except Exception as exc:
         reason = str(exc) if isinstance(exc, provisional.NotStaged) else 'error:' + type(exc).__name__
+        if reason == 'not_effective' and answer.get('provider') == 'human':reason = 'intervention not effective'
         try:
             with store.tx() as db:
                 store.event(db, 'planner_memory_provisional_skipped', dict(cell=key, version=version, reason=reason[:200]))

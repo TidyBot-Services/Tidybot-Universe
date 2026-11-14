@@ -213,8 +213,8 @@ def test_provisional_display_rejects_digest_drift(staged_display_proposal):
 
 @pytest.mark.parametrize('help_value,public,reason', [
     (None, TIMEOUT, None),
-    ({'provider': 'demo', 'content': 'demo source'}, TIMEOUT, None),
-    ({'provider': 'human', 'content': 'live human'}, TIMEOUT, None),
+    ({'provider': 'demo', 'content': 'demo source'}, TIMEOUT, 'provider_not_source'),
+    ({'provider': 'human', 'content': 'live human'}, TIMEOUT, 'human_requires_dev_agent'),
     ({'provider': 'advisor', 'content': 'x', 'rejected': True}, TIMEOUT, 'help_rejected_or_empty'),
     ({'provider': 'human_proxy', 'content': '   '}, TIMEOUT, 'help_rejected_or_empty'),
     (ADVICE, SAME, 'not_effective'),

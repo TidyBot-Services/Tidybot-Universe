@@ -963,6 +963,8 @@ def project(bridge, memory_view, experiment_id, *, now=None):
         if origin.get('cell'):notes[-1]['source_cell'] = origin['cell']
         for key, source in (('source_run', 'experiment_id'), ('source_version', 'help_version')):
             if key not in notes[-1] and source in origin:notes[-1][key] = origin[source]
+        if row.get('origin_summary', {}).get('provider') == 'human':
+            notes[-1]['origin'] = row['origin_summary']
         profile=row.get('execution_profile',(row.get('applicability_summary') or {}).get('execution_profile'))
         if profile:notes[-1]['execution_profile']=profile
         try:
@@ -984,7 +986,7 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                          uses=_uses(row), expires_in_days=_expires_in_days(row, timestamp), scene_seed=seed,
                          # Another scene of the same task: readable only as a labelled reference.
                          reference=layer in ('task', 'skill', 'general', 'family'))
-    from .memory_run_notes import events as local_events, PREFIX
+    from .memory_run_notes import events as local_events, PREFIX, _read_note
     run_notes = []
     for cell in cells:
         history = local_events(store, cell['key'])
@@ -1003,6 +1005,12 @@ def project(bridge, memory_view, experiment_id, *, now=None):
                                   path=f"{_learned(dict(experiment_id=experiment_id, help_version=event['help_version']))} → this run only", title=short(event['title'], 80),
                                   help_version=event['help_version'], from_version=event['help_version'] + 1,
                                   uses=len(uses), failure_gone=len(gone), off=note_id in off))
+            try:
+                note = _read_note(event)
+                if note.get('provider') == 'human':run_notes[-1]['origin'] = note['origin']
+            except EXTRA_ERRORS as error:
+                _log_failure(error, 'run note source')
+                if not warnings:warnings.append('Some note details are unavailable.')
     current_history = note_history(Path(store.path).parent, [n['id'] for n in notes + run_notes], notes=notes + run_notes)
     for note in notes + run_notes:
         rows = [r for r in current_history['rows'] if r['memory_id'] == note['id']]

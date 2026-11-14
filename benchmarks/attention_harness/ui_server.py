@@ -596,6 +596,12 @@ def create_server(
                       'read_at': datetime.now(timezone.utc).isoformat()}
                      if isinstance(used, (int, float)) and not isinstance(used, bool) and math.isfinite(used) and 0 <= used <= 100
                      else {'available': False})
+            if window==10080 and (type(reset) not in (int,float) or not math.isfinite(reset) or reset<=time.time()):
+                value={'available':False,'reason':'quota_reading_unavailable_after_reset'}
+            if value.get('available') is False and getattr(dev_v2_bridge,'root',None) is not None:
+                from .dev_agent_quota import latest_probe_failure
+                failure=latest_probe_failure(dev_v2_bridge.root,since=reset if type(reset) in (int,float) and reset<=time.time() else 0)
+                if failure:value['reason']=failure
         except Exception:
             value = {'available': False}
         with quota_lock:
@@ -1168,6 +1174,7 @@ def create_server(
                                         desc.setdefault('base_url_host',known[desc['credential']]['base_url_host'])
                     human=bool(human_token and secrets.compare_digest(self.headers.get('X-Attention-Human-Token',''),human_token))
                     self._json(dev_v2_bridge.post(urlsplit(self.path).path,body,human_authorized=human,
+                        **({'replied_by':owner_of(self) if public_gateway else 'operator'} if urlsplit(self.path).path.endswith('/help-reply') else {}),
                         keys=RunCredentials(vault,owner_of(self),allow_custom,allow_private_hosts)))
                 except PermissionError as error:self._json({'error':str(error)},403)
                 except FileNotFoundError as error:self._json({'error':str(error)},404)

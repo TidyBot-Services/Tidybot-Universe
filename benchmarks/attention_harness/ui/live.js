@@ -1992,12 +1992,20 @@
   function fatalStopMessage(snapshot) {
     const cause=snapshot.agent?.fatal_cause;
     let raw='';try{raw=JSON.stringify([snapshot.agent?.errors,snapshot.agent?.reason,snapshot.dev_session?.reason,snapshot.dev_session?.error,snapshot.eval?.stopped_reason]);}catch(_){raw='';}
+    if(/quota_unreadable_after_probe/.test(raw)||snapshot.agent?.quota?.error==='quota_unreadable_after_probe')
+      return 'Quota reading unavailable: after the weekly reset, one minimal Codex probe still could not read the weekly quota. The run stopped for review. (quota_unreadable_after_probe)';
     if(/scene_contract_mismatch/i.test(raw)){
       const seed=snapshot.run?.seed??snapshot.dev_session?.seed;
       return `Could not start: this scene${seed!=null?` (seed ${seed})`:''} does not load correctly on the robot computer, so the robot never moved. Start a new run with another seed.${cause?` (error code: ${cause})`:''}`;
     }
     if(cause)return `Stopped: the run hit an internal error and cannot continue on its own. This was not caused by anything you did; start a new run, and tell the lab if it happens again. (error code: ${cause})`;
     return 'Stopped: the run stopped unexpectedly and cannot continue on its own. Start a new run, and tell the lab if it happens again.';
+  }
+  function quotaProbeNotice(snapshot) {
+    const probe=snapshot.agent?.quota?.quota_probe;
+    if(!probe)return '';
+    const usage=probe.usage,tokens=usage?.total_tokens??(usage?Number(usage.input_tokens)+Number(usage.output_tokens):null);
+    return `<small data-quota-reset-probe>Weekly reset quota probe: ${esc(probe.status)}${Number.isFinite(tokens)?` · ${tokens.toLocaleString('en-US')} tokens charged to this run`:''}.</small>`;
   }
   function attemptCopy(attempt) {
     return {running:'Running',failed:'Unsuccessful',succeeded:'Succeeded',cancelled:'Stopped',timed_out:'Timed out',unknown:'Unconfirmed'}[attempt.status] || 'Unconfirmed';
@@ -2412,7 +2420,11 @@
 
   // Values shared by the visible limits and the independent Dev v2 ledger.
   function codexQuotaText(quota) {
+    if(quota?.reason==='quota_unreadable_after_probe'||quota?.error==='quota_unreadable_after_probe')
+      return {text:'Quota reading unavailable: after the weekly reset, the last run’s minimal Codex probe still could not read the weekly quota. (quota_unreadable_after_probe)',low:false};
     const used=quota?.used_percent;
+    if(quota?.reason==='quota_reading_unavailable_after_reset'||(quota?.window_minutes===10080&&Number(quota.resets_at)<=Date.now()/1000))
+      return {text:'Quota reading unavailable after the weekly reset. A new run will make one minimal Codex probe, charged to that run, before checking its quota limits. If the reading is still unavailable, it stops for review.',low:false};
     if(typeof used!=='number'||!Number.isFinite(used)||used<0||used>100)return {text:'Quota unavailable',low:false};
     const date=new Date(Number(quota.resets_at)*1000);
     const reset=Number.isFinite(date.getTime())&&quota.resets_at!=null
@@ -3357,7 +3369,7 @@
       // hidden key-mode radios that bindKeys owns. Choosing here sets them; their own events paint this row back.
       const keyMode=()=>form.querySelector('[data-keys-mode]:checked')?.value||'lab';
       function showQuota() {
-        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab'||hosted; // A shared host does not read this machine's quota.
+        quotaLine.hidden=form.model_source.value!=='codex'||keyMode()!=='lab';
         if(!quotaLine.hidden){
           const message=codexQuotaText(dialogQuota);
           quotaLine.textContent=message.text;
@@ -3401,7 +3413,7 @@
           note.textContent=['dev','eval','advisor'].map(role=>`${role[0].toUpperCase()+role.slice(1)}: ${mine[role]?`your key ${mine[role].keyName}`:labCodex?form[`${role}_model`]?.value||'lab':'lab'}`).join(' · ');
         }
       }
-      if(!hosted)fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
+      fetch('/api/codex-quota',{credentials:'same-origin'}).then(response=>response.ok?response.json():null).then(value=>{
         dialogQuota=value;
         if(launchDialog.open)showQuota();
       }).catch(()=>{dialogQuota=null;if(launchDialog.open)showQuota();});
@@ -4484,13 +4496,14 @@
       try{
         const response=await controlFetch(`/api/dev-v2/experiments/${encodeURIComponent(snapshot.dev_v2.experiment_id)}/help-reply`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cell:form.dataset.cell,execution_id:execution,...payload})});
         const result=await response.json();if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
-        stored(key,null);lastRendered='';await refresh();
+        stored(key,null);stored('attention.agent-assisted:'+execution,null);lastRendered='';await refresh();
       }catch(error){message.textContent=`Reply not submitted: ${DEBUG_VIEW?error.message:plainError(error.message)}`;form.querySelectorAll('button').forEach(b=>b.disabled=false);}
     };
+    form.elements.assisted.addEventListener('change',()=>stored('attention.agent-assisted:'+execution,String(form.elements.assisted.checked)));
     const input=form.elements.content,grow=()=>{input.style.height='auto';input.style.height=Math.min(140,input.scrollHeight)+'px';};
     input.addEventListener('input',()=>{stored(key,input.value);grow();});
     input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();form.requestSubmit();}});
-    form.addEventListener('submit',event=>{event.preventDefault();if(form.reportValidity())send({content:input.value});});
+    form.addEventListener('submit',event=>{event.preventDefault();if(form.reportValidity())send({content:input.value,assisted:form.elements.assisted.checked});});
     grow();updateAgentClock();
     form.querySelector('[data-hr-skip]').addEventListener('click',()=>send({skip:true}));
   }
@@ -5357,7 +5370,7 @@
     return `<section class="panel ab-resource-details" data-resource-details data-resources-run="${esc(snapshot.run.run_id)}" aria-label="Resources">${operatorHeading('05','RESOURCES','')}<div class="op-meters">${shown.map(([key,name,value,seconds])=>{
       const card=operatorBudgetCard(name,value,seconds,isTerminal(snapshot) && (endedKey===key || (key==='executions' && endedKey==='max_attempts')),key==='eval_calls',key==='eval_calls'&&freeEval,key==='help_wait_seconds') || operatorUnavailableResourceCard(name);
       return `${s?`<div data-dev-budget-key="${key}">`:''}${card}${s?'</div>':''}`;
-    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
+    }).join('')}</div>${operatorRunNotes(snapshot)}<div class="op-budget-foot"><span>${reviewNote}${quotaProbeNotice(snapshot)}${tokens && (free||Number(tokens.limit)>0)?`AI usage: ${kFormat(tokens.used)}${free?' tokens':' of '+kFormat(tokens.limit)+' tokens'}`:''}${free?'<small data-free-models-tag>free models · recorded, not limited</small>':''}</span><span>${ledger?.recompute_matches===false?'<strong class="op-data-failure">Data check failed · tell the research team</strong> ':''}${exportLink}</span></div></section>`;
   }
 
   // End operator presentation.
@@ -5455,7 +5468,7 @@
     if (snapshot.agent) {
       for(const request of snapshot.requests){
         const response=snapshot.responses[request.response_id],help=request.agent_help;
-        rows.push({id:request.request_id,kind:'advisor',reason:request.reason,requestedAt:request.created_at,answeredAt:response?.created_at,state:request.state,responder:help.provider==='human'?'human':'advisor',nextIndex:help.after_version,help});
+        rows.push({id:request.request_id,kind:'advisor',reason:request.reason,requestedAt:request.created_at,answeredAt:response?.created_at,state:request.state,responder:help.provider==='human_assisted'?'human_assisted':help.provider==='human'?'human':'advisor',nextIndex:help.after_version,help});
       }
     } else if (dev && !snapshot.dev_v2) {
       const events=control?.events||[];
@@ -5477,7 +5490,7 @@
     const now=Date.now()/1000, ended=isTerminal(snapshot);
     for (const row of rows) {
       row.seconds=row.responder==='human'&&row.requestedAt!=null?(row.answeredAt!=null?Math.max(0,row.answeredAt-row.requestedAt):row.state==='pending'?Math.max(0,now-row.requestedAt):0):0;
-      if(snapshot.agent)row.seconds=(row.help.charged===true||row.help.delivered)?Number(row.help.hint_human_seconds)||0:0;
+      if(snapshot.agent)row.seconds=row.responder!=='human_assisted'&&(row.help.charged===true||row.help.delivered)?Number(row.help.hint_human_seconds)||0:0;
       const next=attempts.find(a=>a.index===row.nextIndex);
       row.effect=row.state!=='answered'?(row.state==='pending'&&!ended?'awaiting_reply':'no_reply'):!next?(ended?'no_next':'waiting'):succeeded(next)?'fixed':next.status==='running'&&!ended?'running':'still_failed';
     }
@@ -5486,7 +5499,7 @@
     const credits=snapshot.resources?.help_count||snapshot.resources?.assistance||null;
     const judged=rows.filter(r=>r.effect==='fixed'||r.effect==='still_failed');
     const maximum=snapshot.agent?.limits?.formal_versions??snapshot.dev_session?.budget?.executions??snapshot.task_plan?.max_attempts??attempts.length;
-    return {rows,attempts,solved,attemptsRun:attempts.length,maximum,humanSeconds,humanRows,requests:rows.length,
+    return {rows,attempts,solved,attemptsRun:attempts.length,maximum,humanSeconds,humanRows,assistedRows:rows.filter(r=>r.responder==='human_assisted'&&r.state==='answered').length,requests:rows.length,
       credits:credits&&credits.used!=null?credits:{used:rows.length,limit:null},hits:rows.filter(r=>r.effect==='fixed').length,judged:judged.length,
       anyHuman:rows.some(r=>r.responder==='human'),terminal:isTerminal(snapshot)||(dev&&['stopped','budget_exhausted','failed','needs_review','completed','cancelled'].includes(dev.state))};
   }
@@ -5589,9 +5602,9 @@
       const x0=r.after<0?(snapshot.agent?model.left-160:x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
-      const bar=snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
+      const bar=r.responder==='human_assisted'?0:snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
       const cost=snapshot.agent?((r.help.delivered||r.help.charged===true)?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
-      const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':'Automatic advisor';
+      const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':r.responder==='human_assisted'?'Assisted reply':'Automatic advisor';
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text></g>`;
     }).join('');
@@ -5600,16 +5613,17 @@
     const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="${snapshot.agent?`width:${model.width}px;height:${height}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
-    const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':'Automatic advisor'):'';
+    const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':selected.responder==='human_assisted'?'Assisted (not a person)':'Automatic advisor'):'';
     const position=selected?g.rows.indexOf(selected):-1;
     const effectCls=selected?effect[selected.effect][1]:'';
     const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
-    const costNote=selected?(snapshot.agent?(selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
+    const costNote=selected?(snapshot.agent?(selected.responder==='human_assisted'?'Assisted reply · no human attention':selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
     const detail=snapshot.agent?agentTimelineDetail(snapshot,selected):selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),'Help requests',''],['human','spent',time,'Human attention',snapshot.agent?'Persisted Advisor human-attention cost. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     // 10-30: the legend lists only marks this run shows; ✓/✕ attempts and the labelled cost bars explain themselves.
-    const legend=[model.requests.some(r=>r.responder!=='human')?'<span><i class="automatic"></i>Automatic advisor</span>':'',
+    const legend=[model.requests.some(r=>r.responder==='advisor')?'<span><i class="automatic"></i>Automatic advisor</span>':'',
       model.requests.some(r=>r.responder==='human')?'<span><i class="person"></i>Person replied</span>':'',
+      model.requests.some(r=>r.responder==='human_assisted')?'<span>Assisted (not a person)</span>':'',
       snapshot.agent?agentTrialLegend([...snapshot.dev_session.versions.flatMap(v=>v.before_attempt?.trials||[]),...looseTries(snapshot)]):''].join('');
     const frontier=attentionFrontier(snapshot);
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
@@ -6485,6 +6499,7 @@
       wall_stop:'time limit reached',
       quota_stop:'quota limit reached',
       quota_unavailable:'quota unavailable',
+      quota_unreadable_after_probe:'quota reading unavailable after the weekly reset probe',
       assistance_budget_exhausted:'help budget exhausted',
       public_view_unavailable:'the help context is unavailable',
       run_end:'the run ended',
@@ -6538,7 +6553,7 @@
     const tries=agent.tries||[];
     if(!tries.length)return '';
     const cards=storyParts(tries).map((part,index)=>{
-      if(part.help)return `<button type="button" class="op-story-card op-story-help" data-story-part="${index}"><small>After Try ${part.help.number}</small>Help ${part.number}<small>${part.help.help.provider==='human'?'Person replied':'AI advisor'}</small></button>`;
+      if(part.help)return `<button type="button" class="op-story-card op-story-help" data-story-part="${index}"><small>After Try ${part.help.number}</small>Help ${part.number}<small>${part.help.help.provider==='human'?'Person replied':part.help.help.provider==='human_assisted'?'Assisted reply':'AI advisor'}</small></button>`;
       if(part.attempt){const t=part.attempt,result=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
         return `<button type="button" class="op-story-card op-story-attempt" data-story-part="${index}"><small>Try ${t.number}</small>Attempt ${t.attempt}<small>${result}</small></button>`;}
       const counts=storyCounts(part.tries),first=part.tries[0].number,last=part.tries.at(-1).number;
@@ -6570,7 +6585,7 @@
       storyOpen=index;row.querySelectorAll('.op-story-card').forEach(c=>c.classList.toggle('open',c===card));place(card);
       drawer.textContent='';drawer.classList.remove('list');delete drawer.dataset.pick;ticks=[];rest=[];now=[];aim=[];pointer=null;
       const col=(cols,title,text)=>{if(!text)return;const box=document.createElement('div'),head=document.createElement('b'),body=document.createElement('p');head.textContent=title;body.textContent=text;box.append(head,body);cols.append(box);};
-      if(part.help){const h=part.help.help,cols=document.createElement('div');cols.className='op-story-cols';col(cols,'Why it asked',h.why);col(cols,h.provider==='human'?'Your reply':'The advisor said',h.content);drawer.append(cols);drawer.classList.add('open','note');say(null);return;}
+      if(part.help){const h=part.help.help,cols=document.createElement('div');cols.className='op-story-cols';col(cols,'Why it asked',h.why);col(cols,h.provider==='human'?'Your reply':h.provider==='human_assisted'?'Assisted reply (not a person)':'The advisor said',h.content);drawer.append(cols);drawer.classList.add('open','note');say(null);return;}
       if(part.attempt){const t=part.attempt,verdict=document.createElement('span');verdict.className='op-story-verdict'+(t.passed===true?' ok':'');verdict.textContent=t.passed===true?'Passed':t.passed===false?'Not passed':'No review';
         const cols=document.createElement('div');cols.className='op-story-cols';
         if(t.passed===null)col(cols,'What happened',t.review_error==='timeout'?'The review timed out, so this attempt has no verdict.':'No review was recorded for this attempt.');else col(cols,t.passed?'What happened':'What went wrong',t.wrong||t.review||t.why);if(t.passed===false)col(cols,'Try next',t.next);drawer.append(verdict,cols);drawer.classList.add('open','note');say(null);return;}
@@ -6598,7 +6613,7 @@
   }
   function agentReplyForm(wait) {
     const draft=stored('attention.agent-reply:'+wait.execution_id)||'';
-    return `<form class="op-reply" data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}"><div class="op-reply-ask"><div class="op-reply-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v1M15 13v1"/></svg></div><div class="op-reply-bubble"><small>Robot</small>${esc(wait.question)}</div></div>${operatorQuickReplies()}<div class="op-reply-compose"><textarea name="content" maxlength="2000" rows="1" required aria-label="Your reply" placeholder="Write a short tip…">${esc(draft)}</textarea><button class="op-reply-send" type="submit" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div><div class="op-reply-foot">${HumanReply.skipButton()}<span>No reply in time: the AI advisor answers.</span></div><p data-agent-reply-message role="status"></p></form>`;
+    return `<form class="op-reply" data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}"><div class="op-reply-ask"><div class="op-reply-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v1M15 13v1"/></svg></div><div class="op-reply-bubble"><small>Robot</small>${esc(wait.question)}</div></div>${operatorQuickReplies()}<div class="op-reply-compose"><textarea name="content" maxlength="2000" rows="1" required aria-label="Your reply" placeholder="Write a short tip…">${esc(draft)}</textarea><button class="op-reply-send" type="submit" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div><label class="op-reply-assisted"><input type="checkbox" name="assisted"${stored('attention.agent-assisted:'+wait.execution_id)==='true'?' checked':''}> Assisted (not a person) · 代填（非真人）</label><div class="op-reply-foot">${HumanReply.skipButton()}<span>No reply in time: the AI advisor answers.</span></div><p data-agent-reply-message role="status"></p></form>`;
   }
   function agentPolicyHelp(snapshot) {
     const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;
@@ -6614,7 +6629,7 @@
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`advisor hint · ${(Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`${help.provider==='human'?'Person replied':help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} · ${(help.provider==='human_assisted'?0:Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
@@ -6673,7 +6688,7 @@
       snapshot.requests.push({request_id:id,response_id:responseId,run_id:s.session_id,attempt_id:before?.attempt_id,
         request_type:'hint',state:help.delivered?'answered':['pending','dispatching'].includes(help.status)?'pending':'rejected',mode:'automatic',created_at:interval.reserved_at,
         reason:(help.delivered?help.decision?.reason:help.reason)||'Recorded assistance',request_view:interval.request_view,agent_help:help});
-      if(help.delivered)snapshot.responses[responseId]={response_id:responseId,request_id:id,responder:help.provider==='human'?'human':'advisor_proxy',response_type:'hint',content:help.content||'',created_at:interval.settled_at};
+      if(help.delivered)snapshot.responses[responseId]={response_id:responseId,request_id:id,responder:help.provider==='human_assisted'?'human_assisted':help.provider==='human'?'human':'advisor_proxy',response_type:'hint',content:help.content||'',created_at:interval.settled_at};
     }
     snapshot.attention_control.read_only=true;
     // While a try runs its frames are live; between tries the page shows the latest try's recording.

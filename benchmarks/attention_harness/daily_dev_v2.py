@@ -531,7 +531,7 @@ class DailyDevV2:
             can_keep_running=pausing,resume_blocked_reason=None if state in {'running','pausing'} or (resumable and blocked is None) else blocked,
             current_step=step,paused_since=e.get('paused_at'),paused_seconds_total=g['paused_seconds_total'] if g else 0,interrupted_by_stop=interrupted,
             pause_reason=e.get('pause_reason'),pause_detail=e.get('pause_detail'))
-    def post(self,path,body,*,human_authorized=False,keys=None):
+    def post(self,path,body,*,human_authorized=False,keys=None,replied_by='operator'):
         # Same transport protocol as DevMainBridge. Daily legacy commands do
         # not mint approvals; shared-goal approval decisions stay on that bridge.
         if path=='/api/dev-v2/experiments':return self.create(body,keys=keys)
@@ -544,11 +544,11 @@ class DailyDevV2:
             from .memory_run_notes import turn_off
             return turn_off(s,body['cell'],body['note_id'])
         if command=='help-reply':
-            if not {'cell','execution_id'}<=set(body)<={'cell','execution_id','content','skip'}:raise ValueError('cell and execution_id required')
+            if not {'cell','execution_id'}<=set(body)<={'cell','execution_id','content','skip','assisted'}:raise ValueError('cell and execution_id required')
             cell=s.cell(body['cell'])
             if cell['experiment_id']!=eid or not cell.get('artifact_dir'):raise ValueError('cell outside experiment')
             from .dev_agent_human_reply import submit
-            return submit(Path(cell['artifact_dir'])/'agent/private',body['execution_id'],content=body.get('content'),skip=body.get('skip',False))
+            return submit(Path(cell['artifact_dir'])/'agent/private',body['execution_id'],content=body.get('content'),skip=body.get('skip',False),replied_by=replied_by,assisted=body.get('assisted',False))
         if command=='pause':
             if body:raise ValueError('Command body must be empty')
             return experiments.request_pause(s,eid)

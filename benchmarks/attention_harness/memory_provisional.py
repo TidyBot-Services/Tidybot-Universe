@@ -14,7 +14,9 @@ from pathlib import Path
 from .dev_loop import immutable, sha
 
 SCHEMA = 'attentionbench.dev-v2-provisional-proposal.v1'
-PROVIDERS = ('advisor', 'human_proxy')
+PROVIDERS = ('advisor', 'human_proxy', 'human')
+HUMAN_ATTRIBUTION = ('hint_human_seconds', 'shown_video_seconds', 'shown_words', 'answer_words',
+                     'actual_human_seconds', 'replied_by')
 _IDENT = re.compile(r'[A-Za-z_][A-Za-z0-9_]*\Z')
 _OPERATION = re.compile(r'[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*\Z')
 EVAL_CLASSES = ('timeout', 'planner_rejected', 'joint_limit', 'not_completed', 'other', 'none')
@@ -119,7 +121,13 @@ def stage(store, key, version, directory, *, agent_help_evidence=None):
         return None
     help_value = json.loads(help_path.read_bytes())
     if help_value.get('provider') not in PROVIDERS:
-        return None  # Demo, cache and live human help are not sources.
+        raise NotStaged('assisted_reply_not_source' if help_value.get('provider') == 'human_assisted' else 'provider_not_source')
+    if help_value['provider'] == 'human':
+        if agent_help_evidence is None or store.cell(key).get('dev_mode') != 'agent':
+            raise NotStaged('human_requires_dev_agent')
+        verify_agent_help(key, version, directory, agent_help_evidence)
+        from .dev_help import public_screen
+        public_screen(help_value.get('content'))
     content = help_value.get('content')
     if help_value.get('rejected') or not isinstance(content, str) or not content.strip():
         raise NotStaged('help_rejected_or_empty')
@@ -168,6 +176,8 @@ def stage(store, key, version, directory, *, agent_help_evidence=None):
     proposal['source_version_evidence'] = _ref(directory / 'version.json')
     if agent_help_evidence is not None:
         proposal.update(origin=dict(channel='dev_agent'), provenance=dict(channel='dev_agent'))
+        if help_value['provider'] == 'human':
+            proposal['origin'].update(provider='human', **{k: help_value[k] for k in HUMAN_ATTRIBUTION})
     link = run_note_link(store, key, version, directory)
     if link is not None:
         proposal['from_run_note'] = link
@@ -185,6 +195,23 @@ def stage(store, key, version, directory, *, agent_help_evidence=None):
         if not exists:
             store.event(db, 'planner_memory_offline_queued', dict(cell=key, version=version, kind='provisional', queue=ref))
     return ref
+
+
+def verify_agent_help(key, version, directory, evidence):
+    """Recheck the same sealed source before either local or Service note creation."""
+    from .memory_auto_import import agent_evidence
+    from attention_memory_service.agent_provisional import verify
+    directory = Path(directory)
+    refs = dict(agent_help_evidence=evidence, help=_ref(directory / 'help.json'))
+    for label, number in (('origin', version - 1), ('help', version)):
+        base = directory.parent / f'v{number}'
+        refs[label + '_source'] = _ref(base / 'policy.py')
+        refs[label + '_public_feedback'] = _ref(base / 'public-feedback.json')
+    answer = json.loads((directory / 'help.json').read_bytes())
+    origin = dict(origin_version=version - 1, help_version=version, provider=answer['provider'], cell=key,
+                  channel='dev_agent', digests={name: ref['sha256'] for name, ref in refs.items()})
+    if answer['provider'] == 'human':origin.update({k: answer[k] for k in HUMAN_ATTRIBUTION})
+    verify(origin, answer['content'], agent_evidence(dict(refs=refs)))
 
 
 def stage_safely(store, key, version, directory):

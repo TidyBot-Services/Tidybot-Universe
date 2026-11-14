@@ -5,6 +5,14 @@ const live=fs.readFileSync(path.join(root,'ui/live.js'),'utf8');
 const page=fs.readFileSync(path.join(root,'ui/memory.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'ui/memory.css'),'utf8');
 
+test('human source and both attention times appear on imported and run notes',()=>{
+ for(const run_note of [true,false]){
+  const data=monitor.adapt({notes:run_note?[]:[{id:'human',origin:{provider:'human',replied_by:'<alice>',hint_human_seconds:12,actual_human_seconds:3}}],run_notes:run_note?[{id:'human',origin:{provider:'human',replied_by:'<alice>',hint_human_seconds:12,actual_human_seconds:3}}]:[]});
+  const html=monitor.cardHtml(data.notes[0]);
+  assert.match(html,/真人 · &lt;alice&gt;/);assert.match(html,/Estimated: 12 s · Actual: 3 s/);
+ }
+});
+
 function payload(notes){return {run:{state:'running',versions:[1,2,3,4,5].map(n=>({n,note_ids:n===1?['a']:n===2?['a','b']:[]}))},notes,events:[]}}
 test('adapter bounds notes and groups, folds case, maps status and test flags',()=>{
  const rows=Array.from({length:610},(_,i)=>({id:'n'+i,title:'T'.repeat(200),summary:'S'.repeat(250),group:['Grasp','grasp','Reach','Motion','Vision','Safety','Release'][i%7],status:i===0?'withdrawn':'active',effect:'helps',test_seeded:i===1}));

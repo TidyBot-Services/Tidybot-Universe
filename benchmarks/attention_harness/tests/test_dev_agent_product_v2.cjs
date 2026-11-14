@@ -87,11 +87,23 @@ test('a waiting help request offers a reply form and a reply from a person is la
  assert.ok(html.includes('op-reply-live')&&html.includes('YOUR MOVE')&&html.includes('data-seconds="120"')&&!html.includes('HELP &amp; REPLIES'));
  assert.ok(html.includes('data-state="waiting"')&&html.includes('data-agent-reply')&&html.includes('data-execution-id="e000005"'));
  assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
+ assert.match(html, /type="checkbox" name="assisted"/);
+ assert.match(html, /Assisted \(not a person\)/);
  // 11-10 run page: a help card is the reply itself (no try, kind, delivery, fee or reason line).
  const card=api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human',ask_kind:'forced',execution_id:'e000004',reason:'request_after_each_failure',content:'Lift <slowly>',actual_cost_known:true,hint_human_seconds:356.1,actual_help_count:1},1);
  assert.ok(card.includes('aria-label="Help #1"')&&card.includes('<b>#1</b>')&&card.includes('Lift &lt;slowly&gt;'));
  for(const gone of ['Try 4','Forced question','Delivered','Person replied','help charged','Reason:'])assert.ok(!card.includes(gone),gone);
  assert.ok(api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:false},1).includes('Not delivered'));
+});
+
+test('assisted help stays separately counted with zero human attention',async()=>{
+ const s=await snapshot(),api=apiFor(s);
+ s.requests[0].agent_help.provider='human_assisted';
+ const ledger=api.attentionLedger(s);
+ assert.equal(ledger.rows[0].responder,'human_assisted');
+ assert.equal(ledger.rows[0].seconds,0);
+ assert.equal(ledger.assistedRows,1);
+ assert.equal(ledger.humanSeconds,57);
 });
 // 11-10 run page: the story strip is no longer drawn in 02 (the attempt pills in 01 and the timeline replace it);
 // agentStory itself is still used by the debug view, so its wording stays covered here.

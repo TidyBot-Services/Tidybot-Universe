@@ -7,6 +7,7 @@ subsequent work. The caller never retries an ambiguous moving execution.
 from contextlib import contextmanager, nullcontext
 import concurrent.futures
 import fcntl
+from .dev_agent_quota import quota_stop_reason
 import hashlib
 import json
 import math
@@ -27,6 +28,7 @@ TIMEOUTS = dict(validation=5., observe=10., find_objects=10., ik_check=240.,
                 plan_dry_run=240., run=1920., submit=1920., evaluate=900., ask_help=120.,
                 # A cold probe owner builds the simulator scene first (~55 s measured).
                 probe_startup=300.)
+HELP_TIMEOUT_MARGIN = 10.  # Public-view preparation and durable receipt writes.
 
 
 UNCHANGED_HINT = ('This bundle is byte-identical to your previous formal version, so it was not accepted and no '
@@ -103,7 +105,14 @@ class Broker:
         self.executor, self.prober, self.evaluator = executor, prober, evaluator
         self.helper, self.budget = (None if validation else helper or Helper()), budget or Budget()
         self.validation=validation
-        self.timeouts = {**TIMEOUTS, **(timeouts or {})}
+        self.timeouts = dict(TIMEOUTS)
+        help_config = getattr(self.helper, 'config', {})
+        human_wait = help_config.get('human_reply_seconds') or 0
+        if human_wait > 0:
+            advisor = help_config['advisor_proxy']
+            self.timeouts['ask_help'] = (human_wait + advisor['max_attempts'] *
+                                         advisor['attempt_timeout_seconds'] + HELP_TIMEOUT_MARGIN)
+        self.timeouts.update(timeouts or {})
         self.timeouts.setdefault('find_fixtures',self.timeouts['find_objects'])
         self.lock = threading.RLock(); self.closing = threading.Event()
         self.records = {}; self.active = None; self.quarantined = False; self.failure = None; self.owner_start_failures = 0; self.step_errors = []
@@ -178,7 +187,7 @@ class Broker:
                 if self.quota:
                     try:self.quota.check('broker:retry:'+op)
                     except Exception as exc:
-                        self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                        self.stop_reason=quota_stop_reason(exc)
                 record = self.records[rid]
                 if record['digest'] != digest:
                     # Do not overwrite the first request's authoritative receipt.
@@ -194,7 +203,7 @@ class Broker:
             if self.quota:
                 try:self.quota.check('broker:'+op)
                 except Exception as exc:
-                    self.stop_reason='quota_stop' if str(exc)=='quota_stop' else 'quota_unavailable'
+                    self.stop_reason=quota_stop_reason(exc)
                     return reject(self.stop_reason)
             if self.stop_reason and op!='status':return reject(self.stop_reason)
             if self.validation and op=='ask_help':return reject('policy_denied')
