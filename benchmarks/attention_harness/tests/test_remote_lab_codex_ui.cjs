@@ -38,5 +38,6 @@ test('the launch form lists Lab Codex on Remote only when the host offers it, an
   assert.match(source, /if\(labCodex\)codex\.textContent=labCodex\.label;else codex\.remove\(\);/);
   assert.match(source, /mine\.advisor\|\|labCodex\?` · Advisor \$\{label\('advisor',form\.advisor_model\?\.value\|\|''\)\}`/);
   assert.match(source, /if\(labCodex\)form\.model_source\.value='parcc';/);
-  assert.match(source, /keyMode\(\)!=='lab'\|\|hosted;/);
+  // 11-14 post-R3 ④: hosted Lab Codex shows the host's quota too (same endpoint and display path).
+  assert.match(source, /quotaLine\.hidden=form\.model_source\.value!=='codex'\|\|keyMode\(\)!=='lab';/);
 });
