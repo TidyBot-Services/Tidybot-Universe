@@ -5863,6 +5863,7 @@
     chatLayout();
   }
   let chatShownWait='';
+  new MutationObserver(()=>{chatLayout();chatFocus();}).observe(view,{childList:true});
   function chatLayout(){
     const panel=view.querySelector('[data-c2]');
     // A new question: once, bring it into view at the bottom of the conversation.
@@ -5870,6 +5871,7 @@
     if(waitId&&waitId!==chatShownWait&&panel.dataset.open==='true'){chatShownWait=waitId;const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}
     root.classList.toggle('c2-on',Boolean(panel));
     root.classList.toggle('c2-open',panel?.dataset.open==='true');
+    if(panel)requestAnimationFrame(chatFocus);
   }
   function chatScrollTo(selector){
     const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
@@ -5880,6 +5882,21 @@
   }
   // Sample countdown (the real one is ticked by the reply form's own [data-agent-reply-countdown] code).
   setInterval(()=>{view.querySelectorAll('[data-c2-deadline]').forEach(el=>{const left=Math.max(0,Math.round(Number(el.dataset.c2Deadline)-Date.now()/1000));el.textContent=left?`${left} s left, then the AI advisor answers`:'The AI advisor is answering';});},1000);
+  // Reverse link: what is at the top of the open conversation lights up on the chart.
+  let chatFocusFrame=0;
+  function chatFocus(){
+    chatFocusFrame=0;
+    view.querySelectorAll('.c2-focus').forEach(el=>el.classList.remove('c2-focus'));
+    const panel=view.querySelector('[data-c2]'),feed=panel?.querySelector('[data-c2-feed]');
+    if(!feed||panel.dataset.open!=='true')return;
+    const top=feed.getBoundingClientRect().top+24;
+    const item=[...feed.querySelectorAll('[data-feed-attempt],[data-feed-help],.c2-row')].find(el=>el.getBoundingClientRect().bottom>top);
+    if(!item)return;
+    if(item.dataset.feedAttempt)view.querySelector(`.op-attn-attempt[data-attn-attempt="${item.dataset.feedAttempt}"]`)?.classList.add('c2-focus');
+    else if(item.dataset.feedHelp)[...view.querySelectorAll('[data-attn-help]')].find(g=>new RegExp(`Help #${item.dataset.feedHelp}\\b`).test(g.getAttribute('aria-label')||''))?.classList.add('c2-focus');
+    else [...item.attributes].map(a=>a.name.match(/^data-feed-try-(\d+)$/)?.[1]).filter(Boolean).forEach(n=>view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('c2-focus'));
+  }
+  view.addEventListener('scroll',e=>{if(e.target.matches?.('[data-c2-feed]')&&!chatFocusFrame)chatFocusFrame=requestAnimationFrame(chatFocus);},true);
   function chatMarkTry(n){view.querySelectorAll('.op-try-mark.selected').forEach(g=>g.classList.remove('selected'));view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('selected');}
   view.addEventListener('click',e=>{
     if(!view.querySelector('[data-c2-feed]'))return;

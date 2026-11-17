@@ -568,3 +568,22 @@ html body #attentionbench-clear .c2-panel .c2-handle.asking{background:var(--sh-
 .c2-panel.c2{margin:0;border:0;border-radius:0;background:transparent;overflow:visible}
 .c2-panel .c2-body{min-height:0}
 .c2-panel .c2-feed{min-height:0}
+
+/* 11-18 experiment polish */
+.c2-row{grid-template-columns:16px 1fr auto}
+.c2-m{width:15px;height:15px;margin-top:3px}
+.c2-m circle{fill:var(--sh-card);stroke:var(--sh-mut);stroke-width:1.4}
+.c2-m path{stroke:var(--sh-acc);stroke-width:1.6;stroke-linecap:round}
+.c2-m.no circle{fill:var(--sh-badbg);stroke:var(--sh-acc)}
+.c2-m .d{fill:var(--sh-mut);stroke:none}
+.c2-why small{color:var(--sh-mut);font-weight:600}
+.c2-panel .c2-nums{max-width:120px}
+.c2-panel .c2-head{flex-wrap:nowrap}
+.c2-panel .c2-head .c2-meta{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c2-panel .c2-tag{flex:none}
+html body #attentionbench-clear .c2 .c2-watch{flex:none}
+/* chart parts the conversation is showing */
+.op-attn-attempt.c2-focus circle{stroke:var(--sh-ink)!important;stroke-width:3!important}
+.op-attn-help.c2-focus .op-attn-help-label{stroke:var(--sh-acc)!important;stroke-width:2!important}
+.op-attn-help.c2-focus .op-attn-arc{stroke:var(--sh-acc)!important}
+.op-try-mark.c2-focus circle{stroke:var(--sh-ink);stroke-width:2.4}

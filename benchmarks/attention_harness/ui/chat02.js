@@ -19,16 +19,21 @@
   }
   const watch = (attr, id) => id ? `<button type="button" class="c2-watch" ${attr}="${esc(id)}">Watch →</button>` : '';
 
-  // Practice runs before an attempt: one message; neighbours with the same reason merge into one row.
+  // Tries before an attempt: one message, one row per reason (most frequent first, "ran through" last),
+  // each row with the same mini marks as the chart and the try numbers to open.
+  const MARK={no:'<svg class="c2-m no" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"/></svg>',
+    ok:'<svg class="c2-m ok" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><circle class="d" cx="8" cy="8" r="2"/></svg>'};
   function practice(m, tries, label, recordings) {
     if (!tries.length) return '';
-    const rows = [];
-    tries.forEach(t => { const l = rows[rows.length - 1]; if (l && l.ok === t.ok && l.why === t.why) l.items.push(t); else rows.push({ok: t.ok, why: t.why, items: [t]}); });
+    const groups = new Map();
+    tries.forEach(t => { const key = (t.ok ? 'ok|' : 'no|') + (t.ok ? '' : t.why); if (!groups.has(key)) groups.set(key, {ok: t.ok, why: t.why, items: []}); groups.get(key).items.push(t); });
+    const rows = [...groups.values()].sort((a, b) => (a.ok - b.ok) || (b.items.length - a.items.length));
+    const stopped = tries.filter(t => !t.ok).length;
     const body = rows.map(r => {
       const nums = r.items.map(t => `<button type="button" class="c2-try ${t.ok ? 'ok' : 'no'}" data-c2-try="${t.number}" title="Try ${t.number}${recordings.has(t.number) ? ' · click to watch' : ''}">${t.number}</button>`).join('');
-      return `<li class="c2-row ${r.ok ? 'ok' : 'no'}" ${r.items.map(t => `data-feed-try-${t.number}`).join(' ')}><span class="c2-mark" aria-hidden="true"></span><span class="c2-why">${esc(r.ok ? 'Ran through (not a task check)' : r.why)}</span><span class="c2-nums">${r.items.length > 1 ? `<small>×${r.items.length}</small>` : ''}${nums}</span></li>`;
+      return `<li class="c2-row ${r.ok ? 'ok' : 'no'}" ${r.items.map(t => `data-feed-try-${t.number}`).join(' ')}>${MARK[r.ok ? 'ok' : 'no']}<span class="c2-why">${esc(r.ok ? 'Ran through (not a task check)' : r.why)}${r.items.length > 1 ? ` <small>×${r.items.length}</small>` : ''}</span><span class="c2-nums">${nums}</span></li>`;
     }).join('');
-    return `<div class="c2-msg"><div class="c2-av">R</div><div class="c2-card slim"><div class="c2-meta">${esc(label)} · ${tries.length} ${tries.length === 1 ? 'try' : 'tries'}</div><ul class="c2-rows">${body}</ul></div></div>`;
+    return `<div class="c2-msg"><div class="c2-av">R</div><div class="c2-card slim"><div class="c2-meta">${esc(label)} · <b>${tries.length} ${tries.length === 1 ? 'try' : 'tries'}</b>${stopped ? ` · ${stopped} stopped` : ''}</div><ul class="c2-rows">${body}</ul></div></div>`;
   }
 
   function exchange(m, h, n) {
