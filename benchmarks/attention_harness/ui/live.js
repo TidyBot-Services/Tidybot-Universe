@@ -5844,7 +5844,10 @@
     else if(chatDemo()&&!m.status.ended){const now=Date.now()/1000;m.wait={execution_id:'e000099',cell:m.key,question:(m.helps[0]&&m.helps[0].question)||'Where exactly should I put the item down?',deadline_at:now+74,seconds:m.waitSeconds||120,demo:true};}
     const attemptIds=new Map((snapshot.attempts||[]).filter(a=>!a.try_number).map(a=>[a.index+1,a.attempt_id]));
     const tryRecordings=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a.attempt_id]));
-    let html=Chat02.feed(m,{attemptIds,tryRecordings});
+    // Memory goes into the conversation (11-18 user): one sentence per note before the attempt that got it.
+    const memory=(snapshot.agent.memory_use||[]).filter(v=>(v.notes||[]).length||(v.errors||[]).length);
+    const memoryFailures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis').map(e=>typeof e.error==='object'?JSON.stringify(e.error):String(e.error));
+    let html=Chat02.feed(m,{attemptIds,tryRecordings,memory,memoryFailures});
     if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
     const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
     // 11-18 (user): a right-side panel, not part of 02. Opens by itself when the robot asks
@@ -5949,7 +5952,7 @@
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
     const chat=chatSection(snapshot);
-    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
+    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     return title+execution+progress+setup+chat;
   }

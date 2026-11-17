@@ -593,3 +593,9 @@ html body #attentionbench-clear .c2 .c2-watch{flex:none}
 /* tries picker uses the chart's two marks: red ring = stopped, hollow ring with a dot = ran through (never green) */
 html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind]{box-sizing:border-box;background:var(--sh-badbg)!important;border:1.5px solid var(--sh-acc)}
 html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind="done"]{background:radial-gradient(circle,var(--sh-mut) 0 2px,var(--sh-card) 2.5px)!important;border-color:var(--sh-mut)}
+
+/* 11-18: Memory as one line in the conversation */
+.c2-av.mem{background:var(--sh-amb);color:#fff}
+.c2-memory .c2-card{background:var(--sh-panel);border-style:dashed}
+.c2-notes{margin:4px 0 0;padding:0;list-style:none;font:400 13.5px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-note-q{font-style:italic;color:var(--sh-ink)}

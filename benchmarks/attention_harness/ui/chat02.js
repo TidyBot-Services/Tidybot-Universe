@@ -56,7 +56,32 @@
       ${a.sentence ? `<p>${esc(a.sentence)}</p>` : ''}${a.next && !a.solved ? `<p class="c2-next"><b>Checker suggests</b> ${esc(a.next)}</p>` : ''}</div></div>`;
   }
 
-  /* opts: {attemptIds: Map(n -> attempt_id), tryRecordings: Map(tryNumber -> attempt_id)} */
+  // Memory: what the system handed the robot and what the robot itself said about it.
+  // The robot's own words decide "used / not used" ("Not using note …" was being counted as used, 11-18).
+  const NOT_USING = /\b(not using|won'?t use|do not use|don'?t use|declin\w*|ignor\w*)\b[^.]*\bnote\b|\bnote\b[^.]*\b(not used|ignored|declined)\b/i;
+  const cleanWords = t => tidy(String(t || '').replace(/`/g, '').replace(/\b[rp]-[0-9a-f]{12,}\b/g, '').replace(/^#\s*/, ''));
+  function memoryVerdict(note) {
+    const quotes = [...(note.considered_not_used_evidence || []), ...(note.evidence || [])].map(e => String(e.excerpt || ''));  // code comments are whole sentences; transcript excerpts are cut
+    const refusal = quotes.find(q => NOT_USING.test(q));
+    if (refusal) {
+      const why = cleanWords(refusal.split(/not using note[^:]*:/i)[1] || '').replace(/\s+\S*$/, m => /[.;]$/.test(m) ? m : m);
+      return {used: false, why};
+    }
+    if (note.referenced === 'explicit') return {used: true, why: ''};
+    if (note.considered_not_used) return {used: false, why: ''};
+    return {used: null, why: ''};
+  }
+  function memoryMsg(entry, n) {
+    const notes = (entry.notes || []).filter(x => x.delivered !== false).map(note => {
+      const v = memoryVerdict(note), title = cleanWords(String(note.title || '').replace(/^[^:]{0,80}:\s*/, ''));
+      const verdict = v.used === true ? `<b>used it</b>` : v.used === false ? `<b>did not use it</b>${v.why ? ': ' + esc(v.why.replace(/[.;,]?\s*$/, '')) : ''}` : 'did not mention it';
+      return `<li><span class="c2-note-q">“${esc(title)}”</span> → Attempt ${n} ${verdict}.</li>`;
+    }).join('');
+    const errors = (entry.errors || []).map(e => `<div class="c2-sys bad" role="alert">Memory analysis error before Attempt ${n}: ${esc(typeof e.error === 'object' ? JSON.stringify(e.error) : e.error)}</div>`).join('');
+    return (notes ? `<div class="c2-msg c2-memory"><div class="c2-av mem" aria-hidden="true">M</div><div class="c2-card slim"><div class="c2-meta"><b>Memory gave ${entry.notes.length === 1 ? 'a note' : entry.notes.length + ' notes'}</b> · before Attempt ${n}</div><ul class="c2-notes">${notes}</ul></div></div>` : '') + errors;
+  }
+
+  /* opts: {attemptIds: Map(n -> attempt_id), tryRecordings: Map(tryNumber -> attempt_id), memory: [{version, notes, errors}], memoryFailures: [text]} */
   function feed(m, opts) {
     const ids = opts.attemptIds || new Map(), recs = opts.tryRecordings || new Map();
     const claimed = new Set(), helpNo = new Map(m.helps.map((h, i) => [h, i + 1]));
@@ -76,8 +101,10 @@
       flush();
       return out;
     };
+    const memory = new Map((opts.memory || []).map(e => [e.version, e]));
     m.attempts.forEach(a => {
       html += stretch(a.practice, `Before Attempt ${a.n}`);
+      if (memory.has(a.version)) html += memoryMsg(memory.get(a.version), a.n);
       html += attempt(m, a, ids);
       m.helps.filter(h => h.executionId === a.executionId && !claimed.has(h)).forEach(h => { claimed.add(h); html += exchange(m, h, helpNo.get(h)); });
     });
@@ -88,6 +115,7 @@
       if (!st.ended) html += `<div class="c2-sys" data-feed-attempt="${n}">Attempt ${n} · ${m.executing ? 'running try ' + Number(String(m.executing).slice(1)) + ' now' : m.current.tries.length ? m.current.tries.length + (m.current.tries.length === 1 ? ' try' : ' tries') + ' so far' : 'nothing has run yet'}</div>`;
     }
     m.helps.filter(h => !claimed.has(h)).forEach(h => { claimed.add(h); html += exchange(m, h, helpNo.get(h)); });
+    (opts.memoryFailures || []).forEach(text => { html += `<div class="c2-sys bad" role="alert">Memory analysis error: ${esc(text)}</div>`; });
     if (m.wait) {
       html += `<div class="c2-msg" data-feed-wait><div class="c2-av">R</div><div class="c2-card ask live"><div class="c2-meta"><b>The robot asks you now</b>${m.wait.demo ? ' · <b class="c2-sample">SAMPLE, not a real request</b>' : ''}</div>${long(m.wait.question || '')}<div class="c2-count" data-c2-deadline="${esc(m.wait.deadline_at)}"></div></div></div>`;
     }
