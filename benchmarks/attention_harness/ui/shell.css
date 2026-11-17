@@ -583,10 +583,9 @@ html body #attentionbench-clear .c2-panel .c2-handle.asking{background:var(--sh-
 .c2-panel .c2-tag{flex:none}
 html body #attentionbench-clear .c2 .c2-watch{flex:none}
 /* chart parts the conversation is showing */
-.op-attn-attempt.c2-focus circle{stroke:var(--sh-ink)!important;stroke-width:3!important}
-.op-attn-help.c2-focus .op-attn-help-label{stroke:var(--sh-acc)!important;stroke-width:2!important}
-.op-attn-help.c2-focus .op-attn-arc{stroke:var(--sh-acc)!important}
-.op-try-mark.c2-focus circle{stroke:var(--sh-ink);stroke-width:2.4}
+.op-attn-attempt circle,.op-try-mark circle,.op-attn-help .op-attn-arc{transition:filter .4s ease}
+.op-attn-attempt.c2-focus circle,.op-try-mark.c2-focus circle{filter:drop-shadow(0 0 4px var(--sh-acc)) drop-shadow(0 0 2px var(--sh-acc))}
+.op-attn-help.c2-focus .op-attn-arc,.op-attn-help.c2-focus .op-attn-help-label{filter:drop-shadow(0 0 3px var(--sh-acc))}
 
 /* 11-18: one home per fact — the checker's suggestion lives in the conversation panel */
 #attentionbench-clear.c2-on .op-try-next{display:none}

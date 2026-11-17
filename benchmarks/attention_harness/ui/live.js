@@ -5925,7 +5925,7 @@
   function chatPinned(){const run=currentSnapshot?.run?.run_id;if(chatUserScroll.run!==run)chatUserScroll={run,moved:false};return !chatUserScroll.moved;}
   ['wheel','touchmove','keydown'].forEach(type=>view.addEventListener(type,e=>{if(e.target.closest?.('[data-c2-feed]'))chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},{passive:true,capture:true}));
   view.addEventListener('mousedown',e=>{if(e.target.closest?.('[data-c2-feed]')&&e.offsetX>e.target.clientWidth)chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},true);
-  new MutationObserver(()=>{chatLayout();chatFocus();}).observe(view,{childList:true});
+  new MutationObserver(()=>{chatLayout();}).observe(view,{childList:true});
   function chatLayout(){
     const panel=view.querySelector('[data-c2]');
     // A new question: once, bring it into view at the bottom of the conversation.
@@ -5933,7 +5933,7 @@
     if(waitId&&waitId!==chatShownWait&&panel.dataset.open==='true'){chatShownWait=waitId;const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}
     root.classList.toggle('c2-on',Boolean(panel));
     root.classList.toggle('c2-open',panel?.dataset.open==='true');
-    if(panel){const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{if(chatPinned()&&feed)feed.scrollTop=feed.scrollHeight;chatFocus();});}
+    if(panel){const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{if(chatPinned()&&feed)feed.scrollTop=feed.scrollHeight;});}
   }
   function chatScrollTo(selector){
     const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
@@ -5959,7 +5959,10 @@
     else if(item.dataset.feedHelp)[...view.querySelectorAll('[data-attn-help]')].find(g=>new RegExp(`Help #${item.dataset.feedHelp}\\b`).test(g.getAttribute('aria-label')||''))?.classList.add('c2-focus');
     else [...item.attributes].map(a=>a.name.match(/^data-feed-try-(\d+)$/)?.[1]).filter(Boolean).forEach(n=>view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('c2-focus'));
   }
-  view.addEventListener('scroll',e=>{if(e.target.matches?.('[data-c2-feed]')&&!chatFocusFrame)chatFocusFrame=requestAnimationFrame(chatFocus);},true);
+  let chatFocusFade=0;
+  const chatFocusClear=()=>view.querySelectorAll('.c2-focus').forEach(el=>el.classList.remove('c2-focus'));
+  // 11-18 (user: "why the black rings"): only while the person scrolls the conversation, then it fades.
+  view.addEventListener('scroll',e=>{if(!e.target.matches?.('[data-c2-feed]')||!chatUserScroll.moved)return;if(!chatFocusFrame)chatFocusFrame=requestAnimationFrame(chatFocus);clearTimeout(chatFocusFade);chatFocusFade=setTimeout(chatFocusClear,1500);},true);
   function chatMarkTry(n){view.querySelectorAll('.op-try-mark.selected').forEach(g=>g.classList.remove('selected'));view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('selected');}
   view.addEventListener('click',e=>{
     if(!view.querySelector('[data-c2-feed]'))return;
