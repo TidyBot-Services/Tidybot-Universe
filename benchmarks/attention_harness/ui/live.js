@@ -5830,6 +5830,15 @@
     view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:'smooth'});
     return true;
   }
+  // After a jump, the replay re-renders: bring 01 into view and start the new video from the beginning.
+  function chatPlaySoon(){
+    let tries=0;const go=()=>{const viewer=view.querySelector('[data-execution-viewer]'),video=viewer?.querySelector('video[data-history-replay]');
+      if(!video){if(++tries<20)setTimeout(go,100);return;}
+      requestAnimationFrame(()=>{const bar=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sh-bar'))||68;window.scrollTo({top:window.scrollY+viewer.getBoundingClientRect().top-bar-12,behavior:'auto'});});
+      const start=()=>{try{video.currentTime=0;}catch(_){}video.play?.().catch(()=>{});};
+      if(video.readyState>=1)start();else video.addEventListener('loadedmetadata',start,{once:true});};
+    setTimeout(go,120);
+  }
   function pickTry(mark){
     const runId=currentSnapshot?.run?.run_id;if(!runId||!mark?.dataset.tryNumber)return;
     const same=stored(`attention.try:${runId}`)===mark.dataset.tryNumber;
@@ -6017,16 +6026,23 @@
       return;}
     const toggle=t.closest?.('[data-c2-toggle]');
     if(toggle){e.preventDefault();chatSetOpen(view.querySelector('[data-c2]').dataset.open!=='true');return;}
+    // 11-18 (user): a try or an attempt — on the chart or in the panel — opens its video in 01 and plays it.
+    const recordingOfTry=n=>[...(currentSnapshot?.attempts||[]),...(currentSnapshot?.try_attempts||[])].find(a=>String(a.try_number)===String(n))?.attempt_id;
+    const attemptIdOf=n=>(currentSnapshot?.attempts||[]).find(a=>!a.try_number&&a.index+1===Number(n))?.attempt_id;
+    const playAttempt=id=>{if(!id)return false;const pill=[...view.querySelectorAll('.op-pill-attempt[data-history-select]')].find(b=>b.dataset.historySelect===id);if(!pill)return false;pill.click();chatPlaySoon();return true;};
+    const playTry=n=>{const id=recordingOfTry(n);if(!id||!openTryRecording(id))return false;chatPlaySoon();return true;};
     const mark=t.closest?.('.op-try-link');
-    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);chatScrollTo(`[data-feed-try-${mark.dataset.tryNumber}]`);return;}
+    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);playTry(mark.dataset.tryNumber);return;}
     const help=t.closest?.('[data-attn-help]');
     if(help){const n=(help.getAttribute('aria-label')||'').match(/Help #(\d+)/)?.[1];if(n&&chatScrollTo(`[data-feed-help="${n}"]`)){e.preventDefault();e.stopPropagation();}return;}
     const att=t.closest?.('[data-attn-attempt]');
-    if(att&&t.closest('.op-attn-scroll')){if(chatScrollTo(`[data-feed-attempt="${att.dataset.attnAttempt}"]`)){e.preventDefault();e.stopPropagation();}return;}
-    const watchAttempt=t.closest?.('[data-c2-attempt]');
-    if(watchAttempt){e.preventDefault();[...view.querySelectorAll('.op-pill-attempt[data-history-select]')].find(b=>b.dataset.historySelect===watchAttempt.dataset.c2Attempt)?.click();view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:'smooth'});return;}
+    if(att&&t.closest('.op-attn-scroll')){if(playAttempt(attemptIdOf(att.dataset.attnAttempt))){e.preventDefault();e.stopPropagation();}return;}
     const tryButton=t.closest?.('[data-c2-try]');
-    if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);const id=[...(currentSnapshot?.attempts||[]),...(currentSnapshot?.try_attempts||[])].find(a=>String(a.try_number)===tryButton.dataset.c2Try)?.attempt_id;if(id)openTryRecording(id);return;}
+    if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);playTry(tryButton.dataset.c2Try);return;}
+    const row=t.closest?.('.c2-row');
+    if(row){const first=row.querySelector('[data-c2-try]');if(first){chatMarkTry(first.dataset.c2Try);playTry(first.dataset.c2Try);}return;}
+    const card=t.closest?.('[data-feed-attempt]');
+    if(card&&!t.closest('a,summary,details')){const watch=card.querySelector('[data-c2-attempt]');if(watch){e.preventDefault();playAttempt(watch.dataset.c2Attempt);}return;}
     if(t.closest?.('[data-c2-demo-send]')){const err=view.querySelector('[data-c2-demo-err]');if(err)err.textContent='This is a sample request, so nothing was sent.';}
   },true);
   // 11-18 (user: the 03 cards were too big for a dropdown): the same facts as a small list.

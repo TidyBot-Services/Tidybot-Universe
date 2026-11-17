@@ -667,3 +667,8 @@ html body #attentionbench-clear .op-run-details-btn:hover{color:var(--sh-ink)!im
 #attentionbench-clear.c2-resizing,#attentionbench-clear.c2-resizing *{user-select:none!important;cursor:col-resize!important}
 #attentionbench-clear.c2-resizing .ab-workspace,#attentionbench-clear.c2-resizing .c2-body{transition:none!important}
 @media (max-width:1180px){.c2-resizer{display:none}}
+
+/* 11-18: tries rows and attempt cards in the panel open their video */
+.c2-row,.c2-msg[data-feed-attempt] .c2-card{cursor:pointer}
+.c2-row:hover{background:var(--sh-chip)}
+.c2-msg[data-feed-attempt] .c2-card:hover{border-color:var(--sh-acc)}
