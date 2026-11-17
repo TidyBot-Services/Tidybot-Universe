@@ -587,3 +587,9 @@ html body #attentionbench-clear .c2 .c2-watch{flex:none}
 .op-attn-help.c2-focus .op-attn-help-label{stroke:var(--sh-acc)!important;stroke-width:2!important}
 .op-attn-help.c2-focus .op-attn-arc{stroke:var(--sh-acc)!important}
 .op-try-mark.c2-focus circle{stroke:var(--sh-ink);stroke-width:2.4}
+
+/* 11-18: one home per fact — the checker's suggestion lives in the conversation panel */
+#attentionbench-clear.c2-on .op-try-next{display:none}
+/* tries picker uses the chart's two marks: red ring = stopped, hollow ring with a dot = ran through (never green) */
+html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind]{box-sizing:border-box;background:var(--sh-badbg)!important;border:1.5px solid var(--sh-acc)}
+html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind="done"]{background:radial-gradient(circle,var(--sh-mut) 0 2px,var(--sh-card) 2.5px)!important;border-color:var(--sh-mut)}

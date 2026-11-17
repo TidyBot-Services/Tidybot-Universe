@@ -83,7 +83,7 @@
     if (!(st.kind === 'solved' && m.solvedAttempt) && (m.current.tries.length || !st.ended)) {
       const n = m.attempts.length + 1;
       html += stretch(m.current.tries, `Before Attempt ${n}`);
-      if (!st.ended) html += `<div class="c2-sys" data-feed-attempt="${n}">Attempt ${n} · ${st.kind === 'paused' ? 'paused' : m.executing ? 'running try ' + Number(String(m.executing).slice(1)) + ' now' : 'thinking and writing its next code'}</div>`;
+      if (!st.ended) html += `<div class="c2-sys" data-feed-attempt="${n}">Attempt ${n} · ${m.executing ? 'running try ' + Number(String(m.executing).slice(1)) + ' now' : m.current.tries.length ? m.current.tries.length + (m.current.tries.length === 1 ? ' try' : ' tries') + ' so far' : 'nothing has run yet'}</div>`;
     }
     m.helps.filter(h => !claimed.has(h)).forEach(h => { claimed.add(h); html += exchange(m, h, helpNo.get(h)); });
     if (m.wait) {
