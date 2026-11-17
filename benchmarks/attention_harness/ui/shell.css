@@ -811,3 +811,5 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-eve
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-later="false"]>summary::before{border-left-color:var(--sh-fill)!important}
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-later="true"]{opacity:.42}
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-stage-h[data-now="true"]>span{box-shadow:none;background:var(--sh-fill);color:#fff}
+/* 11-18 ui改动: next to the video the step list needs no title; only the Trimmed/Original switch stays, on the right */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head[data-bare="true"]{justify-content:flex-end;margin-bottom:6px}
