@@ -626,3 +626,20 @@ html #attentionbench-clear[data-operator-view="true"] .op-page-title p.op-title-
 .op-run-details>summary::-webkit-details-marker{display:none}
 .op-run-details[open]>summary{border-color:var(--sh-acc)}
 .op-run-details-body{position:absolute;right:0;top:calc(100% + 8px);z-index:50;width:min(760px,80vw);max-height:70vh;overflow:auto;padding:16px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-panel);box-shadow:0 18px 40px -16px #0007}
+
+/* 11-18: compact Run details */
+html body #attentionbench-clear .op-run-details>summary{height:28px;padding:0 10px;border:0;background:transparent;color:var(--sh-mut);font:600 12.5px "DM Sans",system-ui,sans-serif}
+html body #attentionbench-clear .op-run-details>summary:hover,html body #attentionbench-clear .op-run-details[open]>summary{color:var(--sh-ink);background:var(--sh-chip)}
+html body #attentionbench-clear .op-run-details-body{width:340px;max-height:70vh;padding:12px 14px;border-radius:12px;background:var(--sh-card);box-shadow:0 14px 32px -14px #0008}
+.op-run-details-body h5{margin:10px 0 4px;font:600 10.5px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-amb)}
+.op-run-details-body h5:first-child{margin-top:0}
+.op-run-details-body dl{margin:0;display:grid}
+.op-run-details-body .rd-row{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:5px 0;border-top:1px solid var(--sh-line2)}
+.op-run-details-body .rd-row:first-child{border-top:0}
+.op-run-details-body dt{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-run-details-body dd{margin:0;display:grid;gap:2px;min-width:0}
+.op-run-details-body dd b{font:600 12.5px/1.35 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-run-details-body dd small{font:400 11.5px/1.35 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-run-details-body .rd-budgets dd{grid-template-columns:auto 1fr;align-items:center;gap:10px}
+.op-run-details-body .rd-budgets i{display:block;height:3px;border-radius:999px;background:linear-gradient(90deg,var(--sh-mut) var(--p),var(--sh-line2) var(--p))}
+.op-run-details-body .rd-notes{margin:0;padding-left:16px;font:400 11.5px/1.45 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}

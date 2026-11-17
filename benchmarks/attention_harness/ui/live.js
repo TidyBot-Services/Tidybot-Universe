@@ -5471,7 +5471,7 @@
     const forkSource = fork ? navigationRecords().find(r => r.session_id === `v2-${fork.cell}`) : null;
     const forkWhen = forkSource ? relativeTime(forkSource.created_at) : '';
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">${forkIcon(13)}Continued from Attempt ${esc(fork.version)}${forkWhen ? ` · ${esc(forkWhen)}` : ''}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1>${operatorRunLine(snapshot)?`<p class="op-title-sub">${esc(operatorRunLine(snapshot))}</p>`:''}</div><div class="op-title-actions">${operatorRunMeter(snapshot)}${devNote}${status}${newRun}${more}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${devNote}${status}${newRun}${more}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
@@ -6000,6 +6000,19 @@
     if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);const id=[...(currentSnapshot?.attempts||[]),...(currentSnapshot?.try_attempts||[])].find(a=>String(a.try_number)===tryButton.dataset.c2Try)?.attempt_id;if(id)openTryRecording(id);return;}
     if(t.closest?.('[data-c2-demo-send]')){const err=view.querySelector('[data-c2-demo-err]');if(err)err.textContent='This is a sample request, so nothing was sent.';}
   },true);
+  // 11-18 (user: the 03 cards were too big for a dropdown): the same facts as a small list.
+  function compactRunDetails(snapshot,settings,resources){
+    const strip=html=>String(html||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    const rows=[...String(settings).matchAll(/<div class="op-field[^"]*"><span>([^<]*)<\/span><b>([\s\S]*?)<\/b>(?:<small>([\s\S]*?)<\/small>)?/g)]
+      .map(([,label,main,sub])=>`<div class="rd-row"><dt>${label}</dt><dd><b>${main}</b>${sub?`<small>${sub}</small>`:''}</dd></div>`).join('');
+    const a=snapshot.agent,clock=t=>{const h=Math.floor(t/3600),m=Math.round(t%3600/60);return h?`${h} h ${m} min`:`${m} min`;};
+    const budget=(label,used,limit,text)=>limit?`<div class="rd-row"><dt>${label}</dt><dd><b>${text||`${used} / ${limit}`}</b><i style="--p:${Math.min(100,used/limit*100)}%"></i></dd></div>`:'';
+    const budgets=a?.limits?[budget('Versions',a.counts?.formal_versions??0,a.limits.formal_versions),budget('Tries',a.counts?.moving_executions??0,a.limits.moving_executions),
+      budget('Probes',a.counts?.read_only_probes??0,a.limits.read_only_probes),budget('Help',a.counts?.help??0,a.limits.help),budget('Eval',a.counts?.eval_runs??0,a.limits.eval_runs),
+      a.wall_limit?budget('Time',a.wall_seconds||0,a.wall_limit,`${clock(a.wall_seconds||0)} / ${clock(a.wall_limit)}`):''].join(''):'';
+    const notes=[...String(resources).matchAll(/>((?:SDK description|Scene verification)[^<]*)</g)].map(m=>`<li>${m[1]}</li>`).join('');
+    return `<h5>Setup</h5><dl>${rows}</dl>${budgets?`<h5>Used</h5><dl class="rd-budgets">${budgets}</dl>`:''}${notes?`<h5>Notes</h5><ul class="rd-notes">${notes}</ul>`:''}`;
+  }
   function operatorThreeParts(regions,snapshot) {
     if(DEBUG_VIEW)return regions.join('');
     let [settings,overview,execution,request,resources]=regions;
@@ -6030,7 +6043,7 @@
     const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     // 11-18 (user, 03 split): no Setup & resources section; the same content opens from ⓘ Run details beside the title.
-    if(title){const details=`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Run details</summary><div class="op-run-details-body"><div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></div></details>`;
+    if(title){const details=`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</summary><div class="op-run-details-body">${compactRunDetails(snapshot,settings,resources)}</div></details>`;
       return title.replace(/<\/div><\/header>$/,`${details}</div></header>`)+execution+progress+chat;}
     return title+execution+progress+setup+chat;
   }
