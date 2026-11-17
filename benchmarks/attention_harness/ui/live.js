@@ -1096,13 +1096,11 @@
         evidence_id:{enumerable:true,configurable:true,get:()=>trimMode()==='trimmed'?`${id}:trim`:id,set:value=>{id=value;}}});
     }
   }
-  let showSkippedWaits=false;
-  view.addEventListener('click',e=>{const b=e.target.closest?.('[data-skips-toggle]');if(!b)return;showSkippedWaits=!showSkippedWaits;
-    b.closest('[data-execution-viewer]')?.querySelectorAll('[data-trim-break]').forEach(r=>{r.hidden=!showSkippedWaits;});
-    b.setAttribute('aria-pressed',String(showSkippedWaits));b.textContent=b.textContent.replace(/^(Show|Hide)/,showSkippedWaits?'Hide':'Show');});
   const skipText=seconds=>seconds<120?`${Math.round(seconds)} s`:`${Math.floor(seconds/60)} min ${String(Math.round(seconds%60)).padStart(2,'0')} s`;
   function operatorSkipRow(b) {
-    return `<div class="op-skip" role="button" tabindex="0"${showSkippedWaits?'':' hidden'} data-trim-break data-trim-at="${b.trim_at}" title="Jump to the skipped moment"><time>${operatorTime(b.trim_at)}</time><span aria-hidden="true">⏭</span><div><b>Skipped ${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'}</b><small>real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}</small></div></div>`;
+    // 11-18 ui改动 (user): no Show/Hide button. A skipped wait is a thin divider in the list, always visible, like
+    // GitHub's folded diff lines; it says how long was cut and jumps to that moment.
+    return `<div class="op-skip op-skip-line" role="button" tabindex="0" data-trim-break data-trim-at="${b.trim_at}" title="${esc(`Real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)} · jump to this moment`)}"><span>${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'} skipped</span></div>`;
   }
   function operatorTrimBar(trim) {
     const mode=trimMode();
@@ -5091,9 +5089,11 @@
     // A trimmed replay lists each skipped span where it happened; events inside the wait stay above the marker.
     const trimmedView=Boolean(hasVideo&&trace?.trim&&trimMode()==='trimmed'),breaks=trimmedView?[...trace.trim.breaks]:[];
     const pending=event=>{
+      // Back-to-back skips with no step between them read as one divider (their seconds added up).
       const rows=[];
-      while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(operatorSkipRow(breaks.shift()));
-      return rows.join('');
+      while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(breaks.shift());
+      if(!rows.length)return '';
+      return operatorSkipRow({...rows[0],orig_end:rows.at(-1).orig_end,skipped_seconds:rows.reduce((t,r)=>t+Number(r.skipped_seconds||0),0),kind:rows.every(r=>r.kind==='still')?'still':'wait'});
     };
     // Chapters for the seek bar, in this replay's own time (trimmed or original).
     let chapters='';
@@ -5103,10 +5103,7 @@
       const stopAt=stop?at(stop.index):null;
       chapters=`<i hidden data-replay-chapters="${esc(JSON.stringify({list,stop:Number.isFinite(stopAt)?{label:REPLAY_STAGES[stop.stage],at:stopAt}:null}))}"></i>`;
     }
-    // 11-18 (user, GitHub-Actions-style): skipped waits are folded; one button shows them.
-    const skipCount=breaks.length;
-    const skipToggle=skipCount?`<button type="button" class="op-skips-toggle" data-skips-toggle aria-pressed="${showSkippedWaits}">${showSkippedWaits?'Hide':'Show'} ${skipCount} skipped wait${skipCount===1?'':'s'}</button>`:'';
-    return chapters+skipToggle+groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
+    return chapters+groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
       const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';

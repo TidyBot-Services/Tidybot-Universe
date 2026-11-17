@@ -608,8 +608,6 @@ html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .o
 .op-eval-strip h4:not(:has([data-eval-did-not-run])){display:none}
 .op-eval-strip [data-eval-verdict]{display:none}
 .op-eval-strip:not(:has(.op-eval-stopped,[data-eval-did-not-run])){display:none}
-html body #attentionbench-clear .op-skips-toggle{display:inline-flex;align-items:center;height:26px;margin:2px 0 8px!important;padding:0 10px!important;border:1px dashed var(--sh-line)!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
-html body #attentionbench-clear .op-skips-toggle:hover{color:var(--sh-ink)!important;border-color:var(--sh-acc)!important}
 .op-skip[hidden]{display:none!important}
 /* 11-18 (user): no "Stopped at …" line either; the red stop line on the seek bar shows it (hover: "Stopped at Carry") */
 .op-eval-strip .op-eval-stopped{display:none}
@@ -728,3 +726,8 @@ html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run:hover .ab-reco
 html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more{display:block;height:auto!important;margin:2px 0 0!important;padding:4px 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:500 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
 html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more:hover{color:var(--sh-ink)!important}
 html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::before,html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::after{display:none!important;content:none!important}
+/* 11-18 ui改动: skipped waits = thin always-visible divider (no Show/Hide button) */
+html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line{display:flex!important;align-items:center;gap:10px;margin:2px 0!important;padding:4px 0!important;min-height:0!important;border:0!important;border-radius:0!important;background:transparent!important;cursor:pointer}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line::before,html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line::after{content:"";flex:1;height:0;border-top:1px dashed var(--rk-line,var(--sh-line))}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line>span{flex:none;font:500 11px "DM Sans",system-ui,sans-serif!important;color:var(--rk-dim,var(--sh-mut))!important;filter:none!important;text-align:center;letter-spacing:.01em}
+html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line:hover>span{color:var(--rk-ink,var(--sh-ink))!important}
