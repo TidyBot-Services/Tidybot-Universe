@@ -1221,6 +1221,33 @@
       updateReplayPolicy(snapshot,video);rememberReplay(video);
     };
     video.onpause = () => rememberReplay(video);
+    // 11-18 ui改动 (user): the step list follows playback. The step the video is at is marked, later steps are dimmed,
+    // and the list scrolls to keep it in view; scrolling by hand pauses the follow for a few seconds.
+    const list=panel.querySelector('.ab-history-events');
+    if(video.followSteps)video.removeEventListener('timeupdate',video.followSteps);
+    if(list){
+      const timed=rows.filter(r=>r.hasAttribute('data-replay-seconds')).map(r=>({row:r,t:Number(r.dataset.replaySeconds),el:r.closest('[data-history-event]')}));
+      const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')];
+      let holdUntil=0,lastEl=null;
+      const hold=()=>{holdUntil=Date.now()+4000;};
+      list.addEventListener('wheel',hold,{passive:true});list.addEventListener('touchmove',hold,{passive:true});list.addEventListener('pointerdown',hold);
+      video.followSteps=()=>{
+        if(!list.isConnected||!timed.length)return;
+        const now=video.currentTime;let cur=null;
+        for(const x of timed){if(x.t<=now+0.05)cur=x;else break;}
+        list.dataset.follow=(now>0.05||!video.paused)?'on':'off';
+        let curHead=null;for(const h of heads){if(Number(h.dataset.replaySeconds)<=now+0.05)curHead=h;}
+        heads.forEach(h=>{h.dataset.now=String(h===curHead);});
+        let seen=!cur;
+        for(const x of timed){const isCur=x===cur;x.el.dataset.now=String(isCur);x.el.dataset.later=String(seen);if(isCur)seen=true;}
+        if(cur&&cur.el!==lastEl){lastEl=cur.el;
+          if(Date.now()>holdUntil&&list.scrollHeight>list.clientHeight){
+            const lr=list.getBoundingClientRect(),er=cur.el.getBoundingClientRect(),want=list.scrollTop+(er.top-lr.top)-list.clientHeight*0.35;
+            list.scrollTo({top:Math.max(0,want),behavior:video.paused?'auto':'smooth'});}}
+      };
+      video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);
+      video.followSteps();
+    }
     video.onerror = () => {
       const selected = replaySelections.get(key);
       if (selected?.pending || selected?.seeking) { selected.pending = false; selected.seeking = false; video.dataset.replayRestoring='false'; selected.error = 'Replay failed to load; seeking is unavailable'; showSelection(); }
@@ -1418,19 +1445,18 @@
       const ticks=()=>{
         if(!scrubber||!(video.duration>0))return;
         scrubber.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
-        // 11-18 ui改动 (user: a long video was a wall of ticks): cuts closer than 2 % of the bar merge into one small
-        // dot under the track; its tooltip adds them up.
-        const merged=[];
-        for(const b of [...trim.breaks].sort((x,y)=>x.trim_at-y.trim_at)){
-          const last=merged.at(-1);
-          if(last&&(b.trim_at-last.trim_at)/video.duration<0.02){last.n++;last.skipped+=Number(b.skipped_seconds||0);last.end=b.orig_end;}
-          else merged.push({trim_at:b.trim_at,n:1,skipped:Number(b.skipped_seconds||0),start:b.orig_start,end:b.orig_end});
-        }
-        for(const m of merged) {
-          const tick=document.createElement('span');
-          tick.className='op-skip-tick op-skip-dot';tick.style.left=`${pct(m.trim_at,video.duration)}%`;
-          tick.title=`${m.n>1?`${m.n} waits`:'A wait'} cut · ${skipText(m.skipped)} (real ${operatorTime(m.start)} → ${operatorTime(m.end)})`;
-          scrubber.append(tick);
+        // 11-18 ui改动 (user picked "heat strip"): one thin strip above the track; each 1 % of the bar is amber, darker the
+        // more waiting was cut there. Hover a patch to read the total.
+        const BINS=100,bins=new Array(BINS).fill(0),ranges=new Array(BINS).fill(null);
+        for(const b of trim.breaks){const k=Math.min(BINS-1,Math.max(0,Math.floor(b.trim_at/video.duration*BINS)));bins[k]+=Number(b.skipped_seconds||0);const r=ranges[k]||(ranges[k]={n:0,start:b.orig_start,end:b.orig_end});r.n++;r.end=b.orig_end;}
+        const top=Math.max(...bins);
+        if(top>0){
+          const strip=document.createElement('span');strip.className='op-skip-tick op-cut-strip';
+          bins.forEach((sec,k)=>{if(!sec)return;const cell=document.createElement('i');
+            cell.style.left=`${k}%`;cell.style.opacity=String(Math.min(1,0.3+0.7*Math.sqrt(sec/top)).toFixed(2));
+            cell.title=`${ranges[k].n>1?`${ranges[k].n} waits`:'A wait'} cut here · ${skipText(sec)} (real ${operatorTime(ranges[k].start)} → ${operatorTime(ranges[k].end)})`;
+            strip.append(cell);});
+          scrubber.append(strip);
         }
       };
       video.addEventListener('loadedmetadata',ticks,{once:true});ticks();

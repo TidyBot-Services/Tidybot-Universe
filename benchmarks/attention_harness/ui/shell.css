@@ -801,6 +801,6 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-eve
 /* 11-18 ui改动: long videos — chapters are gaps that split the track (YouTube style); cut waits are small dots under it */
 html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap{width:3px;height:14px;margin-left:-1.5px;background:#16171a;opacity:1;border-radius:0;box-shadow:none}
 html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap:hover{height:14px;background:#16171a}
-html body #attentionbench-clear[id][data-operator-view="true"] figure.op-video .op-skip-tick.op-skip-dot,html body #attentionbench-clear[id][data-operator-view="true"] .op-skip-tick.op-skip-dot{top:auto;bottom:-7px;width:4px;height:4px;transform:translateX(-50%);border-radius:50%;background:#fff;opacity:.45;pointer-events:auto}
-html body #attentionbench-clear[id][data-operator-view="true"] .op-skip-tick.op-skip-dot:hover{opacity:.9}
-#attentionbench-clear[data-theme="dark"] .ab-history-events .op-step>summary::before{border-left-color:#3a3d42!important}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-skip-tick.op-cut-strip{position:absolute;left:0;right:0;top:calc(50% - 11px);width:auto;height:4px;transform:none;opacity:1;background:transparent;border-radius:2px;pointer-events:none;z-index:2}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-cut-strip>i{position:absolute;top:0;width:1%;height:100%;background:#f0b24a;pointer-events:auto;cursor:help}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-cut-strip>i:hover{outline:1px solid #fff;z-index:1}
