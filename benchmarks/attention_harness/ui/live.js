@@ -5847,11 +5847,13 @@
     let html=Chat02.feed(m,{attemptIds,tryRecordings});
     if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
     const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
-    // 11-18 (user): a right-side panel, not part of 02. Closed by default; opens by itself when the robot asks
+    // 11-18 (user): a right-side panel, not part of 02. Opens by itself when the robot asks
     // (once per question: closing it during that question is remembered); a manual open/close is kept for this run.
     const runId=snapshot.run.run_id,choice=stored(`attention.c2:${runId}`),asking=Boolean(m.wait);
     const dismissed=asking&&stored(`attention.c2.dismissed:${m.wait.execution_id}`)==='1';
-    const open=choice==='open'||(asking&&!dismissed&&choice!=='closed-now');
+    // 11-18 (user): open by default on wide screens; a close is kept for this run until the robot asks a new question.
+    const wide=window.matchMedia?.('(min-width: 1181px)').matches!==false;
+    const open=choice==='open'||(asking&&!dismissed)||(choice!=='closed-now'&&wide);
     const handle=`<button type="button" class="c2-handle${asking?' asking':''}" data-c2-toggle aria-expanded="${open}" title="${open?'Hide':'Show'} the conversation"><span class="c2-handle-dot" aria-hidden="true"></span><span class="c2-handle-text">${asking?'Robot asks you':'Conversation'}</span><b>${m.helps.length}</b></button>`;
     return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation">${handle}<div class="c2-body"><div class="c2-head-row"><h4>Conversation</h4><span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the conversation" title="Hide">›</button></div><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div></aside>`;
   }
