@@ -533,3 +533,38 @@ html body #attentionbench-clear .c2-row-in .c2-alt{background:transparent!import
 .c2-composer small{display:block;margin-top:6px}
 .c2-err{color:var(--sh-acc)}
 .c2-composer.live .op-reply{margin:0}
+
+/* 11-18 experiment: conversation as a right-side panel */
+#attentionbench-clear.c2-on .ab-workspace{padding-right:56px;transition:padding-right .22s ease}
+#attentionbench-clear.c2-on.c2-open .ab-workspace{padding-right:432px}
+.c2-panel{position:fixed;z-index:45;top:var(--sh-bar,68px);right:0;bottom:0;display:flex;pointer-events:none}
+.c2-panel .c2-body{pointer-events:auto;width:420px;display:flex;flex-direction:column;border-left:1px solid var(--sh-line);background:var(--sh-panel);box-shadow:-10px 0 24px -18px #0006;transform:translateX(0);transition:transform .24s cubic-bezier(.2,.7,.3,1)}
+.c2-panel[data-open="false"] .c2-body{transform:translateX(100%);visibility:hidden;transition:transform .24s cubic-bezier(.2,.7,.3,1),visibility 0s .24s}
+.c2-panel .c2-head-row{flex:none;display:flex;align-items:center;gap:10px;padding:12px 14px 12px 18px;border-bottom:1px solid var(--sh-line2)}
+.c2-panel .c2-head-row span{flex:1;min-width:0}
+html body #attentionbench-clear .c2-panel .c2-close{width:30px!important;height:30px!important;margin:0!important;padding:0!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:none!important;font:600 18px/1 system-ui!important;cursor:pointer}
+.c2-panel .c2-feed{flex:1;max-height:none;padding:14px 14px}
+.c2-panel .c2-msg{max-width:100%}
+.c2-panel .c2-msg.you{max-width:94%}
+.c2-panel .c2-composer{flex:none}
+.c2-panel .c2-row-in{flex-wrap:wrap}
+.c2-panel .c2-row-in input{flex-basis:100%}
+.c2-panel .c2-nums{max-width:150px}
+/* the handle: a slim tab on the right edge while the panel is closed */
+html body #attentionbench-clear .c2-panel .c2-handle{pointer-events:auto;position:absolute;right:0;top:18px;display:flex;flex-direction:column;align-items:center;gap:8px;width:44px!important;height:auto!important;margin:0!important;padding:12px 0!important;border:1px solid var(--sh-line)!important;border-right:0!important;border-radius:12px 0 0 12px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:-4px 4px 14px -10px #0007!important;cursor:pointer;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important}
+.c2-panel .c2-handle-text{writing-mode:vertical-rl;transform:rotate(180deg)}
+.c2-panel .c2-handle b{min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--sh-sunk);color:var(--sh-ink);font:700 11px/20px "DM Sans",system-ui,sans-serif;text-align:center}
+.c2-panel .c2-handle-dot{width:8px;height:8px;border-radius:50%;background:var(--sh-mut)}
+.c2-panel[data-open="true"] .c2-handle{display:none!important}
+html body #attentionbench-clear .c2-panel .c2-handle.asking{background:var(--sh-fill)!important;color:#fff!important;border-color:var(--sh-fill)!important;animation:c2-ask 1.6s ease-in-out infinite}
+.c2-panel .c2-handle.asking .c2-handle-dot{background:#fff}
+.c2-panel .c2-handle.asking b{background:#ffffff33;color:#fff}
+@keyframes c2-ask{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--sh-fill) 50%,transparent)}50%{box-shadow:0 0 0 8px transparent}}
+@media (max-width:1180px){#attentionbench-clear.c2-on.c2-open .ab-workspace{padding-right:56px}.c2-panel .c2-body{width:min(420px,92vw);box-shadow:-18px 0 40px -14px #0008}}
+@media (prefers-reduced-motion:reduce){.c2-panel .c2-body{transition:none}html body #attentionbench-clear .c2-panel .c2-handle.asking{animation:none}}
+
+/* the page wrapper keeps a transform after its entry animation, which would pin the "fixed" panel to it */
+#attentionbench-clear.c2-on .ab-workspace{animation:none!important;transform:none!important}
+.c2-panel.c2{margin:0;border:0;border-radius:0;background:transparent;overflow:visible}
+.c2-panel .c2-body{min-height:0}
+.c2-panel .c2-feed{min-height:0}

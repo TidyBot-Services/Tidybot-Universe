@@ -5847,11 +5847,33 @@
     let html=Chat02.feed(m,{attemptIds,tryRecordings});
     if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
     const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
-    return `<div class="c2" data-c2><div class="c2-head-row"><h4>Conversation</h4><span>${m.helps.length} help · ${m.humanHints.length} from you · ${m.advisorHelps.length} from the AI advisor</span></div><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>`;
+    // 11-18 (user): a right-side panel, not part of 02. Closed by default; opens by itself when the robot asks
+    // (once per question: closing it during that question is remembered); a manual open/close is kept for this run.
+    const runId=snapshot.run.run_id,choice=stored(`attention.c2:${runId}`),asking=Boolean(m.wait);
+    const dismissed=asking&&stored(`attention.c2.dismissed:${m.wait.execution_id}`)==='1';
+    const open=choice==='open'||(asking&&!dismissed&&choice!=='closed-now');
+    const handle=`<button type="button" class="c2-handle${asking?' asking':''}" data-c2-toggle aria-expanded="${open}" title="${open?'Hide':'Show'} the conversation"><span class="c2-handle-dot" aria-hidden="true"></span><span class="c2-handle-text">${asking?'Robot asks you':'Conversation'}</span><b>${m.helps.length}</b></button>`;
+    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation">${handle}<div class="c2-body"><div class="c2-head-row"><h4>Conversation</h4><span>${m.helps.length} help · ${m.humanHints.length} from you · ${m.advisorHelps.length} from the AI advisor</span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the conversation" title="Hide">›</button></div><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div></aside>`;
+  }
+  function chatSetOpen(open){
+    const panel=view.querySelector('[data-c2]');if(!panel)return;
+    panel.dataset.open=String(open);panel.querySelectorAll('[data-c2-toggle]').forEach(b=>b.setAttribute('aria-expanded',String(open)));
+    const runId=currentSnapshot?.run?.run_id;if(runId)stored(`attention.c2:${runId}`,open?'open':'closed-now');
+    if(!open&&panel.dataset.waitId)stored(`attention.c2.dismissed:${panel.dataset.waitId}`,'1');
+    chatLayout();
+  }
+  let chatShownWait='';
+  function chatLayout(){
+    const panel=view.querySelector('[data-c2]');
+    // A new question: once, bring it into view at the bottom of the conversation.
+    const waitId=panel?.dataset.asking==='true'?panel.dataset.waitId:'';
+    if(waitId&&waitId!==chatShownWait&&panel.dataset.open==='true'){chatShownWait=waitId;const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}
+    root.classList.toggle('c2-on',Boolean(panel));
+    root.classList.toggle('c2-open',panel?.dataset.open==='true');
   }
   function chatScrollTo(selector){
     const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
-    feed.closest('[data-c2]')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    if(view.querySelector('[data-c2]')?.dataset.open!=='true')chatSetOpen(true);
     feed.scrollTo({top:feed.scrollTop+el.getBoundingClientRect().top-feed.getBoundingClientRect().top-12,behavior:'smooth'});
     el.classList.remove('c2-flash');void el.offsetWidth;el.classList.add('c2-flash');
     return true;
@@ -5862,6 +5884,8 @@
   view.addEventListener('click',e=>{
     if(!view.querySelector('[data-c2-feed]'))return;
     const t=e.target;
+    const toggle=t.closest?.('[data-c2-toggle]');
+    if(toggle){e.preventDefault();chatSetOpen(view.querySelector('[data-c2]').dataset.open!=='true');return;}
     const mark=t.closest?.('.op-try-link');
     if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);chatScrollTo(`[data-feed-try-${mark.dataset.tryNumber}]`);return;}
     const help=t.closest?.('[data-attn-help]');
@@ -5901,9 +5925,9 @@
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
     const chat=chatSection(snapshot);
-    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}${chat}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
+    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
-    return title+execution+progress+setup;
+    return title+execution+progress+setup+chat;
   }
   function workspaceHTML(snapshot,chosen) {
     // One-call keeps the original five-module content (11-10: shown in three parts).
@@ -6015,7 +6039,7 @@
     }
     const oldFeed=view.querySelector('[data-c2-feed]'),feedState=oldFeed?{top:oldFeed.scrollTop,bottom:oldFeed.scrollHeight-oldFeed.scrollTop-oldFeed.clientHeight<40}:null;
     view.innerHTML = html;
-    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=!feedState||feedState.bottom?feed.scrollHeight:feedState.top;}
+    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=!feedState||feedState.bottom?feed.scrollHeight:feedState.top;chatLayout();}
     view.querySelector('[data-sound-slot]')?.replaceWith(alertsButton);
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
