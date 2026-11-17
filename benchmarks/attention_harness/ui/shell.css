@@ -611,3 +611,6 @@ html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .o
 html body #attentionbench-clear .op-skips-toggle{display:inline-flex;align-items:center;height:26px;margin:2px 0 8px!important;padding:0 10px!important;border:1px dashed var(--sh-line)!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
 html body #attentionbench-clear .op-skips-toggle:hover{color:var(--sh-ink)!important;border-color:var(--sh-acc)!important}
 .op-skip[hidden]{display:none!important}
+/* 11-18 (user): no "Stopped at …" line either; the red stop line on the seek bar shows it (hover: "Stopped at Carry") */
+.op-eval-strip .op-eval-stopped{display:none}
+.op-eval-strip:not(:has([data-eval-did-not-run])){display:none}
