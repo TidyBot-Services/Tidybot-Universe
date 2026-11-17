@@ -409,7 +409,7 @@
     const counts=session.agent?.counts||session.agent_resources?.used;
     return {agent,run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
-      created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
+      created_at:session.created_at,seed:cfg.seed,model:session.model||cfg.model||'',name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,fork:session.fork,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
       attempts_used:agent?(()=>{const value=Number(counts?.formal_versions??versions.length)||0,high=Math.max(value,versionsSeen.get(session.session_id)||0);versionsSeen.set(session.session_id,high);return high;})():session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??session.agent_resources?.limits?.formal_versions??session.agent_versions_limit??10):session.budget?.executions,
@@ -624,6 +624,69 @@
     const head=sidebarTask&&rows.length?`<p class="ab-flat-h ab-flat-task" data-flat-section="task"><span>${esc(taskTitle(rows[0]))} · ${rows.length} run${rows.length===1?'':'s'}</span>${solved?`<b>${solved} solved</b>`:''}</p>`:'';
     return robot+head+section('running','Running now',active)+section('mine','My runs',mine)+section('earlier','Earlier · newest first',rest);
   }
+  // 11-18 ui改动 (user): the run list is a tree. Task first (with a solved/total line per help policy that
+  // filters the task), then on Remote each person, then that person's runs. A run row says only policy, model,
+  // time and outcome: seed, robot and attention cost live on the Run page.
+  const treeOpen=new Map(Object.entries((()=>{try{return JSON.parse(preference('attention.sidebar-tree')||'{}');}catch(_){return {};}})()));
+  const treePolicy=new Map();
+  const treeSave=()=>preference('attention.sidebar-tree',JSON.stringify(Object.fromEntries(treeOpen)));
+  const POLICY_TONE={autonomous:'auto',reactive_help:'reactive',agent_initiated_help:'self',full_trace_aware_attention_planner:'planner',trace_aware_hint_only:'hints',retry_k_then_ask:'retry'};
+  const runPolicy=r=>{const ids=(r.development?r.policy_ids||[]:r.attention_control?.segments?.length?r.attention_control.segments.map(s=>s.policy_id):[r.initial_policy]).filter(Boolean).filter((id,i,a)=>id!==a[i-1]);return ids;};
+  const modelShort=m=>{m=String(m||'');if(!m)return '';const t=m.split('/').pop();return /sol$/i.test(t)?'sol':/astra$/i.test(t)?'astra':/^glm/i.test(t)?'GLM':/^qwen/i.test(t)?'Qwen':t.replace(/^gpt-/,'').replace(/-flash$/,'');};
+  const recentOf=rows=>Math.max(...rows.map(r=>Number(recordIsActive(r))*1e12+Number(r.created_at||r.started_at||0)));
+  function treeOutcome(r){
+    const tone=recordTone(r),c=r.lobby;
+    if(tone==='waiting'&&recordIsActive(r))return `<span class="ab-tr-out" data-o="wait">${c&&!c.mine?'Needs a person':'Needs you'}</span>`;
+    if(recordIsActive(r))return `<span class="ab-tr-out" data-o="live">● Running</span>`;
+    if(r.reason==='operator_paused'&&tone!=='success')return `<span class="ab-tr-out" data-o="idle">Paused</span>`;
+    if(tone==='success'){const v=(r.versions||[]).findIndex(v=>v.native_success===true);return `<span class="ab-tr-out" data-o="ok">Solved${v>=0&&r.attempts_limit?` ${v+1}/${r.attempts_limit}`:''}</span>`;}
+    const word=recordStatus(r);
+    return `<span class="ab-tr-out" data-o="${tone==='failed'?'no':'idle'}">${esc(/^paused/i.test(word)?'Paused':tone==='failed'?'Not solved':tone==='waiting'?'Stopped':/^(planned|not_started|ready)$/i.test(word)?'Not started':word)}</span>`;
+  }
+  function treeRow(r){
+    const viewing=r.development?r.session_id===selectedDev:!selectedDev&&r.run_id===selectedRun;
+    const target=r.development?`data-dev-session="${esc(r.session_id)}"`:`data-view-run="${esc(r.run_id)}"`;
+    const ids=runPolicy(r),last=ids.at(-1);
+    const tag=last?`<span class="ab-tr-pol" data-pol="${esc(POLICY_TONE[last]||'other')}" title="${esc('Help policy: '+ids.map(policyTitle).join(' → '))}">${esc(ids.length>1?`${policyShort(ids[0],true)} → ${policyShort(last,true)}`:policyShort(last))}</span>`:'';
+    const when=recordIsActive(r)?'now':relativeTime(r.created_at??r.started_at,shortRecordTime(r)).replace(/ ago$/,'').split(' · ')[0];
+    const meta=[runOwnName(r),modelShort(r.model),when].filter(Boolean).join(' · ');
+    return `<article class="ab-tr-run" data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-tone="${recordTone(r)}"><button type="button" class="ab-tr-main" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}">${pins.has(r.run_id)?'<span class="ab-tr-pin">★</span>':''}${tag}<span class="ab-tr-meta">${esc(meta)}</span>${treeOutcome(r)}</button><details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin':'Pin to top'}</button><small>Started ${esc(dateTime(r.created_at??r.started_at))}${r.seed!=null?` · seed ${esc(r.seed)}`:''}</small></div></details></article>`;
+  }
+  function treeRuns(key,rows){
+    const sorted=[...rows].sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0));
+    const all=expandedHistory.has(key)||Boolean(sidebarQuery),shown=all?sorted:sorted.slice(0,5);
+    return shown.map(treeRow).join('')+(sorted.length>5&&!sidebarQuery?`<button type="button" class="ab-tr-more" data-history-more="${esc(key)}">${all?'Show fewer':`Show ${sorted.length-5} more`}</button>`:'');
+  }
+  // Preview only (?demo=people): fake owners on local runs so the Remote person layer can be seen off qifei.
+  const DEMO_PEOPLE=new URLSearchParams(location.search).get('demo')==='people';
+  const personOfRun=r=>r.lobby||(DEMO_PEOPLE?(()=>{const n=[...String(r.run_id)].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%997,0)%3;return [{mine:true,nickname:'Zhuohan',person:'Zhuohan'},{mine:false,nickname:'yishao',person:'yishao'},{mine:false,nickname:'qifei',person:'qifei'}][n];})():null);
+  function treeNavHtml(rows){
+    if(!rows.length)return '';
+    const current=selectedDev||selectedRun,lobby=window.Lobby?.enabled||DEMO_PEOPLE;
+    const tasks=new Map();for(const r of rows){const k=r.task_id||taskTitle(r);if(!tasks.has(k))tasks.set(k,[]);tasks.get(k).push(r);}
+    return [...tasks].sort((a,b)=>recentOf(b[1])-recentOf(a[1])).map(([task,list])=>{
+      const tkey=`task:${task}`,has=list.some(r=>r.run_id===current||r.session_id===current);
+      const open=sidebarQuery?true:treeOpen.has(tkey)?treeOpen.get(tkey):has;
+      const live=list.filter(recordIsActive).length,wait=list.filter(r=>recordTone(r)==='waiting'&&recordIsActive(r)).length;
+      const flag=wait?`<span class="ab-tr-flag" data-o="wait">${wait} need${wait===1?'s':''} help</span>`:live?`<span class="ab-tr-flag" data-o="live">${live} running</span>`:'';
+      const byPol=new Map();for(const r of list){const p=runPolicy(r).at(-1)||'';if(!byPol.has(p))byPol.set(p,{n:0,ok:0});const e=byPol.get(p);e.n++;if(recordTone(r)==='success')e.ok++;}
+      let pick=treePolicy.get(task)||'';if(pick&&!byPol.has(pick)){pick='';treePolicy.delete(task);}
+      const chips=byPol.size>1||pick?`<div class="ab-tr-pols" role="group" aria-label="Filter by help policy"><button type="button" data-tree-policy="" data-tree-task="${esc(task)}" aria-pressed="${!pick}">All</button>${[...byPol].filter(([p])=>p).sort((a,b)=>b[1].n-a[1].n).map(([p,e])=>`<button type="button" data-tree-policy="${esc(p)}" data-tree-task="${esc(task)}" data-pol="${esc(POLICY_TONE[p]||'other')}" aria-pressed="${pick===p}" title="${esc(`${policyTitle(p)}: ${e.ok} solved of ${e.n} runs`)}">${esc(policyShort(p))} <i>${e.ok}/${e.n}</i></button>`).join('')}</div>`:'';
+      const shown=pick?list.filter(r=>(runPolicy(r).at(-1)||'')===pick):list;
+      let body;
+      if(lobby){
+        const people=new Map();for(const r of shown){const c=personOfRun(r),k=c?(c.mine?'0me':`1${window.Lobby.personOf(c)}`):'0me';if(!people.has(k))people.set(k,[]);people.get(k).push(r);}
+        body=[...people].sort((a,b)=>a[0].startsWith('0')?-1:b[0].startsWith('0')?1:recentOf(b[1])-recentOf(a[1])).map(([pk,prs])=>{
+          const c=personOfRun(prs[0])||{mine:true,nickname:'You'},name=c.mine?`${window.Lobby.personOf(c)} (you)`:window.Lobby.personOf(c);
+          const key=`${tkey}|${pk}`,pHas=prs.some(r=>r.run_id===current||r.session_id===current);
+          const pOpen=sidebarQuery?true:treeOpen.has(key)?treeOpen.get(key):(pHas||c.mine||prs.some(recordIsActive));
+          const ok=prs.filter(r=>recordTone(r)==='success').length,pw=prs.filter(r=>recordTone(r)==='waiting'&&recordIsActive(r)).length;
+          return `<details class="ab-tr-person" data-tree-node="${esc(key)}" ${pOpen?'open':''}><summary>${window.Lobby.avatar(c,'sm')}<b>${esc(name)}</b>${pw?`<span class="ab-tr-flag" data-o="wait">${c.mine?'Needs you':'Needs a person'}</span>`:''}<small>${prs.length} · ${ok} solved</small></summary><div class="ab-tr-runs">${treeRuns(key,prs)}</div></details>`;
+        }).join('');
+      }else body=treeRuns(tkey,shown);
+      return `<details class="ab-tr-task" data-tree-node="${esc(tkey)}" data-viewing="${has}" ${open?'open':''}><summary><span class="ab-tr-chev" aria-hidden="true">›</span><b title="${esc(taskTitle(list[0]))}">${esc(taskTitle(list[0]))}</b>${flag}<small>${list.length}</small></summary>${chips}<div class="ab-tr-body">${body||'<p class="ab-sidebar-empty">No runs with this policy.</p>'}</div></details>`;
+    }).join('');
+  }
   function sidebarRunCard(r,grouped=false){
     const flat=grouped==='flat';
     const viewing=r.development?r.session_id===selectedDev:!selectedDev&&r.run_id===selectedRun;
@@ -684,7 +747,7 @@
     // 11-11 (user): no "Archived · unlinked records" fold; a run whose task has no known title stays in the list under its task id.
     const linked=records;
     const deleted=deletedNavigationRecords();
-    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
+    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.model||''} ${runPolicy(r).map(p=>policyShort(p)+' '+policyTitle(p)).join(' ')} ${r.lobby?window.Lobby.personOf(r.lobby):''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>runListMode==='flat'&&!DEBUG_VIEW||Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
     const flatView=!DEBUG_VIEW&&runListMode==='flat';  // 11-11 (user): the flat list no longer has the status-filter/grouping fold
     const chipRecords=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''} ${r.lobby?.nickname||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches);
     if(sidebarTask&&!chipRecords.some(r=>r.task_id===sidebarTask))sidebarTask='';
@@ -698,11 +761,11 @@
     const local=run&&switchRequests.get(run.run_id);
     const pending=request?.state==='Pending'||local?.state==='Requested';
     const executing=navigationRecords().filter(r=>recordIsActive(r)&&window.Lobby.isMine(r));
-    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, name or robot"></span></label>
-      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${flatView?flatControlsHtml(chipRecords):''}${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
+    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, policy, model or person"></span></label>
+      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
       ${historyNotice?`<p class="ab-history-notice" data-history-notice role="status">${esc(historyNotice.message)}${historyNotice.kind?` <button type="button" data-history-undo>Undo</button>`:''}</p>`:''}
       ${DEBUG_VIEW ? `<details class="ab-record-jump"><summary>Jump to a record</summary><label class="live-run-picker">Viewing record<select id="ab-live-run" aria-label="Viewing record">${linked.map(r=>`<option value="${esc(r.run_id)}" ${r.run_id===(selectedDev||selectedRun)?'selected':''}>${esc(displayRun(r))}</option>`).join('')}</select></label></details>` : ''}
-      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${flatView?(flatNavHtml(flatRows)||'<p class="ab-sidebar-empty">No matching runs.<small>Try another task, person or search.</small></p>'):[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows],i,list)=>`${window.Lobby.groupDivider(group,i,list)}<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
+      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${flatView?(treeNavHtml(candidates)||'<p class="ab-sidebar-empty">No matching runs.<small>Try another task, person or search.</small></p>'):[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows],i,list)=>`${window.Lobby.groupDivider(group,i,list)}<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
       ${deleted.length?`<details class="ab-deleted-history" data-deleted-history><summary>Deleted records · ${deleted.length}</summary><small>Restore a record to return it to task history.</small>${deleted.map(r=>sidebarRunCard(r)).join('')}</details>`:''}
       ${DEBUG_VIEW ? `<section class="ab-policy-controller" data-policy-controller aria-label="Policy controller"><header class="ab-control-header"><span class="ab-control-icon">${sidebarControlIcon('controller')}</span><div><h2>Policy controller</h2><h3>Choose how this run requests help</h3></div><span class="ab-control-mode" data-read-only="${Boolean(readOnly)}">${readOnly?sidebarControlIcon('lock'):''}${readOnly?'Read-only':'Live'}</span></header><div class="ab-policy-context" title="${esc(run?displayRun(run):'No run selected')}"><span class="ab-context-label">${selectedDev?(readOnly?'Viewing Dev history':'Controlling Dev session'):'Viewing run'}</span><div><strong>${esc(run?taskDisplayName(run):'No run selected')}</strong>${run?`<span>${esc(recordTime(run))}</span>`:''}</div></div>${DEBUG_VIEW ? `<small class="ab-policy-note">${esc(selectedDev?(c?.binding?c.reason||'':''):readOnly?'Read-only history or frozen binding.':'Changes apply after executor confirmation at a safe action boundary.')}</small>` : ''}
       ${DEBUG_VIEW && selectedDev?devPolicySummary(c,currentSnapshot?.dev_session,readOnly,history,pending)+devPolicyUnavailable(c,currentSnapshot?.dev_session):''}
@@ -719,6 +782,8 @@
     sidebar.querySelectorAll('[data-task-group]').forEach(d=>d.querySelector(':scope > summary').addEventListener('click',()=>taskGroupChoices.set(`${selectedDev||selectedRun}:${d.dataset.taskGroup}`,!d.open)));
     sidebar.querySelectorAll('[data-history-more]').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.historyMore;expandedHistory.has(key)?expandedHistory.delete(key):expandedHistory.add(key);renderSidebar();}));
     const search=sidebar.querySelector('[data-run-search]');search.addEventListener('input',()=>{sidebarQuery=search.value;renderSidebar();});
+    sidebar.querySelectorAll('details[data-tree-node]').forEach(d=>d.addEventListener('toggle',()=>{if(sidebarQuery)return;treeOpen.set(d.dataset.treeNode,d.open);treeSave();}));
+    sidebar.querySelectorAll('[data-tree-policy]').forEach(b=>b.addEventListener('click',()=>{const t=b.dataset.treeTask;b.dataset.treePolicy?treePolicy.set(t,b.dataset.treePolicy):treePolicy.delete(t);renderSidebar();}));
     sidebar.querySelectorAll('[data-sidebar-task]').forEach(b=>b.addEventListener('click',()=>{sidebarTask=b.dataset.sidebarTask;preference('attention.sidebar-task',sidebarTask);renderSidebar();}));
     sidebar.querySelectorAll('[data-sidebar-layout]').forEach(b=>b.addEventListener('click',()=>{runListMode=b.dataset.sidebarLayout;preference('attention.sidebar-layout',runListMode);renderSidebar();}));
     sidebar.querySelectorAll('[data-op-filter]').forEach(b=>b.addEventListener('click',()=>{sidebarFilter=b.dataset.opFilter;preference('attention.sidebar-filter',sidebarFilter);renderSidebar();}));
