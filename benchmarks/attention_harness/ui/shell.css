@@ -726,8 +726,26 @@ html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run:hover .ab-reco
 html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more{display:block;height:auto!important;margin:2px 0 0!important;padding:4px 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:500 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
 html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more:hover{color:var(--sh-ink)!important}
 html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::before,html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::after{display:none!important;content:none!important}
-/* 11-18 ui改动: skipped waits = thin always-visible divider (no Show/Hide button) */
-html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line{display:flex!important;align-items:center;gap:10px;margin:2px 0!important;padding:4px 0!important;min-height:0!important;border:0!important;border-radius:0!important;background:transparent!important;cursor:pointer}
-html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line::before,html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line::after{content:"";flex:1;height:0;border-top:1px dashed var(--rk-line,var(--sh-line))}
-html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line>span{flex:none;font:500 11px "DM Sans",system-ui,sans-serif!important;color:var(--rk-dim,var(--sh-mut))!important;filter:none!important;text-align:center;letter-spacing:.01em}
-html body #attentionbench-clear[data-operator-view="true"] .view .op-skip.op-skip-line:hover>span{color:var(--rk-ink,var(--sh-ink))!important}
+/* 11-18 ui改动: skipped wait = a gap in the step timeline (same grid as a step) */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap{display:grid!important;grid-template-columns:46px 18px minmax(0,1fr);gap:8px;align-items:center;margin:0!important;padding:0 8px!important;min-height:22px!important;border:0!important;border-radius:7px!important;background:transparent!important;cursor:pointer}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>i{justify-self:center;align-self:stretch;width:0;border-left:2px dotted var(--rk-line,var(--sh-line))}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>span{font:italic 400 11.5px "DM Sans",system-ui,sans-serif!important;color:var(--rk-dim,var(--sh-mut))!important;filter:none!important;text-align:left!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap:hover{background:var(--rk-hover,var(--sh-chip))!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap:hover>span{color:var(--rk-text,var(--sh-ink))!important}
+/* 11-18 ui改动: Deleted fold in the tree's own style */
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-deleted-history.ab-tr-deleted{margin:10px 0 0;padding:0;border:0;border-radius:12px;background:transparent}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;list-style:none;cursor:pointer;font:500 13px "DM Sans",system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:var(--sh-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary::-webkit-details-marker{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary::before{content:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary:hover{background:var(--sh-chip);color:var(--sh-ink)!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary svg{width:15px;height:15px;flex:none}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary b{flex:1;font-weight:500}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary small{font-size:12px}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted[open]{background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line);padding-bottom:6px}
+.ab-tr-delrow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px}
+.ab-tr-delrow:hover{background:var(--sh-chip)}
+.ab-tr-delrow>span{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+.ab-tr-delrow b{font:500 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);overflow:hidden;text-overflow:ellipsis}
+.ab-tr-delrow small{font-size:11.5px;color:var(--sh-mut);opacity:.8}
+html body #attentionbench-clear .ab-sidebar .ab-tr-delrow button.ab-record-restore{flex:none;height:24px!important;margin:0!important;padding:0 10px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:transparent!important;color:var(--sh-ink)!important;font:500 11.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important;cursor:pointer}
+html body #attentionbench-clear .ab-sidebar .ab-tr-delrow button.ab-record-restore:hover{border-color:var(--sh-fill)!important;color:var(--sh-fill)!important}
