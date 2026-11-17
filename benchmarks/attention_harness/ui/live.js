@@ -1445,19 +1445,7 @@
       const ticks=()=>{
         if(!scrubber||!(video.duration>0))return;
         scrubber.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
-        // 11-18 ui改动 (user picked "heat strip"): one thin strip above the track; each 1 % of the bar is amber, darker the
-        // more waiting was cut there. Hover a patch to read the total.
-        const BINS=100,bins=new Array(BINS).fill(0),ranges=new Array(BINS).fill(null);
-        for(const b of trim.breaks){const k=Math.min(BINS-1,Math.max(0,Math.floor(b.trim_at/video.duration*BINS)));bins[k]+=Number(b.skipped_seconds||0);const r=ranges[k]||(ranges[k]={n:0,start:b.orig_start,end:b.orig_end});r.n++;r.end=b.orig_end;}
-        const top=Math.max(...bins);
-        if(top>0){
-          const strip=document.createElement('span');strip.className='op-skip-tick op-cut-strip';
-          bins.forEach((sec,k)=>{if(!sec)return;const cell=document.createElement('i');
-            cell.style.left=`${k}%`;cell.style.opacity=String(Math.min(1,0.3+0.7*Math.sqrt(sec/top)).toFixed(2));
-            cell.title=`${ranges[k].n>1?`${ranges[k].n} waits`:'A wait'} cut here · ${skipText(sec)} (real ${operatorTime(ranges[k].start)} → ${operatorTime(ranges[k].end)})`;
-            strip.append(cell);});
-          scrubber.append(strip);
-        }
+        // 11-18 ui改动 (user): the seek bar carries nothing but the track; cuts and stages are in the step list.
       };
       video.addEventListener('loadedmetadata',ticks,{once:true});ticks();
       const figure=video.closest('figure');
@@ -1519,9 +1507,6 @@
         if (!chapterData || !(duration > 0) || duration === chapterDuration) return;
         chapterDuration = duration;
         scrubber.querySelectorAll('.ab-chapter-tick,.ab-chapter-stop').forEach(el => el.remove());
-        chapterData.list.forEach(c => { if (c.at <= 0.05 || c.at >= duration) return;
-          const tick = document.createElement('span'); tick.className = 'ab-chapter-tick ab-chapter-gap'; tick.style.left = `${c.at / duration * 100}%`; tick.title = c.label; tick.dataset.label = c.label; scrubber.append(tick); });
-        if (chapterData.stop && chapterData.stop.at <= duration) { const s = document.createElement('span'); s.className = 'ab-chapter-stop'; s.style.left = `${chapterData.stop.at / duration * 100}%`; s.title = `Stopped at ${chapterData.stop.label}`; scrubber.append(s); }
       };
       const stageAt = position => { let label = ''; for (const c of chapterData?.list || []) if (c.at <= position + 0.05) label = c.label; return label || chapterData?.list?.[0]?.label || ''; };
       const update = () => {
@@ -2007,7 +1992,7 @@
     helpAlert.hidden = true; helpAlertKey = null; delete helpAlert.dataset.stage;
   }
   function lockHelpAlert() {
-    const panel = view.querySelector('[data-agent-reply]')?.closest('.ab-current-request');
+    const panel = view.querySelector('[data-agent-reply]')?.closest('.ab-current-request,.c2')||(chatDemo()?view.querySelector('.c2[data-asking="true"]'):null);
     if (!panel) { helpAlert.dataset.stage = 'rest'; return; }
     panel.scrollIntoView({block:'center'});
     const box = panel.getBoundingClientRect(), edge = 12;
@@ -2016,7 +2001,8 @@
     helpAlert.dataset.stage = 'lock';
   }
   function syncHelpAlert() {
-    const key = view.querySelector('[data-agent-reply]')?.dataset.executionId;
+    // ?demo=wait: the sample question also plays the page-wide call so it can be looked at (nothing is sent anywhere).
+    const key = view.querySelector('[data-agent-reply]')?.dataset.executionId||(chatDemo()&&view.querySelector('.c2[data-asking="true"]')?'demo-wait':null);
     if (!key) { if (helpAlertKey) stopHelpAlert(); return; }
     if (key === helpAlertKey) return;
     stopHelpAlert(); helpAlertKey = key;

@@ -115,6 +115,11 @@
       if (!st.ended) html += `<div class="c2-sys" data-feed-attempt="${n}">Attempt ${n} · ${m.executing ? 'running try ' + Number(String(m.executing).slice(1)) + ' now' : m.current.tries.length ? m.current.tries.length + (m.current.tries.length === 1 ? ' try' : ' tries') + ' so far' : 'nothing has run yet'}</div>`;
     }
     m.helps.filter(h => !claimed.has(h)).forEach(h => { claimed.add(h); html += exchange(m, h, helpNo.get(h)); });
+    // 11-18 ui改动 (as the trial page does): while the robot is running and not waiting for you, a spinner row says what it is doing.
+    if (st.kind === 'running' && !m.wait) {
+      const doing = m.executing ? 'Running try ' + Number(String(m.executing).slice(1)) : 'Thinking and writing its next code';
+      html += `<div class="c2-working" role="status"><span class="c2-spin" aria-hidden="true"></span><b>Working</b><i class="c2-ell" aria-hidden="true"></i><span>${esc(doing)}</span></div>`;
+    }
     (opts.memoryFailures || []).forEach(text => { html += `<div class="c2-sys bad" role="alert">Memory analysis error: ${esc(text)}</div>`; });
     if (m.wait) {
       html += `<div class="c2-msg" data-feed-wait><div class="c2-av">R</div><div class="c2-card ask live"><div class="c2-meta"><b>The robot asks you now</b>${m.wait.demo ? ' · <b class="c2-sample">SAMPLE, not a real request</b>' : ''}</div>${long(m.wait.question || '')}<div class="c2-count" data-c2-deadline="${esc(m.wait.deadline_at)}"></div></div></div>`;

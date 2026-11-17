@@ -813,3 +813,12 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-eve
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-stage-h[data-now="true"]>span{box-shadow:none;background:var(--sh-fill);color:#fff}
 /* 11-18 ui改动: next to the video the step list needs no title; only the Trimmed/Original switch stays, on the right */
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head[data-bare="true"]{justify-content:flex-end;margin-bottom:6px}
+/* 11-18 ui改动: "Working…" row in the conversation (like the trial page) */
+.c2-working{display:flex;align-items:center;gap:8px;margin:6px 4px 2px 42px;padding:7px 12px;border-radius:999px;background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line);font:500 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);width:fit-content;max-width:calc(100% - 46px)}
+.c2-working b{font-weight:600;color:var(--sh-ink)}
+.c2-working>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c2-spin{flex:none;width:13px;height:13px;border-radius:50%;border:2px solid color-mix(in srgb,var(--sh-fill) 25%,transparent);border-top-color:var(--sh-fill);animation:c2-spin .9s linear infinite}
+.c2-ell::after{content:"";animation:c2-ell 1.2s steps(4,end) infinite}
+@keyframes c2-spin{to{transform:rotate(360deg)}}
+@keyframes c2-ell{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
+@media(prefers-reduced-motion:reduce){.c2-spin,.c2-ell::after{animation:none}.c2-ell::after{content:"…"}}
