@@ -5430,6 +5430,24 @@
 
   // End operator presentation.
   // Page title, the same pattern as the Memory monitor's: amber eyebrow, condensed headline, the run's status on the right.
+  // 11-18 (user, 03 split): what this run is, in one line under the title.
+  function operatorRunLine(snapshot) {
+    const run=snapshot.run,config=snapshot.dev_session?.locked?.config||{};
+    const arm={both:'both arms',left:'left arm',right:'right arm',single:'single arm'}[run.robot?.execution_arm||config.execution_arm];
+    const robot=String(run.robot?.model||config.robot||'').replace('OpenArm365','OpenArm');
+    const description=snapshot.task_plan?.definition?.description;
+    return [description&&description!==taskTitle(run)?String(description).replace(/[.\s]+$/,''):'',robot?`${robot}${arm?' · '+arm:''}`:'',run.seed==null?'':`seed ${run.seed}`].filter(Boolean).join(' · ');
+  }
+  // How far along and how much is left: attempts and wall time (Remote has no time limit).
+  function operatorRunMeter(snapshot) {
+    const a=snapshot.agent;if(!a?.limits)return '';
+    const limit=a.limits.formal_versions,used=a.counts?.formal_versions??0,ended=isTerminal(snapshot);
+    const hours=t=>{const h=Math.floor(t/3600),m=Math.round(t%3600/60);return h?`${h} h${m?` ${m} min`:''}`:`${m} min`;};
+    const attempts=ended?`${used} of ${limit} attempts used`:`Attempt ${Math.min(limit,used+1)} of ${limit}`;
+    const time=a.wall_limit?`${hours(a.wall_seconds||0)} of ${hours(a.wall_limit)}`:'';
+    const pctA=Math.min(100,used/limit*100),pctT=a.wall_limit?Math.min(100,(a.wall_seconds||0)/a.wall_limit*100):0;
+    return `<span class="op-title-meter" title="Attempts used and time used (paused time does not count)"><span><b>${esc(attempts)}</b><i style="--p:${pctA}%"></i></span>${time?`<span><b>${esc(time)}</b><i style="--p:${pctT}%"></i></span>`:''}</span>`;
+  }
   function operatorTitle(snapshot) {
     const run = snapshot.run, name = taskTitle(run), cut = name.indexOf(':');
     const receipts = (snapshot.dev_v2?.jobs || []).map(job=>job.receipt || {}).filter(Boolean);
@@ -5453,7 +5471,7 @@
     const forkSource = fork ? navigationRecords().find(r => r.session_id === `v2-${fork.cell}`) : null;
     const forkWhen = forkSource ? relativeTime(forkSource.created_at) : '';
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">${forkIcon(13)}Continued from Attempt ${esc(fork.version)}${forkWhen ? ` · ${esc(forkWhen)}` : ''}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${devNote}${status}${newRun}${more}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1>${operatorRunLine(snapshot)?`<p class="op-title-sub">${esc(operatorRunLine(snapshot))}</p>`:''}</div><div class="op-title-actions">${operatorRunMeter(snapshot)}${devNote}${status}${newRun}${more}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
@@ -5681,7 +5699,8 @@
     const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
     const costNote=selected?(snapshot.agent?(selected.responder==='human_assisted'?'Assisted reply · no human attention':selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
     const detail=snapshot.agent?agentTimelineDetail(snapshot,selected):selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].filter(([key])=>!(key==='rate'&&rate==='—')).map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const helpLeft=snapshot.agent?.limits?.help!=null?Math.max(0,snapshot.agent.limits.help-(snapshot.agent.counts?.help??g.requests)):null;
+    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}${helpLeft!=null?` · ${helpLeft} left`:''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].filter(([key])=>!(key==='rate'&&rate==='—')).map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     // 10-30: the legend lists only marks this run shows; ✓/✕ attempts and the labelled cost bars explain themselves.
     const legend=[model.requests.some(r=>r.responder==='advisor')?'<span><i class="automatic"></i>Automatic advisor</span>':'',
       model.requests.some(r=>r.responder==='human')?'<span><i class="person"></i>Person replied</span>':'',
@@ -6010,6 +6029,9 @@
     const chat=chatSection(snapshot);
     const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
+    // 11-18 (user, 03 split): no Setup & resources section; the same content opens from ⓘ Run details beside the title.
+    if(title){const details=`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Run details</summary><div class="op-run-details-body"><div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></div></details>`;
+      return title.replace(/<\/div><\/header>$/,`${details}</div></header>`)+execution+progress+chat;}
     return title+execution+progress+setup+chat;
   }
   function workspaceHTML(snapshot,chosen) {
