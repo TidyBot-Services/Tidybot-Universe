@@ -1395,6 +1395,11 @@
     const trim=Object.values(snapshot.traces).find(t=>t.attempt_id===panel.dataset.replayAttempt)?.trim;
     const active=Boolean(trim&&video.hasAttribute('data-trim-active'));
     video.trimInfo=active?trim:null;
+    panel.querySelectorAll('.op-stage-h[data-replay-seconds]').forEach(row=>{
+      const go=()=>video.requestReplaySeek?.(Number(row.dataset.replaySeconds),'moment');
+      row.addEventListener('click',go);
+      row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();go();}});
+    });
     panel.querySelectorAll('[data-trim-break]').forEach(row=>{
       const go=()=>video.requestReplaySeek?.(Number(row.dataset.trimAt),'moment');
       row.addEventListener('click',go);
@@ -1413,10 +1418,18 @@
       const ticks=()=>{
         if(!scrubber||!(video.duration>0))return;
         scrubber.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
-        for(const b of trim.breaks) {
+        // 11-18 ui改动 (user: a long video was a wall of ticks): cuts closer than 2 % of the bar merge into one small
+        // dot under the track; its tooltip adds them up.
+        const merged=[];
+        for(const b of [...trim.breaks].sort((x,y)=>x.trim_at-y.trim_at)){
+          const last=merged.at(-1);
+          if(last&&(b.trim_at-last.trim_at)/video.duration<0.02){last.n++;last.skipped+=Number(b.skipped_seconds||0);last.end=b.orig_end;}
+          else merged.push({trim_at:b.trim_at,n:1,skipped:Number(b.skipped_seconds||0),start:b.orig_start,end:b.orig_end});
+        }
+        for(const m of merged) {
           const tick=document.createElement('span');
-          tick.className='op-skip-tick';tick.style.left=`${pct(b.trim_at,video.duration)}%`;
-          tick.title=`Skipped ${skipText(b.skipped_seconds)} (real ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)})`;
+          tick.className='op-skip-tick op-skip-dot';tick.style.left=`${pct(m.trim_at,video.duration)}%`;
+          tick.title=`${m.n>1?`${m.n} waits`:'A wait'} cut · ${skipText(m.skipped)} (real ${operatorTime(m.start)} → ${operatorTime(m.end)})`;
           scrubber.append(tick);
         }
       };
@@ -1481,7 +1494,7 @@
         chapterDuration = duration;
         scrubber.querySelectorAll('.ab-chapter-tick,.ab-chapter-stop').forEach(el => el.remove());
         chapterData.list.forEach(c => { if (c.at <= 0.05 || c.at >= duration) return;
-          const tick = document.createElement('span'); tick.className = 'ab-chapter-tick'; tick.style.left = `${c.at / duration * 100}%`; tick.title = c.label; tick.dataset.label = c.label; scrubber.append(tick); });
+          const tick = document.createElement('span'); tick.className = 'ab-chapter-tick ab-chapter-gap'; tick.style.left = `${c.at / duration * 100}%`; tick.title = c.label; tick.dataset.label = c.label; scrubber.append(tick); });
         if (chapterData.stop && chapterData.stop.at <= duration) { const s = document.createElement('span'); s.className = 'ab-chapter-stop'; s.style.left = `${chapterData.stop.at / duration * 100}%`; s.title = `Stopped at ${chapterData.stop.label}`; scrubber.append(s); }
       };
       const stageAt = position => { let label = ''; for (const c of chapterData?.list || []) if (c.at <= position + 0.05) label = c.label; return label || chapterData?.list?.[0]?.label || ''; };
@@ -5103,12 +5116,21 @@
       const stopAt=stop?at(stop.index):null;
       chapters=`<i hidden data-replay-chapters="${esc(JSON.stringify({list,stop:Number.isFinite(stopAt)?{label:REPLAY_STAGES[stop.stage],at:stopAt}:null}))}"></i>`;
     }
-    return chapters+groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
+    // 11-18 ui改动 (user picked A+B): the list is grouped by the same seven stages as the seek-bar chapters, and each
+    // step is a dot on one timeline rail coloured by what it did (move / gripper / look / other).
+    const {starts:stageStarts,stop:stageStop}=replayChapters(events),stageAt=new Map();
+    for(const [stage,start] of stageStarts){let gi=-1;groups.forEach((g,i)=>{if(g.index<=start)gi=i;});if(gi<0)continue;if(!stageAt.has(gi))stageAt.set(gi,[]);stageAt.get(gi).push(stage);}
+    const STAGE_KIND=['find','reach','reach','grip','lift','lift','grip'];
+    const stageHead=(gi)=>{const list=stageAt.get(gi);if(!list)return '';const g=groups[gi],t=operatorReplayTarget(events,g.index,trace?.recording,hasVideo).seconds;
+      const stopped=stageStop&&list.includes(stageStop.stage);
+      return `<div class="op-stage-h" data-kind="${STAGE_KIND[list[0]]}"${stopped?' data-stopped="true"':''}${Number.isFinite(t)?` data-replay-seconds="${t}" role="button" tabindex="0" title="Jump to this stage"`:''}><span>${esc(list.map(k=>REPLAY_STAGES[k]).join(' · '))}${stopped?' · stopped here':''}</span><i></i>${Number.isFinite(t)?`<time>${operatorTime(t)}</time>`:''}</div>`;};
+    const stepKind=event=>{const op=String(event.operation||'').split('.').at(-1);return op==='find_objects'||/look|observe|camera/.test(op)?'find':op==='close'||op==='open'||/grip/.test(op)?'grip':op.startsWith('move')?'move':'act';};
+    return chapters+groups.map(({operation,event,index,count,text},gi)=>pending(event)+stageHead(gi)+(()=>{
       const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';
       const approximate=target.mode==='end'?'Near recording end':target.mode==='nearest'?'Near recorded step':'';
-      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||`Seek to recorded time${trimmedView&&event.timestamp_basis==='relative'?` · real ${operatorTime(event.timestamp)}`:''}`)}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
+      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||`Seek to recorded time${trimmedView&&event.timestamp_basis==='relative'?` · real ${operatorTime(event.timestamp)}`:''}`)}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span class="op-rail-dot" data-kind="${stepKind(event)}" data-s="${failed?'fail':event.status==='running'?'run':'ok'}" aria-label="${failed?'Failed':event.status==='running'?'Running':'Done'}">${failed?'✕':''}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
     })()).join('')+pending(null);
   }
   function loadingOverlay(kind) {

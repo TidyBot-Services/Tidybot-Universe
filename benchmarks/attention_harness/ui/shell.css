@@ -769,3 +769,38 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-layo
 .vs-resizing video{pointer-events:none}
 }
 @media(max-width:760px){.op-vsplit{display:none}}
+/* 11-18 ui改动 (A+B): step list = stage groups + one timeline rail with coloured dots */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head h4{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head{flex-wrap:nowrap}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary{position:relative}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary::before{content:""!important;display:block!important;position:absolute;left:70px;top:0;bottom:0;width:0;border-left:2px solid var(--rk-line2,#cfcabd)!important;z-index:0}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>i{border-left:2px dashed var(--rk-line,var(--sh-line))!important}
+.op-rail-dot{position:relative;z-index:1;justify-self:center;align-self:start;width:12px;height:12px;margin-top:4px;border-radius:50%;box-shadow:0 0 0 3px var(--rk-panel,var(--sh-card));display:flex;align-items:center;justify-content:center;font:700 8px/1 system-ui,sans-serif;color:#fff!important;background:#9a988f}
+.op-rail-dot[data-kind="move"]{background:#1d9e75}
+.op-rail-dot[data-kind="grip"]{background:#d85a30}
+.op-rail-dot[data-kind="find"]{background:#7f77dd}
+.op-rail-dot[data-s="fail"]{background:#c2372f;width:14px;height:14px;margin-top:3px}
+.op-rail-dot[data-s="run"]{background:#2f6fd0;animation:op-rail-pulse 1.4s ease-in-out infinite}
+@keyframes op-rail-pulse{50%{box-shadow:0 0 0 3px var(--rk-panel,var(--sh-card)),0 0 0 7px #2f6fd033}}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary>span.op-rail-dot{color:#fff!important}
+.op-stage-h{display:flex;align-items:center;gap:8px;margin:10px 0 2px;padding:2px 8px;border-radius:7px;cursor:pointer}
+.op-stage-h:first-child{margin-top:2px}
+.op-stage-h>span{flex:none;font:600 11px "DM Sans",system-ui,sans-serif;letter-spacing:.03em;padding:2px 9px;border-radius:999px;background:#ece9fb;color:#4b3fa8}
+.op-stage-h[data-kind="reach"]>span{background:#e3ebf4;color:#2f5a86}
+.op-stage-h[data-kind="grip"]>span{background:#fbe9e1;color:#a2401d}
+.op-stage-h[data-kind="lift"]>span{background:#e0f3ee;color:#0f6e56}
+.op-stage-h[data-stopped="true"]>span{background:#fbe3e1;color:#a32d2d}
+.op-stage-h>i{flex:1;height:0;border-top:1px solid var(--rk-line,var(--sh-line))}
+.op-stage-h>time{font:500 11px var(--mono,ui-monospace,monospace);color:var(--rk-dim,var(--sh-mut))}
+.op-stage-h:hover>i{border-top-color:var(--rk-dim,var(--sh-mut))}
+#attentionbench-clear[data-theme="dark"] .op-stage-h>span{background:#2e2a52;color:#c3bdf3}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="reach"]>span{background:#1d2c3d;color:#a9c6e6}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="grip"]>span{background:#4a2414;color:#f5c4b3}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="lift"]>span{background:#16382f;color:#9fe1cb}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-stopped="true"]>span{background:#4a1b1b;color:#f7c1c1}
+/* 11-18 ui改动: long videos — chapters are gaps that split the track (YouTube style); cut waits are small dots under it */
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap{width:3px;height:14px;margin-left:-1.5px;background:#16171a;opacity:1;border-radius:0;box-shadow:none}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap:hover{height:14px;background:#16171a}
+html body #attentionbench-clear[id][data-operator-view="true"] figure.op-video .op-skip-tick.op-skip-dot,html body #attentionbench-clear[id][data-operator-view="true"] .op-skip-tick.op-skip-dot{top:auto;bottom:-7px;width:4px;height:4px;transform:translateX(-50%);border-radius:50%;background:#fff;opacity:.45;pointer-events:auto}
+html body #attentionbench-clear[id][data-operator-view="true"] .op-skip-tick.op-skip-dot:hover{opacity:.9}
+#attentionbench-clear[data-theme="dark"] .ab-history-events .op-step>summary::before{border-left-color:#3a3d42!important}
