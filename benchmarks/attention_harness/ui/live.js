@@ -5831,6 +5831,49 @@
     if(!notes.length&&!errors.length&&!failures.length)return '';
     return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used">${notes.length?`<details data-persist-detail="memory-use:${esc(snapshot.run.run_id)}"><summary>Memory: received ${notes.length} note${notes.length===1?'':'s'} · used ${used}${considered?` · considered, not used ${considered}`:''}</summary>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}</details>`:''}${errors.join('')}${failures.join('')}</div>`;
   }
+  // ---- 11-18 experiment (8897): 02 conversation. Chart = map, conversation = story, composer at the bottom. ----
+  const chatDemo=()=>new URLSearchParams(location.search).get('demo')==='wait';  // sample only: ?…&demo=wait
+  function chatActive(snapshot){return Boolean(!DEBUG_VIEW&&snapshot?.agent&&snapshot.rawCell&&window.Chat02&&window.LiteModel);}
+  function chatSection(snapshot){
+    if(!chatActive(snapshot))return '';
+    let m;
+    try{m=LiteModel.build({view:snapshot.rawCell,exp:snapshot.rawExperiment||{},now:Date.now()/1000});}
+    catch(error){return `<p class="op-memory-error" role="alert">The conversation could not be drawn: ${esc(error.message)}</p>`;}
+    const own=!(root.dataset.remote==='1'&&snapshot.lobby?.mine!==true),wait=own?snapshot.agent.human_wait:null;
+    if(wait)m.wait={...wait,question:wait.question||m.wait?.question||''};
+    else if(chatDemo()&&!m.status.ended){const now=Date.now()/1000;m.wait={execution_id:'e000099',cell:m.key,question:(m.helps[0]&&m.helps[0].question)||'Where exactly should I put the item down?',deadline_at:now+74,seconds:m.waitSeconds||120,demo:true};}
+    const attemptIds=new Map((snapshot.attempts||[]).filter(a=>!a.try_number).map(a=>[a.index+1,a.attempt_id]));
+    const tryRecordings=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a.attempt_id]));
+    let html=Chat02.feed(m,{attemptIds,tryRecordings});
+    if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
+    const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
+    return `<div class="c2" data-c2><div class="c2-head-row"><h4>Conversation</h4><span>${m.helps.length} help · ${m.humanHints.length} from you · ${m.advisorHelps.length} from the AI advisor</span></div><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>`;
+  }
+  function chatScrollTo(selector){
+    const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
+    feed.closest('[data-c2]')?.scrollIntoView({block:'nearest',behavior:'smooth'});
+    feed.scrollTo({top:feed.scrollTop+el.getBoundingClientRect().top-feed.getBoundingClientRect().top-12,behavior:'smooth'});
+    el.classList.remove('c2-flash');void el.offsetWidth;el.classList.add('c2-flash');
+    return true;
+  }
+  // Sample countdown (the real one is ticked by the reply form's own [data-agent-reply-countdown] code).
+  setInterval(()=>{view.querySelectorAll('[data-c2-deadline]').forEach(el=>{const left=Math.max(0,Math.round(Number(el.dataset.c2Deadline)-Date.now()/1000));el.textContent=left?`${left} s left, then the AI advisor answers`:'The AI advisor is answering';});},1000);
+  function chatMarkTry(n){view.querySelectorAll('.op-try-mark.selected').forEach(g=>g.classList.remove('selected'));view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('selected');}
+  view.addEventListener('click',e=>{
+    if(!view.querySelector('[data-c2-feed]'))return;
+    const t=e.target;
+    const mark=t.closest?.('.op-try-link');
+    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);chatScrollTo(`[data-feed-try-${mark.dataset.tryNumber}]`);return;}
+    const help=t.closest?.('[data-attn-help]');
+    if(help){const n=(help.getAttribute('aria-label')||'').match(/Help #(\d+)/)?.[1];if(n&&chatScrollTo(`[data-feed-help="${n}"]`)){e.preventDefault();e.stopPropagation();}return;}
+    const att=t.closest?.('[data-attn-attempt]');
+    if(att&&t.closest('.op-attn-scroll')){if(chatScrollTo(`[data-feed-attempt="${att.dataset.attnAttempt}"]`)){e.preventDefault();e.stopPropagation();}return;}
+    const watchAttempt=t.closest?.('[data-c2-attempt]');
+    if(watchAttempt){e.preventDefault();[...view.querySelectorAll('.op-pill-attempt[data-history-select]')].find(b=>b.dataset.historySelect===watchAttempt.dataset.c2Attempt)?.click();view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:'smooth'});return;}
+    const tryButton=t.closest?.('[data-c2-try]');
+    if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);const id=[...(currentSnapshot?.attempts||[]),...(currentSnapshot?.try_attempts||[])].find(a=>String(a.try_number)===tryButton.dataset.c2Try)?.attempt_id;if(id)openTryRecording(id);return;}
+    if(t.closest?.('[data-c2-demo-send]')){const err=view.querySelector('[data-c2-demo-err]');if(err)err.textContent='This is a sample request, so nothing was sent.';}
+  },true);
   function operatorThreeParts(regions,snapshot) {
     if(DEBUG_VIEW)return regions.join('');
     let [settings,overview,execution,request,resources]=regions;
@@ -5857,7 +5900,8 @@
     // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
-    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}</section>`;
+    const chat=chatSection(snapshot);
+    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}${chat}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     return title+execution+progress+setup;
   }
@@ -5969,7 +6013,9 @@
       const pageY=window.scrollY;view.style.minHeight=view.offsetHeight+'px';
       requestAnimationFrame(()=>{view.style.minHeight='';if(Math.abs(window.scrollY-pageY)>1)window.scrollTo(0,pageY);});
     }
+    const oldFeed=view.querySelector('[data-c2-feed]'),feedState=oldFeed?{top:oldFeed.scrollTop,bottom:oldFeed.scrollHeight-oldFeed.scrollTop-oldFeed.clientHeight<40}:null;
     view.innerHTML = html;
+    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=!feedState||feedState.bottom?feed.scrollHeight:feedState.top;}
     view.querySelector('[data-sound-slot]')?.replaceWith(alertsButton);
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
@@ -6810,6 +6856,7 @@
     return `<div class="op-try-card${t.ok?'':' stopped'}" data-try-card="${esc(number)}"><div class="op-try-head"><div class="op-try-title"><b>Try ${esc(number)}</b><small>${esc(before)}</small>${state}</div><div class="op-try-actions">${watch}</div></div><p class="op-try-why">${esc(t.why||'No reason was recorded.')}</p>${help}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
+    if(chatActive(snapshot))return '';  // 11-18 experiment: the conversation below the chart is the detail
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
     const tryNumber=Number(stored(`attention.try:${snapshot.run.run_id}`));
     if(tryNumber){const card=agentTryCard(snapshot,tryNumber);if(card)return card;}
@@ -7040,10 +7087,11 @@
     if(cell.dev_mode==='agent'){
       const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs,Lobby.fingerprintOf(s.experiment_id)]);
       if(lastRendered===fingerprint && currentSnapshot?.agent){
-        currentSnapshot.agent=cell.agent;
+        currentSnapshot.agent=cell.agent;currentSnapshot.rawCell=cell;currentSnapshot.rawExperiment=experiment;
         return;
       }
       const snapshot=await agentWorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;
+      snapshot.rawCell=cell;snapshot.rawExperiment=experiment;  // 11-18 experiment: 02 conversation (Chat02 + LiteModel)
       enterAgentWorkspace(snapshot);
       selectedRun=s.session_id;render(snapshot);lastRendered=fingerprint;
       if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}

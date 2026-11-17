@@ -473,3 +473,63 @@ html body #attentionbench-clear .op-try-card .op-try-watch:hover{background:var(
 html body #attentionbench-clear .op-try-card .op-try-close{margin:0!important}
 html body #attentionbench-clear .op-try-card .op-try-norec{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);padding:0 6px}
 html body #attentionbench-clear .op-try-card .op-try-why{margin:6px 0 0;font:500 14px/1.5 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+
+/* 11-18 experiment (8897): 02 conversation */
+.c2{margin-top:16px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-panel);overflow:hidden}
+.c2-head-row{display:flex;align-items:baseline;gap:12px;padding:10px 16px;border-bottom:1px solid var(--sh-line2)}
+.c2-head-row h4{margin:0;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-amb)}
+.c2-head-row span{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.c2-feed{position:relative;max-height:520px;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:auto}
+.c2-msg{display:flex;align-items:flex-start;gap:10px;max-width:860px}
+.c2-msg.you{align-self:flex-end;justify-content:flex-end;max-width:760px}
+.c2-av{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--sh-ink);color:var(--sh-bg);font:700 12px "DM Sans",system-ui,sans-serif}
+.c2-av.adv{background:var(--sh-mut)}
+.c2-av.you{background:var(--sh-fill);color:#fff}
+.c2-card,.c2-bubble{min-width:0;padding:10px 14px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-card);color:var(--sh-ink);font:400 14px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-card p,.c2-bubble p{margin:4px 0 0}
+.c2-card.ask{background:var(--sh-chip);border-style:dashed}
+.c2-card.ask.live{border:1.5px solid var(--sh-acc);border-style:solid;box-shadow:0 0 0 4px color-mix(in srgb,var(--sh-acc) 14%,transparent)}
+.c2-bubble{background:color-mix(in srgb,var(--sh-fill) 10%,var(--sh-card));border-color:color-mix(in srgb,var(--sh-fill) 30%,var(--sh-line))}
+.c2-bubble.adv{background:var(--sh-sunk);border-color:var(--sh-line)}
+.c2-meta{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.c2-meta b{color:var(--sh-ink);font-weight:700}
+.c2-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.c2-tag{padding:2px 9px;border-radius:999px;font:600 11px "DM Sans",system-ui,sans-serif}
+.c2-tag.good{background:var(--sh-okbg);color:var(--sh-okink)}
+.c2-tag.bad{background:var(--sh-badbg);color:var(--sh-badink)}
+.c2-next{padding-left:10px;border-left:2px solid var(--sh-line);color:var(--sh-mut)}
+.c2-next b{color:var(--sh-ink)}
+.c2-dim{color:var(--sh-mut)}
+.c2-rows{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.c2-row{display:grid;grid-template-columns:10px 1fr auto;align-items:start;gap:8px;padding:3px 6px;border-radius:8px}
+.c2-mark{width:8px;height:8px;margin-top:7px;border-radius:50%;background:var(--sh-acc)}
+.c2-row.ok .c2-mark{background:var(--sh-card);border:1.5px solid var(--sh-mut);box-sizing:border-box}
+.c2-why{font:400 13.5px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-nums{display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:240px}
+.c2-nums small{color:var(--sh-mut);font:500 11px "DM Sans",system-ui,sans-serif;margin-right:2px}
+html body #attentionbench-clear .c2 .c2-try{min-width:24px;height:20px!important;margin:0!important;padding:0 5px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:none!important;font:600 11px "DM Sans",system-ui,sans-serif!important;cursor:pointer}
+html body #attentionbench-clear .c2 .c2-try.no{border-color:color-mix(in srgb,var(--sh-acc) 45%,var(--sh-line))!important}
+html body #attentionbench-clear .c2 .c2-try:hover{border-color:var(--sh-acc)!important;color:var(--sh-acc)!important}
+html body #attentionbench-clear .c2 .c2-watch{margin-left:auto!important;height:24px!important;padding:0 8px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-acc)!important;font:600 12.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .c2 .c2-watch:hover{background:var(--sh-chip)!important}
+.c2-more summary{list-style:none;cursor:pointer}
+.c2-more summary::-webkit-details-marker{display:none}
+.c2-more[open] .c2-short,.c2-more[open] .c2-show{display:none}
+.c2-show{margin-left:6px;color:var(--sh-acc);font-weight:600;font-size:12.5px}
+.c2-sys{align-self:center;padding:4px 12px;border-radius:999px;background:var(--sh-sunk);color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.c2-sys.bad{background:var(--sh-badbg);color:var(--sh-badink)}
+.c2-count{display:block;margin-top:6px;color:var(--sh-acc);font:700 13px "DM Sans",system-ui,sans-serif}
+.c2-sample{color:var(--sh-acc)}
+.c2-flash{animation:c2-flash 1.6s ease-out}
+@keyframes c2-flash{0%{background:color-mix(in srgb,var(--sh-acc) 22%,transparent)}100%{background:transparent}}
+.c2-composer{padding:12px 16px;border-top:1px solid var(--sh-line2);background:var(--sh-card)}
+.c2-composer label{display:block;margin-bottom:6px;font:600 12px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.c2-composer.off label,.c2-composer.off small,.c2-composer.off span{color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.c2-row-in{display:flex;gap:8px}
+.c2-row-in input{flex:1;min-width:0;height:38px;padding:0 14px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-panel);color:var(--sh-ink);font:400 14px "DM Sans",system-ui,sans-serif}
+html body #attentionbench-clear .c2-row-in button{height:38px!important;margin:0!important;padding:0 18px!important;border:0!important;border-radius:999px!important;background:var(--sh-fill)!important;color:#fff!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important}
+html body #attentionbench-clear .c2-row-in button:disabled{background:var(--sh-sunk)!important;color:var(--sh-mut)!important}
+html body #attentionbench-clear .c2-row-in .c2-alt{background:transparent!important;color:var(--sh-ink)!important;border:1px solid var(--sh-line)!important}
+.c2-composer small{display:block;margin-top:6px}
+.c2-err{color:var(--sh-acc)}
+.c2-composer.live .op-reply{margin:0}
