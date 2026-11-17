@@ -350,3 +350,62 @@ html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-l
 html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] p{max-width:46ch;margin:0;color:#8f8a7c;font:400 13px/1.5 "DM Sans",system-ui,sans-serif;text-wrap:balance}
 @media(max-width:760px){html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"]{aspect-ratio:auto;min-height:200px}html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b{white-space:normal;height:auto;min-height:40px;padding:8px 16px 8px 12px}}
 @media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .op-idle[data-lifecycle="robot_wait"] b::before{animation:none}}
+
+/* 11-18 ui改动: the theme switch is one round icon button */
+.ab-themes.ab-theme-one{padding:0;border:0;background:transparent}
+.ab-themes.ab-theme-one button{width:40px!important;height:40px!important;padding:0!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-chip)!important;color:var(--sh-mut)!important}
+.ab-themes.ab-theme-one button:hover{color:var(--sh-ink)!important;border-color:var(--sh-acc)!important}
+/* 11-18 ui改动: sound alerts live inside the Notices panel */
+.ab-notices-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ab-notices-head h2{margin:0}
+.ab-notices-head .ab-notices-sound{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--sh-line);border-radius:999px;background:transparent;color:var(--sh-mut);font:600 12px "DM Sans",system-ui,sans-serif;cursor:pointer}
+.ab-notices-head .ab-notices-sound[aria-pressed="true"]{color:var(--sh-ink);border-color:var(--sh-acc)}
+.ab-shell-top .ab-notices-button[data-sound="off"]::after{content:"";width:6px;height:6px;margin-left:-2px;border-radius:50%;background:var(--sh-mut);opacity:.6}
+/* 11-18 ui改动: dev tag sits next to the run status, the eyebrow line is gone, Run again / Continue live in a ⋯ menu */
+.op-title-dev{display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:999px;border:1px dashed var(--sh-line);color:var(--sh-mut);font:600 12px "DM Sans",system-ui,sans-serif;cursor:help}
+.op-more-menu{position:relative}
+.op-more-menu>summary{list-style:none;display:inline-grid;place-items:center;width:52px;height:52px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-chip);color:var(--sh-ink);font:700 20px/1 system-ui;cursor:pointer}
+.op-more-menu>summary::-webkit-details-marker{display:none}
+.op-more-menu>summary:hover,.op-more-menu[open]>summary{border-color:var(--sh-acc)}
+.op-more-menu>div{position:absolute;right:0;top:calc(100% + 8px);z-index:40;display:flex;flex-direction:column;min-width:280px;padding:6px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-card);box-shadow:var(--sh-shadow)}
+html body #attentionbench-clear[data-operator-view="true"] .op-more-menu>div button{display:flex;align-items:center;gap:8px;width:100%;height:auto;margin:0;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:var(--sh-ink);font:600 14px "DM Sans",system-ui,sans-serif;text-align:left;text-transform:none;letter-spacing:0;box-shadow:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-more-menu>div button:hover{background:var(--sh-chip)}
+html #attentionbench-clear[data-operator-view="true"] .op-page-title p:empty{display:none}
+html #attentionbench-clear[data-operator-view="true"] .op-page-title p:empty+h1{margin-top:0}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-more-menu>div button{font:600 14px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;border:0!important;background:transparent!important;box-shadow:none!important;height:auto!important;white-space:nowrap}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-more-menu>div button:hover{background:var(--sh-chip)!important;color:var(--sh-acc)!important}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-more-menu>div button{padding:10px 14px!important;border-radius:10px!important}
+
+/* 11-18 ui改动: no Notices button. Errors show in a strip under the bar, a dot on the Memory tab, or a toast. */
+.ab-shell-top .ab-notices-host{display:none!important}
+.ab-run-notice-banner[hidden]{display:none!important}
+.ab-run-notice-banner:not([hidden]){display:flex!important;align-items:center;justify-content:space-between;gap:16px;margin:0;padding:10px 24px;border-bottom:1px solid var(--sh-line);background:var(--sh-badbg);color:var(--sh-badink);font:500 13px/1.45 "DM Sans",system-ui,sans-serif}
+.ab-run-notice-banner ul{margin:0;padding:0;list-style:none;display:grid;gap:3px}
+.ab-run-notice-banner li[data-level="warning"]{color:var(--sh-warnink)}
+.ab-run-notice-banner li small{opacity:.75;font-size:12px}
+.ab-run-notice-banner .ab-strip-more{opacity:.7;font-size:12px}
+.ab-run-notice-banner button{flex:none;height:32px;padding:0 14px;border:1px solid currentColor;border-radius:999px;background:transparent;color:inherit;font:600 12px "DM Sans",system-ui,sans-serif;cursor:pointer}
+.ab-pages a[data-page="memory"].ab-has-error::after{content:"";width:7px;height:7px;margin-left:2px;border-radius:50%;background:var(--sh-acc);box-shadow:0 0 0 2px var(--sh-chip)}
+.ab-notice-toasts[hidden]{display:none}
+.ab-notice-toasts{position:fixed;right:20px;bottom:20px;z-index:200;display:grid;gap:8px;max-width:360px}
+.ab-notice-toasts p{margin:0;padding:10px 14px;border:1px solid var(--sh-line);border-left:3px solid var(--sh-acc);border-radius:10px;background:var(--sh-card);color:var(--sh-ink);box-shadow:var(--sh-shadow);font:500 13px/1.4 "DM Sans",system-ui,sans-serif}
+.op-sound-toggle{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--sh-line);border-radius:999px;background:transparent;color:var(--sh-mut);font:600 12px "DM Sans",system-ui,sans-serif;cursor:pointer}
+.op-sound-toggle[aria-pressed="true"]{color:var(--sh-ink);border-color:var(--sh-acc)}
+
+/* 11-18 ui改动: note reuse confirmation in 02 (the Memory page is gone) */
+.op-reuse-box{margin-top:14px;padding-top:12px;border-top:1px dashed var(--sh-line);display:grid;gap:8px}
+.op-reuse-box>p{margin:0}
+.op-reuse-actor{display:flex;align-items:center;gap:8px;font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-reuse-actor input{height:28px;padding:0 10px;border:1px solid var(--sh-line);border-radius:8px;background:var(--sh-card);color:var(--sh-ink);font:500 13px "DM Sans",system-ui,sans-serif}
+.op-reuse{border:1px solid var(--sh-line);border-radius:10px;background:var(--sh-card);padding:0 12px}
+.op-reuse>summary{display:flex;justify-content:space-between;gap:12px;padding:10px 0;cursor:pointer;font:500 13px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-reuse>summary span{flex:none;color:var(--sh-mut);font-size:12px}
+.op-reuse-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.op-reuse-pair h5{margin:0 0 4px;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--sh-amb)}
+.op-reuse-pair p{margin:0;font:400 13px/1.5 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-reuse-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+html body #attentionbench-clear .op-reuse-actions button{height:30px;padding:0 12px;border:1px solid var(--sh-line);border-radius:999px;background:transparent;color:var(--sh-ink);font:600 12px "DM Sans",system-ui,sans-serif;text-transform:none;letter-spacing:0}
+html body #attentionbench-clear .op-reuse-actions button[aria-pressed="true"]{background:var(--sh-fill);border-color:var(--sh-fill);color:#fff}
+.op-reuse [data-reuse-status]{display:block;min-height:16px;padding-bottom:8px;color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+@media(max-width:760px){.op-reuse-pair{grid-template-columns:1fr}}
+html body #attentionbench-clear .op-heading .op-sound-toggle{font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;margin-right:8px}

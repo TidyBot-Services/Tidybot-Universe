@@ -136,7 +136,7 @@
   const demoVersions=demo?Math.max(1,Math.min(12,Number(demo[2]||5))):5;
   let experimentId=match?.[1]||null,data=null,previous=null,view='2d',version=0,layer='all',usedOnly=false,selected=null,canOperate=false,globe=null,flashUntil=new Map(),pollTimer=null;
   let readFlights=[],demoTick=0,demoSeq=0;
-  const noticeController=global.AttentionNotices.createNotices({mount:$('memory-notices'),experiment:()=>experimentId});
+  const noticeController=global.AttentionNotices.createNotices({mount:$('memory-notices'),experiment:()=>experimentId,memoryInStrip:true});
   global.AttentionNotices.installFetchCapture(noticeController);
   if(shell&&$('side')){
     shell.drawer({button:$('tasks'),wrap:$('wrap'),key:'attention.memory.tasks',open:false});

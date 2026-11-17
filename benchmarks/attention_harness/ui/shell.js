@@ -5,7 +5,8 @@
   // and the task rail. Each page keeps its own content and its own data.
   const doc = global.document;
   const THEME_KEY = 'attention.theme', OLD_MEMORY_KEY = 'attention.memory.theme';
-  const PAGES = [['home', 'Home', '/ui/home.html'], ['run', 'Run', '/ui/'], ['memory', 'Memory', '/ui/memory.html']];
+  // 11-18 (user, ui改动): the Memory page is gone; note reuse is confirmed in the Run page's 02 section.
+  const PAGES = [['home', 'Home', '/ui/home.html'], ['run', 'Run', '/ui/']];
   // Run status words, the same as the main UI's task list (live.js recordStatus).
   const TAGS = {completed: ['bad', 'Not solved'], needs_review: ['', 'Needs review'], failed: ['bad', 'Failed'], cancelled: ['', 'Stopped'], stopped: ['', 'Stopped'],
     condition_invalid: ['bad', 'Condition invalid'], budget_exhausted: ['', 'Budget reached'], running: ['run', 'Running'], planned: ['run', 'Waiting'], not_started: ['', 'Not started']};
@@ -38,9 +39,17 @@
     pill.style.transform = `translateX(${target.offsetLeft}px)`;
   }
 
+  // 11-18 (user, ui改动): one icon instead of the Light | Dark pair; it shows the theme a click switches to.
+  const THEME_ICONS = {
+    dark: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+    light: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'};
   function paintTheme(group) {
-    group.querySelectorAll('button[data-theme]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === theme)));
-    slide(group, group.querySelector(`button[data-theme="${theme}"]`), group.dataset.ready === '1');
+    const toggle = group.querySelector('button[data-theme-toggle]');
+    if (!toggle) return;
+    const next = theme === 'dark' ? 'light' : 'dark';
+    toggle.innerHTML = THEME_ICONS[next];
+    toggle.title = next === 'dark' ? 'Switch to dark' : 'Switch to light';
+    toggle.setAttribute('aria-label', toggle.title);
   }
 
   function setTheme(name) {
@@ -54,12 +63,11 @@
 
   function themeSwitch(group) {
     if (!group) group = doc.createElement('div');
-    if (!group.querySelector('button[data-theme]')) group.innerHTML = '<button type="button" data-theme="light">Light</button><button type="button" data-theme="dark">Dark</button>';
-    if (!group.querySelector('.ind')) group.insertAdjacentHTML('afterbegin', '<span class="ind" aria-hidden="true"></span>');
-    group.classList.add('ab-themes');
+    group.innerHTML = '<button type="button" data-theme-toggle></button>';
+    group.classList.add('ab-themes', 'ab-theme-one');
     group.setAttribute('role', 'group');
     group.setAttribute('aria-label', 'Theme');
-    group.addEventListener('click', e => { const b = e.target.closest('button[data-theme]'); if (b) setTheme(b.dataset.theme); });
+    group.addEventListener('click', e => { if (e.target.closest('button[data-theme-toggle]')) setTheme(theme === 'dark' ? 'light' : 'dark'); });
     switches.push(group);
     settle(group, () => { paintTheme(group); group.dataset.ready = '1'; });
     return group;
@@ -85,6 +93,7 @@
     if (remote && !gateway) page = 'remote';
     if (!nav.querySelector('a[data-page]')) nav.innerHTML = pages.map(([id, label, href]) => `<a href="${href}" data-page="${id}">${label}${id === 'memory' ? '<b class="ab-badge" hidden></b>' : ''}</a>`).join('');
     for (const [id, label, href] of extras) if (!nav.querySelector(`a[data-page="${id}"]`)) nav.insertAdjacentHTML('beforeend', `<a href="${href}" data-page="${id}">${label}</a>`);  // pages with a fixed tab list
+    nav.querySelectorAll('a[data-page="memory"]').forEach(a => a.remove());  // pages with a fixed tab list
     if (!nav.querySelector('.ind')) nav.insertAdjacentHTML('afterbegin', '<span class="ind" aria-hidden="true"></span>');
     nav.classList.add('ab-pages');
     nav.setAttribute('aria-label', 'Pages');

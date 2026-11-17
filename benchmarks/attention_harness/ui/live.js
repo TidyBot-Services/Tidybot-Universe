@@ -42,7 +42,7 @@
   }
 
   let noticeController=null;
-  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';top.classList.add('ab-shell-top');sidebarToggle.classList.add('ab-shell-ctx');devTag.classList.add('ab-shell-flag');actions.classList.add('ab-shell-actions');actions.append(devTag,alertsButton,noticeHost,themeButton);top.prepend(sidebarToggle);const brand=top.querySelector('.brand'),spacer=document.createElement('span');spacer.className='ab-shell-sp';if(brand){brand.after(pages,spacer);const logo=brand.querySelector('b');logo.classList.add('ab-shell-logo');shell?.turnLogo(logo,'run');const toCover=()=>{location.href='/ui/home.html'};brand.style.cursor='pointer';brand.title='Back to the cover';brand.setAttribute('role','link');brand.tabIndex=0;brand.addEventListener('click',toCover);brand.addEventListener('keydown',e=>{if(e.key==='Enter')toCover();});}else top.append(pages,spacer);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);}
+  if (!DEBUG_VIEW && root.querySelector('.top')) {const top=root.querySelector('.top'),actions=document.createElement('div');actions.className='op-top-actions';const noticeHost=document.createElement('div');noticeHost.className='ab-notices-host';top.classList.add('ab-shell-top');sidebarToggle.classList.add('ab-shell-ctx');devTag.classList.add('ab-shell-flag');actions.classList.add('ab-shell-actions');actions.append(themeButton);top.prepend(sidebarToggle);const brand=top.querySelector('.brand'),spacer=document.createElement('span');spacer.className='ab-shell-sp';if(brand){brand.after(pages,spacer);const logo=brand.querySelector('b');logo.classList.add('ab-shell-logo');shell?.turnLogo(logo,'run');const toCover=()=>{location.href='/ui/home.html'};brand.style.cursor='pointer';brand.title='Back to the cover';brand.setAttribute('role','link');brand.tabIndex=0;brand.addEventListener('click',toCover);brand.addEventListener('keydown',e=>{if(e.key==='Enter')toCover();});}else top.append(pages,spacer);top.append(actions);const banner=document.createElement('div');banner.className='ab-run-notice-banner';banner.hidden=true;top.after(banner);noticeController=window.AttentionNotices.createNotices({mount:noticeHost,banner,experiment:()=>currentSnapshot?currentSnapshot.dev_v2?.experiment_id:initialExperiment,run:()=>currentSnapshot?.run?.run_id,canRunAgain:()=>!!currentSnapshot?.dev_v2&&isTerminal(currentSnapshot),onRunAgain:()=>{const button=view.querySelector('[data-open-run-again]');button?.click()}});window.AttentionNotices.installFetchCapture(noticeController);/* 11-18 ui改动: no Notices button; the sound toggle lives in 02 Progress & help while a run is live */alertsButton.className='op-alerts op-sound-toggle';}
   let runs = [];
   let launches = [];
   let devSessions = [];
@@ -1183,7 +1183,7 @@
   const animatedRuns=new Set(), lastOperatorState=new Map(), framesSeen=new Set();
   let loadingTicker=null, keysBound=false, audioContext=null;
   const alertsOn=()=>preference('attention.alerts')==='on';
-  function paintAlertsButton(){const on=alertsOn();alertsButton.setAttribute('aria-pressed',String(on));alertsButton.setAttribute('aria-label',on?'Alerts on':'Alerts off');alertsButton.title=(on?'Alerts on':'Alerts off')+': play a sound and show a notification when the robot needs your help';alertsButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'+(on?'':'<path d="M3 3l18 18"/>')+'</svg>';}
+  function paintAlertsButton(){const on=alertsOn();alertsButton.setAttribute('aria-pressed',String(on));alertsButton.setAttribute('aria-label',on?'Alerts on':'Alerts off');alertsButton.title=(on?'Alerts on':'Alerts off')+': play a sound and show a notification when the robot needs your help';alertsButton.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'+(on?'':'<path d="M3 3l18 18"/>')+'</svg>'+(alertsButton.classList.contains('op-sound-toggle')?`<span>${on?'Sound on':'Sound off'}</span>`:'');}
   alertsButton.addEventListener('click',async()=>{
     if(alertsOn()){preference('attention.alerts','off');paintAlertsButton();toast('Alerts turned off');return;}
     try{if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();}catch(_){}
@@ -5389,11 +5389,16 @@
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
+    // 11-18 ui改动: the dev-test notice is a small tag beside the status (was a banner in the top bar).
+    const devNote = snapshot.dev_session && !DEBUG_VIEW && root.dataset.remote !== '1' ? '<span class="op-title-dev" title="Development test · not counted in comparisons">Dev test</span>' : '';
+    // 11-18 ui改动: Run again / Continue from an attempt sit in a ⋯ menu next to New run.
+    const pair = snapshot.dev_v2_selection?.dev_mode === 'agent' ? runAgainButton(snapshot) + continueButton(snapshot) : '';
+    const more = pair ? `<details class="op-more-menu"><summary aria-label="More actions" title="More actions">⋯</summary><div>${pair}</div></details>` : '';
     const fork = snapshot.dev_v2_selection?.fork;
     const forkSource = fork ? navigationRecords().find(r => r.session_id === `v2-${fork.cell}`) : null;
     const forkWhen = forkSource ? relativeTime(forkSource.created_at) : '';
     const lineage = fork ? `<a class="op-lineage" href="/ui/?dev=v2-${esc(fork.cell)}#exp=${esc(fork.experiment_id)}" title="Open the source run">${forkIcon(13)}Continued from Attempt ${esc(fork.version)}${forkWhen ? ` · ${esc(forkWhen)}` : ''}</a><span class="op-excluded">Excluded from comparison</span>` : '';
-    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${esc(eyebrow)}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${status}${newRun}${snapshot.dev_v2_selection?.dev_mode==='agent'?runPair(snapshot):''}</div></header>`;
+    return `<header class="op-page-title" data-page-title><div><p>${snapshot.lobby&&!snapshot.lobby.mine?`<span class="lb-owner">${window.Lobby.avatar(snapshot.lobby,'sm')}${esc(window.Lobby.personOf(snapshot.lobby))}'s</span> `:''}${lineage}${hostNotice}${hostSummary}</p><h1>${head}</h1></div><div class="op-title-actions">${devNote}${status}${newRun}${more}</div></header>`;
   }
 
   function runSettings(snapshot = null, launch = null) {
@@ -5688,6 +5693,54 @@
   // 11-10 run page: three parts instead of five. 01 Replay, 02 Progress & help (old status + help),
   // 03 Setup & resources (old setup + resources). The old sections stay inside, untitled, so their
   // selectors and handlers keep working. A pending reply goes to the top of 02.
+  // 11-18 (user, ui改动): the Memory page is gone. Notes this run produced are confirmed for reuse here, in 02.
+  // Same data and endpoint as the old Memory page: /api/dev-v2/automatic-checks .reuse, POST /api/dev-memories/<id>/level.
+  let reuseCache={at:0,notes:null,loading:false};
+  function loadReuse(){
+    if(reuseCache.loading||Date.now()-reuseCache.at<30000)return;
+    reuseCache.loading=true;
+    fetch('/api/dev-v2/automatic-checks',{cache:'no-store',credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(Error('HTTP '+r.status)))
+      .then(v=>{const before=JSON.stringify(reuseCache.notes);reuseCache={at:Date.now(),notes:v.reuse?.notes||[],error:null,loading:false};if(JSON.stringify(reuseCache.notes)!==before&&currentSnapshot)render(currentSnapshot)})
+      .catch(e=>{reuseCache={at:Date.now(),notes:reuseCache.notes,error:e.message,loading:false}});
+  }
+  const REUSE_LEVELS=[['same_task','Same task only'],['same_skill','Same skill'],['general','General']];
+  function reuseConfirm(snapshot){
+    const exp=snapshot?.dev_v2?.experiment_id;if(!exp)return '';
+    loadReuse();
+    const notes=(reuseCache.notes||[]).filter(n=>n.original?.source_run===exp);
+    const error=reuseCache.error?`<p class="op-memory-error" role="alert">Could not load notes to confirm: ${esc(reuseCache.error)}</p>`:'';
+    if(!notes.length)return error;
+    const canOperate=root.dataset.remote!=='1'&&snapshot.lobby?.mine!==false;
+    let actor='';try{actor=localStorage.getItem('attention.memory.actor')||''}catch(_){}
+    const rows=notes.map(({original:o,generalized:g})=>{
+      const current=g?.level&&g.level!=='pending'?g.level:'';
+      const buttons=g&&canOperate?`<div class="op-reuse-actions">${REUSE_LEVELS.map(([lv,text])=>`<button type="button" data-reuse-level="${lv}" aria-pressed="${current===lv}">${text}</button>`).join('')}</div>`:'';
+      return `<details class="op-reuse" data-reuse-id="${esc(o.memory_id)}" data-persist-detail="reuse:${esc(o.memory_id)}"><summary><b>${esc(g?.title||o.title)}</b><span>${current?esc(REUSE_LEVELS.find(r=>r[0]===current)?.[1]||current):'Waiting for you'}</span></summary>
+        <div class="op-reuse-pair"><article><h5>From this run</h5><p>${esc(o.guidance)}</p></article><article><h5>For reuse</h5><p>${esc(g?.guidance||'Generalization unavailable. The importer will retry failed model calls.')}</p></article></div>
+        ${buttons}<small data-reuse-status role="status"></small></details>`;
+    }).join('');
+    const waiting=notes.filter(n=>!(n.generalized?.level&&n.generalized.level!=='pending')).length;
+    return `<div class="op-reuse-box" data-reuse-box><p><strong>Notes from this run · ${waiting?`${waiting} waiting for you`:'all confirmed'}</strong> <span class="minor">Choose how widely each note may be reused.</span></p>${canOperate?`<label class="op-reuse-actor">Your name <input data-reuse-actor maxlength="200" value="${esc(actor)}"></label>`:''}${rows}${error}</div>`;
+  }
+  const reuseOpenedAt=new Map();  // survives re-renders; the server wants proof the note was opened before it is confirmed
+  view.addEventListener('toggle',e=>{const d=e.target;if(d.matches?.('details[data-reuse-id]')&&d.open&&!reuseOpenedAt.has(d.dataset.reuseId))reuseOpenedAt.set(d.dataset.reuseId,Date.now()/1000)},true);
+  view.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-reuse-level]');if(!button)return;
+    const row=button.closest('details[data-reuse-id]'),status=row.querySelector('[data-reuse-status]');
+    const actor=(view.querySelector('[data-reuse-actor]')?.value||'').trim();
+    if(!actor){status.textContent='Type your name first.';return}
+    const openedAt=Number(reuseOpenedAt.get(row.dataset.reuseId));if(!Number.isFinite(openedAt)){status.textContent='Open the note before confirming.';return}
+    row.querySelectorAll('button').forEach(b=>b.disabled=true);status.textContent='Saving…';
+    try{
+      const r=await fetch(`/api/dev-memories/${encodeURIComponent(row.dataset.reuseId)}/level`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Attention-Token':root.dataset.controlToken||''},body:JSON.stringify({level:button.dataset.reuseLevel,actor,opened_at:openedAt,edit:null})});
+      const result=await r.json().catch(()=>({}));if(!r.ok)throw Error(result.error||`HTTP ${r.status}`);
+      try{localStorage.setItem('attention.memory.actor',actor)}catch(_){}
+      const hit=reuseCache.notes?.find(n=>n.original.memory_id===row.dataset.reuseId);if(hit&&result.memory?.generalized)hit.generalized=result.memory.generalized;
+      row.querySelectorAll('[data-reuse-level]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+      status.textContent='Saved.';reuseCache.at=0;
+    }catch(err){status.textContent='Not saved: '+err.message}
+    finally{row.querySelectorAll('button').forEach(b=>b.disabled=false)}
+  });
   function agentMemoryUse(snapshot) {
     if(!snapshot?.agent)return '';
     const versions=snapshot.agent.memory_use||[];
@@ -5721,7 +5774,7 @@
     // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
-    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}</section>`;
+    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     return title+execution+progress+setup;
   }
@@ -5834,6 +5887,7 @@
       requestAnimationFrame(()=>{view.style.minHeight='';if(Math.abs(window.scrollY-pageY)>1)window.scrollTo(0,pageY);});
     }
     view.innerHTML = html;
+    view.querySelector('[data-sound-slot]')?.replaceWith(alertsButton);
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
     bindAttentionEfficiency(snapshot);

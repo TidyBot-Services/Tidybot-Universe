@@ -46,7 +46,7 @@ def test_theme_toggle_is_wired():
     assert "localStorage.getItem('attention.theme')" in js  # fallback without shell.js
     assert "THEME_KEY = 'attention.theme', OLD_MEMORY_KEY = 'attention.memory.theme'" in shell
     assert "write('localStorage', THEME_KEY, theme);" in shell and "write('localStorage', OLD_MEMORY_KEY, theme);" in shell
-    assert 'actions.append(devTag,alertsButton,noticeHost,themeButton)' in js
+    assert 'actions.append(themeButton)' in js  # 11-18: no Notices button, sound toggle moved to 02
 
 
 def test_all_three_pages_load_the_shared_shell():
