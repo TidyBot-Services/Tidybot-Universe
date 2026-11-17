@@ -5864,7 +5864,11 @@
     if(!open&&panel.dataset.waitId)stored(`attention.c2.dismissed:${panel.dataset.waitId}`,'1');
     chatLayout();
   }
-  let chatShownWait='';
+  let chatShownWait='',chatUserScroll={run:null,moved:false};
+  // Stay on the newest message until the person scrolls the conversation themself (per run).
+  function chatPinned(){const run=currentSnapshot?.run?.run_id;if(chatUserScroll.run!==run)chatUserScroll={run,moved:false};return !chatUserScroll.moved;}
+  ['wheel','touchmove','keydown'].forEach(type=>view.addEventListener(type,e=>{if(e.target.closest?.('[data-c2-feed]'))chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},{passive:true,capture:true}));
+  view.addEventListener('mousedown',e=>{if(e.target.closest?.('[data-c2-feed]')&&e.offsetX>e.target.clientWidth)chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},true);
   new MutationObserver(()=>{chatLayout();chatFocus();}).observe(view,{childList:true});
   function chatLayout(){
     const panel=view.querySelector('[data-c2]');
@@ -5873,11 +5877,12 @@
     if(waitId&&waitId!==chatShownWait&&panel.dataset.open==='true'){chatShownWait=waitId;const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}
     root.classList.toggle('c2-on',Boolean(panel));
     root.classList.toggle('c2-open',panel?.dataset.open==='true');
-    if(panel)requestAnimationFrame(chatFocus);
+    if(panel){const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{if(chatPinned()&&feed)feed.scrollTop=feed.scrollHeight;chatFocus();});}
   }
   function chatScrollTo(selector){
     const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
     if(view.querySelector('[data-c2]')?.dataset.open!=='true')chatSetOpen(true);
+    chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};
     feed.scrollTo({top:feed.scrollTop+el.getBoundingClientRect().top-feed.getBoundingClientRect().top-12,behavior:'smooth'});
     el.classList.remove('c2-flash');void el.offsetWidth;el.classList.add('c2-flash');
     return true;
@@ -6058,7 +6063,7 @@
     }
     const oldFeed=view.querySelector('[data-c2-feed]'),feedState=oldFeed?{top:oldFeed.scrollTop,bottom:oldFeed.scrollHeight-oldFeed.scrollTop-oldFeed.clientHeight<40}:null;
     view.innerHTML = html;
-    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=!feedState||feedState.bottom?feed.scrollHeight:feedState.top;chatLayout();}
+    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=chatPinned()||!feedState||feedState.bottom?feed.scrollHeight:feedState.top;chatLayout();}
     view.querySelector('[data-sound-slot]')?.replaceWith(alertsButton);
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}

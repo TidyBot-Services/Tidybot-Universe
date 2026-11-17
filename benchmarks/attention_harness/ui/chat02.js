@@ -38,7 +38,9 @@
 
   function exchange(m, h, n) {
     const anchor = `data-feed-help="${n}"`;
-    if (h.failed) return `<div class="c2-sys bad" ${anchor}>${clock(h.at)} · The robot asked for help, but ${esc(h.failText)}. It carried on without an answer.</div>`;
+    // 11-18: "nobody answered" was wrong for these. Before 11-14 (7f98b05) the whole help call was capped at 120 s, the same
+    // as the wait for a person, so the AI advisor fallback was cut off before it could answer.
+    if (h.failed) return `<div class="c2-sys bad" ${anchor} title="${esc(h.failText)}">${clock(h.at)} · Help #${n}: no answer arrived. ${/timed out/.test(h.failText) ? 'Nobody replied within the wait, and the request hit its time limit before the AI advisor could answer.' : 'The request could not be completed.'} The robot carried on without an answer.</div>`;
     const ask = `<div class="c2-msg" ${anchor}><div class="c2-av">R</div><div class="c2-card slim ask"><div class="c2-meta"><b>Help #${n} · the robot asks</b> · ${clock(h.at)}</div>${h.question ? long(h.question) : '<p class="c2-dim">The question text was not recorded.</p>'}</div></div>`;
     if (h.human) {
       return ask + `<div class="c2-msg you"><div class="c2-bubble"><div class="c2-meta">You · hint ${h.hintNo} · ${clock(h.at)}</div>${long(h.content)}</div><div class="c2-av you">Y</div></div>`;
