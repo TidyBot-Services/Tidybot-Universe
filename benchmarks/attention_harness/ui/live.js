@@ -4889,8 +4889,8 @@
   function operatorOutcome(snapshot) {
     {const shared=Lobby.outcomeHtml(snapshot);if(shared)return shared;}
     const rc=snapshot.dev_v2?.run_controls;
-    if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(rc.pause_detail || `Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
-    if(rc?.state==='pausing')return `<div class="op-outcome waiting" data-operator-outcome="pausing" role="status"><strong>● PAUSING</strong><div><p>${esc(`The current step${rc.current_step?` (${rc.current_step})`:''} will finish normally, then the run pauses before the next step.`)}</p><p>Press Keep running to cancel the pause.</p></div></div>`;
+    // 11-18 (user, ui改动 02): Paused / Pausing show as a tag beside the title (with Resume), not as a status line here.
+    if(rc?.state==='paused'||rc?.state==='pausing')return '';
     const status=snapshot.run.status,reason=String(snapshot.dev_session?.reason||snapshot.eval?.stopped_reason||'');
     const modelReview=modelCallReview(snapshot);
     if(['condition_invalid','needs_review','cancelled','stopped','not_started'].includes(status)) {
@@ -4935,6 +4935,8 @@
     const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions${timed?` · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours`:' · no time limit'} · not directly comparable with the official 10-version results</p>`:'';
     const blind=(snapshot.agent?.text_only_roles||[]).map(role=>role==='eval'?'Eval':'Advisor');
     const blindLine=blind.length?`<p class="op-reduced" data-text-only-roles><b>No images</b> · ${esc(blind.join(' and '))} did not see images in this run, so ${blind.length>1?'they':'it'} worked from text alone.</p>`:'';
+    // 11-18 (user, ui改动 02): a plain success repeats the title's Solved tag; only its budget / no-image flags stay.
+    if(state==='success'&&!system&&!permissionStopped)return reducedLine||blindLine?`<div class="op-outcome-flags">${reducedLine}${blindLine}</div>`:'';
     return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}${blindLine}</div></div>`;
   }
   function operatorFlow(snapshot) {
@@ -4967,7 +4969,7 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     // A run in line has not started, so the harness offers no Stop; its owner may still leave the line.
     const canStop = snapshot.lobby?.mine && snapshot.lobby.state === 'queued' ? true : snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
   }
 
   function operatorEvents(trace, hasVideo) {
@@ -5573,6 +5575,8 @@
     // Agent runs draw Start 160 to the left of Attempt 1. Help asked before Attempt 1 arcs over that same gap (11-12:
     // it used to start left of Start, with its bar on the Start label), so no extra slot is kept for it.
     if(snapshot.agent){const shift=model.before?160-model.step:160;model.left+=shift;model.width+=shift;model.natural+=shift;if(model.endX!=null)model.endX+=shift;model.requests.forEach(r=>{if(r.after<0){const offset=r.x-r.mid;r.mid=model.left-80;r.x=r.mid+offset;}else{r.x+=shift;r.mid+=shift;}if(!r.help.delivered)r.dashed=true;});}
+    // 11-18 (user, ui改动 02): each gap is as wide as what happened in it (tries, help arcs), not one fixed step.
+    if(snapshot.agent)layoutAgentGaps(snapshot,model);
     const agentSelected=snapshot.agent?stored(`attention.history:${runId}`):null;
     const state=g.solved?'solved':g.terminal?'unsolved':'running';
     const filter=['all','human','paid','rate'].includes(stored(`attention.efficiency.filter:${runId}`))?stored(`attention.efficiency.filter:${runId}`):'all';
@@ -5595,16 +5599,16 @@
     const {baseline,step}=model,R=24;
     // Agent runs caption each segment at baseline+26 ("26 checks · 5 previews"); keep the cost bars clear of it (10-30).
     const costBottom=snapshot.agent?86:74,height=model.height+costBottom-74;
-    const x=index=>model.left+index*step;
+    const x=index=>model.xs?(model.xs[index]??(index<0?model.startX:model.xs.at(-1)+150)):model.left+index*step;
     const lines=model.attempts.slice(0,-1).map((_,i)=>`<line x1="${x(i)+R}" x2="${x(i+1)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`).join('');
-    const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${model.left-160}" cy="${baseline}" r="6"/><text x="${model.left-160}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${model.left-154}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
+    const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${(model.startX??model.left-160)}" cy="${baseline}" r="6"/><text x="${(model.startX??model.left-160)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${(model.startX??(model.startX??model.left-160))+6}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
     const outcome=g.solved?'Completed':(typeof systemFailure==='function'&&systemFailure(snapshot))?'System problem':'Not completed';
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
     const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&(r.help.delivered||r.help.charged===true)).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
-      const x0=r.after<0?(snapshot.agent?model.left-160:x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
+      const x0=r.after<0?(snapshot.agent?(model.startX??model.left-160):x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
       const bar=r.responder==='human_assisted'?0:snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
@@ -5624,7 +5628,7 @@
     const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
     const costNote=selected?(snapshot.agent?(selected.responder==='human_assisted'?'Assisted reply · no human attention':selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
     const detail=snapshot.agent?agentTimelineDetail(snapshot,selected):selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].filter(([key])=>!(key==='rate'&&rate==='—')).map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     // 10-30: the legend lists only marks this run shows; ✓/✕ attempts and the labelled cost bars explain themselves.
     const legend=[model.requests.some(r=>r.responder==='advisor')?'<span><i class="automatic"></i>Automatic advisor</span>':'',
       model.requests.some(r=>r.responder==='human')?'<span><i class="person"></i>Person replied</span>':'',
@@ -5634,7 +5638,29 @@
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
     const sub=[state==='unsolved'?'not solved':state==='running'?'in progress':'',requestSummary,humanSummary,creditSummary].filter(Boolean).join(' · ');
     const progressLine=!g.attemptsRun?'No attempts yet':g.solved?`on attempt ${g.solved.index+1} of ${g.maximum||g.attemptsRun}`:`${g.attemptsRun} of ${g.maximum||g.attemptsRun} attempt${(g.maximum||g.attemptsRun)===1?'':'s'} used${state==='running'?' so far':''}`;
-    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}${legend?`<div class="op-attn-legend">${legend}</div>`:''}<div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+    // 11-18 (user): the cards and the attempt strip always show, even with no help (an empty 02 read as missing data).
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+  }
+  function layoutAgentGaps(snapshot,model) {
+    const n=model.attempts.length,margin=48,helps=new Map(),gaps=[];
+    model.requests.forEach(r=>helps.set(r.after+1,(helps.get(r.after+1)||0)+1));
+    let loose=looseTries(snapshot).length;
+    for(let i=0;i<=n;i++){
+      const v=i<n?snapshot.dev_session.versions.find(v=>v.version===i+1):null;
+      let t=0;if(v)t=(v.before_attempt?.trials||[]).length;else if(i<n&&loose){t=loose;loose=0;}
+      gaps.push({tries:t,width:Math.max(i===0?100:110,64+t*20,(helps.get(i)||0)*92+48)});
+    }
+    const startX=margin,xs=[];let at=startX;
+    for(let i=0;i<n;i++){at+=gaps[i].width;xs.push(at);}
+    const last=xs.at(-1)??startX,endsWithHelp=helps.has(n);
+    if(model.after)xs.push(last+gaps[n].width);
+    const endX=model.ended?(endsWithHelp?last+gaps[n].width:last+130):null;
+    model.startX=startX;model.xs=xs;model.gaps=gaps;model.left=xs[0]??startX;model.endX=endX;
+    model.width=model.natural=Math.round((model.ended?endX+58:xs.at(-1)??last)+margin);
+    model.requests.forEach(r=>{
+      const a=r.after<0?startX:xs[r.after],b=r.after+1<n?xs[r.after+1]:model.ended?endX:(xs[n]??last+gaps[n].width);
+      const offset=r.x-r.mid,mid=(a+b)/2;r.mid=mid;r.x=mid+offset;
+    });
   }
   function bindAttentionEfficiency(snapshot) {
     const runId=snapshot.run.run_id;
@@ -5707,7 +5733,8 @@
   function reuseConfirm(snapshot){
     const exp=snapshot?.dev_v2?.experiment_id;if(!exp)return '';
     loadReuse();
-    const notes=(reuseCache.notes||[]).filter(n=>n.original?.source_run===exp);
+    // Only notes still waiting for a decision (11-18 user: confirmed ones need no space here).
+    const notes=(reuseCache.notes||[]).filter(n=>n.original?.source_run===exp&&!(n.generalized?.level&&n.generalized.level!=='pending'));
     const error=reuseCache.error?`<p class="op-memory-error" role="alert">Could not load notes to confirm: ${esc(reuseCache.error)}</p>`:'';
     if(!notes.length)return error;
     const canOperate=root.dataset.remote!=='1'&&snapshot.lobby?.mine!==false;
@@ -5722,6 +5749,51 @@
     const waiting=notes.filter(n=>!(n.generalized?.level&&n.generalized.level!=='pending')).length;
     return `<div class="op-reuse-box" data-reuse-box><p><strong>Notes from this run · ${waiting?`${waiting} waiting for you`:'all confirmed'}</strong> <span class="minor">Choose how widely each note may be reused.</span></p>${canOperate?`<label class="op-reuse-actor">Your name <input data-reuse-actor maxlength="200" value="${esc(actor)}"></label>`:''}${rows}${error}</div>`;
   }
+  // 11-18 (user, ui改动 02): a try on the 02 chart shows its own card below the chart (what happened, why it stopped);
+  // "Watch this try" in that card opens it in 01 Replay through the same entry as the "N tries ▾" list.
+  function openTryRecording(id){
+    const option=[...view.querySelectorAll('.op-tries-list [data-history-select]')].find(b=>b.dataset.historySelect===id);
+    if(!option)return false;
+    option.click();
+    view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:'smooth'});
+    return true;
+  }
+  function pickTry(mark){
+    const runId=currentSnapshot?.run?.run_id;if(!runId||!mark?.dataset.tryNumber)return;
+    const same=stored(`attention.try:${runId}`)===mark.dataset.tryNumber;
+    stored(`attention.try:${runId}`,same?null:mark.dataset.tryNumber);
+    stored(`attention.efficiency.help:${runId}`,null);
+    render(currentSnapshot);
+  }
+  view.addEventListener('click',e=>{
+    const watch=e.target.closest?.('[data-try-watch]');if(watch){e.preventDefault();openTryRecording(watch.dataset.tryWatch);return;}
+    const close=e.target.closest?.('[data-try-close]');if(close){stored(`attention.try:${currentSnapshot?.run?.run_id}`,null);render(currentSnapshot);return;}
+    const mark=e.target.closest?.('.op-try-link');if(mark){e.preventDefault();e.stopPropagation();pickTry(mark);return;}
+    // choosing an attempt or a help request replaces the try card
+    if(e.target.closest?.('[data-attn-watch],[data-attn-help]')&&currentSnapshot)stored(`attention.try:${currentSnapshot.run.run_id}`,null);
+  },true);
+  view.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const mark=e.target.closest?.('.op-try-link');if(mark){e.preventDefault();pickTry(mark);}});
+  // 11-18 (user, ui改动 02): Dock-style magnification on the 02 chart: tries near the pointer grow and nudge their
+  // neighbours aside; attempts grow a little. Off for reduced motion.
+  const dockCalm=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  function dockReset(svg){svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{g.style.transform='';});svg.classList.remove('op-docking');}
+  function dockMove(svg,e){
+    const ctm=svg.getScreenCTM();if(!ctm)return;
+    const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(ctm.inverse());
+    svg.classList.add('op-docking');
+    svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{
+      const c=g.querySelector('circle');if(!c)return;
+      const cx=+c.getAttribute('cx'),cy=+c.getAttribute('cy'),d=cx-p.x,small=g.classList.contains('op-try-mark');
+      // 11-18 (user: too sensitive): only a band ±28 around the line wakes it, falling off smoothly with height;
+      // smaller growth (tries ×1.8 max, attempts ×1.08) and a gentler push.
+      const dy=Math.abs(p.y-cy),near=dy<28?1-(dy/28)**2:0,sigma=small?20:36;
+      const k=near*Math.exp(-(d*d)/(2*sigma*sigma)),scale=1+(small?0.8:0.08)*k;
+      const push=small?near*d*0.25*Math.exp(-(d*d)/(2*(2*sigma)**2)):0;
+      g.style.transform=`translate(${(cx+push).toFixed(2)}px,${cy}px) scale(${scale.toFixed(3)}) translate(${-cx}px,${-cy}px)`;
+    });
+  }
+  view.addEventListener('mousemove',e=>{if(dockCalm())return;const svg=e.target.closest?.('.op-attn-scroll svg');if(svg)dockMove(svg,e);},{passive:true});
+  view.addEventListener('mouseout',e=>{const svg=e.target.closest?.('.op-attn-scroll svg');if(svg&&!svg.contains(e.relatedTarget))dockReset(svg);});
   const reuseOpenedAt=new Map();  // survives re-renders; the server wants proof the note was opened before it is confirmed
   view.addEventListener('toggle',e=>{const d=e.target;if(d.matches?.('details[data-reuse-id]')&&d.open&&!reuseOpenedAt.has(d.dataset.reuseId))reuseOpenedAt.set(d.dataset.reuseId,Date.now()/1000)},true);
   view.addEventListener('click',async e=>{
@@ -5755,7 +5827,9 @@
       return `<li data-memory-note data-referenced="${explicit}"><div><strong>${esc(n.title)}</strong> <span>v${esc(n.version)} · ${esc(n.level)} · ${explicit?'used · explicit reference':n.considered_not_used?'considered · not used':'not used'}</span></div><small>${esc(n.memory_id)}</small>${evidence||hints?`<ul>${evidence}${hints}</ul>`:''}</li>`;
     }).join('');
     const failures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis'&&!versions.some(v=>v.version===e.error?.version&&(v.errors||[]).some(row=>row.error===e.error?.error))).map(e=>`<p class="op-memory-error" role="alert">Memory analysis error: ${esc(typeof e.error==='object'?JSON.stringify(e.error):e.error)}</p>`);
-    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used"><p><strong>Memory: received ${notes.length} notes · used ${used} · considered, not used ${considered}</strong></p><p class="minor">Used means an explicit application reference in Dev text or code comments. Declined notes are counted separately. Counts include each version’s delivery.</p>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}${errors.join('')}${failures.join('')}</div>`;
+    // 11-18 (user, ui改动 02): one line; evidence (files, events, ids) only when opened. Errors stay outside the fold.
+    if(!notes.length&&!errors.length&&!failures.length)return '';
+    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used">${notes.length?`<details data-persist-detail="memory-use:${esc(snapshot.run.run_id)}"><summary>Memory: received ${notes.length} note${notes.length===1?'':'s'} · used ${used}${considered?` · considered, not used ${considered}`:''}</summary>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}</details>`:''}${errors.join('')}${failures.join('')}</div>`;
   }
   function operatorThreeParts(regions,snapshot) {
     if(DEBUG_VIEW)return regions.join('');
@@ -5765,8 +5839,17 @@
     const untitle=html=>html.replace(HEAD,'');
     const extra=html=>((html.match(HEAD)||[])[1]||'').replace(/^[\s\S]*<span>([\s\S]*)<\/span>$/,'$1');
     // The page title (task name, New run) is written in front of the setup section; it stays on top of the page.
-    const title=(settings.match(/^<header class="op-page-title"[\s\S]*?<\/header>/)||[''])[0];
+    let title=(settings.match(/^<header class="op-page-title"[\s\S]*?<\/header>/)||[''])[0];
     settings=settings.slice(title.length);
+    // 11-18 (user, ui改动 02): Stop / Pause / Resume control the whole run, so they sit beside the title's status.
+    // The run-control note ("Paused · the run's time budget is not counting") becomes a short tag with the full text as its tooltip.
+    const controls=(overview.match(/<div class="op-controls"[^>]*>[\s\S]*?<\/div>(?=<p data-picture-warning)/)||[''])[0];
+    if(controls&&title){
+      overview=overview.replace(controls,'');
+      const inner=controls.replace(/^<div[^>]*>/,'').replace(/<\/div>$/,'').replace('<span class="op-controls-sp"></span>','')
+        .replace(/<small data-run-control-note="([^"]*)">([^<]*)<\/small>/,(_,state,text)=>`<span class="op-title-dev op-run-note" data-run-control-note="${state}" title="${text}">${text.split(' · ')[0]}</span>`);
+      if(inner.trim())title=title.replace(/<\/div><\/header>$/,`<span class="op-title-controls">${inner}</span></div></header>`);
+    }
     const waiting=/data-state="waiting"/.test(request)&&/data-agent-reply|data-request-reply|<textarea/.test(request);
     const story=(overview.match(/<button type="button" class="op-agent-story-entry" data-agent-story-open>[\s\S]*?<\/button>/)||[''])[0];
     const replyExtra=waiting?extra(request):'';
@@ -5774,7 +5857,7 @@
     // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
-    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}</section>`;
+    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     return title+execution+progress+setup;
   }
@@ -6504,6 +6587,15 @@
     return (trials.some(t=>t.color!=='red')?'<span><i class="op-agent-trial grey"></i>Trial run, kept going</span>':'')
       +(trials.some(t=>t.color==='red')?'<span><i class="op-agent-trial red"></i>Trial run stopped by a safety limit</span>':'');
   }
+  // 11-18 (user, ui改动 02): "11 tries · 7 fatal SDK fault · 2 move refused · 1 ran through" — counts by cause, most first.
+  // Each try's own reason is one click away on the chart.
+  function agentTrySummary(activity={}) {
+    const trials=activity.trials||[];if(!trials.length)return '';
+    const counts=new Map();
+    for(const t of trials){const cause=/^trial completed$/i.test(t.cause||'')?'ran through':(t.cause||(t.color==='red'?'stopped':'ran through'));counts.set(cause,(counts.get(cause)||0)+1);}
+    const parts=[...counts].sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${n} ${esc(c)}`);
+    return `<span class="op-agent-chip op-try-summary" title="Click a try on the chart for its reason"><b>${trials.length} ${trials.length===1?'try':'tries'}</b> · ${parts.join(' · ')}</span>`;
+  }
   function agentTrialChips(activity={}) {
     return (activity.trials||[]).map(t=>`<span class="op-agent-chip"><i class="op-agent-trial ${t.color==='red'?'red':'grey'}" aria-hidden="true"></i>1 trial run · ${esc(t.cause)}</span>`).join('');
   }
@@ -6513,13 +6605,35 @@
     return tries.slice(last+1).map(t=>({color:t.ok?'grey':'red',cause:tryLabel(t)}));
   }
   function agentActivityMarks(snapshot,model) {
+    // 11-18 (user, ui改动 02): each try is a small Attempt-style circle (dot = ran through / ✕ = stopped by a safety limit; no ✓,
+    // a try that ran is not a solved task),
+    // the caption says "N tries" (the word the replay pill uses), checks/previews moved to the caption tooltip,
+    // and a try with a recording opens it in 01 Replay (same data-history-select as the "N tries ▾" list).
     const loose=looseTries(snapshot);let placed=false;
+    const allTries=[...(snapshot.agent?.tries||[])].sort((a,b)=>a.number-b.number),byAttempt=new Map();let pending=[];
+    for(const t of allTries){if(t.submitted){if(!byAttempt.has(t.attempt-1))byAttempt.set(t.attempt-1,pending);pending=[];continue;}pending.push(t);}
+    const playable=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a]));
     return model.attempts.map((a,index)=>{
       const version=snapshot.dev_session.versions.find(v=>v.version===a.index+1);
-      const activity=version?.before_attempt||(!version&&!placed&&(placed=true)?{trials:loose}:{});
-      const mid=model.left+index*model.step-(index?model.step:160)/2,trials=activity.trials||[];
-      const spacing=Math.min(16,Math.max(3,((index?model.step:160)-60)/Math.max(1,trials.length)));
-      return `<g data-agent-interval="${a.index+1}">${trials.map((t,i)=>`<circle class="op-agent-trial ${t.color==='red'?'red':'grey'}" cx="${mid+(i-(trials.length-1)/2)*spacing}" cy="${model.baseline}" r="5"><title>${esc(t.cause)}</title></circle>`).join('')}<text class="op-agent-activity" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${esc(agentActivityCaption(activity)||(trials.length?`${trials.length} ${trials.length===1?'try':'tries'}`:''))}</text></g>`;
+      const isLoose=!version&&!placed;
+      const activity=version?.before_attempt||(isLoose&&(placed=true)?{trials:loose}:{});
+      const gapA=model.xs?(index?model.xs[index-1]:model.startX):model.left+index*model.step-(index?model.step:160),gapB=model.xs?model.xs[index]:model.left+index*model.step;
+      const mid=(gapA+gapB)/2,trials=activity.trials||[];
+      const spacing=Math.min(18,Math.max(4,((gapB-gapA)-60)/Math.max(1,trials.length)));
+      const r=Math.max(3,Math.min(7,spacing/2-1));
+      const group=isLoose?pending:byAttempt.get(a.index)||[];
+      const before=isLoose?'before the next attempt':`before Attempt ${a.index+1}`;
+      const marks=trials.map((t,i)=>{
+        const tr=group.length===trials.length?group[i]:null,rec=tr&&playable.get(tr.number),red=t.color==='red';
+        const cx=mid+(i-(trials.length-1)/2)*spacing,cy=model.baseline;
+        const tip=`${tr?`Try ${tr.number}`:`Try ${i+1}`} ${before} · ${red?'stopped by a safety limit':'ran through without a safety stop (not a task check)'}${t.cause&&red?': '+t.cause:''}${tr?' · click for details':''}`;
+        const glyph=r>=5?(red?`<path class="op-try-glyph" d="M ${cx-r*.45} ${cy-r*.45} L ${cx+r*.45} ${cy+r*.45} M ${cx+r*.45} ${cy-r*.45} L ${cx-r*.45} ${cy+r*.45}"/>`:`<circle class="op-try-dot" cx="${cx}" cy="${cy}" r="${(r*.32).toFixed(2)}"/>`):'';  // a plain dot: the try ran through; no ✓ (it is not a task check)
+        const picked=tr&&String(tr.number)===stored(`attention.try:${snapshot.run.run_id}`);
+        return `<g class="op-try-mark ${red?'red':'ok'}${tr?' op-try-link':''}${picked?' selected':''}"${tr?` data-try-number="${esc(tr.number)}" role="button" tabindex="0"`:''} aria-label="${esc(tip)}"><title>${esc(tip)}</title><circle cx="${cx}" cy="${cy}" r="${r}"/>${glyph}</g>`;
+      }).join('');
+      const extra=agentActivityCaption(activity);
+      const caption=trials.length?`${trials.length} ${trials.length===1?'try':'tries'}`:'';
+      return `<g data-agent-interval="${a.index+1}">${marks}${caption?`<text class="op-agent-activity op-try-caption" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${extra?`<title>${esc(extra)}</title>`:''}${caption}</text>`:''}</g>`;
     }).join('');
   }
   function agentPlainHelpReason(help) {
@@ -6683,13 +6797,25 @@
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`${help.provider==='human'?'Person replied':help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} · ${(help.provider==='human_assisted'?0:Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`${help.provider==='human'?'Person replied':help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} · ${(help.provider==='human_assisted'?0:Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentTrySummary(activity)}</div>`:''}</div>`;
+  }
+  function agentTryCard(snapshot,number) {
+    const tries=snapshot.agent?.tries||[],t=tries.find(x=>x.number===number);if(!t)return '';
+    const next=tries.find(x=>x.submitted&&x.number>number),before=next?`before Attempt ${next.attempt}`:'before the next attempt';
+    const rec=[...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].find(a=>a.try_number===number);
+    const state=t.ok?'<span class="op-try-state">Ran through · not a task check</span>':'<span class="op-try-state stopped">Stopped</span>';
+    const watch=rec?`<button type="button" class="op-try-watch" data-try-watch="${esc(rec.attempt_id)}">Watch <span aria-hidden="true">→</span></button>`:'<small class="op-try-norec">No recording</small>';
+    const help=t.help?`<p class="op-try-help"><b>${t.help.provider==='human'?'Person replied':t.help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} before this try</b> · ${esc(t.help.why||'')}</p>`:'';
+    // 11-18 (user: "too ugly"): one tidy row — title + state on the left, Watch → and × on the right, never wrapping apart.
+    return `<div class="op-try-card${t.ok?'':' stopped'}" data-try-card="${esc(number)}"><div class="op-try-head"><div class="op-try-title"><b>Try ${esc(number)}</b><small>${esc(before)}</small>${state}</div><div class="op-try-actions">${watch}</div></div><p class="op-try-why">${esc(t.why||'No reason was recorded.')}</p>${help}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
+    const tryNumber=Number(stored(`attention.try:${snapshot.run.run_id}`));
+    if(tryNumber){const card=agentTryCard(snapshot,tryNumber);if(card)return card;}
     const attempt=snapshot.attempts.find(a=>a.attempt_id===stored(`attention.history:${snapshot.run.run_id}`));
     const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
-    return version?agentAttemptCard(version,true,snapshot):'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
+    return version?agentAttemptCard(version,true,snapshot):'';  // 11-18: no instruction text; the marks have tooltips
   }
   function agentFullStory(snapshot) {
     const versions=snapshot.dev_session.versions,rows=attentionLedger(snapshot).rows;

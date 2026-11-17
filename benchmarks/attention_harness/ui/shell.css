@@ -409,3 +409,67 @@ html body #attentionbench-clear .op-reuse-actions button[aria-pressed="true"]{ba
 .op-reuse [data-reuse-status]{display:block;min-height:16px;padding-bottom:8px;color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
 @media(max-width:760px){.op-reuse-pair{grid-template-columns:1fr}}
 html body #attentionbench-clear .op-heading .op-sound-toggle{font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;margin-right:8px}
+
+/* 11-18 ui改动 02: run controls beside the title, quiet one-line attention, Memory as one line */
+html #attentionbench-clear[data-operator-view="true"] .op-title-controls{display:inline-flex;align-items:center;gap:8px;order:-1}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button{height:36px;margin:0;padding:0 14px;border-radius:999px;font:600 13px "DM Sans",system-ui,sans-serif;text-transform:none;letter-spacing:0}
+html #attentionbench-clear[data-operator-view="true"] .op-title-controls small{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-attn-oneline{margin:4px 0 0;font:500 15px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-attn-oneline b{color:var(--sh-ink);font-weight:700}
+.op-attn-quiet .op-attn-scroll{margin-top:14px}
+.op-memory-use>details>summary{cursor:pointer;font:600 13px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-memory-use>details[open]>summary{margin-bottom:8px}
+.op-outcome-flags:empty{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button.danger{background:var(--sh-badbg)!important;color:var(--sh-badink)!important;border-color:transparent!important}
+.op-attn-quiet .op-attn-detail:empty{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button{display:inline-flex!important;align-items:center!important;gap:6px!important;white-space:nowrap!important;height:36px!important;padding:0 14px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-chip)!important;color:var(--sh-ink)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button.danger{background:var(--sh-badbg)!important;color:var(--sh-badink)!important;border-color:transparent!important}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button:disabled{opacity:.45}
+html body #attentionbench-clear .op-attention .op-attn-detail:empty{display:none!important}
+
+/* 11-18 ui改动 02: tries drawn as small attempts */
+.op-try-mark circle{fill:var(--sh-card);stroke:var(--sh-mut);stroke-width:1.5}
+.op-try-mark .op-try-glyph{fill:none;stroke:var(--sh-mut);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.op-try-mark.red circle{fill:var(--sh-badbg);stroke:var(--sh-acc)}
+.op-try-mark.red .op-try-glyph{stroke:var(--sh-acc)}
+.op-try-link{cursor:pointer}
+.op-try-link:hover circle,.op-try-link:focus-visible circle{stroke-width:2.5;stroke:var(--sh-ink)}
+.op-try-link:focus{outline:none}
+.op-try-caption{font-weight:700;fill:var(--sh-ink)}
+
+/* 11-18 ui改动 02: neutral "ran through" dot; Dock magnification */
+.op-try-mark .op-try-dot{fill:var(--sh-mut);stroke:none}
+.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:transform .14s cubic-bezier(.2,.7,.3,1);transform-box:view-box}
+.op-attn-scroll svg.op-docking .op-try-mark,.op-attn-scroll svg.op-docking .op-attn-attempt{transition:transform .22s cubic-bezier(.2,.7,.3,1)}
+.op-attn-scroll svg{overflow:visible}
+@media (prefers-reduced-motion:reduce){.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:none}}
+
+/* 11-18 ui改动 02: try card + summary */
+.op-try-mark.selected circle{stroke:var(--sh-ink);stroke-width:2.6}
+.op-try-card{margin-top:12px;padding:12px 14px;border:1px solid var(--sh-line);border-radius:12px;background:var(--sh-card)}
+.op-try-card .op-agent-card-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.op-try-card .op-agent-card-head small{color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.op-try-card .op-try-close{margin-left:auto;width:28px;height:28px;border:0;border-radius:999px;background:transparent;color:var(--sh-mut);font-size:18px;cursor:pointer}
+.op-try-card .op-try-why{margin:8px 0 0;font:500 15px/1.45 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-try-card .op-try-help{margin:6px 0 0;font:400 13px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-try-summary b{font-weight:700}
+html body #attentionbench-clear .op-try-card .op-try-close{margin-left:auto!important;width:28px!important;height:28px!important;padding:0!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:400 20px/1 system-ui!important}
+html body #attentionbench-clear .op-try-card .op-try-close:hover{background:var(--sh-chip)!important;color:var(--sh-ink)!important}
+
+/* 11-18 ui改动 02: try card, second pass */
+html body #attentionbench-clear .op-try-card{position:relative;margin-top:14px;padding:12px 14px 12px 18px;border:1px solid var(--sh-line);border-radius:12px;background:var(--sh-card)}
+html body #attentionbench-clear .op-try-card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--sh-mut)}
+html body #attentionbench-clear .op-try-card.stopped::before{background:var(--sh-acc)}
+html body #attentionbench-clear .op-try-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+html body #attentionbench-clear .op-try-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+html body #attentionbench-clear .op-try-title b{font:700 15px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+html body #attentionbench-clear .op-try-title small{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+html body #attentionbench-clear .op-try-state{font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--sh-mut)}
+html body #attentionbench-clear .op-try-state.stopped{color:var(--sh-acc)}
+html body #attentionbench-clear .op-try-actions{display:flex;align-items:center;gap:4px;flex:none}
+html body #attentionbench-clear .op-try-card .op-try-watch{height:28px!important;margin:0!important;padding:0 10px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-acc)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .op-try-card .op-try-watch:hover{background:var(--sh-chip)!important}
+html body #attentionbench-clear .op-try-card .op-try-close{margin:0!important}
+html body #attentionbench-clear .op-try-card .op-try-norec{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);padding:0 6px}
+html body #attentionbench-clear .op-try-card .op-try-why{margin:6px 0 0;font:500 14px/1.5 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
