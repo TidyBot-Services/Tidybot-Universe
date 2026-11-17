@@ -672,3 +672,8 @@ html body #attentionbench-clear .op-run-details-btn:hover{color:var(--sh-ink)!im
 .c2-row,.c2-msg[data-feed-attempt] .c2-card{cursor:pointer}
 .c2-row:hover{background:var(--sh-chip)}
 .c2-msg[data-feed-attempt] .c2-card:hover{border-color:var(--sh-acc)}
+/* 11-18 ui改动: New run always in the title; quiet form while a run is live */
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet{height:36px;padding:0 16px;gap:8px;background:transparent;color:var(--sh-fill);border:1px solid var(--sh-fill);font-size:15px;box-shadow:none;animation:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet::after{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet:hover:not(:disabled){background:var(--sh-fill);color:#fff;transform:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet .op-new-run-tri{border-left-width:9px;border-top-width:6px;border-bottom-width:6px}

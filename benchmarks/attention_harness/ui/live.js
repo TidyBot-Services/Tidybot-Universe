@@ -5461,7 +5461,9 @@
     const head = cut > 0 ? `${esc(name.slice(0, cut))} <em>${esc(name.slice(cut + 1).trim())}</em>` : esc(name);
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
-    const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
+    // 11-18 ui改动 (user): New run is always in the title; while a run is live it is the quiet outlined form, so it does not compete with Pause/Stop.
+    const ended = isTerminal(snapshot) || snapshot.lobby;
+    const newRun = ended ? launchButton(snapshot, true) : launchButton(snapshot, true).replace('op-new-run"', 'op-new-run op-new-run-quiet"');
     // 11-18 ui改动: the dev-test notice is a small tag beside the status (was a banner in the top bar).
     const devNote = snapshot.dev_session && !DEBUG_VIEW && root.dataset.remote !== '1' ? '<span class="op-title-dev" title="Development test · not counted in comparisons">Dev test</span>' : '';
     // 11-18 ui改动: Run again / Continue from an attempt sit in a ⋯ menu next to New run.
