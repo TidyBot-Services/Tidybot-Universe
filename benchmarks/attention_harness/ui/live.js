@@ -5906,6 +5906,25 @@
   // ---- 11-18 experiment (8897): 02 conversation. Chart = map, conversation = story, composer at the bottom. ----
   const chatDemo=()=>new URLSearchParams(location.search).get('demo')==='wait';  // sample only: ?…&demo=wait
   function chatActive(snapshot){return Boolean(!DEBUG_VIEW&&snapshot?.agent&&snapshot.rawCell&&window.Chat02&&window.LiteModel);}
+  // 11-18 (user): the right panel can be dragged wider or narrower; the width is remembered in this browser.
+  const C2_WIDTH_KEY='attention.c2.width',C2_DEFAULT=420;
+  const c2Clamp=w=>Math.round(Math.max(300,Math.min(w,Math.min(900,window.innerWidth-520))));
+  function c2SetWidth(w,save){const px=c2Clamp(w);root.style.setProperty('--c2w',`${px}px`);if(save)try{localStorage.setItem(C2_WIDTH_KEY,String(px));}catch(_){}}
+  try{const saved=Number(localStorage.getItem(C2_WIDTH_KEY));if(saved)c2SetWidth(saved,false);}catch(_){}
+  function c2StartResize(e){
+    const grip=e.target.closest?.('[data-c2-resize]');if(!grip||e.button>0)return;
+    e.preventDefault();root.classList.add('c2-resizing');
+    const x=ev=>(ev.touches?.[0]||ev).clientX;
+    const move=ev=>{c2SetWidth(window.innerWidth-x(ev),false);ev.preventDefault?.();};
+    const up=ev=>{['mousemove','pointermove','touchmove'].forEach(t=>window.removeEventListener(t,move));['mouseup','pointerup','touchend','pointercancel'].forEach(t=>window.removeEventListener(t,up));
+      root.classList.remove('c2-resizing');const w=parseInt(getComputedStyle(root).getPropertyValue('--c2w'))||C2_DEFAULT;c2SetWidth(w,true);};
+    ['mousemove','pointermove'].forEach(t=>window.addEventListener(t,move));window.addEventListener('touchmove',move,{passive:false});
+    ['mouseup','pointerup','touchend','pointercancel'].forEach(t=>window.addEventListener(t,up));
+  }
+  view.addEventListener('mousedown',c2StartResize);
+  view.addEventListener('touchstart',c2StartResize,{passive:false});
+  view.addEventListener('dblclick',e=>{if(e.target.closest?.('[data-c2-resize]'))c2SetWidth(C2_DEFAULT,true);});
+  window.addEventListener('resize',()=>{const w=parseInt(getComputedStyle(root).getPropertyValue('--c2w'))||C2_DEFAULT;c2SetWidth(w,false);});
   let chatTab='chat';  // right panel tab: 'chat' | 'details' (11-18 user)
   function chatSection(snapshot,detailsHtml=''){
     if(!chatActive(snapshot))return '';
@@ -5934,7 +5953,7 @@
     if(asking&&m.wait.execution_id!==chatShownWait)chatTab='chat';  // a new question always shows the conversation
     const tab=detailsHtml?chatTab:'chat';
     const tabs=`<div class="c2-tabs" role="tablist"><button type="button" role="tab" data-c2-tab="chat" aria-selected="${tab==='chat'}">Conversation${asking?' <i class="c2-tab-dot" aria-label="the robot is asking"></i>':''}</button>${detailsHtml?`<button type="button" role="tab" data-c2-tab="details" aria-selected="${tab==='details'}">Details</button>`:''}</div>`;
-    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-tab="${tab}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation and details">${handle}<div class="c2-body"><div class="c2-head-row">${tabs}<span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the panel" title="Hide">›</button></div><div class="c2-pane" data-pane="chat"><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>${detailsHtml?`<div class="c2-pane c2-details" data-pane="details"><div class="op-run-details-body">${detailsHtml}</div></div>`:''}</div></aside>`;
+    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-tab="${tab}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation and details">${handle}<div class="c2-body"><div class="c2-resizer" data-c2-resize role="separator" aria-orientation="vertical" aria-label="Resize the panel" title="Drag to resize · double-click to reset"></div><div class="c2-head-row">${tabs}<span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the panel" title="Hide">›</button></div><div class="c2-pane" data-pane="chat"><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>${detailsHtml?`<div class="c2-pane c2-details" data-pane="details"><div class="op-run-details-body">${detailsHtml}</div></div>`:''}</div></aside>`;
   }
   function chatSetOpen(open){
     const panel=view.querySelector('[data-c2]');if(!panel)return;
