@@ -5906,7 +5906,8 @@
   // ---- 11-18 experiment (8897): 02 conversation. Chart = map, conversation = story, composer at the bottom. ----
   const chatDemo=()=>new URLSearchParams(location.search).get('demo')==='wait';  // sample only: ?…&demo=wait
   function chatActive(snapshot){return Boolean(!DEBUG_VIEW&&snapshot?.agent&&snapshot.rawCell&&window.Chat02&&window.LiteModel);}
-  function chatSection(snapshot){
+  let chatTab='chat';  // right panel tab: 'chat' | 'details' (11-18 user)
+  function chatSection(snapshot,detailsHtml=''){
     if(!chatActive(snapshot))return '';
     let m;
     try{m=LiteModel.build({view:snapshot.rawCell,exp:snapshot.rawExperiment||{},now:Date.now()/1000});}
@@ -5930,7 +5931,10 @@
     const wide=window.matchMedia?.('(min-width: 1181px)').matches!==false;
     const open=choice==='open'||(asking&&!dismissed)||(choice!=='closed-now'&&wide);
     const handle=`<button type="button" class="c2-handle${asking?' asking':''}" data-c2-toggle aria-expanded="${open}" title="${open?'Hide':'Show'} the conversation"><span class="c2-handle-dot" aria-hidden="true"></span><span class="c2-handle-text">${asking?'Robot asks you':'Conversation'}</span><b>${m.helps.length}</b></button>`;
-    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation">${handle}<div class="c2-body"><div class="c2-head-row"><h4>Conversation</h4><span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the conversation" title="Hide">›</button></div><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div></aside>`;
+    if(asking&&m.wait.execution_id!==chatShownWait)chatTab='chat';  // a new question always shows the conversation
+    const tab=detailsHtml?chatTab:'chat';
+    const tabs=`<div class="c2-tabs" role="tablist"><button type="button" role="tab" data-c2-tab="chat" aria-selected="${tab==='chat'}">Conversation${asking?' <i class="c2-tab-dot" aria-label="the robot is asking"></i>':''}</button>${detailsHtml?`<button type="button" role="tab" data-c2-tab="details" aria-selected="${tab==='details'}">Details</button>`:''}</div>`;
+    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-tab="${tab}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation and details">${handle}<div class="c2-body"><div class="c2-head-row">${tabs}<span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the panel" title="Hide">›</button></div><div class="c2-pane" data-pane="chat"><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>${detailsHtml?`<div class="c2-pane c2-details" data-pane="details"><div class="op-run-details-body">${detailsHtml}</div></div>`:''}</div></aside>`;
   }
   function chatSetOpen(open){
     const panel=view.querySelector('[data-c2]');if(!panel)return;
@@ -5986,6 +5990,12 @@
   view.addEventListener('click',e=>{
     if(!view.querySelector('[data-c2-feed]'))return;
     const t=e.target;
+    const tabButton=t.closest?.('[data-c2-tab],[data-c2-tab-open]');
+    if(tabButton){e.preventDefault();chatTab=tabButton.dataset.c2Tab||tabButton.dataset.c2TabOpen;const panel=view.querySelector('[data-c2]');panel.dataset.tab=chatTab;
+      panel.querySelectorAll('[data-c2-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.c2Tab===chatTab)));
+      if(panel.dataset.open!=='true')chatSetOpen(true);
+      if(chatTab==='chat'&&chatPinned()){const feed=panel.querySelector('[data-c2-feed]');feed.scrollTop=feed.scrollHeight;}
+      return;}
     const toggle=t.closest?.('[data-c2-toggle]');
     if(toggle){e.preventDefault();chatSetOpen(view.querySelector('[data-c2]').dataset.open!=='true');return;}
     const mark=t.closest?.('.op-try-link');
@@ -6039,11 +6049,12 @@
     // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
-    const chat=chatSection(snapshot);
+    const chat=chatSection(snapshot,!DEBUG_VIEW&&title?compactRunDetails(snapshot,settings,resources):'');
     const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     // 11-18 (user, 03 split): no Setup & resources section; the same content opens from ⓘ Run details beside the title.
-    if(title){const details=`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</summary><div class="op-run-details-body">${compactRunDetails(snapshot,settings,resources)}</div></details>`;
+    // With the right panel, ⓘ Details opens its Details tab; without it (older runs) a small popover.
+    if(title){const details=chat?`<button type="button" class="op-run-details-btn" data-c2-tab-open="details" title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</button>`:`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</summary><div class="op-run-details-body">${compactRunDetails(snapshot,settings,resources)}</div></details>`;
       return title.replace(/<\/div><\/header>$/,`${details}</div></header>`)+execution+progress+chat;}
     return title+execution+progress+setup+chat;
   }

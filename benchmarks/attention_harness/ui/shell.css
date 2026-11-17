@@ -643,3 +643,16 @@ html body #attentionbench-clear .op-run-details-body{width:340px;max-height:70vh
 .op-run-details-body .rd-budgets dd{grid-template-columns:auto 1fr;align-items:center;gap:10px}
 .op-run-details-body .rd-budgets i{display:block;height:3px;border-radius:999px;background:linear-gradient(90deg,var(--sh-mut) var(--p),var(--sh-line2) var(--p))}
 .op-run-details-body .rd-notes{margin:0;padding-left:16px;font:400 11.5px/1.45 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+
+/* 11-18: right panel tabs (Conversation | Details) */
+.c2-tabs{display:flex;gap:4px}
+html body #attentionbench-clear .c2-tabs button{position:relative;height:28px!important;margin:0!important;padding:0 12px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.12em!important;text-transform:uppercase!important;cursor:pointer}
+html body #attentionbench-clear .c2-tabs button[aria-selected="true"]{background:var(--sh-chip)!important;color:var(--sh-ink)!important;box-shadow:inset 0 0 0 1px var(--sh-line)!important}
+.c2-tab-dot{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:var(--sh-acc);vertical-align:1px}
+.c2-pane{display:flex;flex-direction:column;flex:1;min-height:0}
+.c2-panel[data-tab="chat"] [data-pane="details"],.c2-panel[data-tab="details"] [data-pane="chat"]{display:none}
+.c2-details{overflow:auto}
+html body #attentionbench-clear .c2-details .op-run-details-body{position:static;width:auto;max-height:none;padding:14px 18px;border:0;border-radius:0;background:transparent;box-shadow:none}
+html body #attentionbench-clear .c2-details .rd-row{grid-template-columns:110px 1fr}
+html body #attentionbench-clear .op-run-details-btn{height:28px!important;margin:0!important;padding:0 10px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 12.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .op-run-details-btn:hover{color:var(--sh-ink)!important;background:var(--sh-chip)!important}
