@@ -757,3 +757,15 @@ html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary:hover,html b
 html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task{margin-bottom:8px}
 .ab-tr-pol[data-pol="auto"]{background:#e3ebf4;color:#2f5a86}
 #attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="auto"]{background:#1d2c3d;color:#a9c6e6}
+/* 11-18 ui改动: draggable split between the replay picture and the step list */
+@media(min-width:761px){
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-layout{position:relative;grid-template-columns:minmax(0,var(--vsplit,62%)) minmax(0,1fr)!important}
+.op-vsplit{position:absolute;top:0;bottom:0;left:calc(var(--vsplit,62%) - 7px);width:14px;z-index:5;cursor:col-resize;touch-action:none;display:flex;justify-content:center}
+.op-vsplit>i{width:2px;height:100%;background:transparent;transition:background var(--sh-t1) var(--sh-ease)}
+.op-vsplit::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:36px;margin:-18px 0 0 -3px;border-radius:3px;background:var(--rk-line,var(--sh-line));opacity:0;transition:opacity var(--sh-t1)}
+.op-vsplit:hover>i,.vs-resizing .op-vsplit>i{background:var(--sh-acc,#d94d27)}
+.op-vsplit:hover::after,.vs-resizing .op-vsplit::after{opacity:1;background:var(--sh-acc,#d94d27)}
+.vs-resizing,.vs-resizing *{cursor:col-resize!important;user-select:none!important}
+.vs-resizing video{pointer-events:none}
+}
+@media(max-width:760px){.op-vsplit{display:none}}

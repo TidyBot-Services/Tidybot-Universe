@@ -6041,6 +6041,23 @@
   ['wheel','touchmove','keydown'].forEach(type=>view.addEventListener(type,e=>{if(e.target.closest?.('[data-c2-feed]'))chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},{passive:true,capture:true}));
   view.addEventListener('mousedown',e=>{if(e.target.closest?.('[data-c2-feed]')&&e.offsetX>e.target.clientWidth)chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},true);
   new MutationObserver(()=>{chatLayout();}).observe(view,{childList:true});
+  // 11-18 ui改动 (user): in 01 the split between the picture and "What the robot did" can be dragged; the share is
+  // remembered in this browser, double-click resets it. The handle is re-added after every redraw of the section.
+  const VSPLIT_KEY='attention.replay.split',VSPLIT_DEFAULT=62;
+  const vsClamp=v=>Math.round(Math.max(40,Math.min(80,v))*10)/10;
+  function vsSet(v,save){const pct=vsClamp(v);root.style.setProperty('--vsplit',`${pct}%`);if(save)try{localStorage.setItem(VSPLIT_KEY,String(pct));}catch(_){}}
+  try{const saved=Number(localStorage.getItem(VSPLIT_KEY));if(saved)vsSet(saved,false);}catch(_){}
+  function vsEnsure(){view.querySelectorAll('.ab-viewer-layout').forEach(layout=>{if(layout.querySelector(':scope>.op-vsplit'))return;
+    const h=document.createElement('div');h.className='op-vsplit';h.setAttribute('role','separator');h.setAttribute('aria-orientation','vertical');h.setAttribute('aria-label','Resize picture and step list');h.title='Drag to resize · double-click to reset';h.innerHTML='<i></i>';layout.append(h);});}
+  new MutationObserver(()=>vsEnsure()).observe(view,{childList:true,subtree:true});
+  view.addEventListener('dblclick',e=>{if(e.target.closest?.('.op-vsplit')){vsSet(VSPLIT_DEFAULT,true);}});
+  const vsStart=e=>{const h=e.target.closest?.('.op-vsplit');if(!h||e.button>0)return;e.preventDefault();
+    const layout=h.parentElement,x=ev=>(ev.touches?.[0]||ev).clientX;root.classList.add('vs-resizing');
+    const move=ev=>{const r=layout.getBoundingClientRect();vsSet(100*(x(ev)-r.left)/r.width,false);};
+    const up=ev=>{root.classList.remove('vs-resizing');const r=layout.getBoundingClientRect();if(ev&&ev.type!=='touchcancel'&&x(ev)!=null&&Number.isFinite(x(ev)))vsSet(100*(x(ev)-r.left)/r.width,true);
+      for(const [t,f] of [['pointermove',move],['mousemove',move],['touchmove',move],['pointerup',up],['mouseup',up],['touchend',up],['touchcancel',up]])window.removeEventListener(t,f,true);};
+    for(const [t,f] of [['pointermove',move],['mousemove',move],['touchmove',move],['pointerup',up],['mouseup',up],['touchend',up],['touchcancel',up]])window.addEventListener(t,f,true);};
+  view.addEventListener('pointerdown',vsStart,true);view.addEventListener('touchstart',vsStart,{capture:true,passive:false});
   function chatLayout(){
     const panel=view.querySelector('[data-c2]');
     // A new question: once, bring it into view at the bottom of the conversation.
