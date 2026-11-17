@@ -1031,9 +1031,13 @@
         evidence_id:{enumerable:true,configurable:true,get:()=>trimMode()==='trimmed'?`${id}:trim`:id,set:value=>{id=value;}}});
     }
   }
+  let showSkippedWaits=false;
+  view.addEventListener('click',e=>{const b=e.target.closest?.('[data-skips-toggle]');if(!b)return;showSkippedWaits=!showSkippedWaits;
+    b.closest('[data-execution-viewer]')?.querySelectorAll('[data-trim-break]').forEach(r=>{r.hidden=!showSkippedWaits;});
+    b.setAttribute('aria-pressed',String(showSkippedWaits));b.textContent=b.textContent.replace(/^(Show|Hide)/,showSkippedWaits?'Hide':'Show');});
   const skipText=seconds=>seconds<120?`${Math.round(seconds)} s`:`${Math.floor(seconds/60)} min ${String(Math.round(seconds%60)).padStart(2,'0')} s`;
   function operatorSkipRow(b) {
-    return `<div class="op-skip" role="button" tabindex="0" data-trim-break data-trim-at="${b.trim_at}" title="Jump to the skipped moment"><time>${operatorTime(b.trim_at)}</time><span aria-hidden="true">⏭</span><div><b>Skipped ${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'}</b><small>real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}</small></div></div>`;
+    return `<div class="op-skip" role="button" tabindex="0"${showSkippedWaits?'':' hidden'} data-trim-break data-trim-at="${b.trim_at}" title="Jump to the skipped moment"><time>${operatorTime(b.trim_at)}</time><span aria-hidden="true">⏭</span><div><b>Skipped ${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'}</b><small>real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}</small></div></div>`;
   }
   function operatorTrimBar(trim) {
     const mode=trimMode();
@@ -1405,8 +1409,22 @@
         const seconds = Math.max(0, Math.floor(Number(value) || 0));
         return `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
       };
+      const chapterData = (() => { try { return JSON.parse(video.closest('[data-execution-viewer]')?.querySelector('[data-replay-chapters]')?.dataset.replayChapters || 'null'); } catch (_) { return null; } })();
+      const nowTag = document.createElement('span'); nowTag.className = 'ab-replay-stage'; nowTag.hidden = true;
+      bar.querySelector('[data-replay-clock]').after(nowTag);
+      let chapterDuration = 0;
+      const drawChapters = duration => {
+        if (!chapterData || !(duration > 0) || duration === chapterDuration) return;
+        chapterDuration = duration;
+        scrubber.querySelectorAll('.ab-chapter-tick,.ab-chapter-stop').forEach(el => el.remove());
+        chapterData.list.forEach(c => { if (c.at <= 0.05 || c.at >= duration) return;
+          const tick = document.createElement('span'); tick.className = 'ab-chapter-tick'; tick.style.left = `${c.at / duration * 100}%`; tick.title = c.label; tick.dataset.label = c.label; scrubber.append(tick); });
+        if (chapterData.stop && chapterData.stop.at <= duration) { const s = document.createElement('span'); s.className = 'ab-chapter-stop'; s.style.left = `${chapterData.stop.at / duration * 100}%`; s.title = `Stopped at ${chapterData.stop.label}`; scrubber.append(s); }
+      };
+      const stageAt = position => { let label = ''; for (const c of chapterData?.list || []) if (c.at <= position + 0.05) label = c.label; return label || chapterData?.list?.[0]?.label || ''; };
       const update = () => {
         const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        if (chapterData?.list?.length) { drawChapters(duration); const label = stageAt(Math.min(duration, video.currentTime || 0)); nowTag.hidden = !label; nowTag.textContent = label ? `▸ ${label}` : ''; }
         const position = Math.min(duration, video.currentTime || 0);
         range.max = String(duration);
         range.disabled = duration <= 0;
@@ -4972,6 +4990,30 @@
     return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
   }
 
+  // 11-18 (user, YouTube-style chapters): the seven stages as marks on the seek bar. Same rule as the backend
+  // replay_stages(): each SDK action maps to a stage; a stage starts at its first action. A rejected action marks the stop.
+  const REPLAY_STAGES=['Find objects','Pre-grasp','Descent','Close','Lift','Carry','Release'];
+  function replayChapters(events){
+    const first=new Map();let stop=null,closed=false,reached=false,lifted=false;
+    (events||[]).forEach((event,index)=>{
+      if(['started','running'].includes(event.status))return;
+      const op=String(event.operation||'').split('.').at(-1),source=String(event.source||''),result=event.result||{};
+      const rejected=['failed','blocked','rejected'].includes(event.status)||(result&&typeof result==='object'&&result.rejected===true);
+      const args=event.arguments?.args||[];let stage=null;
+      if(op==='find_objects')stage=0;else if(op==='close')stage=3;else if(op==='open'&&closed)stage=6;
+      else if(op.startsWith('move')){
+        if(source==='base'){if(closed)stage=5;}
+        else if(closed)stage=lifted?5:4;
+        else if(op==='move_delta'&&args.length>=3&&typeof args[2]==='number'&&args[2]<0&&reached)stage=2;
+        else stage=reached?2:1;
+      }
+      if(stage==null)return;
+      if(!first.has(stage))first.set(stage,index);
+      if(rejected){if(stop==null)stop={stage,index};}
+      else{if(stage===1)reached=true;if(stage===3)closed=true;if(stage===4)lifted=true;}
+    });
+    return {starts:[...first].sort((a,b)=>a[1]-b[1]),stop};
+  }
   function operatorEvents(trace, hasVideo) {
     const groups=[];
     const events=trace?.events||[];
@@ -4988,7 +5030,18 @@
       while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(operatorSkipRow(breaks.shift()));
       return rows.join('');
     };
-    return groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
+    // Chapters for the seek bar, in this replay's own time (trimmed or original).
+    let chapters='';
+    if(hasVideo){
+      const {starts,stop}=replayChapters(events),at=i=>operatorReplayTarget(events,i,trace?.recording,hasVideo).seconds;
+      const list=starts.map(([stage,i])=>({label:REPLAY_STAGES[stage],at:at(i)})).filter(c=>Number.isFinite(c.at));
+      const stopAt=stop?at(stop.index):null;
+      chapters=`<i hidden data-replay-chapters="${esc(JSON.stringify({list,stop:Number.isFinite(stopAt)?{label:REPLAY_STAGES[stop.stage],at:stopAt}:null}))}"></i>`;
+    }
+    // 11-18 (user, GitHub-Actions-style): skipped waits are folded; one button shows them.
+    const skipCount=breaks.length;
+    const skipToggle=skipCount?`<button type="button" class="op-skips-toggle" data-skips-toggle aria-pressed="${showSkippedWaits}">${showSkippedWaits?'Hide':'Show'} ${skipCount} skipped wait${skipCount===1?'':'s'}</button>`:'';
+    return chapters+skipToggle+groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
       const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';
@@ -5150,7 +5203,7 @@
     const passed=native===true||(typeof native!=='boolean'&&review?.passed===true);
     const failed=native===false||review?.passed===false;
     const stages=agentStripStages(version?.eval_stages||[]),stopped=stages.find(stage=>stage.state==='failed');
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b>${agentStoryReason(version,stopped.cause)?` · ${esc(agentStoryReason(version,stopped.cause))}`:''}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" hidden aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b>${agentStoryReason(version,stopped.cause)?` · ${esc(agentStoryReason(version,stopped.cause))}`:''}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {

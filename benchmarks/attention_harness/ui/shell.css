@@ -599,3 +599,16 @@ html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .o
 .c2-memory .c2-card{background:var(--sh-panel);border-style:dashed}
 .c2-notes{margin:4px 0 0;padding:0;list-style:none;font:400 13.5px/1.5 "DM Sans",system-ui,sans-serif}
 .c2-note-q{font-style:italic;color:var(--sh-ink)}
+
+/* 11-18: YouTube-style chapters on the seek bar; folded waits in the action log */
+.ab-replay-scrubber{position:relative}
+.ab-replay-scrubber .ab-chapter-tick{position:absolute;top:50%;width:2px;height:12px;margin-left:-1px;transform:translateY(-50%);background:#fff;opacity:.85;pointer-events:auto;z-index:2;border-radius:1px}
+.ab-replay-scrubber .ab-chapter-tick:hover{opacity:1;height:16px}
+.ab-replay-scrubber .ab-chapter-stop{position:absolute;top:50%;width:3px;height:16px;margin-left:-1.5px;transform:translateY(-50%);background:#e5533b;z-index:3;border-radius:1px;box-shadow:0 0 0 1px #0006}
+.ab-replay-stage{margin:0 6px;padding:1px 8px;border-radius:999px;background:#ffffff1f;color:#fff;font:600 11.5px "DM Sans",system-ui,sans-serif;white-space:nowrap}
+.op-eval-strip h4:not(:has([data-eval-did-not-run])){display:none}
+.op-eval-strip [data-eval-verdict]{display:none}
+.op-eval-strip:not(:has(.op-eval-stopped,[data-eval-did-not-run])){display:none}
+html body #attentionbench-clear .op-skips-toggle{display:inline-flex;align-items:center;height:26px;margin:2px 0 8px!important;padding:0 10px!important;border:1px dashed var(--sh-line)!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .op-skips-toggle:hover{color:var(--sh-ink)!important;border-color:var(--sh-acc)!important}
+.op-skip[hidden]{display:none!important}
