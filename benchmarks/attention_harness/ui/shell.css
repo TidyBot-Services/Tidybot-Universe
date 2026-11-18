@@ -961,3 +961,11 @@ html body #attentionbench-clear .lb-readonly.lb-readonly-line{flex-wrap:nowrap;g
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text{flex-wrap:nowrap;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;min-width:0}
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text>small:last-child{overflow:hidden;text-overflow:ellipsis}
 html body #attentionbench-clear .lb-readonly.lb-readonly-line :is(.lb-mine-run,.lb-back){flex:none;white-space:nowrap;padding-top:2px!important;padding-bottom:2px!important}
+/* 11-18 (user: too much vertical space): compact step list — tighter rows, stage headers and skip gaps */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary{min-height:24px!important;padding-top:2px!important;padding-bottom:2px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary small{margin-top:0!important;line-height:1.3}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-rail-dot{margin-top:3px}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-stage-h{margin:6px 0 1px;padding:1px 8px}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-stage-h:first-child{margin-top:0}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap{min-height:16px!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step{margin:0!important}
