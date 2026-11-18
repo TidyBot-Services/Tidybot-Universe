@@ -86,7 +86,8 @@ test('the ended panel says a no-progress stop stopped itself, not a system probl
 test('viewing someone else\'s run: one bar says read-only and carries your own open run (user 11-09)',async()=>{
   const Lobby=await loadLobby(shared);
   const html=Lobby.banner({lobby:Lobby.card('a')},key=>key==='pick'?'Pick Place: Counter → Sink':key);
-  assert.match(html,/<span class="lb-av p\d lg" aria-hidden="true">F<\/span><span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only<\/small><b>Fox-a's run<\/b>/,'11-09: avatar, then whose run');
+  // 11-18 (user): one slim line — small avatar, whose run, then the read-only chip
+  assert.match(html,/<span class="lb-av p\d sm" aria-hidden="true">F<\/span><span class="lb-readonly-text"><b>Fox-a's run<\/b><small class="lb-readonly-chip">Read-only<\/small>/,'11-09: avatar, then whose run');
   assert.match(html,/lb-mine-label">Your run<\/span><b>Running<\/b>/);
   assert.match(html,/data-lb-back>Back to my run →/);
   const named=await loadLobby({...shared,robot:{...shared.robot,open:[...shared.robot.open.slice(0,2),card('c',{mine:true,task_key:'pick'})]}});
