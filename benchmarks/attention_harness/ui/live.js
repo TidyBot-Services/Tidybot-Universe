@@ -6120,7 +6120,9 @@
   }
   // 11-18 (user idea): on a small screen the right panel moves to the left column and shares it with the run list as
   // tabs — Runs · Conversation · Details. The page body gets the whole width; a new robot question opens Conversation.
-  let leftTab='runs',leftSeenWait='';
+  // 11-18 (user, option C): the side column belongs to the open run — Conversation · Details. The run list is not a tab:
+  // the top bar's Tasks button swaps it in (and back); picking a run returns to the conversation.
+  let leftTab='chat',leftBack='chat',leftSeenWait='';
   // below 1800 CSS px (every MacBook at its default scaling: 1440-1728) the panel moves left; ?layout=left|right forces it
   const leftOn=()=>{const f=new URLSearchParams(location.search).get('layout');return Boolean(view.querySelector('[data-c2]'))&&(f==='left'||f!=='right'&&innerWidth<1800);};
   function applyLeft(){
@@ -6131,14 +6133,17 @@
     if(panel.dataset.asking==='true'&&panel.dataset.waitId&&panel.dataset.waitId!==leftSeenWait){leftSeenWait=panel.dataset.waitId;leftTab='chat';}
     let strip=sidebar.querySelector(':scope>.lc-strip');
     if(!strip){strip=document.createElement('div');strip.className='lc-strip';strip.setAttribute('role','tablist');
-      strip.innerHTML='<button type="button" role="tab" data-lc="runs">Runs</button><button type="button" role="tab" data-lc="chat">Conversation</button><button type="button" role="tab" data-lc="details">Details</button>';
+      strip.innerHTML='<button type="button" role="tab" data-lc="chat">Conversation</button><button type="button" role="tab" data-lc="details">Details</button>';
       sidebar.prepend(strip);}
     strip.querySelectorAll('[data-lc]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.lc===leftTab));b.classList.toggle('asking',b.dataset.lc==='chat'&&panel.dataset.asking==='true');});
-    root.dataset.lc=leftTab;
+    root.dataset.lc=leftTab;sidebarToggle.setAttribute('aria-pressed',String(leftTab==='runs'));
     if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
     const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
     root.style.setProperty('--lc-left',`${r.left}px`);root.style.setProperty('--lc-top',`${t.bottom+6}px`);root.style.setProperty('--lc-w',`${r.width}px`);
   }
+  sidebarToggle.addEventListener('click',e=>{if(!root.classList.contains('c2-left'))return;e.stopImmediatePropagation();e.preventDefault();
+    if(leftTab==='runs')leftTab=leftBack;else{leftBack=leftTab;leftTab='runs';}applyLeft();},true);
+  sidebar.addEventListener('click',e=>{if(root.classList.contains('c2-left')&&leftTab==='runs'&&e.target.closest?.('[data-dev-session],[data-view-run]')){leftTab='chat';requestAnimationFrame(applyLeft);}},true);
   sidebar.addEventListener('click',e=>{const b=e.target.closest?.('[data-lc]');if(!b)return;e.preventDefault();leftTab=b.dataset.lc;applyLeft();
     if(leftTab==='chat'){const feed=view.querySelector('[data-c2-feed]');if(feed)requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}});
   new MutationObserver(()=>applyLeft()).observe(view,{childList:true});

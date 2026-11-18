@@ -1014,3 +1014,7 @@ html body #attentionbench-clear .lc-strip button.asking::after{content:"";displa
 #attentionbench-clear.c2-left .c2-panel .c2-body{width:100%!important;border-left:0!important;border-right:1px solid var(--sh-line);box-shadow:none!important;transform:none!important;visibility:visible!important}
 #attentionbench-clear.c2-left .c2-panel :is(.c2-tabs,.c2-handle,.c2-resizer,[data-c2-toggle]){display:none!important}
 #attentionbench-clear.c2-left .c2-panel .c2-head-row{padding-top:6px;padding-bottom:6px}
+/* 11-18 option C: the run list is swapped in by the top bar's Tasks button (shown pressed); the side tabs hide meanwhile */
+#attentionbench-clear.c2-left[data-lc="runs"] .lc-strip{display:none}
+#attentionbench-clear.c2-left[data-lc="runs"] .ab-sidebar{box-shadow:6px 0 24px -14px #0006}
+html body #attentionbench-clear.c2-left [data-sidebar-toggle][aria-pressed="true"]{box-shadow:inset 0 0 0 2px #fff8,0 0 0 3px color-mix(in srgb,var(--sh-fill) 35%,transparent)!important}
