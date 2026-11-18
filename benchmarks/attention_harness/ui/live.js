@@ -6121,7 +6121,8 @@
   // 11-18 (user idea): on a small screen the right panel moves to the left column and shares it with the run list as
   // tabs — Runs · Conversation · Details. The page body gets the whole width; a new robot question opens Conversation.
   let leftTab='runs',leftSeenWait='';
-  const leftOn=()=>innerWidth<1500&&Boolean(view.querySelector('[data-c2]'));
+  // below 1800 CSS px (every MacBook at its default scaling: 1440-1728) the panel moves left; ?layout=left|right forces it
+  const leftOn=()=>{const f=new URLSearchParams(location.search).get('layout');return Boolean(view.querySelector('[data-c2]'))&&(f==='left'||f!=='right'&&innerWidth<1800);};
   function applyLeft(){
     const on=leftOn();root.classList.toggle('c2-left',on);
     if(!on){sidebar.querySelector(':scope>.lc-strip')?.remove();delete root.dataset.lc;return;}
