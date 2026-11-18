@@ -6138,7 +6138,11 @@
     strip.querySelectorAll('[data-lc]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.lc===leftTab));b.classList.toggle('asking',b.dataset.lc==='chat'&&panel.dataset.asking==='true');});
     root.dataset.lc=leftTab;sidebarToggle.setAttribute('aria-pressed',String(leftTab==='runs'));
     // option A: the column says which run it is about; "← Runs" goes up a level to the list
-    const crumb=strip.querySelector('[data-lc-title]');if(crumb){const name=view.querySelector('.op-page-title h1')?.textContent?.trim()||'';crumb.textContent=name;crumb.title=name;}
+    const crumb=strip.querySelector('[data-lc-title]'),up=strip.querySelector('.lc-crumb [data-lc]'),name=view.querySelector('.op-page-title h1')?.textContent?.trim()||'';
+    if(crumb){crumb.textContent=name;crumb.title=name;}
+    // 11-18 (user: the Tasks button repeated "← Runs"): on a small screen this one button goes both ways —
+    // "← Runs" from a run, "Back to run →" from the list (only when a run is open).
+    if(up){const inList=leftTab==='runs';up.textContent=inList?'Back to run →':'← Runs';up.dataset.lc=inList?leftBack:'runs';up.hidden=inList&&!name;up.title=inList?'Back to '+name:'All runs';}
     if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
     const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
     root.style.setProperty('--lc-left',`${r.left}px`);root.style.setProperty('--lc-top',`${t.bottom+6}px`);root.style.setProperty('--lc-w',`${r.width}px`);
@@ -6146,7 +6150,7 @@
   sidebarToggle.addEventListener('click',e=>{if(!root.classList.contains('c2-left'))return;e.stopImmediatePropagation();e.preventDefault();
     if(leftTab==='runs')leftTab=leftBack;else{leftBack=leftTab;leftTab='runs';}applyLeft();},true);
   sidebar.addEventListener('click',e=>{if(root.classList.contains('c2-left')&&leftTab==='runs'&&e.target.closest?.('[data-dev-session],[data-view-run]')){leftTab='chat';requestAnimationFrame(applyLeft);}},true);
-  sidebar.addEventListener('click',e=>{const b=e.target.closest?.('[data-lc]');if(!b)return;e.preventDefault();leftTab=b.dataset.lc;applyLeft();
+  sidebar.addEventListener('click',e=>{const b=e.target.closest?.('[data-lc]');if(!b)return;e.preventDefault();if(b.dataset.lc==='runs'&&leftTab!=='runs')leftBack=leftTab;leftTab=b.dataset.lc;applyLeft();
     if(leftTab==='chat'){const feed=view.querySelector('[data-c2-feed]');if(feed)requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}});
   new MutationObserver(()=>applyLeft()).observe(view,{childList:true});
   new MutationObserver(()=>{if(!sidebar.querySelector(':scope>.lc-strip'))applyLeft();}).observe(sidebar,{childList:true});

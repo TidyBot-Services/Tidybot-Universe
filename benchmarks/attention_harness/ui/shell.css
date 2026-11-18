@@ -1025,3 +1025,8 @@ html body #attentionbench-clear .lc-crumb button{flex:none!important;height:28px
 html body #attentionbench-clear .lc-crumb button:hover{background:var(--sh-fill)!important;color:#fff!important}
 .lc-crumb b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--sh-ink)}
 .lc-tabs{display:flex;gap:4px;padding:3px;border-radius:999px;background:var(--sh-chip)}
+/* 11-18 (user): on a small screen "← Runs" / "Back to run →" is the only way between the list and the run; no Tasks button */
+html body #attentionbench-clear.c2-left [data-sidebar-toggle]{display:none!important}
+#attentionbench-clear.c2-left[data-lc="runs"] .lc-strip{display:block!important}
+#attentionbench-clear.c2-left[data-lc="runs"] .lc-strip .lc-tabs{display:none}
+#attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row-reverse;justify-content:space-between}
