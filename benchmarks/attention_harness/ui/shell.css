@@ -977,3 +977,7 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 /* the loading layer covers the whole video box, so it stays centred while the box settles (it used to be a top-anchored 16:9 band) */
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] figure.op-video .op-loading{bottom:0!important;aspect-ratio:auto!important}
 }
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text{flex-direction:row!important;align-items:center!important}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text b{font:600 13px/1.3 "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-chip{font-size:11px!important;padding:1px 7px!important}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line{background:color-mix(in srgb,#2f5a86 8%,var(--sh-card))!important;border-color:color-mix(in srgb,#2f5a86 25%,transparent)!important}
