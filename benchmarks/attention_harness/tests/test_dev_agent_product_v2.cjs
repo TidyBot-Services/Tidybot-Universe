@@ -91,7 +91,9 @@ test('a waiting help request offers a reply form and a reply from a person is la
  assert.ok(html.includes('data-state="waiting"')&&html.includes('data-agent-reply')&&html.includes('data-execution-id="e000005"'));
  assert.ok(html.includes('What should &lt;it&gt; do?')&&html.includes('data-hr-skip'));
  assert.match(html, /type="checkbox" name="assisted"/);
- assert.match(html, /Assisted \(not a person\)/);
+ // 11-18 (user): no 代填 / Assisted tick in the reply form; the hidden field stays unchecked so replies count as a person's.
+ assert.doesNotMatch(html, /Assisted \(not a person\)|代填/);
+ assert.match(html, /type="checkbox" name="assisted" hidden>/);
  // 11-10 run page: a help card is the reply itself (no try, kind, delivery, fee or reason line).
  const card=api.agentHelpCard({agent_policy_version:'agent-policy-v2',delivered:true,provider:'human',ask_kind:'forced',execution_id:'e000004',reason:'request_after_each_failure',content:'Lift <slowly>',actual_cost_known:true,hint_human_seconds:356.1,actual_help_count:1},1);
  assert.ok(card.includes('aria-label="Help #1"')&&card.includes('<b>#1</b>')&&card.includes('Lift &lt;slowly&gt;'));

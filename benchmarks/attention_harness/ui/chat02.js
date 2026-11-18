@@ -129,15 +129,16 @@
   }
 
   // Composer shown when the robot is not asking: says why it is off.
-  // 11-18 (user: the greyed-out input + Send looked broken): a hint can only answer the robot's question, so while
-  // nothing is asked the box is one quiet status line, the same as after the run ends.
+  // 11-18 (user: redesign the hint box): one chat-style box in both states. While the robot is not asking, the same box
+  // is shown dimmed (a hint can only answer a question); the live reply form uses the same look (shell.css .c2-hint).
+  const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
   function idleComposer(m) {
     if (m.status.ended) return '<div class="c2-composer off"><p class="c2-idle">The run has ended · hints are closed.</p></div>';
-    return '<div class="c2-composer off"><p class="c2-idle"><i aria-hidden="true"></i>No question right now. When the robot needs a hint, it asks here.</p></div>';
+    return `<div class="c2-composer off c2-hint"><div class="c2-hint-head"><b>Hint for Attempt ${m.attempts.length + 1}</b><span>Opens when the robot asks</span></div><div class="c2-hint-box"><textarea rows="1" disabled aria-label="Your hint" placeholder="Nothing to answer right now"></textarea><button type="button" class="c2-hint-send" disabled aria-label="Send hint">${SEND_ICON}</button></div></div>`;
   }
   function demoComposer(m) {
     return `<div class="c2-composer live"><label>Hint for Attempt ${m.attempts.length + 1} · <b class="c2-sample">SAMPLE</b> · the robot keeps running while you decide</label><div class="c2-row-in"><input type="text" placeholder="Tell it what to do differently" data-c2-demo-input><button type="button" class="c2-send" data-c2-demo-send>Send</button><button type="button" class="c2-alt" data-c2-demo-send>Let the AI advisor decide</button></div><small class="c2-err" data-c2-demo-err></small></div>`;
   }
 
-  global.Chat02 = {feed, idleComposer, demoComposer, tryId};
+  global.Chat02 = {feed, idleComposer, demoComposer, tryId, SEND_ICON};
 })(typeof window !== 'undefined' ? window : globalThis);

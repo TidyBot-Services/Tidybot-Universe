@@ -1048,6 +1048,24 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 /* 11-18 (user: a huge robot icon above the reply box): in the conversation panel the question is already the
    robot's bubble in the feed, and the face's size rules only exist under .op-reply-live; drop the repeat */
 .c2-composer .op-reply-ask{display:none!important}
-/* 11-18 (user): the idle composer is one status line, no disabled input */
-.c2-composer .c2-idle{display:flex;align-items:center;gap:8px;margin:0;font:500 12px/1.4 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
-.c2-composer .c2-idle i{flex:none;width:6px;height:6px;border-radius:50%;background:var(--sh-mut);opacity:.7}
+/* 11-18 (user: redesign the hint box): one chat-style box for the idle and the live state */
+html body #attentionbench-clear#attentionbench-clear .c2-composer .c2-idle{display:flex;align-items:center;gap:8px;margin:0;font:500 12px/1.4 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+html body #attentionbench-clear#attentionbench-clear .c2-hint{padding:12px 14px 14px}
+html body #attentionbench-clear#attentionbench-clear .c2-hint-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 8px}
+html body #attentionbench-clear#attentionbench-clear .c2-hint-head b{font:700 12px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+html body #attentionbench-clear#attentionbench-clear .c2-hint-head span{font:500 11px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+html body #attentionbench-clear#attentionbench-clear .c2-hint-head .c2-hint-live{color:#d94d27;font-weight:600}
+html body #attentionbench-clear#attentionbench-clear .c2-hint.off .c2-hint-head b{color:var(--sh-mut)}
+html body #attentionbench-clear#attentionbench-clear .c2-hint :is(.c2-hint-box,.op-reply-compose){display:flex!important;align-items:flex-end;gap:8px;margin:0!important;padding:6px 6px 6px 14px!important;border:1px solid var(--sh-line)!important;border-radius:16px!important;background:var(--sh-card)!important;box-shadow:none!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint.live .op-reply-compose:focus-within{border-color:#d94d27!important;box-shadow:0 0 0 3px #d94d2722!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint.off .c2-hint-box{background:var(--sh-sunk,#00000008)!important;border-style:dashed!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint textarea{flex:1;min-width:0;min-height:32px;max-height:140px;margin:0!important;padding:7px 0!important;border:0!important;outline:0;background:transparent!important;box-shadow:none!important;resize:none;font:400 14px/1.35 "DM Sans",system-ui,sans-serif!important;color:var(--sh-ink)!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint textarea::placeholder{color:var(--sh-mut)}
+html body #attentionbench-clear#attentionbench-clear .c2-hint :is(.c2-hint-send,.op-reply-send){flex:none;display:grid!important;place-items:center;width:32px!important;height:32px!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;background:#d94d27!important;color:#fff!important;cursor:pointer}
+html body #attentionbench-clear#attentionbench-clear .c2-hint :is(.c2-hint-send,.op-reply-send) svg{width:16px;height:16px}
+html body #attentionbench-clear#attentionbench-clear .c2-hint :is(.c2-hint-send,.op-reply-send):disabled{background:var(--sh-line)!important;color:var(--sh-card)!important;cursor:default}
+html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips{display:flex!important;flex-wrap:wrap;gap:6px;margin:0 0 8px!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips button{min-height:0!important;height:auto!important;margin:0!important;padding:5px 11px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-card)!important;box-shadow:none!important;color:var(--sh-ink)!important;font:500 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;transform:none!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips button:hover{border-color:#d94d27!important;color:#d94d27!important}
+html body #attentionbench-clear#attentionbench-clear .c2-hint [data-agent-reply-message]:empty{display:none}
+html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips [data-hr-skip]{border-style:dashed!important;color:var(--sh-mut)!important}
