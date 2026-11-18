@@ -882,7 +882,7 @@ def create_server(
                     page = page.replace('data-mode="live"',
                                         f'data-mode="live" data-control-token="{control_token}"' + (' data-remote-tab="1"' if lobby is not None else ''), 1)
                 self._send(page.encode("utf-8"), "text/html; charset=utf-8")
-            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/lobby.js"}:
+            elif path in {"/ui/live.js", "/ui/notices.js", "/ui/shell.js", "/ui/human_reply.js", "/ui/lobby.js", "/ui/chat02.js", "/ui/lite_model.js"}:
                 self._send((UI_DIR / path.rsplit('/', 1)[-1]).read_bytes(), "text/javascript; charset=utf-8")
             elif path == "/ui/shell.css":
                 self._send((UI_DIR / "shell.css").read_bytes(), "text/css; charset=utf-8")
