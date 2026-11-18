@@ -949,3 +949,10 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage[data-op-held]>:is(img,video){object-fit:contain}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-idle{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 }
+/* user 11-18: the attention flow is never scaled — circles, dots and text keep their drawn size. The svg is exactly its own
+   width (the spread width when it fits; wider = the row scrolls sideways). */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg{width:var(--nw)!important;min-width:var(--nw)!important;max-width:none!important;height:auto!important;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-attempt-name{font-size:11.5px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-agent-reason{font-size:11px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg :is(.op-attn-endpoint text,.op-try-caption,.op-attn-end-small){font-size:10.5px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end text:not(.op-attn-end-small){font-size:13px!important}
