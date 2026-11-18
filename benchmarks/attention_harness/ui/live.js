@@ -6152,7 +6152,8 @@
   sidebarToggle.addEventListener('click',e=>{if(!root.classList.contains('c2-left'))return;e.stopImmediatePropagation();e.preventDefault();
     if(leftTab==='runs')leftTab=leftBack;else{leftBack=leftTab;leftTab='runs';}applyLeft();},true);
   sidebar.addEventListener('click',e=>{if(root.classList.contains('c2-left')&&leftTab==='runs'&&e.target.closest?.('[data-dev-session],[data-view-run]')){leftTab='chat';requestAnimationFrame(applyLeft);}},true);
-  sidebar.addEventListener('click',e=>{const b=e.target.closest?.('.lc-strip button[data-lc]');if(!b)return;  // only the strip's buttons: the page root also carries data-lce.preventDefault();if(b.dataset.lc==='runs'&&leftTab!=='runs')leftBack=leftTab;leftTab=b.dataset.lc;applyLeft();
+  // only the strip's buttons: the page root also carries data-lc
+  sidebar.addEventListener('click',e=>{const b=e.target.closest?.('.lc-strip button[data-lc]');if(!b)return;e.preventDefault();if(b.dataset.lc==='runs'&&leftTab!=='runs')leftBack=leftTab;leftTab=b.dataset.lc;applyLeft();
     if(leftTab==='chat'){const feed=view.querySelector('[data-c2-feed]');if(feed)requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}});
   new MutationObserver(()=>applyLeft()).observe(view,{childList:true});
   // 11-18 (user): the "whose run" bubble sits on the right of the top bar, just left of the theme / you buttons.
