@@ -6067,7 +6067,9 @@
     const memoryFailures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis').map(e=>typeof e.error==='object'?JSON.stringify(e.error):String(e.error));
     let html=Chat02.feed(m,{attemptIds,tryRecordings,memory,memoryFailures});
     if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
-    const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
+    // 11-18 (user): on someone else's Remote run the reply box is not theirs to use; say who answers instead of "no question"
+    const ownerName=snapshot.lobby?window.Lobby.personOf(snapshot.lobby):'the person who started it';
+    const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):(!own&&!m.status.ended)?`<div class="c2-composer off"><p class="c2-idle"><i aria-hidden="true"></i>Only ${esc(ownerName)} can answer the robot on this run.</p></div>`:Chat02.idleComposer(m);
     // 11-18 (user): a right-side panel, not part of 02. Opens by itself when the robot asks
     // (once per question: closing it during that question is remembered); a manual open/close is kept for this run.
     const runId=snapshot.run.run_id,choice=stored(`attention.c2:${runId}`),asking=Boolean(m.wait);

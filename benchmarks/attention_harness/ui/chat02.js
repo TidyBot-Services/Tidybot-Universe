@@ -129,9 +129,11 @@
   }
 
   // Composer shown when the robot is not asking: says why it is off.
+  // 11-18 (user: the greyed-out input + Send looked broken): a hint can only answer the robot's question, so while
+  // nothing is asked the box is one quiet status line, the same as after the run ends.
   function idleComposer(m) {
-    if (m.status.ended) return '<div class="c2-composer off"><span>The run has ended · hints are closed.</span></div>';
-    return `<div class="c2-composer off"><label>Hint for Attempt ${m.attempts.length + 1}</label><div class="c2-row-in"><input type="text" disabled placeholder="The robot asks you when it needs a hint; you can answer then"><button type="button" disabled>Send</button></div><small>Sending a hint at any time (without being asked) is not supported by the server yet.</small></div>`;
+    if (m.status.ended) return '<div class="c2-composer off"><p class="c2-idle">The run has ended · hints are closed.</p></div>';
+    return '<div class="c2-composer off"><p class="c2-idle"><i aria-hidden="true"></i>No question right now. When the robot needs a hint, it asks here.</p></div>';
   }
   function demoComposer(m) {
     return `<div class="c2-composer live"><label>Hint for Attempt ${m.attempts.length + 1} · <b class="c2-sample">SAMPLE</b> · the robot keeps running while you decide</label><div class="c2-row-in"><input type="text" placeholder="Tell it what to do differently" data-c2-demo-input><button type="button" class="c2-send" data-c2-demo-send>Send</button><button type="button" class="c2-alt" data-c2-demo-send>Let the AI advisor decide</button></div><small class="c2-err" data-c2-demo-err></small></div>`;
