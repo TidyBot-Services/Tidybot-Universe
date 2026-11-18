@@ -52,13 +52,31 @@ def load(path):
     return json.loads(safe(path).read_bytes())
 
 
+# 11-18: a finished receipt lists every cleaned frame of a cell (227k names in a long run). Reading it took ~65 ms
+# and every compat/ evidence request read it several times. Finished receipts are cached by (path, mtime, size)
+# together with their name set; an in-progress receipt is always re-read. Callers only read these values.
+_RECEIPTS = {}
+
+
+def _receipt(path):
+    stat = path.stat(); key = (stat.st_mtime_ns, stat.st_size)
+    hit = _RECEIPTS.get(str(path))
+    if hit and hit[0] == key:
+        return hit[1]
+    value = load(path)
+    if value.get('status') != 'in_progress':
+        if len(_RECEIPTS) > 256: _RECEIPTS.clear()
+        _RECEIPTS[str(path)] = (key, value, None)
+    return value
+
+
 def receipt_for(path):
     """Nearest cell receipt; never trust a receipt in an unrelated run."""
     path = safe(path)
     for parent in (path if path.is_dir() else path.parent, *path.parents):
         receipt = parent/'frame-cleanup.json'
         if receipt.is_file():
-            value = load(receipt)
+            value = _receipt(receipt)
             if value.get('schema') == SCHEMA:
                 return parent, value
         if parent.name == 'cells':
@@ -68,6 +86,14 @@ def receipt_for(path):
 
 def cleaned_files(root, receipt):
     if not receipt:return set()
+    if receipt.get('status') != 'in_progress':
+        for name, (key, value, names) in _RECEIPTS.items():
+            if value is receipt:
+                if names is None:
+                    names = frozenset(n for group in receipt['views']
+                                      for n in (*group.get('deleted_files', []), *group.get('already_missing', [])))
+                    _RECEIPTS[name] = (key, value, names)
+                return names
     names = {n for group in receipt['views']
              for n in (*group.get('deleted_files', []), *group.get('already_missing', []))}
     if receipt.get('status') == 'in_progress':

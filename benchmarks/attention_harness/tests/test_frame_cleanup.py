@@ -900,3 +900,24 @@ assert json.loads((cell/'frame-cleanup.json').read_bytes())['status']=='complete
     done=subprocess.run([sys.executable,'-B','-c',code,str(root),str(cell)],capture_output=True,text=True,timeout=8)
     assert done.returncode==0,done.stdout+done.stderr
     assert not (ep/'recording_frames/000002.jpg').exists()
+
+
+def test_finished_receipt_cache_follows_rewrites(tmp_path):
+    """11-18: finished receipts are cached by (mtime, size); a rewrite is seen, an in-progress one is never cached."""
+    cell = tmp_path/'cells'/'c1'; frame = cell/'agent/private/public/executions/e000001/frames/a.jpg'
+    frame.parent.mkdir(parents=True)
+    receipt = cell/'frame-cleanup.json'
+    def write(status, names):
+        receipt.write_text(json.dumps(dict(schema=cleanup.SCHEMA, status=status,
+            views=[dict(files=list(names), deleted_files=list(names), already_missing=[])])))
+        os.utime(receipt, ns=(1, len(cleanup._RECEIPTS) + hash(tuple(names)) % 10**9 + 10**9))
+    write('completed', ['x.jpg'])
+    root, value = cleanup.receipt_for(frame)
+    assert root == cell and cleanup.cleaned_files(root, value) == {'x.jpg'}
+    assert cleanup.receipt_for(frame)[1] is value  # served from the cache
+    write('completed', ['x.jpg', 'agent/private/public/executions/e000001/frames/a.jpg'])
+    root, value = cleanup.receipt_for(frame)
+    assert 'agent/private/public/executions/e000001/frames/a.jpg' in cleanup.cleaned_files(root, value)
+    assert cleanup.was_cleaned(frame)
+    write('in_progress', ['y.jpg'])
+    assert cleanup.receipt_for(frame)[1] is not cleanup.receipt_for(frame)[1]

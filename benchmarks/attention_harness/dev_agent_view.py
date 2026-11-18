@@ -109,9 +109,20 @@ def artifact(cell,name):
         if name.endswith('/frames.json') and isinstance(value, list):
             folder = Path(name).parent
             cleanup_root, receipt = receipt_for(root)
-            removed = {cleanup_root/n for n in cleaned_files(cleanup_root, receipt)} if receipt else set()
-            value = [dict(row, available=False, label=CLEANED) if root/'private/public'/folder/row['filename'] in removed else row
-                     for row in value]
+            # 11-18: compare receipt-relative names as strings. Building a Path for every cleaned frame (146k in a
+            # long run) cost ~1.4 s on each compat/ request, since every version's evidence reads frames.json.
+            removed = cleaned_files(cleanup_root, receipt) if receipt else set()
+            base = root/'private/public'/folder
+            prefix = str(base.relative_to(cleanup_root))+'/' if receipt and base.is_relative_to(cleanup_root) else None
+            plain = re.compile(r'(?!\.{1,2}/)[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:/(?!\.{1,2}(?:/|$))[A-Za-z0-9_.-]+)*')
+            def gone(row):
+                if not removed:return False
+                name = row['filename']
+                if prefix is not None and isinstance(name, str) and plain.fullmatch(name):
+                    return prefix+name in removed
+                full = base/name
+                return full.is_relative_to(cleanup_root) and str(full.relative_to(cleanup_root)) in removed
+            value = [dict(row, available=False, label=CLEANED) if gone(row) else row for row in value]
         return value, 'application/json'
     return clean(text),'text/plain; charset=utf-8'
 
