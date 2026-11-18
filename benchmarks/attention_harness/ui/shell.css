@@ -923,3 +923,8 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card);padding:10px 12px 0}
 }
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views{justify-content:flex-start!important}
+/* b1 round 4: the video column is sized exactly as in the mock — min(640px + (window height − 733px) × 0.9, 68%) — and the picture is shown whole (no crop) */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{grid-template-columns:min(calc(640px + (100vh - 733px)*.9),68%) minmax(0,1fr)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:contain}
+}
