@@ -11,6 +11,18 @@
   let manifest = null, rows = [], lobby = null, filter = null, bgSet = false;
   const errors = new Map();
 
+  // 11-18 (user): a signed-in person sees the same gallery without any guest wording; New run opens the run page's
+  // New run dialog instead of the invite page.
+  let signedInShown = null;
+  function signedIn(yes) {
+    if (yes === signedInShown) return; signedInShown = yes;
+    const h1 = document.querySelector('#guest-gallery h1'), lead = document.querySelector('#guest-gallery .gg-lead'), go = document.querySelector('[data-guest-new-run]');
+    if (yes) {
+      if (h1) h1.innerHTML = 'Pick a run, <em>or start one</em>';
+      if (lead) lead.textContent = 'Every run on this robot is open to watch. Pick one below to see its replay and result, or start your own.';
+      if (go) go.setAttribute('href', '/ui/#new-run');
+    }
+  }
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
   function showErrors() {
@@ -141,6 +153,7 @@
     if (runs) rows = (runs.dev_sessions || []).filter(row => row.key && row.experiment_id).sort((a, b) =>
       (kindOf(b) === 'live') - (kindOf(a) === 'live') || (b.created_at || 0) - (a.created_at || 0));
     if (board) lobby = board;
+    signedIn(Boolean(lobby && lobby.me));
     render();
   }
 

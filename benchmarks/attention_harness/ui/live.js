@@ -6808,7 +6808,12 @@
     });
   }
 
-  function renderNoRuns(){renderInactive(null);}
+  // 11-18 (user): on Remote a signed-in person with no run open gets the run gallery (pick a run or start one), not
+  // empty frames. Not while New run is being opened or its dialog is up.
+  function renderNoRuns(){
+    if(root.dataset.remote==='1'&&root.dataset.guest!=='1'&&!launchRequested&&!launchDialog.open&&!pendingLaunch&&location.pathname==='/ui/'){location.replace('/ui/gallery');return;}
+    renderInactive(null);
+  }
   function renderInactive(launch = null) {
     stopGuidancePreview(); activeGuidancePreview = null;
     dismissRequestAlert();

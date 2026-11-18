@@ -29,7 +29,7 @@ def ui_asset(name):
     if TASK_PICTURE.fullmatch(name):return 'image/jpeg' if name.endswith('.jpg') else 'application/json; charset=utf-8'
     return None
 # Memory runs on the lab's own data, so here it is a page about what is coming.
-UI_PAGES = {'/ui/home.html': 'home.html', '/ui/memory.html': 'memory_soon.html'}
+UI_PAGES = {'/ui/home.html': 'home.html', '/ui/memory.html': 'memory_soon.html', '/ui/gallery': 'guest.html'}  # 11-18: the gallery for everyone
 # Fields the harness keeps for itself: where things live on its disk, and who runs it.
 PRIVATE_FIELDS = {'manifest', 'owner', 'runtime_root', 'runtime', 'planner_deployment', 'identity_lock', 'codex_identity', 'source_root', 'authorization', 'worker', 'pid',
                   'host', 'memory_authority', 'memory_family', 'quota', 'budget_file'}
