@@ -1033,3 +1033,8 @@ html body #attentionbench-clear.c2-left [data-sidebar-toggle]{display:none!impor
 /* list mode: the one button "← <open run>" spans the line; no repeated title */
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row!important}
 html body #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb button{flex:1 1 auto!important;justify-content:flex-start;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+/* 11-18 (user): whose run it is sits as a small bubble in the top bar, not a full-width line above the title */
+@media (min-width:761px){
+html body #attentionbench-clear .lb-readonly.lb-readonly-line{position:fixed!important;top:calc((var(--sh-bar,68px) - 34px)/2);left:50%;transform:translateX(-50%);z-index:60;max-width:min(560px,40vw);height:34px;margin:0!important;padding:0 12px 0 4px!important;border-radius:999px!important;box-shadow:0 2px 8px -4px #0004}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text>small:last-child{display:none}
+}
