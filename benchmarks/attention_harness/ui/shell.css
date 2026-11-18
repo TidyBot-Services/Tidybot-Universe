@@ -1045,3 +1045,6 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 .op-attn-costbox{display:contents}
 .op-attn-chip b{font-weight:700;color:#d94d27}
 .op-attn-costbox .rd-row[data-key="human"] dd b{color:#d94d27}
+/* 11-18 (user: a huge robot icon above the reply box): in the conversation panel the question is already the
+   robot's bubble in the feed, and the face's size rules only exist under .op-reply-live; drop the repeat */
+.c2-composer .op-reply-ask{display:none!important}
