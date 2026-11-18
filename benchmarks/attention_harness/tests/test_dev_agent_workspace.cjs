@@ -314,7 +314,7 @@ test('r6 A1 and A2 use the same Eval short reason in 02, 03 and full story',asyn
     api.selectAgentAttempt(snapshot,snapshot.attempts[i].attempt_id);
     const reason=r6.versions[i].story.short;
     const node=api.attentionEfficiency(snapshot).match(new RegExp(`data-attn-attempt="${i+1}"[^]*?<\\/g>`))[0];
-    assert.ok(node.includes(`>${reason}</text>`));
+    assert.ok(node.includes(` · ${reason}</tspan></text>`));  // 11-18: one label line, "Attempt N · reason"
     const strip=api.executionViewer(snapshot).match(/data-eval-stopped><b>Stopped at [^<]*<\/b> · ([^<]+)<\/p>/)[1];
     assert.equal(strip,reason);
     const story=api.agentFullStory(snapshot).match(new RegExp(`data-agent-attempt-card="${i+1}"[^]*?data-agent-failure-reason>([^<]+)`));
