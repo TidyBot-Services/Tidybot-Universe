@@ -1224,10 +1224,10 @@
     // 11-18 ui改动 (user): the step list follows playback. The step the video is at is marked, later steps are dimmed,
     // and the list scrolls to keep it in view; scrolling by hand pauses the follow for a few seconds.
     const list=panel.querySelector('.ab-history-events');
-    if(video.followSteps)video.removeEventListener('timeupdate',video.followSteps);
+    if(video.followSteps){video.removeEventListener('timeupdate',video.followSteps);video.removeEventListener('seeked',video.followSteps);video.removeEventListener('loadeddata',video.followSteps);}
     if(list){
       const timed=rows.filter(r=>r.hasAttribute('data-replay-seconds')).map(r=>({row:r,t:Number(r.dataset.replaySeconds),el:r.closest('[data-history-event]')}));
-      const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')];
+      const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')],all=[...list.querySelectorAll('[data-history-event]')];
       let holdUntil=0,lastEl=null;
       const hold=()=>{holdUntil=Date.now()+4000;};
       list.addEventListener('wheel',hold,{passive:true});list.addEventListener('touchmove',hold,{passive:true});list.addEventListener('pointerdown',hold);
@@ -1238,15 +1238,17 @@
         list.dataset.follow=(now>0.05||!video.paused)?'on':'off';
         let curHead=null;for(const h of heads){if(Number(h.dataset.replaySeconds)<=now+0.05)curHead=h;}
         heads.forEach(h=>{h.dataset.now=String(h===curHead);});
+        // every step row, timed or not, is marked by its place in the list: after the current one = later (dimmed)
         let seen=!cur;
-        for(const x of timed){const isCur=x===cur;x.el.dataset.now=String(isCur);x.el.dataset.later=String(seen);if(isCur)seen=true;}
+        for(const el of all){const isCur=el===cur?.el;el.dataset.now=String(isCur);el.dataset.later=String(seen);if(isCur)seen=true;}
         if(cur&&cur.el!==lastEl){lastEl=cur.el;
           if(Date.now()>holdUntil&&list.scrollHeight>list.clientHeight){
             const lr=list.getBoundingClientRect(),er=cur.el.getBoundingClientRect(),want=list.scrollTop+(er.top-lr.top)-list.clientHeight*0.35;
             list.scrollTo({top:Math.max(0,want),behavior:video.paused?'auto':'smooth'});}}
       };
-      video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);
-      video.followSteps();
+      video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);video.addEventListener('loadeddata',video.followSteps);
+      // the list's saved scroll position is restored after this runs; scroll to the current step once layout has settled
+      video.followSteps();setTimeout(()=>{lastEl=null;video.followSteps();},300);
     }
     video.onerror = () => {
       const selected = replaySelections.get(key);
