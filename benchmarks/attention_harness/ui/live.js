@@ -6097,7 +6097,7 @@
   function vsEnsure(){view.querySelectorAll('.ab-viewer-layout').forEach(layout=>{if(layout.querySelector(':scope>.op-vsplit'))return;
     const h=document.createElement('div');h.className='op-vsplit';h.setAttribute('role','separator');h.setAttribute('aria-orientation','vertical');h.setAttribute('aria-label','Resize picture and step list');h.title='Drag to resize · double-click to reset';h.innerHTML='<i></i>';layout.append(h);});}
   new MutationObserver(()=>vsEnsure()).observe(view,{childList:true,subtree:true});
-  view.addEventListener('dblclick',e=>{if(e.target.closest?.('.op-vsplit')){vsSet(VSPLIT_DEFAULT,true);}});
+  view.addEventListener('dblclick',e=>{if(e.target.closest?.('.op-vsplit')){root.style.removeProperty('--vsplit');try{localStorage.removeItem(VSPLIT_KEY);}catch(_){}}});  // back to the default split
   const vsStart=e=>{const h=e.target.closest?.('.op-vsplit');if(!h||e.button>0)return;e.preventDefault();
     const layout=h.parentElement,x=ev=>(ev.touches?.[0]||ev).clientX;root.classList.add('vs-resizing');
     const move=ev=>{const r=layout.getBoundingClientRect();vsSet(100*(x(ev)-r.left)/r.width,false);};

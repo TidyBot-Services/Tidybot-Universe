@@ -932,3 +932,9 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 @media (min-height:640px){
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:cover!important}
 }
+/* user 11-18: the split between the video and the step list can be dragged (40–80 %, remembered, double-click = default).
+   Default is the mock's width; a dragged width (--vsplit) wins. */
+@media (min-height:640px) and (min-width:761px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{position:relative;grid-template-columns:var(--vsplit,min(calc(640px + (100vh - 733px)*.9),68%)) minmax(0,1fr)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-vsplit{left:calc(var(--vsplit,min(calc(640px + (100vh - 733px)*.9),68%)) - 2px)}
+}
