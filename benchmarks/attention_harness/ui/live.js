@@ -762,7 +762,7 @@
     const local=run&&switchRequests.get(run.run_id);
     const pending=request?.state==='Pending'||local?.state==='Requested';
     const executing=navigationRecords().filter(r=>recordIsActive(r)&&window.Lobby.isMine(r));
-    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, policy, model or person"></span></label>
+    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"All runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, policy, model or person"></span></label>
       ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
       ${historyNotice?`<p class="ab-history-notice" data-history-notice role="status">${esc(historyNotice.message)}${historyNotice.kind?` <button type="button" data-history-undo>Undo</button>`:''}</p>`:''}
       ${DEBUG_VIEW ? `<details class="ab-record-jump"><summary>Jump to a record</summary><label class="live-run-picker">Viewing record<select id="ab-live-run" aria-label="Viewing record">${linked.map(r=>`<option value="${esc(r.run_id)}" ${r.run_id===(selectedDev||selectedRun)?'selected':''}>${esc(displayRun(r))}</option>`).join('')}</select></label></details>` : ''}
@@ -6142,7 +6142,9 @@
     if(crumb){crumb.textContent=name;crumb.title=name;}
     // 11-18 (user: the Tasks button repeated "← Runs"): on a small screen this one button goes both ways —
     // "← Runs" from a run, "Back to run →" from the list (only when a run is open).
-    if(up){const inList=leftTab==='runs';up.textContent=inList?'Back to run →':'← Runs';up.dataset.lc=inList?leftBack:'runs';up.hidden=inList&&!name;up.title=inList?'Back to '+name:'All runs';}
+    // 11-18 (user: "run" outside and "run" inside): the list is "All runs"; the way back is named after the open run itself.
+    if(up){const inList=leftTab==='runs',short=name.charAt(0)+name.slice(1).toLowerCase();up.textContent=inList?`← ${short}`:'← All runs';up.dataset.lc=inList?leftBack:'runs';up.hidden=inList&&!name;up.title=inList?`Back to ${short}`:'All runs';}
+    if(crumb)crumb.hidden=leftTab==='runs';
     if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
     const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
     root.style.setProperty('--lc-left',`${r.left}px`);root.style.setProperty('--lc-top',`${t.bottom+6}px`);root.style.setProperty('--lc-w',`${r.width}px`);

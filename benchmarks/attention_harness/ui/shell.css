@@ -1030,3 +1030,6 @@ html body #attentionbench-clear.c2-left [data-sidebar-toggle]{display:none!impor
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-strip{display:block!important}
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-strip .lc-tabs{display:none}
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row-reverse;justify-content:space-between}
+/* list mode: the one button "← <open run>" spans the line; no repeated title */
+#attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row!important}
+html body #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb button{flex:1 1 auto!important;justify-content:flex-start;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
