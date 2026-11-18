@@ -1069,3 +1069,5 @@ html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips button{m
 html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips button:hover{border-color:#d94d27!important;color:#d94d27!important}
 html body #attentionbench-clear#attentionbench-clear .c2-hint [data-agent-reply-message]:empty{display:none}
 html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips [data-hr-skip]{border-style:dashed!important;color:var(--sh-mut)!important}
+/* 11-18 (user): a long unbroken reason ran past the card edge */
+.c2-card .c2-why{min-width:0;overflow-wrap:anywhere}

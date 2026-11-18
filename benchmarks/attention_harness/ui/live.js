@@ -5558,7 +5558,9 @@
     const policy = snapshot.attention_control?.active_policy || run.policy_id;
     const eyebrow = ['Run', relativeTime(record?.created_at ?? run.created_at), policy ? policyTitle(policy) : '', run.seed == null ? '' : `Scene seed ${run.seed}`].filter(Boolean).join(' · ');
     const head = cut > 0 ? `${esc(name.slice(0, cut))} <em>${esc(name.slice(cut + 1).trim())}</em>` : esc(name);
-    const word = record ? recordStatus(record) : '';
+    // 11-18 (user): a paused run said "Running" here (the run list record does not know about pause); the run's own controls do
+    const ctl = snapshot.dev_v2?.run_controls?.state;
+    const word = record ? (ctl === 'paused' ? 'Paused' : ctl === 'pausing' ? 'Pausing' : recordStatus(record)) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
     // 11-18 ui改动 (user): New run is always in the title; while a run is live it is the quiet outlined form, so it does not compete with Pause/Stop.
     const ended = isTerminal(snapshot) || snapshot.lobby;

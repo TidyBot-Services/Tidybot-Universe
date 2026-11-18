@@ -120,7 +120,8 @@
       prev = sub.number; prevEnd = end;
     });
     // Tries after the last submitted attempt belong to the attempt in progress.
-    const current = tries.filter(t => !t.submitted && t.number > prev);
+    // 11-18 (user): the tries of the attempt in progress showed raw class names ("RecoverablePlanRejection: start_state_…"); same words as finished attempts
+    const current = tries.filter(t => !t.submitted && t.number > prev).map(t => ({...t, why: plainWhy(t.why)}));
     const currentStart = prevEnd;
 
     // Help: one entry per ask_help event. A person's reply is "hint", anything else is the AI advisor.
