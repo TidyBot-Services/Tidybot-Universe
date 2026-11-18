@@ -6121,7 +6121,7 @@
   // tabs — Runs · Conversation · Details. The page body gets the whole width; a new robot question opens Conversation.
   // 11-18 (user, option C): the side column belongs to the open run — Conversation · Details. The run list is not a tab:
   // the top bar's Tasks button swaps it in (and back); picking a run returns to the conversation.
-  let leftTab='chat',leftBack='chat',leftSeenWait='';
+  let leftTab='chat',leftBack='chat',leftSeenWait='',leftRunKey='';
   // below 1800 CSS px (every MacBook at its default scaling: 1440-1728) the panel moves left; ?layout=left|right forces it
   const leftOn=()=>{const f=new URLSearchParams(location.search).get('layout');return Boolean(view.querySelector('[data-c2]'))&&(f==='left'||f!=='right'&&innerWidth<1800);};
   function applyLeft(){
@@ -6129,6 +6129,8 @@
     if(!on){sidebar.querySelector(':scope>.lc-strip')?.remove();delete root.dataset.lc;return;}
     if(!sidebarOpen){sidebarOpen=true;sidebarLayout();}
     const panel=view.querySelector('[data-c2]');
+    // 11-18 (user): opening another run by any route (a new run just started, a link, back/forward) shows its conversation
+    const runKey=new URLSearchParams(location.search).get('dev')||new URLSearchParams(location.search).get('run')||'';if(runKey!==leftRunKey){if(leftRunKey)leftTab='chat';leftRunKey=runKey;}
     if(panel.dataset.asking==='true'&&panel.dataset.waitId&&panel.dataset.waitId!==leftSeenWait){leftSeenWait=panel.dataset.waitId;leftTab='chat';}
     let strip=sidebar.querySelector(':scope>.lc-strip');
     if(!strip){strip=document.createElement('div');strip.className='lc-strip';strip.setAttribute('role','tablist');
