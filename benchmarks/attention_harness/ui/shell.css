@@ -1075,3 +1075,6 @@ html body #attentionbench-clear#attentionbench-clear .c2-hint .op-chips [data-hr
 html body #attentionbench-clear#attentionbench-clear .op-video .op-back-live{position:absolute;top:10px;right:10px;z-index:6;display:inline-flex!important;align-items:center;gap:7px;height:30px!important;min-height:0!important;margin:0!important;padding:0 12px!important;border:0!important;border-radius:999px!important;background:#181b18e6!important;color:#fff!important;box-shadow:0 2px 8px #0005!important;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
 html body #attentionbench-clear#attentionbench-clear .op-video .op-back-live:hover{background:#d94d27!important}
 html body #attentionbench-clear#attentionbench-clear .op-video .op-back-live .op-live-dot{width:7px;height:7px;border-radius:50%;background:#e5484d}
+/* 11-18 (user): the starting-scene note is a small label on the picture, like "Last frame · Try 1" */
+html body #attentionbench-clear#attentionbench-clear .op-video[data-starting-scene]{position:relative}
+html body #attentionbench-clear#attentionbench-clear :is(.op-video,.ab-viewer-media)>.op-start-tag{position:absolute;top:10px;left:10px;z-index:6;padding:5px 10px;border-radius:7px;background:#181b18cc;color:#fff;font:600 12px "DM Sans",system-ui,sans-serif;pointer-events:none}

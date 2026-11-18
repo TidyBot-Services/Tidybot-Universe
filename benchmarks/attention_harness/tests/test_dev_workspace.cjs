@@ -200,9 +200,10 @@ test('Current view keeps its tab selected and holds the first recording frame wh
  const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'}}).executionViewer(snap);
  assert.match(html,/data-history-select="live" aria-pressed="true"/);
  assert.match(html,/data-history-select="a1" aria-pressed="false"/);
- assert.match(html,/data-current-replay-note>Waiting for the next attempt\. This is the starting scene it will begin from\./);
+ // 11-18 (user): one label on the picture; the "Watch Attempt N's recording" link is gone
+ assert.match(html,/class="op-start-tag" data-current-replay-note>Starting scene · the next attempt begins here</);
  assert.match(html,/data-starting-video[^>]*preload="metadata"[^>]*src="\/replay\.mp4"/);
- assert.match(html,/data-history-select="a1">Watch Attempt 1's recording<\/button>/);
+ assert.doesNotMatch(html,/'s recording<\/button>/);
  assert.doesNotMatch(html,/data-history-replay|<video[^>]*controls/);
 });
 test('Current view uses available first-frame image evidence and the selected camera',()=>{
