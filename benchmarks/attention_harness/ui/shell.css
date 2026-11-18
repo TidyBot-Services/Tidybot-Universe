@@ -822,3 +822,104 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trac
 @keyframes c2-spin{to{transform:rotate(360deg)}}
 @keyframes c2-ell{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
 @media(prefers-reduced-motion:reduce){.c2-spin,.c2-ell::after{animation:none}.c2-ell::after{content:"…"}}
+
+/* ===== 11-18 (user, b1 test): one screen. No "01 REPLAY" heading or frame; the attention block (four numbers + attempt / try / Help flow)
+   sits on top of the video, the video and the steps fill the rest. Below 640px of height the page scrolls as before. ===== */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1]){--b1-bar:var(--sh-bar,68px);display:flex;flex-direction:column;height:calc(100dvh - var(--b1-bar) - 18px);min-height:0;overflow:hidden;container:b1v/inline-size}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title{flex:none;flex-wrap:nowrap;align-items:center;gap:12px;margin:0 0 10px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title h1{font-size:40px;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-actions{flex-wrap:nowrap;gap:10px;margin-left:auto}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title button.op-new-run{height:42px;padding:0 20px;font-size:17px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-more-menu summary{width:42px;height:42px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view>.op-progress-help[data-b1]{display:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view>.ab-execution-viewer[data-b1]{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;margin:0;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-camera-views{flex:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{min-height:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace .ab-history-events{flex:1;min-height:0;max-height:none!important;overflow:auto}
+}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-b1-hide{display:none!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-b1-top{flex:none;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-b1-top .op-attention{margin:0;border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card);overflow:hidden}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters{display:flex!important;grid-template-columns:none!important;margin:0!important;border:0!important;border-bottom:1px solid var(--sh-line2)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{flex:1 1 0!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px;min-width:0!important;margin:0!important;padding:7px 14px 7px!important;border:0!important;border-left:1px solid var(--sh-line2)!important;border-radius:0!important;background:transparent!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter:first-child{border-left:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:22px!important;line-height:1;white-space:nowrap!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter span{margin:0!important;font-size:8.5px!important;letter-spacing:.1em!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{padding:2px 8px 0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-detail{padding:6px 14px 8px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg{display:block;width:100%!important;min-width:0!important;max-width:var(--nw)!important;height:auto!important;margin:0 auto}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport{gap:6px!important;padding-left:8px!important;padding-right:8px!important;min-width:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport .ab-replay-scrubber{min-width:36px!important;flex:1 1 36px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport time{font-size:11px!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button{min-width:30px!important;width:30px!important;padding:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button:first-child{width:36px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button:nth-of-type(3){display:none!important}
+@media (min-height:640px){
+}
+@media (min-height:640px){
+/* a run with Help requests keeps the full-height drawing (arcs above, cost bars below), and an open Help detail takes more: the video gives way */
+}
+/* The drawing is scaled to the column width, so its text would grow and shrink with it while the circles do too. Keep the text at a fixed on-screen size (user units = px / scale; 1062 = the drawing's natural width). */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{container-type:inline-size}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-attempt-name{font-size:min(calc(11.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),14.375px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-agent-reason{font-size:min(calc(11px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.75px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-endpoint text{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-try-caption{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end-small{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end text:not(.op-attn-end-small){font-size:min(calc(13px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),16.25px)!important}
+@media (min-height:640px){
+}
+
+/* ===== b1 round 2: the replay (video + step list) takes all the height that is left, down to the bottom edge of the Conversation panel.
+   The video keeps 16:9: its column is as wide as the height allows, but always leaves 280px for the steps; when the width binds first the player letterboxes (bars above and below, controls stay at the bottom). ===== */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{flex:1 1 0;min-height:0;container-type:size;grid-template-columns:auto minmax(0,1fr)!important;align-items:stretch!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{display:flex;flex-direction:column;min-height:0;width:max(300px,min(calc((100cqh - 52px)*1.7778),calc(100cqw - 280px)))}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video{flex:1;min-height:0;display:flex;flex-direction:column;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{flex:1;min-height:0;width:100%;height:auto;object-fit:contain;background:#000}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>.ab-replay-transport{flex:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{min-height:0;height:100%}
+}
+/* the progress bar is a clean track: no failure mark at its end */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-failure-marker{display:none!important}
+/* narrow middle column (e.g. a 1440px window): one title row */
+@container b1v (max-width:700px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title{gap:8px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title h1{font-size:30px;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-dev{display:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-run-details-btn{font-size:0;gap:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-run-details-btn span{font-size:15px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title button.op-new-run{padding:0 14px;font-size:15px;gap:7px;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-actions{gap:8px}
+}
+@media (min-height:640px){
+/* the workspace starts 6px under the top bar; the replay's parts carry no own margins, only the panel's 10px gaps */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1]>*{margin-top:0!important;margin-bottom:0!important}
+}
+@media (min-height:640px){
+/* one screen: no page scroll. The workspace starts 18px under the top bar and ends at the window's bottom edge, level with the Conversation panel;
+   the keyboard-hint footer under the page is dropped in this layout (the keys still work). */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"]:has([data-b1]){padding-bottom:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"]:has([data-b1])>footer.op-keys{display:none!important}
+}
+
+/* ===== b1 round 3 (user: match the mock's proportions) =====
+   numbers: one compact line each (big number, small label beside it); the flow row fills the width (live.js spreads the gaps);
+   no "REPLAY" label row: the camera tabs sit on top of the video column; video column ≈ 60 %, steps ≈ 40 %. */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{flex-direction:row!important;align-items:baseline!important;justify-content:flex-start!important;gap:10px!important;padding:8px 18px 7px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:23px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter span{font-size:9px!important;overflow:hidden;text-overflow:ellipsis}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg{width:auto!important;max-width:none!important;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{overflow-x:auto;overflow-y:hidden}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views{flex:none;order:-1;display:flex;align-items:center;gap:4px;margin:0!important;padding:6px 8px!important;border:1px solid var(--sh-line2);border-bottom:0;border-radius:12px 12px 0 0;background:var(--sh-card)}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views::before{content:none!important;display:none!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views button{height:28px!important;padding:0 11px!important;font-size:11px!important}
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{grid-template-columns:minmax(0,60.5fr) minmax(0,39.5fr)!important;gap:10px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{width:auto!important;min-width:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:cover;object-position:center}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card);padding:10px 12px 0}
+}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views{justify-content:flex-start!important}

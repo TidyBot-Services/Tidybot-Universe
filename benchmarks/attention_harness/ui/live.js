@@ -5789,7 +5789,9 @@
     }).join('');
     const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>${snapshot.agent?`<text class="op-agent-reason ${a.state}" x="${x(a.index)}" y="${baseline+62}" text-anchor="middle">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')}</text>`:''}</g>`).join('');
     const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
-    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="${snapshot.agent?`width:${model.width}px;height:${height}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
+    // 11-18 (b1 test): with no help request there is nothing above the circles or in the cost row, so the drawing is cropped to the circles and their names.
+    const cropped=!model.requests.length&&model.attempts.length>0,vy=cropped?Math.max(0,baseline-R-10):0,vh=cropped?baseline+(snapshot.agent?70:54)-vy:height;
+    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 ${vy} ${model.width} ${vh}" style="--nw:${model.width}px;${snapshot.agent?`width:${model.width}px;height:${vh}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
     const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':selected.responder==='human_assisted'?'Assisted (not a person)':'Automatic advisor'):'';
@@ -5812,6 +5814,10 @@
     // 11-18 (user): the cards and the attempt strip always show, even with no help (an empty 02 read as missing data).
     return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
   }
+  // Width the b1 flow row has on screen (0 = not measured / not that layout); re-render when it changes.
+  let attnFitWidth=0;
+  new ResizeObserver(()=>{const box=view.querySelector('[data-b1] .op-attn-scroll');const w=box?Math.floor(box.clientWidth-16):0;
+    if(Math.abs(w-attnFitWidth)>12){attnFitWidth=w;lastRendered='';refresh();}}).observe(view);
   function layoutAgentGaps(snapshot,model) {
     const n=model.attempts.length,margin=48,helps=new Map(),gaps=[];
     model.requests.forEach(r=>helps.set(r.after+1,(helps.get(r.after+1)||0)+1));
@@ -5821,6 +5827,10 @@
       let t=0;if(v)t=(v.before_attempt?.trials||[]).length;else if(i<n&&loose){t=loose;loose=0;}
       gaps.push({tries:t,width:Math.max(i===0?100:110,64+t*20,(helps.get(i)||0)*92+48)});
     }
+    // 11-18 (user, b1 proportions): in the one-screen layout the flow fills the row's width; the spare room is shared
+    // equally by the gaps, so circles, dots and text keep their size.
+    {const endW=model.ended?(helps.has(n)?gaps[n].width:130)+58:0,natural=gaps.slice(0,n).reduce((t,g)=>t+g.width,0)+(model.after?gaps[n].width:0)+endW+2*margin;
+     if(attnFitWidth>natural+20){const share=(attnFitWidth-natural)/(n+(model.after||model.ended?1:0)||1);gaps.forEach((g,i)=>{if(i<n||model.after||model.ended)g.width+=share;});}}
     const startX=margin,xs=[];let at=startX;
     for(let i=0;i<n;i++){at+=gaps[i].width;xs.push(at);}
     const last=xs.at(-1)??startX,endsWithHelp=helps.has(n);
@@ -6201,7 +6211,23 @@
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
     const chat=chatSection(snapshot,!DEBUG_VIEW&&title?compactRunDetails(snapshot,settings,resources):'');
-    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
+    // 11-18 (user, b1 test): no "01 REPLAY" heading or frame. The attention block (four numbers + attempt / try / Help flow) moves
+    // to the top of the replay, and its attempt circles replace the attempt pills (kept in the DOM, hidden, so keys and bindings still work).
+    let b1=false;
+    if(title&&chat){
+      const takeBlock=(html,open)=>{const i=html.indexOf(open);if(i<0)return null;const re=/<(\/?)div\b/g;re.lastIndex=i;let depth=0,m;
+        while((m=re.exec(html))){depth+=m[1]?-1:1;if(depth===0){const end=html.indexOf('>',m.index)+1;return {block:html.slice(i,end),rest:html.slice(0,i)+html.slice(end)};}}return null;};
+      const took=takeBlock(overview,'<div class="op-attention"');
+      if(took){
+        const row=`<div class="op-heading-row">${replayHead}${track}</div>`;
+        overview=took.rest;b1=true;
+        execution=(execution.includes(row)?execution.replace(row,`<div class="op-b1-top">${took.block}</div><div class="op-heading-row op-b1-hide">${track}</div>`):execution.replace(replayHead,`<div class="op-b1-top">${took.block}</div>`))
+          .replace('<section class="panel ab-execution-viewer"','<section class="panel ab-execution-viewer" data-b1="1"');
+        // the camera tabs sit on top of the video column, not in a full-width row of their own
+        execution=execution.replace(/(<div class="ab-camera-views"[\s\S]*?<\/div>)(<div class="ab-viewer-layout"><div class="ab-viewer-media">)/,'$2$1');
+      }
+    }
+    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}"${b1?' data-b1="1"':''} data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${b1&&!waiting?'':operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
     // 11-18 (user, 03 split): no Setup & resources section; the same content opens from ⓘ Run details beside the title.
     // With the right panel, ⓘ Details opens its Details tab; without it (older runs) a small popover.
