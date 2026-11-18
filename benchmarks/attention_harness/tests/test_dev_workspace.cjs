@@ -212,13 +212,13 @@ test('Current view uses available first-frame image evidence and the selected ca
  snap.traces.t1.evidence.push({kind:'recording_frame',mime_type:'image/jpeg',media_url:'/recording_frames/000000.jpg'},{kind:'recording_frame_chest',mime_type:'image/jpeg',media_url:'/side-first.jpg'});
  const cameraChoices=new Map([['private_record_id:live','chest']]);
  const html=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'},cameraChoices}).executionViewer(snap);
- assert.match(html,/data-starting-scene><img[^>]*src="\/side-first\.jpg"/);
+ assert.match(html,/data-starting-scene>(?:<span class="op-start-tag"[^<]*<\/span>)?<img[^>]*src="\/side-first\.jpg"/);
  assert.match(html,/data-camera-view="chest" aria-pressed="true"/);
  assert.doesNotMatch(html,/data-starting-video|data-history-replay/);
  cameraChoices.set('private_record_id:live','top');
  const fallback=rendererAPI(snap,false,{sessionStorage:{getItem:()=> 'live'},cameraChoices}).executionViewer(snap);
  assert.match(fallback,/data-camera-view="external" aria-pressed="true"/);
- assert.match(fallback,/data-starting-scene><img[^>]*src="\/recording_frames\/000000\.jpg"/);
+ assert.match(fallback,/data-starting-scene>(?:<span class="op-start-tag"[^<]*<\/span>)?<img[^>]*src="\/recording_frames\/000000\.jpg"/);
 });
 test('Current view holds the selected camera recording at its first frame',()=>{
  const snap=rendererSnapshot('dev2');snap.run.suite='robocasa365';snap.run.status='running';
