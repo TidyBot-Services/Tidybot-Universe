@@ -938,3 +938,14 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{position:relative;grid-template-columns:var(--vsplit,min(calc(640px + (100vh - 733px)*.9),68%)) minmax(0,1fr)!important}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-vsplit{left:calc(var(--vsplit,min(calc(640px + (100vh - 733px)*.9),68%)) - 2px)}
 }
+/* user 11-18: in the one-screen layout the live / held / idle stage fills the whole video box like a recording does */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>:is(.op-stage,.op-idle){flex:1 1 0;min-height:0!important;height:auto!important;aspect-ratio:auto!important;position:relative}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage:not([data-op-held]){display:flex;flex-direction:column}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage:not([data-op-held])>.ab-station-camera{flex:1 1 0;min-height:0;aspect-ratio:auto!important;height:auto!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage .ab-station-camera :is(img,video,canvas){width:100%;height:100%;object-fit:cover}
+/* the held last frame stays whole and centred (user: no need to fill); the note sits in the middle on top of it */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage[data-op-held]{display:grid!important;place-items:center}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-stage[data-op-held]>:is(img,video){object-fit:contain}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-idle{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+}
