@@ -1039,3 +1039,15 @@ html body #attentionbench-clear .lb-readonly.lb-readonly-line{position:fixed!imp
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text>small:last-child{display:none}
 }
 @media (min-width:761px){html body #attentionbench-clear .lb-readonly.lb-readonly-line{left:auto!important;right:var(--ro-right,220px)!important;transform:none!important}}
+/* 11-18 (user): the four attention numbers move off the run page; one chip in the title row, all four in Details */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters{display:none!important}
+.op-attn-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border-radius:999px;border:1px solid var(--sh-line);background:var(--sh-card);color:var(--sh-ink);font:600 12px "DM Sans",system-ui,sans-serif;white-space:nowrap;cursor:help}
+.op-attn-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:#d94d27}
+.op-attn-chip[data-none="true"]{color:var(--sh-mut)}
+.op-attn-chip[data-none="true"]::before{background:var(--sh-mut)}
+.op-attn-costbox{margin:0 0 14px;padding:12px 14px;border:1px solid var(--sh-line);border-radius:12px;background:var(--sh-card)}
+.op-attn-costbox h5{margin:0 0 8px;font:700 11px "DM Sans",system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--sh-mut)}
+.op-attn-costbox dl{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.op-attn-costbox dl>div{min-width:0}
+.op-attn-costbox dt{font:600 10px "DM Sans",system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--sh-mut)}
+.op-attn-costbox dd{margin:2px 0 0;font:700 20px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}

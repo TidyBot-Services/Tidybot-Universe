@@ -6156,6 +6156,29 @@
   sidebar.addEventListener('click',e=>{const b=e.target.closest?.('.lc-strip button[data-lc]');if(!b)return;e.preventDefault();if(b.dataset.lc==='runs'&&leftTab!=='runs')leftBack=leftTab;leftTab=b.dataset.lc;applyLeft();
     if(leftTab==='chat'){const feed=view.querySelector('[data-c2-feed]');if(feed)requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}});
   new MutationObserver(()=>applyLeft()).observe(view,{childList:true});
+  // 11-18 (user): the four attention numbers leave the run page. The title row keeps one chip (human attention,
+  // hover for all four); the full four sit at the top of Details as "Human cost".
+  function placeAttnSummary(){
+    const cards=[...view.querySelectorAll('[data-b1] .op-attn-filters>.op-attn-filter')];
+    const actions=view.querySelector('.op-page-title .op-title-actions');
+    if(!cards.length||!actions)return;
+    const rows=cards.map(c=>({key:c.dataset.attnFilter,value:c.querySelector('b')?.textContent?.trim()||'',name:c.querySelector('span')?.textContent?.trim()||'',note:c.title||''}));
+    const human=rows.find(r=>r.key==='human'),all=rows.find(r=>r.key==='all');
+    const none=all&&all.value==='0';
+    const label=none?'No human help':`${human?.value||'0 s'} human attention`;
+    const tip=rows.map(r=>`${r.value} · ${r.name}`).join('\n');
+    let chip=actions.querySelector('.op-attn-chip');
+    if(!chip){chip=document.createElement('span');chip.className='op-attn-chip';actions.prepend(chip);}
+    if(chip.textContent!==label)chip.textContent=label;chip.title=tip;chip.dataset.none=String(none);
+    const body=view.querySelector('[data-c2] .c2-details .op-run-details-body');
+    if(body){
+      const html=`<h5>Human cost</h5><dl>${rows.map(r=>`<div${r.note?` title="${esc(r.note)}"`:''}><dt>${esc(r.name)}</dt><dd>${esc(r.value)}</dd></div>`).join('')}</dl>`;
+      let box=body.querySelector(':scope>.op-attn-costbox');
+      if(!box){box=document.createElement('section');box.className='op-attn-costbox';body.prepend(box);}
+      if(box.innerHTML!==html)box.innerHTML=html;
+    }
+  }
+  {let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;placeAttnSummary();});}).observe(view,{childList:true,subtree:true});}
   // 11-18 (user): the "whose run" bubble sits on the right of the top bar, just left of the theme / you buttons.
   function placeReadonly(){const actions=root.querySelector('.op-top-actions');if(!actions)return;const r=actions.getBoundingClientRect();if(r.width)root.style.setProperty('--ro-right',`${Math.max(16,innerWidth-r.left+12)}px`);}
   new MutationObserver(()=>placeReadonly()).observe(view,{childList:true});window.addEventListener('resize',placeReadonly);
