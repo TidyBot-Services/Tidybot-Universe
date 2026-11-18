@@ -190,6 +190,14 @@ def _board(row, **options):
     return policy.board(dict(dev_sessions=[row]), owners={row['experiment_id']: 'u-1'}, nicknames={'u-1': 'Fox-1'}, queue=[], limits=Limits(), **{'viewer': 'u-1', **options})
 
 
+def test_a_paused_run_says_paused_and_keeps_its_place():
+    row = dict(experiment_id='devexp-' + 'b' * 24, state='planned', experiment_state='paused')
+    board = _board(row)
+    card = board['robot']['open'][0]
+    assert card['state'] == 'paused' and card['robot'] == dict(state='paused') and board['robot']['running'] is None
+    assert policy.active_runs(dict(dev_sessions=[row]), {row['experiment_id']}) == 1  # still counts toward the person's limit
+
+
 def test_a_run_waiting_for_its_owner_says_so_in_the_lobby():
     wait = dict(deadline_at=1100, seconds=120, question='What next?', execution_id='e000001')
     row = dict(experiment_id='devexp-' + 'a' * 24, state='running', experiment_state='running', human_wait=wait)

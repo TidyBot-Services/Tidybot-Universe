@@ -76,13 +76,14 @@
   function tone(record) {
     const c = record.lobby;
     if (!c) return null;
-    return {queued: 'queued', running: 'running', waiting_human: c.mine ? 'waiting' : 'running', finished: c.result === 'solved' ? 'success' : 'failed', cancelled: 'idle'}[c.state] || 'idle';
+    return {queued: 'queued', running: 'running', paused: 'idle', waiting_human: c.mine ? 'waiting' : 'running', finished: c.result === 'solved' ? 'success' : 'failed', cancelled: 'idle'}[c.state] || 'idle';
   }
   function statusWord(record) {
     const c = record.lobby;
     if (!c) return null;
     if (c.state === 'queued') return `Queued #${c.queue_position}`;
     if (c.state === 'running') return 'Running';
+    if (c.state === 'paused') return 'Paused';  // 11-18: a paused run is not "Running" (not active, so not counted as running)
     if (c.state === 'waiting_human') return c.mine ? 'Needs you' : 'Needs a person';
     if (c.state === 'cancelled') return 'Cancelled';
     if (c.state === 'created') return 'Not started';

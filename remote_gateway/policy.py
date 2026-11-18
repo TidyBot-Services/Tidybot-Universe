@@ -103,12 +103,13 @@ def _card(row, *, nickname, mine, position, eta, limits, now=0, start_error=None
     state = _state(row);versions = row.get('versions') or [];wait = row.get('human_wait') if running(row) else None
     # A legacy run lists its versions; an Agent run's listing carries only the cell's own end reason.
     solved = row.get('reason') == 'native_success' or any(v.get('native_success') is True for v in versions if isinstance(v, dict))
-    shown = 'queued' if position else 'waiting_human' if wait else 'running' if running(row) else 'cancelled' if state == 'cancelled' else 'created' if state in IDLE_STATES else 'finished'
+    # 11-18 (user): a paused run read "Running" in every list. It still holds its place (running() is unchanged), it just says so.
+    shown = 'queued' if position else 'paused' if state == 'paused' else 'waiting_human' if wait else 'running' if running(row) else 'cancelled' if state == 'cancelled' else 'created' if state in IDLE_STATES else 'finished'
     return dict(run_id=row['experiment_id'], experiment_id=row['experiment_id'], nickname=nickname, person=person or nickname, task_key=row.get('task_id'), task_title=row.get('task_id'),
                 state=shown, result=None if shown != 'finished' else 'solved' if solved else 'failed', mine=mine, real=True, started_at=row.get('created_at'), ended_at=None,
                 attempt=dict(current=len(versions), limit=limits.versions), queue_position=position, eta_start_seconds=eta, help_waiting_seconds=max(0, wait['seconds'] - (wait['deadline_at'] - now)) if wait else None,
                 waiting=dict(question=wait.get('question')) if wait else None, recording=None, start_error=start_error if shown == 'created' else None,
-                robot=robot_state(row) if running(row) else None)
+                robot=dict(state='paused') if shown == 'paused' else robot_state(row) if running(row) else None)
 
 
 def board(listing, *, owners, nicknames, queue, viewer, limits, busy_seconds=0, now=0, start_errors=None, run_order=None):
