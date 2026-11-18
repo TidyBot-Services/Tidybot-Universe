@@ -238,3 +238,39 @@ def test_cleanup_process_argv(tmp_path, monkeypatch, argv, busy):
 def test_cleanup_process_without_run_id_reports_pid(tmp_path, monkeypatch):
     monkeypatch.setattr(abctl, '_processes', lambda: iter([(Path('/proc/123'), ['python', 'frame_cleanup_backfill.py'])]))
     assert abctl.cleanup_workers(dict(data=tmp_path, test_data=tmp_path)) == (1, ['pid:123'])
+
+
+def _run(cfg, name, release, state, *, test=False):
+    import sqlite3
+    run = (cfg['test_data'] if test else cfg['data'])/'harness/runs'/name
+    (run/'artifacts'/name).mkdir(parents=True)
+    (run/'artifacts'/name/'identity-lock.json').write_text(json.dumps(dict(source_root=str(release))))
+    db = sqlite3.connect(run/'ledger.sqlite3');db.execute('CREATE TABLE v2_experiments (id TEXT, payload TEXT)')
+    db.execute('INSERT INTO v2_experiments VALUES (?, ?)', (name, json.dumps(dict(state=state))));db.commit();db.close()
+
+
+def test_prune_keeps_the_release_a_paused_run_needs(host):
+    """11-18: three deploys pruned the release a paused run was frozen on, and Resume failed."""
+    cfg, src = host
+    cfg['keep_releases'] = 1
+    paused = abctl.release_for(cfg, 'main~1')[1]
+    git('--git-dir', str(cfg['bare']), 'worktree', 'add', '--detach', str(cfg['releases']/'done-run'), 'main~1', cwd=cfg['ws'])
+    finished = cfg['releases']/'done-run'
+    live = abctl.release_for(cfg, 'main')[1];abctl.point_live(cfg, live)
+    _run(cfg, 'devexp-' + 'a' * 24, paused, 'paused')
+    _run(cfg, 'devexp-' + 'b' * 24, finished, 'completed', test=True)
+    abctl.prune(cfg)
+    assert live.exists() and paused.exists(), 'the paused run can still resume'
+    assert not finished.exists(), 'a finished run does not hold its release'
+
+
+def test_an_unreadable_run_keeps_its_release(host):
+    cfg, src = host
+    cfg['keep_releases'] = 1
+    old = abctl.release_for(cfg, 'main~1')[1]
+    live = abctl.release_for(cfg, 'main')[1];abctl.point_live(cfg, live)
+    run = cfg['data']/'harness/runs'/('devexp-' + 'c' * 24)
+    (run/'artifacts'/('devexp-' + 'c' * 24)).mkdir(parents=True)
+    (run/'artifacts'/('devexp-' + 'c' * 24)/'identity-lock.json').write_text(json.dumps(dict(source_root=str(old))))
+    abctl.prune(cfg)
+    assert old.exists()

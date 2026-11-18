@@ -414,12 +414,40 @@ def switch(cfg, args, commit, tree, action):
     prune(cfg)
 
 
+# A run that has not ended can still be resumed, and it resumes from the release it was frozen on.
+RUN_ENDED = {'completed', 'failed', 'cancelled', 'condition_invalid', 'stopped', 'budget_exhausted', 'needs_review'}
+
+
+def releases_in_use(cfg):
+    """Releases that an unfinished run (running, paused, not started) is frozen on, on the campus and the test harness.
+    11-18: a paused run could not resume after three deploys pruned its release ("frozen experiment runtime missing").
+    A run whose state cannot be read counts as unfinished: keeping a release is cheap, losing one strands a run."""
+    import sqlite3
+    used = set()
+    for runs in (cfg['data']/'harness/runs', cfg['test_data']/'harness/runs'):
+        if not runs.is_dir():continue
+        for run_dir in runs.glob('devexp-*'):
+            for lock in run_dir.glob('artifacts/devexp-*/identity-lock.json'):
+                try:root = Path(json.loads(lock.read_text())['source_root'])
+                except (OSError, ValueError, KeyError, TypeError):continue
+                ended = False
+                try:
+                    db = sqlite3.connect(f'file:{run_dir/"ledger.sqlite3"}?mode=ro', uri=True)
+                    try:states = [json.loads(r[0]) for r in db.execute('SELECT payload FROM v2_experiments')]
+                    finally:db.close()
+                    ended = bool(states) and all(e.get('cancelled') or e.get('state') in RUN_ENDED for e in states)
+                except (sqlite3.Error, ValueError):pass
+                if not ended:used.add(root.resolve())
+    return used
+
+
 def prune(cfg):
-    # Never removed: the live release and the one before it (the rollback target). Others: the newest are kept.
+    # Never removed: the live release, the one before it (the rollback target), and any release an unfinished run is
+    # frozen on. Others: the newest are kept.
     live = cfg['live'].resolve()
     history = cfg['state']/'history.json'
     rows = json.loads(history.read_text()) if history.exists() else []
-    keep = {live, *(Path(rows[-1]['previous']).resolve() for _ in [0] if rows)}
+    keep = {live, *(Path(rows[-1]['previous']).resolve() for _ in [0] if rows), *releases_in_use(cfg)}
     trees = sorted((p for p in cfg['releases'].iterdir() if p.is_dir() and p.resolve() not in keep), key=lambda p:p.stat().st_mtime)
     for old in trees[:max(0, len(trees) - max(0, cfg['keep_releases'] - len(keep)))]:
         if (old/'.git').is_file():git(cfg, 'worktree', 'remove', '--force', str(old))
