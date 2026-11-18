@@ -6172,6 +6172,14 @@
     root.classList.toggle('c2-open',panel?.dataset.open==='true');
     if(panel){const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{if(chatPinned()&&feed)feed.scrollTop=feed.scrollHeight;});}
   }
+  // 11-18 (user): a try or attempt clicked on the flow also shows its place in the conversation. On a small screen the
+  // left column switches to its Conversation tab; on a wide screen the right panel scrolls when it is open.
+  function showInConversation(selector){
+    const left=root.classList.contains('c2-left');
+    if(left){leftTab='chat';applyLeft();}
+    else if(view.querySelector('[data-c2]')?.dataset.open!=='true')return;
+    requestAnimationFrame(()=>chatScrollTo(selector));
+  }
   function chatScrollTo(selector){
     const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
     if(view.querySelector('[data-c2]')?.dataset.open!=='true')chatSetOpen(true);
@@ -6219,11 +6227,11 @@
     const playAttempt=id=>{if(!id)return false;const pill=[...view.querySelectorAll('.op-pill-attempt[data-history-select]')].find(b=>b.dataset.historySelect===id);if(!pill)return false;pill.click();chatPlaySoon();return true;};
     const playTry=n=>{const id=recordingOfTry(n);if(!id||!openTryRecording(id))return false;chatPlaySoon();return true;};
     const mark=t.closest?.('.op-try-link');
-    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);playTry(mark.dataset.tryNumber);return;}
+    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);playTry(mark.dataset.tryNumber);showInConversation(`[data-feed-try-${mark.dataset.tryNumber}]`);return;}
     const help=t.closest?.('[data-attn-help]');
     if(help){const n=(help.getAttribute('aria-label')||'').match(/Help #(\d+)/)?.[1];if(n&&chatScrollTo(`[data-feed-help="${n}"]`)){e.preventDefault();e.stopPropagation();}return;}
     const att=t.closest?.('[data-attn-attempt]');
-    if(att&&t.closest('.op-attn-scroll')){if(playAttempt(attemptIdOf(att.dataset.attnAttempt))){e.preventDefault();e.stopPropagation();}return;}
+    if(att&&t.closest('.op-attn-scroll')){if(playAttempt(attemptIdOf(att.dataset.attnAttempt))){e.preventDefault();e.stopPropagation();}showInConversation(`[data-feed-attempt="${att.dataset.attnAttempt}"]`);return;}
     const tryButton=t.closest?.('[data-c2-try]');
     if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);playTry(tryButton.dataset.c2Try);return;}
     const row=t.closest?.('.c2-row');
