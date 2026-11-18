@@ -1038,3 +1038,4 @@ html body #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb button{flex:1 
 html body #attentionbench-clear .lb-readonly.lb-readonly-line{position:fixed!important;top:calc((var(--sh-bar,68px) - 34px)/2);left:50%;transform:translateX(-50%);z-index:60;max-width:min(560px,40vw);height:34px;margin:0!important;padding:0 12px 0 4px!important;border-radius:999px!important;box-shadow:0 2px 8px -4px #0004}
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text>small:last-child{display:none}
 }
+@media (min-width:761px){html body #attentionbench-clear .lb-readonly.lb-readonly-line{left:auto!important;right:var(--ro-right,220px)!important;transform:none!important}}
