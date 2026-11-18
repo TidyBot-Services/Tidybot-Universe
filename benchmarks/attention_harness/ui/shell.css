@@ -969,3 +969,11 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-eve
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-stage-h:first-child{margin-top:0}
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap{min-height:16px!important}
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step{margin:0!important}
+/* 11-18 (user): "Model working" and other text-only stages sit on the dark video background, not a white card */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-idle{background:radial-gradient(ellipse at center,#161a15 0,#0b0d0b 75%)!important;border:0!important;border-radius:0 0 12px 12px!important;color:#e9e6de!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-idle b{color:#f6f2e6!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.op-idle p{color:#b9bdaf!important}
+/* the loading layer covers the whole video box, so it stays centred while the box settles (it used to be a top-anchored 16:9 band) */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] figure.op-video .op-loading{bottom:0!important;aspect-ratio:auto!important}
+}
