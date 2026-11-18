@@ -37,7 +37,8 @@ test('Run page renders the specific failure and charged probe usage',()=>{
       '({operatorOutcome,resourceDetails})');
   const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source,vm,URL,URLSearchParams});
   const snapshot={run:{status:'needs_review'},agent:{reason:'quota_unreadable_after_probe',quota:{error:'quota_unreadable_after_probe'}},attempts:[]};
-  const api=rendererAPI(snapshot,false,{Lobby:{outcomeHtml:()=>''}});
+  // 11-18: the page now wires Conversation-panel/attention observers at load; stub them.
+  const api=rendererAPI(snapshot,false,{Lobby:{outcomeHtml:()=>''},view:{querySelector:()=>null,querySelectorAll:()=>[],addEventListener:()=>{}},MutationObserver:class{observe(){}},ResizeObserver:class{observe(){}}});
   const html=api.operatorOutcome(snapshot);
   assert.match(html,/one minimal Codex probe still could not read the weekly quota/);
   assert.match(html,/quota_unreadable_after_probe/);

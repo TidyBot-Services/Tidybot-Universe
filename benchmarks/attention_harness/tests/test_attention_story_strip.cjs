@@ -6,9 +6,10 @@ const path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const block=source.slice(source.indexOf('  // Attention efficiency: task progress'),source.indexOf('  function resourceDetails(',source.indexOf('  // Attention efficiency: task progress')));
 const esc=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+// 11-18: the block now measures the one-screen row with a ResizeObserver (attnFitWidth, 0 here).
 function setup(extra={}){
  const saved=new Map();
- const context={Date:{now:()=>210000},Math,Map,Number,String,esc,label:String,number:String,operatorTime:n=>`${Math.floor(n/60)}:${String(Math.round(n%60)).padStart(2,'0')}`,isTerminal:s=>s.run.status==='completed',policyTitle:String,stored:(key,value)=>{if(value===undefined)return saved.get(key)||null;saved.set(key,value);},...extra};
+ const context={Date:{now:()=>210000},Math,Map,Number,String,esc,label:String,number:String,operatorTime:n=>`${Math.floor(n/60)}:${String(Math.round(n%60)).padStart(2,'0')}`,isTerminal:s=>s.run.status==='completed',policyTitle:String,refresh:()=>{},view:{querySelector:()=>null},ResizeObserver:class{observe(){}},stored:(key,value)=>{if(value===undefined)return saved.get(key)||null;saved.set(key,value);},...extra};
  const api=vm.runInNewContext(block+'\n({attentionLedger,attentionStripModel,attentionFilterMatches,attentionEfficiency,bindAttentionEfficiency})',context);
  return {api,saved,context};
 }

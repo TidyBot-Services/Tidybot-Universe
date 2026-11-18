@@ -10,8 +10,11 @@ const helper=harness.slice(harness.indexOf('function rendererAPI('),harness.inde
   .replace('({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',
     '({agentWorkspaceSnapshot,workspaceHTML,agentHelpCard,agentPolicyHelp,agentStory,agentPolicyCode,attentionLedger,attentionStripModel,agentFullStory,devPolicyChoices,agentLaunchSelection,policyShort})');
 const {rendererAPI}=vm.runInNewContext(helper+'\n({rendererAPI})',{source:source.replace('  function render(snapshot) {','  function renderFullWorkspace(snapshot) {'),vm,URL,URLSearchParams});
+// 11-18: the function extractor in test_dev_workspace.cjs also picks up a few module-level lines next to vsEnsure
+// (the draggable replay split and the Conversation panel observers); these inert stubs let them run outside a browser.
+const domStubs={MutationObserver:class{observe(){}},view:{addEventListener(){},querySelector:()=>null,querySelectorAll:()=>[]}};
 function apiFor(snapshot=null){
-  return rendererAPI(snapshot,false,{crypto:webcrypto,TextDecoder,Uint8Array,HumanReply:{blocks:parts=>Object.values(parts).join(''),skipButton:()=>'<button data-hr-skip></button>'},
+  return rendererAPI(snapshot,false,{...domStubs,crypto:webcrypto,TextDecoder,Uint8Array,HumanReply:{blocks:parts=>Object.values(parts).join(''),skipButton:()=>'<button data-hr-skip></button>'},
     CAMERA_VIEW_VIDEO:/^advisor_replay(_[a-z_]+)?\.mp4$/,devEvidenceCache:new Map(),v2MonitorIdentities:new Map(),
     fetch:async url=>{const entry=fixture.files['agent-view/'+decodeURIComponent(url.split('/agent/files/')[1])];
       const bytes=entry&&Buffer.from(entry.base64,'base64');return {ok:!!entry,status:entry?200:404,arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};}});

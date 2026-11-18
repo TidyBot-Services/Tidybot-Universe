@@ -17,12 +17,15 @@ test('real directory is projected on the monitor with a friendly title and statu
 test('Memory panel, row and other records are absent from the main page',()=>{
  assert.doesNotMatch(source,/memoryPanel\(|data-memory-panel|data-dev-memory-directory|Other memory records|data-memory-note-used/);
  assert.match(source,/updateMemoryLink\(snapshot\)/);
- assert.match(page,/notes used in this run/);
- assert.match(page,/No notes yet/);
- assert.match(page,/Sample data/);
+ // 11-18 (user): the Memory page was removed; memory.html now only redirects to the Run page.
+ assert.match(page,/http-equiv="refresh" content="0;url=\/ui\/"/);
+ assert.doesNotMatch(page,/<script|memory\.js|memory\.css/);
 });
 
-test('monitor includes reference controls and all four display states',()=>{
- for(const text of ['Tasks','Home','Run','Memory','Light','Dark','3D','2D','Show only used notes','Just now','Helps','Does not help','Not tested','Off'])assert.ok(page.includes(text),text);
- assert.match(page,/integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1\/ey98U3t2vZ0qQ=="/);
+// 11-18 (user): the Memory monitor page (its controls, display states and 3D library) was removed;
+// the shell page switcher now offers only Home and Run.
+test('shell page switcher has no Memory tab',()=>{
+ const shell=fs.readFileSync(path.join(root,'ui/shell.js'),'utf8');
+ assert.match(shell,/const PAGES = \[\['home', 'Home', '\/ui\/home\.html'\], \['run', 'Run', '\/ui\/'\]\];/);
+ assert.match(shell,/a\[data-page="memory"\]'\)\.forEach\(a => a\.remove\(\)\)/);
 });

@@ -11,7 +11,8 @@ test('automatic checks show switch, queue, pair, counts, demotion and escaped er
 test('section follows both page themes through the shared shell tokens',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../ui/memory.html'),'utf8');
  const css=fs.readFileSync(path.join(__dirname,'../ui/memory.css'),'utf8');
- assert.ok(html.includes('id="automatic-checks"'));
+ // 11-18 (user): the Memory page was removed and memory.html redirects; the CSS rule is kept.
+ assert.ok(!html.includes('id="automatic-checks"'));assert.match(html,/http-equiv="refresh" content="0;url=\/ui\/"/);
  const rule=css.match(/#automatic-checks\{[^}]*\}/)[0];
  assert.match(rule,/background:var\(--sh-panel\)/);assert.match(rule,/color:var\(--sh-ink\)/);assert.doesNotMatch(rule,/#fff|white/);
 });

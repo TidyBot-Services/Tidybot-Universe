@@ -74,9 +74,11 @@ test('skipped spans read as plain words with the real time range',()=>{
   assert.equal(api.skipText(125),'2 min 05 s');
   const row=api.operatorSkipRow(trim.breaks[0]);
   assert.match(row,/data-trim-break data-trim-at="3"/);
-  assert.match(row,/Skipped 46 s of waiting/);
-  assert.match(row,/real time 0:03 → 0:49/);
-  assert.match(api.operatorSkipRow({...trim.breaks[0],kind:'still'}),/of no change/);
+  // 11-18 redesign: a rail row "46 s of waiting · cut" with the real range in its title
+  assert.match(row,/class="op-skip op-skip-gap"/);
+  assert.match(row,/46 s of waiting · cut/);
+  assert.match(row,/title="Cut from the video: real time 0:03 → 0:49\. Click to jump here\."/);
+  assert.match(api.operatorSkipRow({...trim.breaks[0],kind:'still'}),/46 s without change · cut/);
   saved.delete('attention.replay-trim');
   const bar=api.operatorTrimBar(trim);
   assert.match(bar,/data-trim-mode="trimmed" aria-pressed="true"/);

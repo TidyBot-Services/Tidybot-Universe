@@ -7,10 +7,16 @@ const source=fs.readFileSync(path.join(__dirname,'../ui/live.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../ui/index.html'),'utf8');
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fragment=source.slice(source.indexOf('  function agentMemoryUse('),source.indexOf('  function workspaceHTML('));
+// 11-18: the fragment now also wires the right-side Conversation panel and the replay split on load,
+// so it needs inert DOM stubs; without window.Chat02 the panel is off and the 02 Memory line is shown.
+const node={addEventListener(){},querySelectorAll:()=>[],querySelector:()=>null,style:{setProperty(){},removeProperty(){}}};
 const api=vm.runInNewContext(fragment+'\n({agentMemoryUse,operatorThreeParts})',{
-  esc,DEBUG_VIEW:false,operatorHeading:(n,title)=>`<div class="panel-title op-heading"><h3>${n} ${title}</h3><span></span></div>`
+  esc,DEBUG_VIEW:false,operatorHeading:(n,title)=>`<div class="panel-title op-heading"><h3>${n} ${title}</h3><span></span></div>`,
+  view:node,root:node,window:{innerWidth:1600,addEventListener(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
+  location:{search:''},MutationObserver:class{observe(){}},setInterval:()=>0,getComputedStyle:()=>({getPropertyValue:()=>''}),
+  requestAnimationFrame:()=>0,isTerminal:()=>false,reuseConfirm:()=>'',currentSnapshot:null
 });
-const snapshot={agent:{memory_use:[{version:1,notes:[
+const snapshot={run:{run_id:'run-1'},agent:{memory_use:[{version:1,notes:[
   {memory_id:'mem-1',title:'Grasp <carefully>',level:'L1',referenced:'explicit',evidence:[{file:'v1/policy.py',line:4,excerpt:'# Follow mem-1 <script>'}]},
   {memory_id:'mem-2',title:'Cabinet',level:'L2',referenced:'none',evidence:[],behavioural_hint:[{file:'trace.json',event_index:7,excerpt:'Matched retreat'}]}
 ]}]}};
@@ -33,7 +39,8 @@ test('per-version evidence and event index remain visible, repeated deliveries a
   assert.match(text,/received 3 notes · used 2/);
   assert.match(text,/v2 · L1/);
   assert.match(text,/event 11/);
-  assert.match(text,/Counts include each version’s delivery/);
+  // 11-18 (user, ui改动 02): the Memory line is one summary; the explanatory "Counts include…" sentence was dropped.
+  assert.equal((text.match(/data-memory-note /g)||[]).length,3);
 });
 
 test('all analysis errors show, including write failures and no completed versions',()=>{
@@ -44,8 +51,9 @@ test('all analysis errors show, including write failures and no completed versio
   assert.equal((text.match(/role="alert"/g)||[]).length,3);
   for(const error of ['Malformed events &lt;oops&gt;','Missing code','Disk failure'])assert.ok(text.includes(error));
   const empty=api.agentMemoryUse({agent:{errors:copy.agent.errors}});
-  assert.match(empty,/received 0 notes · used 0/);
-  assert.match(empty,/Disk failure/);
+  // 11-18 (user, ui改动 02): no "received 0" summary without notes, but the error stays visible.
+  assert.doesNotMatch(empty,/received 0 notes/);
+  assert.match(empty,/role="alert">Memory analysis error: [^<]*Disk failure/);
 });
 
 test('the Memory element is inside Progress and help, absent from one-call pages',()=>{

@@ -22,8 +22,14 @@ function apiFor(snapshot=null,overrides={}) {
     const entry=fixture.files[key],bytes=entry&&Buffer.from(entry.base64,'base64');
     return {ok:!!entry,status:entry?200:404,json:async()=>JSON.parse(bytes),arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)};
   };
-  return {calls,api:rendererAPI(snapshot,false,{fetch,crypto:webcrypto,TextDecoder,Uint8Array,
-    CAMERA_VIEW_VIDEO:/^advisor_replay(_[a-z_]+)?\.mp4$/,devEvidenceCache:new Map(),v2MonitorIdentities:new Map(),...overrides})};
+  // 11-18: the function extractor also picks up live.js's module-level wiring after vsEnsure (MutationObserver +
+  // view listeners for the draggable video/step split); give it inert stand-ins so the renderer functions load.
+  const view=overrides.view||{querySelector:()=>null,querySelectorAll:()=>[]};
+  if(!view.addEventListener)view.addEventListener=()=>{};
+  return {calls,api:rendererAPI(snapshot,false,{fetch,crypto:webcrypto,TextDecoder,Uint8Array,MutationObserver:class{observe(){}},
+    // 11-18: module-level values the extractor does not copy (seek-bar stage names; b1 flow-row width, 0 = unmeasured).
+    REPLAY_STAGES:JSON.parse(source.match(/const REPLAY_STAGES=(\[[^\]]*\])/)[1].replace(/'/g,'"')),attnFitWidth:0,
+    CAMERA_VIEW_VIDEO:/^advisor_replay(_[a-z_]+)?\.mp4$/,devEvidenceCache:new Map(),v2MonitorIdentities:new Map(),...overrides,view})};
 }
 async function agentSnapshot() {
   const {api,calls}=apiFor();
@@ -153,21 +159,22 @@ function visibleText(html) {return html.replace(/<[^>]*>/g,' ');}
 test('r6 timeline shows request-sequence dots, short verdicts and clean selected detail cards',async()=>{
   const snapshot=await timelineSnapshot(),sessionStorage=memoryStorage(),{api}=apiFor(snapshot,{sessionStorage});
   let html=api.attentionEfficiency(snapshot);
-  assert.match(html,/Click a help request/);
+  // 11-18: no legend / "Click a help request" hint; the detail area starts empty until something is clicked.
+  assert.doesNotMatch(html,/Click a help request|op-attn-legend/);
+  assert.match(html,/<div class="op-attn-detail" data-attn-detail aria-live="polite"><\/div>/);
   assert.match(html,/>Start<\/text>/);
-  assert.equal((html.match(/<circle class="op-agent-trial grey"/g)||[]).length,3);
-  assert.equal((html.match(/<circle class="op-agent-trial red"/g)||[]).length,2);
-  for(const text of ['18 checks · 2 previews','23 checks · 1 preview','20 checks · 1 preview','grasp not confirmed','out of reach','solved','Trial run, kept going','Trial run stopped by a safety limit'])assert.ok(html.includes(text),text);
+  // 11-18: tries are mini circles (op-try-mark); a safety-stopped try is red, the rest plain.
+  assert.equal((html.match(/<g class="op-try-mark ok"/g)||[]).length,3);
+  assert.equal((html.match(/<g class="op-try-mark red"/g)||[]).length,2);
+  for(const text of ['18 checks · 2 previews','23 checks · 1 preview','20 checks · 1 preview','grasp not confirmed','out of reach','solved','ran through without a safety stop','stopped by a safety limit: gripper speed limit'])assert.ok(html.includes(text),text);
   assert.match(html,/op-attn-help automatic dashed/);
-  // 10-30: the legend lists only marks this run shows.
-  const legend=html.match(/<div class="op-attn-legend">([^]*?)<\/div>/)[1];
-  assert.match(legend,/<i class="automatic"><\/i>Automatic advisor/);
-  assert.doesNotMatch(legend,/Failed attempt|<i class="solved">|Person replied|Bar under each help/);
+  assert.match(html,/Help #2 · Automatic advisor/);
   assert.equal(api.agentTrialLegend([]),'');
   assert.doesNotMatch(api.agentTrialLegend([{color:'red'}]),/kept going/);
   api.selectAgentAttempt(snapshot,snapshot.attempts[1].attempt_id);
   const card=api.agentTimelineDetail(snapshot,null);
-  for(const text of ['Attempt 2','Not solved · Eval fail','out of reach','Before this attempt','help not delivered','23 checks · 1 preview','gripper speed limit'])assert.ok(card.includes(text),text);
+  // 11-18: the card summarises tries (count + safety stops); checks/previews stay on the chart caption's tooltip.
+  for(const text of ['Attempt 2','Not solved · Eval fail','out of reach','Before this attempt','help not delivered','<b>1 try</b>','gripper speed limit'])assert.ok(card.includes(text),text);
   assert.doesNotMatch(card,/<button|e000|v000|stdout|\.json|RuntimeError|Details \(/);
   assert.match(card,/op-agent-chip refused/);
   assert.ok(!card.includes(r6.versions[1].story.sentence));
@@ -229,7 +236,7 @@ test('ten agent versions grow horizontally with the same timeline height and one
   snapshot.attempts=Array.from({length:10},(_,i)=>({...base,attempt_id:'long:'+i,index:i,dev_version:i+1,status:i===9?'succeeded':'failed'}));
   snapshot.dev_session.versions=snapshot.attempts.map((a,i)=>({...version,version:i+1,version_id:`v${String(i+1).padStart(4,'0')}`,native_success:i===9}));
   snapshot.eval.native_outcomes={};
-  const long=api.attentionEfficiency(snapshot),size=html=>html.match(/<svg viewBox="0 0 (\d+) (\d+)" style="width:(\d+)px;height:(\d+)px;min-width:/).slice(1).map(Number);
+  const long=api.attentionEfficiency(snapshot),size=html=>html.match(/<svg viewBox="0 0 (\d+) (\d+)" style="(?:--nw:\d+px;)?width:(\d+)px;height:(\d+)px;min-width:/).slice(1).map(Number);
   assert.equal(size(original)[1],size(long)[1]);assert.equal(size(original)[3],size(long)[3]);assert.ok(size(long)[0]>size(original)[0]);
   assert.equal((long.match(/data-attn-attempt=/g)||[]).length,10);
   assert.match(long,/op-attn-scroll/);
@@ -245,9 +252,9 @@ test('r6 S3 strip follows each selected attempt under its video, with P3 plan fi
     const html=api.executionViewer(snapshot),version=r6.versions[i];
     assert.equal((html.match(/data-eval-strip/g)||[]).length,1);
     assert.match(html,/<div class="ab-viewer-media">[^]*data-eval-strip[^]*<aside class="ab-viewer-trace">/);
-    assert.match(html,/<div class="ab-history-events"[^>]*><details class="op-plan"/);
-    assert.ok(html.includes(version.plan.summary.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')));
-    assert.match(html,/<details class="op-plan"[^>]*><summary><b>PLAN<\/b>[^]*<div data-plan-note>/);
+    // 11-18: the PLAN row is no longer shown in the step list (deliberate redesign).
+    assert.doesNotMatch(html,/class="op-plan"|data-plan-row|<b>PLAN<\/b>/);
+    assert.match(html,/<aside class="ab-viewer-trace">[^]*<div class="ab-history-events"/);
     assert.ok(version.plan.note.length>=version.plan.summary.length);
     assert.doesNotMatch(html,/What changed in this attempt|What went wrong \(objective\)|Reference suggestion \(for the advisor\)|Read objective reason|Read reference suggestion/);
     const strip=html.match(/<section class="op-eval-strip"[^]*?<\/section>/)[0];
@@ -341,7 +348,7 @@ test('the launch name suffix stays in the run list but not in the headline, 01 T
 test('agent cost bars sit clear of the segment caption above them (10-30)',async()=>{
   const snapshot=await timelineSnapshot(),{api}=apiFor(snapshot,{sessionStorage:memoryStorage()});
   const html=api.attentionEfficiency(snapshot);
-  const captions=[...html.matchAll(/<text class="op-agent-activity" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  const captions=[...html.matchAll(/<text class="op-agent-activity(?: [^"]*)?" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
   const bars=[...html.matchAll(/<rect class="op-attn-cost" x="[^"]+" y="([\d.]+)" width="26" height="([\d.]+)"/g)].map(m=>({top:Number(m[1]),bottom:Number(m[1])+Number(m[2])}));
   const labels=[...html.matchAll(/<text class="op-attn-cost-label" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
   const height=Number(html.match(/<svg viewBox="0 0 [\d.]+ ([\d.]+)"/)[1]);

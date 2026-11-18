@@ -41,7 +41,7 @@ test('run dialog annotates only uncovered Interactive seeds when Memory is confi
   assert.match(live,/\[data-seed-note\].*runConfigSeedNote/);
 });
 
-test('Memory page retains scope and renders both reference-only reasons',()=>{
+test('Memory scope text renders both reference-only reasons; the Memory page redirects',()=>{
   for(const [reason,text] of [['no_scene_contract','Memory: reference only — this seed has no scene contract'],
                             ['scene_contract_missing','Memory unavailable — this seed has no scene contract']]){
     const data=monitor.adapt({run:{mode:'interactive',memory_scope:{level:'reference_only',reason}}});
@@ -52,7 +52,9 @@ test('Memory page retains scope and renders both reference-only reasons',()=>{
   assert.equal(monitor.memoryScopeText({}),'');
   const page=fs.readFileSync(path.join(__dirname,'../ui/memory.html'),'utf8');
   const script=fs.readFileSync(path.join(__dirname,'../ui/memory.js'),'utf8');
-  assert.match(page,/id="memory-scope"[^>]*data-memory-reference-only[^>]*role="status" hidden/);
+  // 11-18 (user): the Memory page was removed (memory.html redirects to the Run page, whose
+  // memoryScopeNotice is covered above); memory.js keeps the scope banner wiring.
+  assert.match(page,/http-equiv="refresh" content="0;url=\/ui\/"/);
   assert.match(script,/scopeBanner.textContent=memoryScopeText\(data.run\)/);
   assert.match(script,/scopeBanner.hidden=!scopeBanner.textContent/);
 });

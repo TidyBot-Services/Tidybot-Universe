@@ -168,13 +168,18 @@ test('OPERATOR budget formatter omits empty values and never shows them as zero'
 // Exercise the real renderer entry points, including their non-final branches.
 // This is a string/contract check, without DOM, layout, video or HTTP claims.
 function rendererAPI(snapshot,debug=false,overrides={}) {
+ // A function ends at its first line back at two-space indent: that line when it is the closing "  }",
+ // otherwise just before it (11-18: vsEnsure closes with "});}" and is followed by top-level DOM wiring).
  const functions=[...source.matchAll(/^  (?:async )?function \w+\(/gm)].map(match=>{
   const start=match.index,lineEnd=source.indexOf('\n',start),line=source.slice(start,lineEnd);
-  const end=line.trimEnd().endsWith('}')?lineEnd:source.indexOf('\n',source.indexOf('\n  }',lineEnd)+1);
+  const next=/\n  (?! )/g;next.lastIndex=lineEnd;const stop=next.exec(source).index;
+  const end=line.trimEnd().endsWith('}')?lineEnd:source[stop+3]==='}'?source.indexOf('\n',stop+1):stop;
   return source.slice(start,end);
  }).join('\n');
  const values=new Map();
- return vm.runInNewContext(functions+'\n({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',{
+ // 11-18: replayChapters reads the top-level REPLAY_STAGES constant; take it from live.js as written.
+ const stages=(source.match(/^  const REPLAY_STAGES=\[[^\n]*\];$/m)||[''])[0];
+ return vm.runInNewContext(stages+'\n'+functions+'\n({runSettings,runOverview,executionViewer,requestPanel,resourceDetails,operatorHelpHistory,renderSidebar})',{
   DEBUG_VIEW:debug,Map,Set,Date,URL,URLSearchParams,console,
   taskTitles:{cube_lift:'Lift the cube',pick_place_counter_to_sink:'Pick Place: Counter → Sink'},
   root:{dataset:{}},runs:[],launches:[],devSessions:[],launchOptions:null,currentSnapshot:snapshot,selectedRequest:null,

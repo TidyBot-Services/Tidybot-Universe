@@ -54,36 +54,23 @@ test('main header badge counts distinct selected-run notes and pulses only on in
  ctx.updateMemoryLink(snapshot(['a']));assert.equal(badge.textContent,1);
  assert.equal(link.href,'/ui/memory.html#exp='+id);
 });
-test('light default, theme tokens and graceful 3D fallback are wired',()=>{
- assert.match(page,/id="monitor" class="light"/);
- assert.match(css,/#monitor\.light\{/);assert.match(css,/--acc:#d94d27/);
- assert.match(fs.readFileSync(path.join(root,'ui/memory.js'),'utf8'),/localStorage\.getItem/);
- assert.match(fs.readFileSync(path.join(root,'ui/memory.js'),'utf8'),/querySelector\('\[data-view="3d"\]'\)\.hidden=true/);
-});
+// 11-18 (user): removed 'light default, theme tokens and graceful 3D fallback' - it only checked the Memory page, which no longer exists.
 test('nonempty warnings render as one muted friendly line',()=>{
- assert.match(page,/id="warning" role="status"/);
- assert.match(css,/#monitor \.warning\{color:var\(--mut\);font-size:11px/);
+ // 11-18 (user): the Memory page (its #warning line and styles) was removed; the adapter/text helpers remain.
  assert.equal(monitor.warningText([]),'');
  assert.equal(monitor.warningText(['secret service detail']),'Some note details are unavailable right now.');
  assert.deepEqual(monitor.adapt({...payload([]),warnings:['unavailable']}).warnings,['unavailable']);
 });
-test('monitor fills viewport and moves sample preview to footer',()=>{
- assert.match(css,/\.wrap\{max-width:none;width:100%;min-height:calc\(100dvh - 32px\)/);
- assert.match(css,/#monitor\{flex:1;height:calc\(100dvh - 130px\);min-height:560px/);
- assert.match(css,/grid-template-columns:minmax\(0,1fr\) 380px/);
- assert.match(css,/#monitor \.li\{[^}]*overflow-y:auto/);
- assert.match(css,/@media\(max-width:780px\)[^\n]*grid-template-columns:1fr/);
- assert.match(page,/<footer class="demo-link">Preview with sample data: <a href="#demo=40">40<\/a> · <a href="#demo=150">150<\/a> · <a href="#demo=400">400<\/a> notes<\/footer>/);
- assert.match(page,/id="real-data" href="\/ui\/memory.html" hidden>Back to real data/);
- assert.match(page,/id="sample" class="sample" hidden>Sample data/);
- assert.match(fs.readFileSync(path.join(root,'ui/memory.js'),'utf8'),/preserveAspectRatio="xMidYMid meet"/);
- assert.equal(monitor.flowLayout(390),'vertical');assert.equal(monitor.flowLayout(900),'wide');
-});
-test('monitor and main page load the same notices bell',()=>{
- assert.match(page,/id="memory-notices" class="ab-notices-host"/);
- assert.match(page,/\.\/notices\.js/);
+// 11-18 (user): removed 'monitor fills viewport…' (Memory page layout) and the shared Notices bell test:
+// the Memory page is gone and notices.js no longer shows a bell; errors go to the strip / toast instead.
+test('the Memory page is a redirect; the main page keeps headless notices with only memory-down from Memory',()=>{
+ assert.match(page,/http-equiv="refresh" content="0;url=\/ui\/"/);
+ assert.doesNotMatch(page,/notices\.js|memory\.js|memory-notices/);
+ assert.match(fs.readFileSync(path.join(root,'ui/index.html'),'utf8'),/<script src="\.\/notices\.js" defer><\/script>/);
  assert.match(live,/AttentionNotices\.createNotices/);
- assert.match(css,/\.ab-notices-button\[data-level="error"\]/);
+ const notices=require('../ui/notices.js');
+ const rows=[{id:'memory-down',level:'error',source:'memory',title:'Memory service down'},{id:'m2',level:'error',source:'memory',title:'Other'},{id:'r',level:'error',source:'run',title:'Run stopped'}];
+ assert.deepEqual(notices.stripRows(rows).map(r=>r.id).sort(),['memory-down','r']);
 });
 test('provisional notes show Unvalidated with their own colour, use counts and expiry',()=>{
  const data=monitor.adapt(payload([{id:'p',title:'Avoid PlanningRejected',status:'unvalidated',unvalidated:true,uses:{grants:4,outcomes:4,failure_gone:3},expires_in_days:12,scene_seed:102},
@@ -99,7 +86,7 @@ test('provisional notes show Unvalidated with their own colour, use counts and e
  const qh=monitor.cardHtml(q,true);assert.match(qh,/Unvalidated · from scene 103/);assert.match(qh,/Expires in 1 day</);
  assert.match(css,/#monitor\{--cv:#c79bff/);
  const t={...data.notes[1],test_seeded:true};assert.match(monitor.cardHtml(t,true),/Reference · test note from scene 101/);assert.match(css,/#monitor\.light\{--cv:#8a4fd0/);assert.match(css,/#monitor \.chips span\.v\{/);
- assert.match(page,/id="count-unvalidated"/);assert.match(page,/id="bar-unvalidated"/);
+ // 11-18 (user): the Memory page counters (#count-unvalidated, #bar-unvalidated) were removed with the page.
 });
 test('main page tags a run that read unvalidated memory, with the exclusion tooltip',()=>{
  const start=live.indexOf('  function unvalidatedMemoryTag(snapshot) {'),end=live.indexOf('  function operatorOverview(snapshot) {',start);
@@ -153,7 +140,7 @@ test('nested layers filter jointly with version and used-only, with public path 
  }
  assert.match(monitor.layerLegend(data),/Family<b>off<\/b>/);
  assert.match(monitor.layerLegend(data),/class="layer-badge">R<\/i>Run/);
- assert.match(page,/id="layer-legend"/);assert.match(page,/id="layer-filters"/);
+ // 11-18 (user): the Memory page (#layer-legend, #layer-filters) was removed; legend HTML and CSS remain.
  assert.match(css,/\.layer-badge\{[^}]*border:1px solid currentColor/);
  assert.match(css,/#monitor\s+\.lg\s+i\.layer-badge\s*\{[^}]*\bborder-radius:\s*4px\s*[;}]/);
 });
