@@ -6169,10 +6169,11 @@
     const tip=rows.map(r=>`${r.value} · ${r.name}`).join('\n');
     let chip=actions.querySelector('.op-attn-chip');
     if(!chip){chip=document.createElement('span');chip.className='op-attn-chip';actions.prepend(chip);}
-    if(chip.textContent!==label)chip.textContent=label;chip.title=tip;chip.dataset.none=String(none);
+    const chipHtml=none?label:`<b>${esc(human?.value||'0 s')}</b> human attention`;
+    if(chip.innerHTML!==chipHtml)chip.innerHTML=chipHtml;chip.title=tip;chip.dataset.none=String(none);
     const body=view.querySelector('[data-c2] .c2-details .op-run-details-body');
     if(body){
-      const html=`<h5>Human cost</h5><dl>${rows.map(r=>`<div class="rd-row"${r.note?` title="${esc(r.note)}"`:''}><dt>${esc(r.name.split(' · ')[0])}</dt><dd><b>${esc([r.value,...r.name.split(' · ').slice(1)].join(' · '))}</b></dd></div>`).join('')}</dl>`;
+      const html=`<h5>Human cost</h5><dl>${rows.map(r=>`<div class="rd-row"${r.key==='human'?' data-key="human"':''}${r.note?` title="${esc(r.note)}"`:''}><dt>${esc(r.name.split(' · ')[0])}</dt><dd><b>${esc([r.value,...r.name.split(' · ').slice(1)].join(' · '))}</b></dd></div>`).join('')}</dl>`;
       let box=body.querySelector(':scope>.op-attn-costbox');
       if(!box){box=document.createElement('div');box.className='op-attn-costbox';body.prepend(box);}
       if(box.innerHTML!==html)box.innerHTML=html;
