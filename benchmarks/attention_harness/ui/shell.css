@@ -1045,5 +1045,3 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 .op-attn-costbox{display:contents}
 .op-attn-chip b{font-weight:700;color:#d94d27}
 .op-attn-costbox .rd-row[data-key="human"] dd b{color:#d94d27}
-/* 11-18 (user): on Remote every item in ⋯ is hidden (index.html lobby rules), which left an empty box; hide ⋯ itself */
-#attentionbench-clear:is([data-lobby-view="other"],[data-lobby-view="mine"]) .op-more-menu{display:none!important}

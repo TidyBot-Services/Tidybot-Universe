@@ -62,7 +62,7 @@
     const out=document.createElement('button');out.type='button';out.className='ab-button-quiet';out.dataset.signOut='';out.textContent=guest?'Enter invite code':'Sign out';
     out.addEventListener('click',async()=>{if(!guest)await fetch('/api/session',{method:'DELETE',headers:{'X-Attention-Token':root.dataset.controlToken||''}});location.assign('/login');});
     root.querySelector('.op-top-actions')?.append(out);
-    if(guest)document.addEventListener('click',event=>{if(event.target.closest?.('[data-open-launch]')){event.preventDefault();event.stopPropagation();location.assign('/login');}},true);
+    if(guest)document.addEventListener('click',event=>{if(event.target.closest?.('[data-open-launch],[data-open-run-again]')){event.preventDefault();event.stopPropagation();location.assign('/login');}},true);
   }
   let orchestratorError = 'Orchestrator not connected';
   let sessionHistory = [];
@@ -3418,9 +3418,8 @@
       if (!devProfiles.length&&!forkStart) return;
       const benchmarkNames = {robosuite:'Robosuite',robocasa:'RoboCasa',robocasa365:'RoboCasa365'};
       const armNames = {single:'Single arm',left:'Left only',right:'Right only',both:'Both arms'};
-      // On Remote a run is copied only from your own: someone else's settings would look like yours.
-      const remoteForeign=root.dataset.remote==='1'&&!linkedConfiguration&&currentSnapshot?.lobby?.mine!==true;
-      const source = runConfigSource(forkStart?currentSnapshot?.run:linkedConfiguration?.run || (remoteForeign?null:currentSnapshot?.run),repeat);
+      // 11-18 (user): on Remote, Run again copies any run's settings, someone else's too (was: only your own).
+      const source = runConfigSource(forkStart?currentSnapshot?.run:linkedConfiguration?.run || currentSnapshot?.run,repeat);
       const {profile:sourceProfile,reason:sourceUnavailable}=launchSourceProfile(source,devProfiles,options);
       launchDialog.innerHTML = `<div class="ab-launch-shell">
         <header class="ab-launch-header"><div><span class="kicker">NEW RUN / SIMULATION</span><h3>Run configuration</h3></div><button class="ab-button-quiet" type="button" data-close-launch aria-label="Close configuration">Close</button></header>
