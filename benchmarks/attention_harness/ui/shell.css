@@ -409,3 +409,526 @@ html body #attentionbench-clear .op-reuse-actions button[aria-pressed="true"]{ba
 .op-reuse [data-reuse-status]{display:block;min-height:16px;padding-bottom:8px;color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
 @media(max-width:760px){.op-reuse-pair{grid-template-columns:1fr}}
 html body #attentionbench-clear .op-heading .op-sound-toggle{font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;margin-right:8px}
+
+/* 11-18 ui改动 02: run controls beside the title, quiet one-line attention, Memory as one line */
+html #attentionbench-clear[data-operator-view="true"] .op-title-controls{display:inline-flex;align-items:center;gap:8px;order:-1}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button{height:36px;margin:0;padding:0 14px;border-radius:999px;font:600 13px "DM Sans",system-ui,sans-serif;text-transform:none;letter-spacing:0}
+html #attentionbench-clear[data-operator-view="true"] .op-title-controls small{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-attn-oneline{margin:4px 0 0;font:500 15px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-attn-oneline b{color:var(--sh-ink);font-weight:700}
+.op-attn-quiet .op-attn-scroll{margin-top:14px}
+.op-memory-use>details>summary{cursor:pointer;font:600 13px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-memory-use>details[open]>summary{margin-bottom:8px}
+.op-outcome-flags:empty{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+html body #attentionbench-clear[data-operator-view="true"] .op-title-controls button.danger{background:var(--sh-badbg)!important;color:var(--sh-badink)!important;border-color:transparent!important}
+.op-attn-quiet .op-attn-detail:empty{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button{display:inline-flex!important;align-items:center!important;gap:6px!important;white-space:nowrap!important;height:36px!important;padding:0 14px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-chip)!important;color:var(--sh-ink)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button.danger{background:var(--sh-badbg)!important;color:var(--sh-badink)!important;border-color:transparent!important}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title .op-title-controls button:disabled{opacity:.45}
+html body #attentionbench-clear .op-attention .op-attn-detail:empty{display:none!important}
+
+/* 11-18 ui改动 02: tries drawn as small attempts */
+.op-try-mark circle{fill:var(--sh-card);stroke:var(--sh-mut);stroke-width:1.5}
+.op-try-mark .op-try-glyph{fill:none;stroke:var(--sh-mut);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.op-try-mark.red circle{fill:var(--sh-badbg);stroke:var(--sh-acc)}
+.op-try-mark.red .op-try-glyph{stroke:var(--sh-acc)}
+.op-try-link{cursor:pointer}
+.op-try-link:hover circle,.op-try-link:focus-visible circle{stroke-width:2.5;stroke:var(--sh-ink)}
+.op-try-link:focus{outline:none}
+.op-try-caption{font-weight:700;fill:var(--sh-ink)}
+
+/* 11-18 ui改动 02: neutral "ran through" dot; Dock magnification */
+.op-try-mark .op-try-dot{fill:var(--sh-mut);stroke:none}
+.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:transform .14s cubic-bezier(.2,.7,.3,1);transform-box:view-box}
+.op-attn-scroll svg.op-docking .op-try-mark,.op-attn-scroll svg.op-docking .op-attn-attempt{transition:transform .22s cubic-bezier(.2,.7,.3,1)}
+.op-attn-scroll svg{overflow:visible}
+@media (prefers-reduced-motion:reduce){.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:none}}
+
+/* 11-18 ui改动 02: try card + summary */
+.op-try-mark.selected circle{stroke:var(--sh-ink);stroke-width:2.6}
+.op-try-card{margin-top:12px;padding:12px 14px;border:1px solid var(--sh-line);border-radius:12px;background:var(--sh-card)}
+.op-try-card .op-agent-card-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.op-try-card .op-agent-card-head small{color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.op-try-card .op-try-close{margin-left:auto;width:28px;height:28px;border:0;border-radius:999px;background:transparent;color:var(--sh-mut);font-size:18px;cursor:pointer}
+.op-try-card .op-try-why{margin:8px 0 0;font:500 15px/1.45 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-try-card .op-try-help{margin:6px 0 0;font:400 13px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-try-summary b{font-weight:700}
+html body #attentionbench-clear .op-try-card .op-try-close{margin-left:auto!important;width:28px!important;height:28px!important;padding:0!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:400 20px/1 system-ui!important}
+html body #attentionbench-clear .op-try-card .op-try-close:hover{background:var(--sh-chip)!important;color:var(--sh-ink)!important}
+
+/* 11-18 ui改动 02: try card, second pass */
+html body #attentionbench-clear .op-try-card{position:relative;margin-top:14px;padding:12px 14px 12px 18px;border:1px solid var(--sh-line);border-radius:12px;background:var(--sh-card)}
+html body #attentionbench-clear .op-try-card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--sh-mut)}
+html body #attentionbench-clear .op-try-card.stopped::before{background:var(--sh-acc)}
+html body #attentionbench-clear .op-try-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+html body #attentionbench-clear .op-try-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+html body #attentionbench-clear .op-try-title b{font:700 15px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+html body #attentionbench-clear .op-try-title small{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+html body #attentionbench-clear .op-try-state{font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--sh-mut)}
+html body #attentionbench-clear .op-try-state.stopped{color:var(--sh-acc)}
+html body #attentionbench-clear .op-try-actions{display:flex;align-items:center;gap:4px;flex:none}
+html body #attentionbench-clear .op-try-card .op-try-watch{height:28px!important;margin:0!important;padding:0 10px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-acc)!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .op-try-card .op-try-watch:hover{background:var(--sh-chip)!important}
+html body #attentionbench-clear .op-try-card .op-try-close{margin:0!important}
+html body #attentionbench-clear .op-try-card .op-try-norec{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);padding:0 6px}
+html body #attentionbench-clear .op-try-card .op-try-why{margin:6px 0 0;font:500 14px/1.5 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+
+/* 11-18 experiment (8897): 02 conversation */
+.c2{margin-top:16px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-panel);overflow:hidden}
+.c2-head-row{display:flex;align-items:baseline;gap:12px;padding:10px 16px;border-bottom:1px solid var(--sh-line2)}
+.c2-head-row h4{margin:0;font:600 11px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-amb)}
+.c2-head-row span{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.c2-feed{position:relative;max-height:520px;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:auto}
+.c2-msg{display:flex;align-items:flex-start;gap:10px;max-width:860px}
+.c2-msg.you{align-self:flex-end;justify-content:flex-end;max-width:760px}
+.c2-av{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--sh-ink);color:var(--sh-bg);font:700 12px "DM Sans",system-ui,sans-serif}
+.c2-av.adv{background:var(--sh-mut)}
+.c2-av.you{background:var(--sh-fill);color:#fff}
+.c2-card,.c2-bubble{min-width:0;padding:10px 14px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-card);color:var(--sh-ink);font:400 14px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-card p,.c2-bubble p{margin:4px 0 0}
+.c2-card.ask{background:var(--sh-chip);border-style:dashed}
+.c2-card.ask.live{border:1.5px solid var(--sh-acc);border-style:solid;box-shadow:0 0 0 4px color-mix(in srgb,var(--sh-acc) 14%,transparent)}
+.c2-bubble{background:color-mix(in srgb,var(--sh-fill) 10%,var(--sh-card));border-color:color-mix(in srgb,var(--sh-fill) 30%,var(--sh-line))}
+.c2-bubble.adv{background:var(--sh-sunk);border-color:var(--sh-line)}
+.c2-meta{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.c2-meta b{color:var(--sh-ink);font-weight:700}
+.c2-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.c2-tag{padding:2px 9px;border-radius:999px;font:600 11px "DM Sans",system-ui,sans-serif}
+.c2-tag.good{background:var(--sh-okbg);color:var(--sh-okink)}
+.c2-tag.bad{background:var(--sh-badbg);color:var(--sh-badink)}
+.c2-next{padding-left:10px;border-left:2px solid var(--sh-line);color:var(--sh-mut)}
+.c2-next b{color:var(--sh-ink)}
+.c2-dim{color:var(--sh-mut)}
+.c2-rows{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+.c2-row{display:grid;grid-template-columns:10px 1fr auto;align-items:start;gap:8px;padding:3px 6px;border-radius:8px}
+.c2-mark{width:8px;height:8px;margin-top:7px;border-radius:50%;background:var(--sh-acc)}
+.c2-row.ok .c2-mark{background:var(--sh-card);border:1.5px solid var(--sh-mut);box-sizing:border-box}
+.c2-why{font:400 13.5px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-nums{display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:flex-end;max-width:240px}
+.c2-nums small{color:var(--sh-mut);font:500 11px "DM Sans",system-ui,sans-serif;margin-right:2px}
+html body #attentionbench-clear .c2 .c2-try{min-width:24px;height:20px!important;margin:0!important;padding:0 5px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:none!important;font:600 11px "DM Sans",system-ui,sans-serif!important;cursor:pointer}
+html body #attentionbench-clear .c2 .c2-try.no{border-color:color-mix(in srgb,var(--sh-acc) 45%,var(--sh-line))!important}
+html body #attentionbench-clear .c2 .c2-try:hover{border-color:var(--sh-acc)!important;color:var(--sh-acc)!important}
+html body #attentionbench-clear .c2 .c2-watch{margin-left:auto!important;height:24px!important;padding:0 8px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-acc)!important;font:600 12.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .c2 .c2-watch:hover{background:var(--sh-chip)!important}
+.c2-more summary{list-style:none;cursor:pointer}
+.c2-more summary::-webkit-details-marker{display:none}
+.c2-more[open] .c2-short,.c2-more[open] .c2-show{display:none}
+.c2-show{margin-left:6px;color:var(--sh-acc);font-weight:600;font-size:12.5px}
+.c2-sys{align-self:center;padding:4px 12px;border-radius:999px;background:var(--sh-sunk);color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.c2-sys.bad{background:var(--sh-badbg);color:var(--sh-badink)}
+.c2-count{display:block;margin-top:6px;color:var(--sh-acc);font:700 13px "DM Sans",system-ui,sans-serif}
+.c2-sample{color:var(--sh-acc)}
+.c2-flash{animation:c2-flash 1.6s ease-out}
+@keyframes c2-flash{0%{background:color-mix(in srgb,var(--sh-acc) 22%,transparent)}100%{background:transparent}}
+.c2-composer{padding:12px 16px;border-top:1px solid var(--sh-line2);background:var(--sh-card)}
+.c2-composer label{display:block;margin-bottom:6px;font:600 12px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.c2-composer.off label,.c2-composer.off small,.c2-composer.off span{color:var(--sh-mut);font:500 12px "DM Sans",system-ui,sans-serif}
+.c2-row-in{display:flex;gap:8px}
+.c2-row-in input{flex:1;min-width:0;height:38px;padding:0 14px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-panel);color:var(--sh-ink);font:400 14px "DM Sans",system-ui,sans-serif}
+html body #attentionbench-clear .c2-row-in button{height:38px!important;margin:0!important;padding:0 18px!important;border:0!important;border-radius:999px!important;background:var(--sh-fill)!important;color:#fff!important;font:600 13px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important}
+html body #attentionbench-clear .c2-row-in button:disabled{background:var(--sh-sunk)!important;color:var(--sh-mut)!important}
+html body #attentionbench-clear .c2-row-in .c2-alt{background:transparent!important;color:var(--sh-ink)!important;border:1px solid var(--sh-line)!important}
+.c2-composer small{display:block;margin-top:6px}
+.c2-err{color:var(--sh-acc)}
+.c2-composer.live .op-reply{margin:0}
+
+/* 11-18 experiment: conversation as a right-side panel */
+#attentionbench-clear.c2-on .ab-workspace{padding-right:56px;transition:padding-right .22s ease}
+#attentionbench-clear.c2-on.c2-open .ab-workspace{padding-right:432px}
+.c2-panel{position:fixed;z-index:45;top:var(--sh-bar,68px);right:0;bottom:0;display:flex;pointer-events:none}
+.c2-panel .c2-body{pointer-events:auto;width:420px;display:flex;flex-direction:column;border-left:1px solid var(--sh-line);background:var(--sh-panel);box-shadow:-10px 0 24px -18px #0006;transform:translateX(0);transition:transform .24s cubic-bezier(.2,.7,.3,1)}
+.c2-panel[data-open="false"] .c2-body{transform:translateX(100%);visibility:hidden;transition:transform .24s cubic-bezier(.2,.7,.3,1),visibility 0s .24s}
+.c2-panel .c2-head-row{flex:none;display:flex;align-items:center;gap:10px;padding:12px 14px 12px 18px;border-bottom:1px solid var(--sh-line2)}
+.c2-panel .c2-head-row span{flex:1;min-width:0}
+html body #attentionbench-clear .c2-panel .c2-close{width:30px!important;height:30px!important;margin:0!important;padding:0!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:none!important;font:600 18px/1 system-ui!important;cursor:pointer}
+.c2-panel .c2-feed{flex:1;max-height:none;padding:14px 14px}
+.c2-panel .c2-msg{max-width:100%}
+.c2-panel .c2-msg.you{max-width:94%}
+.c2-panel .c2-composer{flex:none}
+.c2-panel .c2-row-in{flex-wrap:wrap}
+.c2-panel .c2-row-in input{flex-basis:100%}
+.c2-panel .c2-nums{max-width:150px}
+/* the handle: a slim tab on the right edge while the panel is closed */
+html body #attentionbench-clear .c2-panel .c2-handle{pointer-events:auto;position:absolute;right:0;top:18px;display:flex;flex-direction:column;align-items:center;gap:8px;width:44px!important;height:auto!important;margin:0!important;padding:12px 0!important;border:1px solid var(--sh-line)!important;border-right:0!important;border-radius:12px 0 0 12px!important;background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:-4px 4px 14px -10px #0007!important;cursor:pointer;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important}
+.c2-panel .c2-handle-text{writing-mode:vertical-rl;transform:rotate(180deg)}
+.c2-panel .c2-handle b{min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--sh-sunk);color:var(--sh-ink);font:700 11px/20px "DM Sans",system-ui,sans-serif;text-align:center}
+.c2-panel .c2-handle-dot{width:8px;height:8px;border-radius:50%;background:var(--sh-mut)}
+.c2-panel[data-open="true"] .c2-handle{display:none!important}
+html body #attentionbench-clear .c2-panel .c2-handle.asking{background:var(--sh-fill)!important;color:#fff!important;border-color:var(--sh-fill)!important;animation:c2-ask 1.6s ease-in-out infinite}
+.c2-panel .c2-handle.asking .c2-handle-dot{background:#fff}
+.c2-panel .c2-handle.asking b{background:#ffffff33;color:#fff}
+@keyframes c2-ask{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--sh-fill) 50%,transparent)}50%{box-shadow:0 0 0 8px transparent}}
+@media (max-width:1180px){#attentionbench-clear.c2-on.c2-open .ab-workspace{padding-right:56px}.c2-panel .c2-body{width:min(420px,92vw);box-shadow:-18px 0 40px -14px #0008}}
+@media (prefers-reduced-motion:reduce){.c2-panel .c2-body{transition:none}html body #attentionbench-clear .c2-panel .c2-handle.asking{animation:none}}
+
+/* the page wrapper keeps a transform after its entry animation, which would pin the "fixed" panel to it */
+#attentionbench-clear.c2-on .ab-workspace{animation:none!important;transform:none!important}
+.c2-panel.c2{margin:0;border:0;border-radius:0;background:transparent;overflow:visible}
+.c2-panel .c2-body{min-height:0}
+.c2-panel .c2-feed{min-height:0}
+
+/* 11-18 experiment polish */
+.c2-row{grid-template-columns:16px 1fr auto}
+.c2-m{width:15px;height:15px;margin-top:3px}
+.c2-m circle{fill:var(--sh-card);stroke:var(--sh-mut);stroke-width:1.4}
+.c2-m path{stroke:var(--sh-acc);stroke-width:1.6;stroke-linecap:round}
+.c2-m.no circle{fill:var(--sh-badbg);stroke:var(--sh-acc)}
+.c2-m .d{fill:var(--sh-mut);stroke:none}
+.c2-why small{color:var(--sh-mut);font-weight:600}
+.c2-panel .c2-nums{max-width:120px}
+.c2-panel .c2-head{flex-wrap:nowrap}
+.c2-panel .c2-head .c2-meta{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c2-panel .c2-tag{flex:none}
+html body #attentionbench-clear .c2 .c2-watch{flex:none}
+/* chart parts the conversation is showing */
+.op-attn-attempt circle,.op-try-mark circle,.op-attn-help .op-attn-arc{transition:filter .4s ease}
+.op-attn-attempt.c2-focus circle,.op-try-mark.c2-focus circle{filter:drop-shadow(0 0 4px var(--sh-acc)) drop-shadow(0 0 2px var(--sh-acc))}
+.op-attn-help.c2-focus .op-attn-arc,.op-attn-help.c2-focus .op-attn-help-label{filter:drop-shadow(0 0 3px var(--sh-acc))}
+
+/* 11-18: one home per fact — the checker's suggestion lives in the conversation panel */
+#attentionbench-clear.c2-on .op-try-next{display:none}
+/* tries picker uses the chart's two marks: red ring = stopped, hollow ring with a dot = ran through (never green) */
+html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind]{box-sizing:border-box;background:var(--sh-badbg)!important;border:1.5px solid var(--sh-acc)}
+html #attentionbench-clear.c2-on[data-operator-view="true"] .op-tabs.op-pills .op-tries-list i[data-kind="done"]{background:radial-gradient(circle,var(--sh-mut) 0 2px,var(--sh-card) 2.5px)!important;border-color:var(--sh-mut)}
+
+/* 11-18: Memory as one line in the conversation */
+.c2-av.mem{background:var(--sh-amb);color:#fff}
+.c2-memory .c2-card{background:var(--sh-panel);border-style:dashed}
+.c2-notes{margin:4px 0 0;padding:0;list-style:none;font:400 13.5px/1.5 "DM Sans",system-ui,sans-serif}
+.c2-note-q{font-style:italic;color:var(--sh-ink)}
+
+/* 11-18: YouTube-style chapters on the seek bar; folded waits in the action log */
+.ab-replay-scrubber{position:relative}
+.ab-replay-scrubber .ab-chapter-tick{position:absolute;top:50%;width:2px;height:12px;margin-left:-1px;transform:translateY(-50%);background:#fff;opacity:.85;pointer-events:auto;z-index:2;border-radius:1px}
+.ab-replay-scrubber .ab-chapter-tick:hover{opacity:1;height:16px}
+.ab-replay-scrubber .ab-chapter-stop{position:absolute;top:50%;width:3px;height:16px;margin-left:-1.5px;transform:translateY(-50%);background:#e5533b;z-index:3;border-radius:1px;box-shadow:0 0 0 1px #0006}
+.ab-replay-stage{margin:0 6px;padding:1px 8px;border-radius:999px;background:#ffffff1f;color:#fff;font:600 11.5px "DM Sans",system-ui,sans-serif;white-space:nowrap}
+.op-eval-strip h4:not(:has([data-eval-did-not-run])){display:none}
+.op-eval-strip [data-eval-verdict]{display:none}
+.op-eval-strip:not(:has(.op-eval-stopped,[data-eval-did-not-run])){display:none}
+.op-skip[hidden]{display:none!important}
+/* 11-18 (user): no "Stopped at …" line either; the red stop line on the seek bar shows it (hover: "Stopped at Carry") */
+.op-eval-strip .op-eval-stopped{display:none}
+.op-eval-strip:not(:has([data-eval-did-not-run])){display:none}
+
+/* 11-18: 03 split — run line under the title, progress meter, Run details popover */
+html #attentionbench-clear[data-operator-view="true"] .op-page-title p.op-title-sub{margin:8px 0 0;font:500 14px "DM Sans",system-ui,sans-serif;letter-spacing:0;text-transform:none;color:var(--sh-mut)}
+.op-title-meter{display:inline-flex;gap:14px;align-items:center}
+.op-title-meter>span{display:grid;gap:4px;min-width:110px}
+.op-title-meter b{font:600 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-ink);white-space:nowrap}
+.op-title-meter i{display:block;height:4px;border-radius:999px;background:linear-gradient(90deg,var(--sh-ink) var(--p),var(--sh-line) var(--p))}
+.op-run-details{position:relative}
+.op-run-details>summary{list-style:none;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--sh-line);border-radius:999px;background:var(--sh-chip);color:var(--sh-ink);font:600 12.5px "DM Sans",system-ui,sans-serif;cursor:pointer}
+.op-run-details>summary::-webkit-details-marker{display:none}
+.op-run-details[open]>summary{border-color:var(--sh-acc)}
+.op-run-details-body{position:absolute;right:0;top:calc(100% + 8px);z-index:50;width:min(760px,80vw);max-height:70vh;overflow:auto;padding:16px;border:1px solid var(--sh-line);border-radius:14px;background:var(--sh-panel);box-shadow:0 18px 40px -16px #0007}
+
+/* 11-18: compact Run details */
+html body #attentionbench-clear .op-run-details>summary{height:28px;padding:0 10px;border:0;background:transparent;color:var(--sh-mut);font:600 12.5px "DM Sans",system-ui,sans-serif}
+html body #attentionbench-clear .op-run-details>summary:hover,html body #attentionbench-clear .op-run-details[open]>summary{color:var(--sh-ink);background:var(--sh-chip)}
+html body #attentionbench-clear .op-run-details-body{width:340px;max-height:70vh;padding:12px 14px;border-radius:12px;background:var(--sh-card);box-shadow:0 14px 32px -14px #0008}
+.op-run-details-body h5{margin:10px 0 4px;font:600 10.5px "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--sh-amb)}
+.op-run-details-body h5:first-child{margin-top:0}
+.op-run-details-body dl{margin:0;display:grid}
+.op-run-details-body .rd-row{display:grid;grid-template-columns:96px 1fr;gap:10px;padding:5px 0;border-top:1px solid var(--sh-line2)}
+.op-run-details-body .rd-row:first-child{border-top:0}
+.op-run-details-body dt{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-run-details-body dd{margin:0;display:grid;gap:2px;min-width:0}
+.op-run-details-body dd b{font:600 12.5px/1.35 "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+.op-run-details-body dd small{font:400 11.5px/1.35 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.op-run-details-body .rd-budgets dd{grid-template-columns:auto 1fr;align-items:center;gap:10px}
+.op-run-details-body .rd-budgets i{display:block;height:3px;border-radius:999px;background:linear-gradient(90deg,var(--sh-mut) var(--p),var(--sh-line2) var(--p))}
+.op-run-details-body .rd-notes{margin:0;padding-left:16px;font:400 11.5px/1.45 "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+
+/* 11-18: right panel tabs (Conversation | Details) */
+.c2-tabs{display:flex;gap:4px}
+html body #attentionbench-clear .c2-tabs button{position:relative;height:28px!important;margin:0!important;padding:0 12px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 11px "IBM Plex Mono",ui-monospace,monospace!important;letter-spacing:.12em!important;text-transform:uppercase!important;cursor:pointer}
+html body #attentionbench-clear .c2-tabs button[aria-selected="true"]{background:var(--sh-chip)!important;color:var(--sh-ink)!important;box-shadow:inset 0 0 0 1px var(--sh-line)!important}
+.c2-tab-dot{display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:var(--sh-acc);vertical-align:1px}
+.c2-pane{display:flex;flex-direction:column;flex:1;min-height:0}
+.c2-panel[data-tab="chat"] [data-pane="details"],.c2-panel[data-tab="details"] [data-pane="chat"]{display:none}
+.c2-details{overflow:auto}
+html body #attentionbench-clear .c2-details .op-run-details-body{position:static;width:auto;max-height:none;padding:14px 18px;border:0;border-radius:0;background:transparent;box-shadow:none}
+html body #attentionbench-clear .c2-details .rd-row{grid-template-columns:110px 1fr}
+html body #attentionbench-clear .op-run-details-btn{height:28px!important;margin:0!important;padding:0 10px!important;border:0!important;border-radius:999px!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:600 12.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .op-run-details-btn:hover{color:var(--sh-ink)!important;background:var(--sh-chip)!important}
+
+/* 11-18: resizable right panel */
+#attentionbench-clear{--c2w:420px}
+#attentionbench-clear.c2-on.c2-open .ab-workspace{padding-right:calc(var(--c2w) + 12px)}
+.c2-panel .c2-body{position:relative;width:var(--c2w)}
+.c2-resizer{position:absolute;left:-7px;top:0;bottom:0;width:14px;cursor:col-resize;z-index:2;touch-action:none}
+.c2-resizer::after{content:"";position:absolute;left:6px;top:50%;width:2px;height:44px;margin-top:-22px;border-radius:2px;background:var(--sh-line);transition:background .15s,height .15s}
+.c2-resizer:hover::after,#attentionbench-clear.c2-resizing .c2-resizer::after{background:var(--sh-acc);height:72px;margin-top:-36px}
+#attentionbench-clear.c2-resizing,#attentionbench-clear.c2-resizing *{user-select:none!important;cursor:col-resize!important}
+#attentionbench-clear.c2-resizing .ab-workspace,#attentionbench-clear.c2-resizing .c2-body{transition:none!important}
+@media (max-width:1180px){.c2-resizer{display:none}}
+
+/* 11-18: tries rows and attempt cards in the panel open their video */
+.c2-row,.c2-msg[data-feed-attempt] .c2-card{cursor:pointer}
+.c2-row:hover{background:var(--sh-chip)}
+.c2-msg[data-feed-attempt] .c2-card:hover{border-color:var(--sh-acc)}
+/* 11-18 ui改动: New run always in the title; quiet form while a run is live */
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet{height:36px;padding:0 16px;gap:8px;background:transparent;color:var(--sh-fill);border:1px solid var(--sh-fill);font-size:15px;box-shadow:none;animation:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet::after{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet:hover:not(:disabled){background:var(--sh-fill);color:#fff;transform:none}
+html body #attentionbench-clear[data-operator-view="true"] .op-page-title button.op-new-run.op-new-run-quiet .op-new-run-tri{border-left-width:9px;border-top-width:6px;border-bottom-width:6px}
+/* 11-18 ui改动: task-first run tree in the sidebar (task → [person on Remote] → runs) */
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task{margin:0 0 6px;padding:0;border:0;border-radius:12px;background:transparent}
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task[open]{background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line);padding-bottom:6px}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary{display:flex;align-items:center;gap:8px;padding:9px 10px;cursor:pointer;list-style:none;border-radius:12px;font:600 13.5px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary::-webkit-details-marker{display:none}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary:hover{background:var(--sh-chip)}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary small{font:500 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut)}
+.ab-tr-chev{display:inline-block;width:10px;color:var(--sh-mut);transition:transform var(--sh-t1) var(--sh-ease)}
+details.ab-tr-task[open]>summary .ab-tr-chev{transform:rotate(90deg)}
+.ab-tr-flag{font:600 11px "DM Sans",system-ui,sans-serif;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.ab-tr-flag[data-o="live"]{background:var(--sh-runbg);color:var(--sh-runink)}
+.ab-tr-flag[data-o="wait"]{background:var(--sh-warnbg);color:var(--sh-warnink)}
+.ab-tr-pols{display:flex;flex-wrap:wrap;gap:4px;margin:0 10px 6px 28px}
+html body #attentionbench-clear .ab-tr-pols button{height:auto!important;margin:0!important;padding:2px 8px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:transparent!important;color:var(--sh-mut)!important;font:500 11.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important;cursor:pointer}
+html body #attentionbench-clear .ab-tr-pols button i{font-style:normal;opacity:.8}
+html body #attentionbench-clear .ab-tr-pols button[aria-pressed="true"]{border-color:var(--sh-fill)!important;color:var(--sh-fill)!important;background:color-mix(in srgb,var(--sh-fill) 8%,transparent)!important}
+.ab-tr-body{margin:0 8px 0 18px;border-left:1px solid var(--sh-line);padding-left:6px}
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-person{margin:0;padding:0;border:0;background:transparent}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-person>summary{display:flex;align-items:center;gap:7px;padding:6px 6px;cursor:pointer;list-style:none;border-radius:8px;font:600 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-ink)}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-person>summary::-webkit-details-marker{display:none}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-person>summary:hover{background:var(--sh-chip)}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-person>summary b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-person>summary small{font:500 11.5px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);white-space:nowrap}
+.ab-tr-person .ab-tr-runs{margin-left:12px;border-left:1px solid var(--sh-line);padding-left:6px}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run{position:relative;display:flex;align-items:center;margin:1px 0;padding:0!important;border:0!important;border-radius:8px;background:transparent!important;box-shadow:none!important}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run:hover{background:var(--sh-chip)!important}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run[data-viewing="true"]{background:color-mix(in srgb,var(--sh-fill) 10%,transparent)!important}
+html body #attentionbench-clear .ab-sidebar nav button.ab-tr-main{flex:1;min-width:0;display:flex!important;align-items:center;gap:7px;height:auto!important;margin:0!important;padding:6px 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;text-align:left;cursor:pointer;color:var(--sh-ink)!important;font:500 12.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important}
+.ab-tr-pin{color:var(--sh-fill);font-size:11px}
+.ab-tr-pol{flex:none;font:600 11px "DM Sans",system-ui,sans-serif;padding:2px 7px;border-radius:6px;background:var(--sh-chip);color:var(--sh-mut)}
+.ab-tr-pol[data-pol="reactive"]{background:#ece9fb;color:#4b3fa8}
+.ab-tr-pol[data-pol="self"]{background:#e0f3ee;color:#0f6e56}
+.ab-tr-pol[data-pol="planner"]{background:#fbe9e1;color:#a2401d}
+.ab-tr-pol[data-pol="hints"]{background:#fbefd9;color:#7a4a0a}
+#attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="reactive"]{background:#2e2a52;color:#c3bdf3}
+#attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="self"]{background:#16382f;color:#9fe1cb}
+#attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="planner"]{background:#4a2414;color:#f5c4b3}
+#attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="hints"]{background:#45300a;color:#fac775}
+.ab-tr-meta{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--sh-mut);font-size:12px}
+.ab-tr-out{flex:none;font-size:12px;font-weight:600;white-space:nowrap}
+.ab-tr-out[data-o="ok"]{color:var(--sh-okink)}
+.ab-tr-out[data-o="no"]{color:var(--sh-badink)}
+.ab-tr-out[data-o="live"]{color:var(--sh-runink)}
+.ab-tr-out[data-o="wait"]{color:var(--sh-warnink)}
+.ab-tr-out[data-o="idle"]{color:var(--sh-mut);font-weight:500}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run .ab-record-more{flex:none;margin:0;opacity:0;transition:opacity var(--sh-t1)}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run:hover .ab-record-more,html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run .ab-record-more[open]{opacity:1}
+html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more{display:block;height:auto!important;margin:2px 0 0!important;padding:4px 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--sh-mut)!important;font:500 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;cursor:pointer}
+html body #attentionbench-clear .ab-sidebar nav button.ab-tr-more:hover{color:var(--sh-ink)!important}
+html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::before,html body #attentionbench-clear .ab-sidebar nav article.ab-tr-run::after{display:none!important;content:none!important}
+/* 11-18 ui改动: skipped wait = a gap in the step timeline (same grid as a step) */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap{display:grid!important;grid-template-columns:46px 18px minmax(0,1fr);gap:8px;align-items:center;margin:0!important;padding:0 8px!important;min-height:22px!important;border:0!important;border-radius:7px!important;background:transparent!important;cursor:pointer}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>i{justify-self:center;align-self:stretch;width:0;border-left:2px dotted var(--rk-line,var(--sh-line))}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>span{font:italic 400 11.5px "DM Sans",system-ui,sans-serif!important;color:var(--rk-dim,var(--sh-mut))!important;filter:none!important;text-align:left!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap:hover{background:var(--rk-hover,var(--sh-chip))!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap:hover>span{color:var(--rk-text,var(--sh-ink))!important}
+/* 11-18 ui改动: Deleted fold in the tree's own style */
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-deleted-history.ab-tr-deleted{margin:10px 0 0;padding:0;border:0;border-radius:12px;background:transparent}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;list-style:none;cursor:pointer;font:500 13px "DM Sans",system-ui,sans-serif!important;letter-spacing:0!important;text-transform:none!important;color:var(--sh-mut)!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary::-webkit-details-marker{display:none}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary::before{content:none!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary:hover{background:var(--sh-chip);color:var(--sh-ink)!important}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary svg{width:15px;height:15px;flex:none}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary b{flex:1;font-weight:500}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary small{font-size:12px}
+html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted[open]{background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line);padding-bottom:6px}
+.ab-tr-delrow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:8px}
+.ab-tr-delrow:hover{background:var(--sh-chip)}
+.ab-tr-delrow>span{flex:1;min-width:0;display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden}
+.ab-tr-delrow b{font:500 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);overflow:hidden;text-overflow:ellipsis}
+.ab-tr-delrow small{font-size:11.5px;color:var(--sh-mut);opacity:.8}
+html body #attentionbench-clear .ab-sidebar .ab-tr-delrow button.ab-record-restore{flex:none;height:24px!important;margin:0!important;padding:0 10px!important;border:1px solid var(--sh-line)!important;border-radius:999px!important;background:transparent!important;color:var(--sh-ink)!important;font:500 11.5px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important;cursor:pointer}
+html body #attentionbench-clear .ab-sidebar .ab-tr-delrow button.ab-record-restore:hover{border-color:var(--sh-fill)!important;color:var(--sh-fill)!important}
+/* 11-18 ui改动 (user: "太单调"): every task is a card, closed or open; Autonomous gets its own tint */
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task,html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-deleted-history.ab-tr-deleted{background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line),0 1px 2px #2428220d;transition:box-shadow var(--sh-t1) var(--sh-ease)}
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task:not([open]):hover,html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-deleted-history.ab-tr-deleted:not([open]):hover{box-shadow:0 0 0 1px var(--sh-line2,var(--sh-mut)),0 2px 6px #2428221a}
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task[data-viewing="true"]{box-shadow:0 0 0 1px var(--sh-line),inset 3px 0 0 var(--sh-fill),0 1px 2px #2428220d}
+html body #attentionbench-clear .ab-sidebar nav .ab-tr-task>summary:hover,html body #attentionbench-clear[data-operator-view="true"] .ab-sidebar .ab-tr-deleted>summary:hover{background:transparent}
+html body #attentionbench-clear .ab-sidebar nav details.ab-tr-task{margin-bottom:8px}
+.ab-tr-pol[data-pol="auto"]{background:#e3ebf4;color:#2f5a86}
+#attentionbench-clear[data-theme="dark"] .ab-tr-pol[data-pol="auto"]{background:#1d2c3d;color:#a9c6e6}
+/* 11-18 ui改动: draggable split between the replay picture and the step list */
+@media(min-width:761px){
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-layout{position:relative;grid-template-columns:minmax(0,var(--vsplit,62%)) minmax(0,1fr)!important}
+.op-vsplit{position:absolute;top:0;bottom:0;left:calc(var(--vsplit,62%) - 7px);width:14px;z-index:5;cursor:col-resize;touch-action:none;display:flex;justify-content:center}
+.op-vsplit>i{width:2px;height:100%;background:transparent;transition:background var(--sh-t1) var(--sh-ease)}
+.op-vsplit::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:36px;margin:-18px 0 0 -3px;border-radius:3px;background:var(--rk-line,var(--sh-line));opacity:0;transition:opacity var(--sh-t1)}
+.op-vsplit:hover>i,.vs-resizing .op-vsplit>i{background:var(--sh-acc,#d94d27)}
+.op-vsplit:hover::after,.vs-resizing .op-vsplit::after{opacity:1;background:var(--sh-acc,#d94d27)}
+.vs-resizing,.vs-resizing *{cursor:col-resize!important;user-select:none!important}
+.vs-resizing video{pointer-events:none}
+}
+@media(max-width:760px){.op-vsplit{display:none}}
+/* 11-18 ui改动 (A+B): step list = stage groups + one timeline rail with coloured dots */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head h4{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head{flex-wrap:nowrap}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary{position:relative}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary::before{content:""!important;display:block!important;position:absolute;left:70px;top:0;bottom:0;width:0;border-left:2px solid var(--rk-line2,#cfcabd)!important;z-index:0}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-skip.op-skip-gap>i{border-left:2px dashed var(--rk-line,var(--sh-line))!important}
+.op-rail-dot{position:relative;z-index:1;justify-self:center;align-self:start;width:12px;height:12px;margin-top:4px;border-radius:50%;box-shadow:0 0 0 3px var(--rk-panel,var(--sh-card));display:flex;align-items:center;justify-content:center;font:700 8px/1 system-ui,sans-serif;color:#fff!important;background:#9a988f}
+.op-rail-dot[data-kind="move"]{background:#1d9e75}
+.op-rail-dot[data-kind="grip"]{background:#d85a30}
+.op-rail-dot[data-kind="find"]{background:#7f77dd}
+.op-rail-dot[data-s="fail"]{background:#c2372f;width:14px;height:14px;margin-top:3px}
+.op-rail-dot[data-s="run"]{background:#2f6fd0;animation:op-rail-pulse 1.4s ease-in-out infinite}
+@keyframes op-rail-pulse{50%{box-shadow:0 0 0 3px var(--rk-panel,var(--sh-card)),0 0 0 7px #2f6fd033}}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary>span.op-rail-dot{color:#fff!important}
+.op-stage-h{display:flex;align-items:center;gap:8px;margin:10px 0 2px;padding:2px 8px;border-radius:7px;cursor:pointer}
+.op-stage-h:first-child{margin-top:2px}
+.op-stage-h>span{flex:none;font:600 11px "DM Sans",system-ui,sans-serif;letter-spacing:.03em;padding:2px 9px;border-radius:999px;background:#ece9fb;color:#4b3fa8}
+.op-stage-h[data-kind="reach"]>span{background:#e3ebf4;color:#2f5a86}
+.op-stage-h[data-kind="grip"]>span{background:#fbe9e1;color:#a2401d}
+.op-stage-h[data-kind="lift"]>span{background:#e0f3ee;color:#0f6e56}
+.op-stage-h[data-stopped="true"]>span{background:#fbe3e1;color:#a32d2d}
+.op-stage-h>i{flex:1;height:0;border-top:1px solid var(--rk-line,var(--sh-line))}
+.op-stage-h>time{font:500 11px var(--mono,ui-monospace,monospace);color:var(--rk-dim,var(--sh-mut))}
+.op-stage-h:hover>i{border-top-color:var(--rk-dim,var(--sh-mut))}
+#attentionbench-clear[data-theme="dark"] .op-stage-h>span{background:#2e2a52;color:#c3bdf3}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="reach"]>span{background:#1d2c3d;color:#a9c6e6}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="grip"]>span{background:#4a2414;color:#f5c4b3}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-kind="lift"]>span{background:#16382f;color:#9fe1cb}
+#attentionbench-clear[data-theme="dark"] .op-stage-h[data-stopped="true"]>span{background:#4a1b1b;color:#f7c1c1}
+/* 11-18 ui改动: long videos — chapters are gaps that split the track (YouTube style); cut waits are small dots under it */
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap{width:3px;height:14px;margin-left:-1.5px;background:#16171a;opacity:1;border-radius:0;box-shadow:none}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .ab-chapter-tick.ab-chapter-gap:hover{height:14px;background:#16171a}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-skip-tick.op-cut-strip{position:absolute;left:0;right:0;top:calc(50% - 11px);width:auto;height:4px;transform:none;opacity:1;background:transparent;border-radius:2px;pointer-events:none;z-index:2}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-cut-strip>i{position:absolute;top:0;width:1%;height:100%;background:#f0b24a;pointer-events:auto;cursor:help}
+html body #attentionbench-clear[id][data-operator-view="true"] .ab-replay-scrubber .op-cut-strip>i:hover{outline:1px solid #fff;z-index:1}
+/* 11-18 ui改动 (user: "进行到哪一步哪一步就变个颜色"): the step being played is filled in the accent colour; steps already played have a coloured rail */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-now="true"]>summary{background:var(--sh-fill)!important;box-shadow:none!important;border-radius:8px}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-now="true"] summary b,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-now="true"] summary small,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-now="true"] summary time{color:#fff!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-now="true"] .op-rail-dot{box-shadow:0 0 0 3px var(--sh-fill),0 0 0 5px #fff;background:#fff;color:var(--sh-fill)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-later="false"]>summary::before{border-left-color:var(--sh-fill)!important}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-step[data-later="true"]{opacity:.42}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events[data-follow="on"] .op-stage-h[data-now="true"]>span{box-shadow:none;background:var(--sh-fill);color:#fff}
+/* 11-18 ui改动: next to the video the step list needs no title; only the Trimmed/Original switch stays, on the right */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-viewer-trace .op-trace-head[data-bare="true"]{justify-content:flex-end;margin-bottom:6px}
+/* 11-18 ui改动: "Working…" row in the conversation (like the trial page) */
+.c2-working{display:flex;align-items:center;gap:8px;margin:6px 4px 2px 42px;padding:7px 12px;border-radius:999px;background:var(--sh-card);box-shadow:0 0 0 1px var(--sh-line);font:500 12.5px "DM Sans",system-ui,sans-serif;color:var(--sh-mut);width:fit-content;max-width:calc(100% - 46px)}
+.c2-working b{font-weight:600;color:var(--sh-ink)}
+.c2-working>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c2-spin{flex:none;width:13px;height:13px;border-radius:50%;border:2px solid color-mix(in srgb,var(--sh-fill) 25%,transparent);border-top-color:var(--sh-fill);animation:c2-spin .9s linear infinite}
+.c2-ell::after{content:"";animation:c2-ell 1.2s steps(4,end) infinite}
+@keyframes c2-spin{to{transform:rotate(360deg)}}
+@keyframes c2-ell{0%{content:""}25%{content:"."}50%{content:".."}75%,100%{content:"..."}}
+@media(prefers-reduced-motion:reduce){.c2-spin,.c2-ell::after{animation:none}.c2-ell::after{content:"…"}}
+
+/* ===== 11-18 (user, b1 test): one screen. No "01 REPLAY" heading or frame; the attention block (four numbers + attempt / try / Help flow)
+   sits on top of the video, the video and the steps fill the rest. Below 640px of height the page scrolls as before. ===== */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1]){--b1-bar:var(--sh-bar,68px);display:flex;flex-direction:column;height:calc(100dvh - var(--b1-bar) - 18px);min-height:0;overflow:hidden;container:b1v/inline-size}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title{flex:none;flex-wrap:nowrap;align-items:center;gap:12px;margin:0 0 10px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title h1{font-size:40px;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-actions{flex-wrap:nowrap;gap:10px;margin-left:auto}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title button.op-new-run{height:42px;padding:0 20px;font-size:17px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-more-menu summary{width:42px;height:42px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view>.op-progress-help[data-b1]{display:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view>.ab-execution-viewer[data-b1]{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;margin:0;padding:0;border:0;background:transparent;box-shadow:none;border-radius:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-camera-views{flex:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{min-height:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace .ab-history-events{flex:1;min-height:0;max-height:none!important;overflow:auto}
+}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view .op-b1-hide{display:none!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-b1-top{flex:none;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-b1-top .op-attention{margin:0;border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card);overflow:hidden}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters{display:flex!important;grid-template-columns:none!important;margin:0!important;border:0!important;border-bottom:1px solid var(--sh-line2)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{flex:1 1 0!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:2px;min-width:0!important;margin:0!important;padding:7px 14px 7px!important;border:0!important;border-left:1px solid var(--sh-line2)!important;border-radius:0!important;background:transparent!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter:first-child{border-left:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:22px!important;line-height:1;white-space:nowrap!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter span{margin:0!important;font-size:8.5px!important;letter-spacing:.1em!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{padding:2px 8px 0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-detail{padding:6px 14px 8px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg{display:block;width:100%!important;min-width:0!important;max-width:var(--nw)!important;height:auto!important;margin:0 auto}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport{gap:6px!important;padding-left:8px!important;padding-right:8px!important;min-width:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport .ab-replay-scrubber{min-width:36px!important;flex:1 1 36px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport time{font-size:11px!important;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button{min-width:30px!important;width:30px!important;padding:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button:first-child{width:36px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-replay-transport>button:nth-of-type(3){display:none!important}
+@media (min-height:640px){
+}
+@media (min-height:640px){
+/* a run with Help requests keeps the full-height drawing (arcs above, cost bars below), and an open Help detail takes more: the video gives way */
+}
+/* The drawing is scaled to the column width, so its text would grow and shrink with it while the circles do too. Keep the text at a fixed on-screen size (user units = px / scale; 1062 = the drawing's natural width). */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{container-type:inline-size}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-attempt-name{font-size:min(calc(11.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),14.375px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-agent-reason{font-size:min(calc(11px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.75px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-endpoint text{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-try-caption{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end-small{font-size:min(calc(10.5px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),13.125px)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end text:not(.op-attn-end-small){font-size:min(calc(13px*tan(atan2(var(--nw),min(100cqw,var(--nw))))),16.25px)!important}
+@media (min-height:640px){
+}
+
+/* ===== b1 round 2: the replay (video + step list) takes all the height that is left, down to the bottom edge of the Conversation panel.
+   The video keeps 16:9: its column is as wide as the height allows, but always leaves 280px for the steps; when the width binds first the player letterboxes (bars above and below, controls stay at the bottom). ===== */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{flex:1 1 0;min-height:0;container-type:size;grid-template-columns:auto minmax(0,1fr)!important;align-items:stretch!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{display:flex;flex-direction:column;min-height:0;width:max(300px,min(calc((100cqh - 52px)*1.7778),calc(100cqw - 280px)))}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video{flex:1;min-height:0;display:flex;flex-direction:column;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{flex:1;min-height:0;width:100%;height:auto;object-fit:contain;background:#000}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>.ab-replay-transport{flex:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{min-height:0;height:100%}
+}
+/* the progress bar is a clean track: no failure mark at its end */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-failure-marker{display:none!important}
+/* narrow middle column (e.g. a 1440px window): one title row */
+@container b1v (max-width:700px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title{gap:8px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title h1{font-size:30px;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-dev{display:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-run-details-btn{font-size:0;gap:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-run-details-btn span{font-size:15px}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title button.op-new-run{padding:0 14px;font-size:15px;gap:7px;white-space:nowrap}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title .op-title-actions{gap:8px}
+}
+@media (min-height:640px){
+/* the workspace starts 6px under the top bar; the replay's parts carry no own margins, only the panel's 10px gaps */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1]>*{margin-top:0!important;margin-bottom:0!important}
+}
+@media (min-height:640px){
+/* one screen: no page scroll. The workspace starts 18px under the top bar and ends at the window's bottom edge, level with the Conversation panel;
+   the keyboard-hint footer under the page is dropped in this layout (the keys still work). */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"]:has([data-b1]){padding-bottom:0!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"]:has([data-b1])>footer.op-keys{display:none!important}
+}
+
+/* ===== b1 round 3 (user: match the mock's proportions) =====
+   numbers: one compact line each (big number, small label beside it); the flow row fills the width (live.js spreads the gaps);
+   no "REPLAY" label row: the camera tabs sit on top of the video column; video column ≈ 60 %, steps ≈ 40 %. */
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{flex-direction:row!important;align-items:baseline!important;justify-content:flex-start!important;gap:10px!important;padding:8px 18px 7px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:23px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter span{font-size:9px!important;overflow:hidden;text-overflow:ellipsis}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg{width:auto!important;max-width:none!important;margin:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll{overflow-x:auto;overflow-y:hidden}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views{flex:none;order:-1;display:flex;align-items:center;gap:4px;margin:0!important;padding:6px 8px!important;border:1px solid var(--sh-line2);border-bottom:0;border-radius:12px 12px 0 0;background:var(--sh-card)}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views::before{content:none!important;display:none!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views button{height:28px!important;padding:0 11px!important;font-size:11px!important}
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{grid-template-columns:minmax(0,60.5fr) minmax(0,39.5fr)!important;gap:10px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media{width:auto!important;min-width:0}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:cover;object-position:center}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-trace{border:1px solid var(--sh-line2);border-radius:12px;background:var(--sh-card);padding:10px 12px 0}
+}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>.ab-camera-views{justify-content:flex-start!important}
+/* b1 round 4: the video column is sized exactly as in the mock — min(640px + (window height − 733px) × 0.9, 68%) — and the picture is shown whole (no crop) */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-layout{grid-template-columns:min(calc(640px + (100vh - 733px)*.9),68%) minmax(0,1fr)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:contain}
+}
+/* user 11-18: fill the video box (crop the sides) rather than letterbox */
+@media (min-height:640px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:cover!important}
+}

@@ -409,7 +409,7 @@
     const counts=session.agent?.counts||session.agent_resources?.used;
     return {agent,run_id:session.session_id,session_id:session.session_id,suite:cfg.suite,task_id:cfg.task_id,task_name:cfg.task_name,
       dev_sdk_description:cfg.dev_sdk_description||'base stationary',dev_sdk_sha256:cfg.dev_sdk_sha256,
-      created_at:session.created_at,seed:cfg.seed,name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
+      created_at:session.created_at,seed:cfg.seed,model:session.model||cfg.model||'',name_suffix:session.name_suffix,history_deleted_at:session.history_deleted_at,lobby:session.lobby,robot:{model:cfg.robot,execution_arm:cfg.execution_arm},
       status:devV2State(session.state,session.experiment_state),reason:session.reason,end_summary:devEndSummary(session),development:true,fork:session.fork,lifecycle:session.lifecycle,versions:session.versions||[],jobs:session.jobs||[],
       policy_ids:session.policy_segments?.length?session.policy_segments:session.policy_id?[session.policy_id]:(session.attention_control?.segments||[]).map(s=>s.policy_id),
       attempts_used:agent?(()=>{const value=Number(counts?.formal_versions??versions.length)||0,high=Math.max(value,versionsSeen.get(session.session_id)||0);versionsSeen.set(session.session_id,high);return high;})():session.used?.executions,attempts_limit:agent?(session.agent?.limits?.formal_versions??session.agent_resources?.limits?.formal_versions??session.agent_versions_limit??10):session.budget?.executions,
@@ -624,6 +624,69 @@
     const head=sidebarTask&&rows.length?`<p class="ab-flat-h ab-flat-task" data-flat-section="task"><span>${esc(taskTitle(rows[0]))} · ${rows.length} run${rows.length===1?'':'s'}</span>${solved?`<b>${solved} solved</b>`:''}</p>`:'';
     return robot+head+section('running','Running now',active)+section('mine','My runs',mine)+section('earlier','Earlier · newest first',rest);
   }
+  // 11-18 ui改动 (user): the run list is a tree. Task first (with a solved/total line per help policy that
+  // filters the task), then on Remote each person, then that person's runs. A run row says only policy, model,
+  // time and outcome: seed, robot and attention cost live on the Run page.
+  const treeOpen=new Map(Object.entries((()=>{try{return JSON.parse(preference('attention.sidebar-tree')||'{}');}catch(_){return {};}})()));
+  const treePolicy=new Map();
+  const treeSave=()=>preference('attention.sidebar-tree',JSON.stringify(Object.fromEntries(treeOpen)));
+  const POLICY_TONE={autonomous:'auto',reactive_help:'reactive',agent_initiated_help:'self',full_trace_aware_attention_planner:'planner',trace_aware_hint_only:'hints',retry_k_then_ask:'retry'};
+  const runPolicy=r=>{const ids=(r.development?r.policy_ids||[]:r.attention_control?.segments?.length?r.attention_control.segments.map(s=>s.policy_id):[r.initial_policy]).filter(Boolean).filter((id,i,a)=>id!==a[i-1]);return ids;};
+  const modelShort=m=>{m=String(m||'');if(!m)return '';const t=m.split('/').pop();return /sol$/i.test(t)?'sol':/astra$/i.test(t)?'astra':/^glm/i.test(t)?'GLM':/^qwen/i.test(t)?'Qwen':t.replace(/^gpt-/,'').replace(/-flash$/,'');};
+  const recentOf=rows=>Math.max(...rows.map(r=>Number(recordIsActive(r))*1e12+Number(r.created_at||r.started_at||0)));
+  function treeOutcome(r){
+    const tone=recordTone(r),c=r.lobby;
+    if(tone==='waiting'&&recordIsActive(r))return `<span class="ab-tr-out" data-o="wait">${c&&!c.mine?'Needs a person':'Needs you'}</span>`;
+    if(recordIsActive(r))return `<span class="ab-tr-out" data-o="live">● Running</span>`;
+    if(r.reason==='operator_paused'&&tone!=='success')return `<span class="ab-tr-out" data-o="idle">Paused</span>`;
+    if(tone==='success'){const v=(r.versions||[]).findIndex(v=>v.native_success===true);return `<span class="ab-tr-out" data-o="ok">Solved${v>=0&&r.attempts_limit?` ${v+1}/${r.attempts_limit}`:''}</span>`;}
+    const word=recordStatus(r);
+    return `<span class="ab-tr-out" data-o="${tone==='failed'?'no':'idle'}">${esc(/^paused/i.test(word)?'Paused':tone==='failed'?'Not solved':tone==='waiting'?'Stopped':/^(planned|not_started|ready)$/i.test(word)?'Not started':word)}</span>`;
+  }
+  function treeRow(r){
+    const viewing=r.development?r.session_id===selectedDev:!selectedDev&&r.run_id===selectedRun;
+    const target=r.development?`data-dev-session="${esc(r.session_id)}"`:`data-view-run="${esc(r.run_id)}"`;
+    const ids=runPolicy(r),last=ids.at(-1);
+    const tag=last?`<span class="ab-tr-pol" data-pol="${esc(POLICY_TONE[last]||'other')}" title="${esc('Help policy: '+ids.map(policyTitle).join(' → '))}">${esc(ids.length>1?`${policyShort(ids[0],true)} → ${policyShort(last,true)}`:policyShort(last))}</span>`:'';
+    const when=recordIsActive(r)?'now':relativeTime(r.created_at??r.started_at,shortRecordTime(r)).replace(/ ago$/,'').split(' · ')[0];
+    const meta=[runOwnName(r),modelShort(r.model),when].filter(Boolean).join(' · ');
+    return `<article class="ab-tr-run" data-run-entry="${esc(r.run_id)}" data-viewing="${viewing}" data-tone="${recordTone(r)}"><button type="button" class="ab-tr-main" ${target} aria-current="${viewing?'page':'false'}" title="${esc(displayRun(r))}">${pins.has(r.run_id)?'<span class="ab-tr-pin">★</span>':''}${tag}<span class="ab-tr-meta">${esc(meta)}</span>${treeOutcome(r)}</button><details class="ab-record-more" data-record-more="${esc(r.run_id)}"><summary aria-label="More options for ${esc(displayRun(r))}">⋯</summary><div class="ab-record-menu"><button type="button" data-pin-run="${esc(r.run_id)}" aria-pressed="${pins.has(r.run_id)}">${pins.has(r.run_id)?'Unpin':'Pin to top'}</button><small>Started ${esc(dateTime(r.created_at??r.started_at))}${r.seed!=null?` · seed ${esc(r.seed)}`:''}</small></div></details></article>`;
+  }
+  function treeRuns(key,rows){
+    const sorted=[...rows].sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0));
+    const all=expandedHistory.has(key)||Boolean(sidebarQuery),shown=all?sorted:sorted.slice(0,5);
+    return shown.map(treeRow).join('')+(sorted.length>5&&!sidebarQuery?`<button type="button" class="ab-tr-more" data-history-more="${esc(key)}">${all?'Show fewer':`Show ${sorted.length-5} more`}</button>`:'');
+  }
+  // Preview only (?demo=people): fake owners on local runs so the Remote person layer can be seen off qifei.
+  const DEMO_PEOPLE=new URLSearchParams(location.search).get('demo')==='people';
+  const personOfRun=r=>r.lobby||(DEMO_PEOPLE?(()=>{const n=[...String(r.run_id)].reduce((h,ch)=>(h*31+ch.charCodeAt(0))%997,0)%3;return [{mine:true,nickname:'Zhuohan',person:'Zhuohan'},{mine:false,nickname:'yishao',person:'yishao'},{mine:false,nickname:'qifei',person:'qifei'}][n];})():null);
+  function treeNavHtml(rows){
+    if(!rows.length)return '';
+    const current=selectedDev||selectedRun,lobby=window.Lobby?.enabled||DEMO_PEOPLE;
+    const tasks=new Map();for(const r of rows){const k=r.task_id||taskTitle(r);if(!tasks.has(k))tasks.set(k,[]);tasks.get(k).push(r);}
+    return [...tasks].sort((a,b)=>recentOf(b[1])-recentOf(a[1])).map(([task,list])=>{
+      const tkey=`task:${task}`,has=list.some(r=>r.run_id===current||r.session_id===current);
+      const open=sidebarQuery?true:treeOpen.has(tkey)?treeOpen.get(tkey):has;
+      const live=list.filter(recordIsActive).length,wait=list.filter(r=>recordTone(r)==='waiting'&&recordIsActive(r)).length;
+      const flag=wait?`<span class="ab-tr-flag" data-o="wait">${wait} need${wait===1?'s':''} help</span>`:live?`<span class="ab-tr-flag" data-o="live">${live} running</span>`:'';
+      const byPol=new Map();for(const r of list){const p=runPolicy(r).at(-1)||'';if(!byPol.has(p))byPol.set(p,{n:0,ok:0});const e=byPol.get(p);e.n++;if(recordTone(r)==='success')e.ok++;}
+      let pick=treePolicy.get(task)||'';if(pick&&!byPol.has(pick)){pick='';treePolicy.delete(task);}
+      const chips=byPol.size>1||pick?`<div class="ab-tr-pols" role="group" aria-label="Filter by help policy"><button type="button" data-tree-policy="" data-tree-task="${esc(task)}" aria-pressed="${!pick}">All</button>${[...byPol].filter(([p])=>p).sort((a,b)=>b[1].n-a[1].n).map(([p,e])=>`<button type="button" data-tree-policy="${esc(p)}" data-tree-task="${esc(task)}" data-pol="${esc(POLICY_TONE[p]||'other')}" aria-pressed="${pick===p}" title="${esc(`${policyTitle(p)}: ${e.ok} solved of ${e.n} runs`)}">${esc(policyShort(p))} <i>${e.ok}/${e.n}</i></button>`).join('')}</div>`:'';
+      const shown=pick?list.filter(r=>(runPolicy(r).at(-1)||'')===pick):list;
+      let body;
+      if(lobby){
+        const people=new Map();for(const r of shown){const c=personOfRun(r),k=c?(c.mine?'0me':`1${window.Lobby.personOf(c)}`):'0me';if(!people.has(k))people.set(k,[]);people.get(k).push(r);}
+        body=[...people].sort((a,b)=>a[0].startsWith('0')?-1:b[0].startsWith('0')?1:recentOf(b[1])-recentOf(a[1])).map(([pk,prs])=>{
+          const c=personOfRun(prs[0])||{mine:true,nickname:'You'},name=c.mine?`${window.Lobby.personOf(c)} (you)`:window.Lobby.personOf(c);
+          const key=`${tkey}|${pk}`,pHas=prs.some(r=>r.run_id===current||r.session_id===current);
+          const pOpen=sidebarQuery?true:treeOpen.has(key)?treeOpen.get(key):(pHas||c.mine||prs.some(recordIsActive));
+          const ok=prs.filter(r=>recordTone(r)==='success').length,pw=prs.filter(r=>recordTone(r)==='waiting'&&recordIsActive(r)).length;
+          return `<details class="ab-tr-person" data-tree-node="${esc(key)}" ${pOpen?'open':''}><summary>${window.Lobby.avatar(c,'sm')}<b>${esc(name)}</b>${pw?`<span class="ab-tr-flag" data-o="wait">${c.mine?'Needs you':'Needs a person'}</span>`:''}<small>${prs.length} · ${ok} solved</small></summary><div class="ab-tr-runs">${treeRuns(key,prs)}</div></details>`;
+        }).join('');
+      }else body=treeRuns(tkey,shown);
+      return `<details class="ab-tr-task" data-tree-node="${esc(tkey)}" data-viewing="${has}" ${open?'open':''}><summary><span class="ab-tr-chev" aria-hidden="true">›</span><b title="${esc(taskTitle(list[0]))}">${esc(taskTitle(list[0]))}</b>${flag}<small>${list.length}</small></summary>${chips}<div class="ab-tr-body">${body||'<p class="ab-sidebar-empty">No runs with this policy.</p>'}</div></details>`;
+    }).join('');
+  }
   function sidebarRunCard(r,grouped=false){
     const flat=grouped==='flat';
     const viewing=r.development?r.session_id===selectedDev:!selectedDev&&r.run_id===selectedRun;
@@ -684,7 +747,7 @@
     // 11-11 (user): no "Archived · unlinked records" fold; a run whose task has no known title stays in the list under its task id.
     const linked=records;
     const deleted=deletedNavigationRecords();
-    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
+    const candidates=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.model||''} ${runPolicy(r).map(p=>policyShort(p)+' '+policyTitle(p)).join(' ')} ${r.lobby?window.Lobby.personOf(r.lobby):''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches).filter(r=>runListMode==='flat'&&!DEBUG_VIEW||Lobby.visible(r)).sort((a,b)=>Number(pins.has(b.run_id))-Number(pins.has(a.run_id))||Number(recordIsActive(b))-Number(recordIsActive(a))||Number(b.created_at||b.started_at||0)-Number(a.created_at||a.started_at||0)||a.run_id.localeCompare(b.run_id));
     const flatView=!DEBUG_VIEW&&runListMode==='flat';  // 11-11 (user): the flat list no longer has the status-filter/grouping fold
     const chipRecords=linked.filter(r=>`${displayRun(r)} ${r.suite} ${r.task_id} ${r.seed} ${r.robot?.model||''} ${r.robot?.execution_arm||''} ${r.lobby?.nickname||''}`.toLowerCase().includes(sidebarQuery.toLowerCase())).filter(sidebarMatches);
     if(sidebarTask&&!chipRecords.some(r=>r.task_id===sidebarTask))sidebarTask='';
@@ -698,12 +761,12 @@
     const local=run&&switchRequests.get(run.run_id);
     const pending=request?.state==='Pending'||local?.state==='Requested';
     const executing=navigationRecords().filter(r=>recordIsActive(r)&&window.Lobby.isMine(r));
-    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, name or robot"></span></label>
-      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${flatView?flatControlsHtml(chipRecords):''}${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
+    sidebar.innerHTML=`<header class="ab-sidebar-header"><span class="ab-sidebar-eyebrow">WORKSPACE</span><h2>${flatView?"Runs":"Tasks"}</h2><small>Choose a task to browse its history</small></header><div class="ab-sidebar-controls"><label class="ab-sidebar-search">Search tasks & history<span class="ab-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input data-run-search type="search" value="${esc(sidebarQuery)}" placeholder="Task, policy, model or person"></span></label>
+      ${DEBUG_VIEW||flatView?'':`${Lobby.controlsHtml()}${sidebarFilters(linked)}<div class="ab-chips" role="group" aria-label="List layout"><button type="button" class="ab-chip" data-sidebar-layout="flat" aria-pressed="false">Back to one list</button></div>`}</div>${DEBUG_VIEW||flatView?'':Lobby.pinnedHtml()}
       ${historyNotice?`<p class="ab-history-notice" data-history-notice role="status">${esc(historyNotice.message)}${historyNotice.kind?` <button type="button" data-history-undo>Undo</button>`:''}</p>`:''}
       ${DEBUG_VIEW ? `<details class="ab-record-jump"><summary>Jump to a record</summary><label class="live-run-picker">Viewing record<select id="ab-live-run" aria-label="Viewing record">${linked.map(r=>`<option value="${esc(r.run_id)}" ${r.run_id===(selectedDev||selectedRun)?'selected':''}>${esc(displayRun(r))}</option>`).join('')}</select></label></details>` : ''}
-      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${flatView?(flatNavHtml(flatRows)||'<p class="ab-sidebar-empty">No matching runs.<small>Try another task, person or search.</small></p>'):[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows],i,list)=>`${window.Lobby.groupDivider(group,i,list)}<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
-      ${deleted.length?`<details class="ab-deleted-history" data-deleted-history><summary>Deleted records · ${deleted.length}</summary><small>Restore a record to return it to task history.</small>${deleted.map(r=>sidebarRunCard(r)).join('')}</details>`:''}
+      ${DEBUG_VIEW||sidebarQuery?`<div class="ab-task-library-label"><span>Task history</span><span>${sidebarQuery?`${candidates.length} matching records`:'Most recent first'}</span></div>`:''}<nav aria-label="Tasks">${flatView?(treeNavHtml(candidates)||'<p class="ab-sidebar-empty">No matching runs.<small>Try another task, person or search.</small></p>'):[...groups].sort((a,b)=>Lobby.grouped?String(a[0]).localeCompare(String(b[0])):0).map(([group,rows],i,list)=>`${window.Lobby.groupDivider(group,i,list)}<details data-task-group="${esc(group)}" data-viewing="${rows.some(r=>r.run_id===(selectedDev||selectedRun))}" ${(sidebarQuery||(taskGroupChoices.get(`${selectedDev||selectedRun}:${group}`)??rows.some(r=>r.run_id===(selectedDev||selectedRun))))?'open':''}>${sidebarTaskSummary(rows,run)}<div class="ab-task-runs">${compactHistory(group,rows)}</div></details>`).join('')||'<p class="ab-sidebar-empty">No matching records.<small>Try another task, name or robot.</small></p>'}</nav>
+      ${deleted.length?(flatView?`<details class="ab-deleted-history ab-tr-deleted" data-deleted-history><summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><b>Deleted</b><small>${deleted.length}</small></summary><div class="ab-tr-body">${deleted.map(r=>`<div class="ab-tr-delrow"><span title="${esc(displayRun(r))}"><b>${esc(taskTitle(r))}</b><small>${esc(relativeTime(r.created_at??r.started_at,shortRecordTime(r)))}</small></span><button type="button" class="ab-record-restore" data-restore-record="${esc(r.run_id)}" data-record-kind="${r.development?'dev':'run'}">Restore</button></div>`).join('')}</div></details>`:`<details class="ab-deleted-history" data-deleted-history><summary>Deleted records · ${deleted.length}</summary><small>Restore a record to return it to task history.</small>${deleted.map(r=>sidebarRunCard(r)).join('')}</details>`):''}
       ${DEBUG_VIEW ? `<section class="ab-policy-controller" data-policy-controller aria-label="Policy controller"><header class="ab-control-header"><span class="ab-control-icon">${sidebarControlIcon('controller')}</span><div><h2>Policy controller</h2><h3>Choose how this run requests help</h3></div><span class="ab-control-mode" data-read-only="${Boolean(readOnly)}">${readOnly?sidebarControlIcon('lock'):''}${readOnly?'Read-only':'Live'}</span></header><div class="ab-policy-context" title="${esc(run?displayRun(run):'No run selected')}"><span class="ab-context-label">${selectedDev?(readOnly?'Viewing Dev history':'Controlling Dev session'):'Viewing run'}</span><div><strong>${esc(run?taskDisplayName(run):'No run selected')}</strong>${run?`<span>${esc(recordTime(run))}</span>`:''}</div></div>${DEBUG_VIEW ? `<small class="ab-policy-note">${esc(selectedDev?(c?.binding?c.reason||'':''):readOnly?'Read-only history or frozen binding.':'Changes apply after executor confirmation at a safe action boundary.')}</small>` : ''}
       ${DEBUG_VIEW && selectedDev?devPolicySummary(c,currentSnapshot?.dev_session,readOnly,history,pending)+devPolicyUnavailable(c,currentSnapshot?.dev_session):''}
       <div class="ab-policy-cards">${(c?.binding?.allowed_policies||(selectedDev?[]:['autonomous','reactive_help','trace_aware_hint_only','full_trace_aware_attention_planner','retry_k_then_ask'])).map(id=>`<button type="button" data-attention-policy="${esc(id)}" aria-pressed="${c?.active_policy===id}" data-state="${c?.active_policy===id?'Active':request?.policy_id===id?request.state:local?.policy_id===id?local.state:'Available'}" ${readOnly||pending||c?.active_policy===id?'disabled':''}><span class="ab-policy-icon">${sidebarControlIcon(id)}</span><strong>${esc(policyTitle(id))}${selectedDev?`<span class="ab-policy-description">${esc(devPolicyDescription(id))}</span>`:''}</strong><small class="ab-policy-state">${c?.active_policy===id?'Active':request?.policy_id===id?esc(request.state):local?.policy_id===id?esc(local.state):'Select'}</small></button>`).join('')}</div>
@@ -719,6 +782,8 @@
     sidebar.querySelectorAll('[data-task-group]').forEach(d=>d.querySelector(':scope > summary').addEventListener('click',()=>taskGroupChoices.set(`${selectedDev||selectedRun}:${d.dataset.taskGroup}`,!d.open)));
     sidebar.querySelectorAll('[data-history-more]').forEach(b=>b.addEventListener('click',()=>{const key=b.dataset.historyMore;expandedHistory.has(key)?expandedHistory.delete(key):expandedHistory.add(key);renderSidebar();}));
     const search=sidebar.querySelector('[data-run-search]');search.addEventListener('input',()=>{sidebarQuery=search.value;renderSidebar();});
+    sidebar.querySelectorAll('details[data-tree-node]').forEach(d=>d.addEventListener('toggle',()=>{if(sidebarQuery)return;treeOpen.set(d.dataset.treeNode,d.open);treeSave();}));
+    sidebar.querySelectorAll('[data-tree-policy]').forEach(b=>b.addEventListener('click',()=>{const t=b.dataset.treeTask;b.dataset.treePolicy?treePolicy.set(t,b.dataset.treePolicy):treePolicy.delete(t);renderSidebar();}));
     sidebar.querySelectorAll('[data-sidebar-task]').forEach(b=>b.addEventListener('click',()=>{sidebarTask=b.dataset.sidebarTask;preference('attention.sidebar-task',sidebarTask);renderSidebar();}));
     sidebar.querySelectorAll('[data-sidebar-layout]').forEach(b=>b.addEventListener('click',()=>{runListMode=b.dataset.sidebarLayout;preference('attention.sidebar-layout',runListMode);renderSidebar();}));
     sidebar.querySelectorAll('[data-op-filter]').forEach(b=>b.addEventListener('click',()=>{sidebarFilter=b.dataset.opFilter;preference('attention.sidebar-filter',sidebarFilter);renderSidebar();}));
@@ -1033,7 +1098,9 @@
   }
   const skipText=seconds=>seconds<120?`${Math.round(seconds)} s`:`${Math.floor(seconds/60)} min ${String(Math.round(seconds%60)).padStart(2,'0')} s`;
   function operatorSkipRow(b) {
-    return `<div class="op-skip" role="button" tabindex="0" data-trim-break data-trim-at="${b.trim_at}" title="Jump to the skipped moment"><time>${operatorTime(b.trim_at)}</time><span aria-hidden="true">⏭</span><div><b>Skipped ${skipText(b.skipped_seconds)} of ${b.kind==='still'?'no change':'waiting'}</b><small>real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}</small></div></div>`;
+    // 11-18 ui改动 (user): no Show/Hide button. A skipped wait is a gap in the step timeline: a dotted stretch in
+    // the icon column and one muted line saying how long was cut; click jumps to that moment.
+    return `<div class="op-skip op-skip-gap" role="button" tabindex="0" data-trim-break data-trim-at="${b.trim_at}" title="${esc(`Cut from the video: real time ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)}. Click to jump here.`)}"><time></time><i aria-hidden="true"></i><span>${skipText(b.skipped_seconds)} ${b.kind==='still'?'without change':'of waiting'} · cut</span></div>`;
   }
   function operatorTrimBar(trim) {
     const mode=trimMode();
@@ -1154,6 +1221,35 @@
       updateReplayPolicy(snapshot,video);rememberReplay(video);
     };
     video.onpause = () => rememberReplay(video);
+    // 11-18 ui改动 (user): the step list follows playback. The step the video is at is marked, later steps are dimmed,
+    // and the list scrolls to keep it in view; scrolling by hand pauses the follow for a few seconds.
+    const list=panel.querySelector('.ab-history-events');
+    if(video.followSteps){video.removeEventListener('timeupdate',video.followSteps);video.removeEventListener('seeked',video.followSteps);video.removeEventListener('loadeddata',video.followSteps);}
+    if(list){
+      const timed=rows.filter(r=>r.hasAttribute('data-replay-seconds')).map(r=>({row:r,t:Number(r.dataset.replaySeconds),el:r.closest('[data-history-event]')}));
+      const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')],all=[...list.querySelectorAll('[data-history-event]')];
+      let holdUntil=0,lastEl=null;
+      const hold=()=>{holdUntil=Date.now()+4000;};
+      list.addEventListener('wheel',hold,{passive:true});list.addEventListener('touchmove',hold,{passive:true});list.addEventListener('pointerdown',hold);
+      video.followSteps=()=>{
+        if(!list.isConnected||!timed.length)return;
+        const now=video.currentTime;let cur=null;
+        for(const x of timed){if(x.t<=now+0.05)cur=x;else break;}
+        list.dataset.follow=(now>0.05||!video.paused)?'on':'off';
+        let curHead=null;for(const h of heads){if(Number(h.dataset.replaySeconds)<=now+0.05)curHead=h;}
+        heads.forEach(h=>{h.dataset.now=String(h===curHead);});
+        // every step row, timed or not, is marked by its place in the list: after the current one = later (dimmed)
+        let seen=!cur;
+        for(const el of all){const isCur=el===cur?.el;el.dataset.now=String(isCur);el.dataset.later=String(seen);if(isCur)seen=true;}
+        if(cur&&cur.el!==lastEl){lastEl=cur.el;
+          if(Date.now()>holdUntil&&list.scrollHeight>list.clientHeight){
+            const lr=list.getBoundingClientRect(),er=cur.el.getBoundingClientRect(),want=list.scrollTop+(er.top-lr.top)-list.clientHeight*0.35;
+            list.scrollTo({top:Math.max(0,want),behavior:video.paused?'auto':'smooth'});}}
+      };
+      video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);video.addEventListener('loadeddata',video.followSteps);
+      // the list's saved scroll position is restored after this runs; scroll to the current step once layout has settled
+      video.followSteps();setTimeout(()=>{lastEl=null;video.followSteps();},300);
+    }
     video.onerror = () => {
       const selected = replaySelections.get(key);
       if (selected?.pending || selected?.seeking) { selected.pending = false; selected.seeking = false; video.dataset.replayRestoring='false'; selected.error = 'Replay failed to load; seeking is unavailable'; showSelection(); }
@@ -1328,6 +1424,11 @@
     const trim=Object.values(snapshot.traces).find(t=>t.attempt_id===panel.dataset.replayAttempt)?.trim;
     const active=Boolean(trim&&video.hasAttribute('data-trim-active'));
     video.trimInfo=active?trim:null;
+    panel.querySelectorAll('.op-stage-h[data-replay-seconds]').forEach(row=>{
+      const go=()=>video.requestReplaySeek?.(Number(row.dataset.replaySeconds),'moment');
+      row.addEventListener('click',go);
+      row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();go();}});
+    });
     panel.querySelectorAll('[data-trim-break]').forEach(row=>{
       const go=()=>video.requestReplaySeek?.(Number(row.dataset.trimAt),'moment');
       row.addEventListener('click',go);
@@ -1346,12 +1447,7 @@
       const ticks=()=>{
         if(!scrubber||!(video.duration>0))return;
         scrubber.querySelectorAll('.op-skip-tick').forEach(tick=>tick.remove());
-        for(const b of trim.breaks) {
-          const tick=document.createElement('span');
-          tick.className='op-skip-tick';tick.style.left=`${pct(b.trim_at,video.duration)}%`;
-          tick.title=`Skipped ${skipText(b.skipped_seconds)} (real ${operatorTime(b.orig_start)} → ${operatorTime(b.orig_end)})`;
-          scrubber.append(tick);
-        }
+        // 11-18 ui改动 (user): the seek bar carries nothing but the track; cuts and stages are in the step list.
       };
       video.addEventListener('loadedmetadata',ticks,{once:true});ticks();
       const figure=video.closest('figure');
@@ -1405,8 +1501,19 @@
         const seconds = Math.max(0, Math.floor(Number(value) || 0));
         return `${String(Math.floor(seconds / 60)).padStart(2,'0')}:${String(seconds % 60).padStart(2,'0')}`;
       };
+      const chapterData = (() => { try { return JSON.parse(video.closest('[data-execution-viewer]')?.querySelector('[data-replay-chapters]')?.dataset.replayChapters || 'null'); } catch (_) { return null; } })();
+      const nowTag = document.createElement('span'); nowTag.className = 'ab-replay-stage'; nowTag.hidden = true;
+      bar.querySelector('[data-replay-clock]').after(nowTag);
+      let chapterDuration = 0;
+      const drawChapters = duration => {
+        if (!chapterData || !(duration > 0) || duration === chapterDuration) return;
+        chapterDuration = duration;
+        scrubber.querySelectorAll('.ab-chapter-tick,.ab-chapter-stop').forEach(el => el.remove());
+      };
+      const stageAt = position => { let label = ''; for (const c of chapterData?.list || []) if (c.at <= position + 0.05) label = c.label; return label || chapterData?.list?.[0]?.label || ''; };
       const update = () => {
         const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        if (chapterData?.list?.length) { drawChapters(duration); const label = stageAt(Math.min(duration, video.currentTime || 0)); nowTag.hidden = !label; nowTag.textContent = label ? `▸ ${label}` : ''; }
         const position = Math.min(duration, video.currentTime || 0);
         range.max = String(duration);
         range.disabled = duration <= 0;
@@ -1887,7 +1994,7 @@
     helpAlert.hidden = true; helpAlertKey = null; delete helpAlert.dataset.stage;
   }
   function lockHelpAlert() {
-    const panel = view.querySelector('[data-agent-reply]')?.closest('.ab-current-request');
+    const panel = view.querySelector('[data-agent-reply]')?.closest('.ab-current-request,.c2')||(chatDemo()?view.querySelector('.c2[data-asking="true"]'):null);
     if (!panel) { helpAlert.dataset.stage = 'rest'; return; }
     panel.scrollIntoView({block:'center'});
     const box = panel.getBoundingClientRect(), edge = 12;
@@ -1896,7 +2003,8 @@
     helpAlert.dataset.stage = 'lock';
   }
   function syncHelpAlert() {
-    const key = view.querySelector('[data-agent-reply]')?.dataset.executionId;
+    // ?demo=wait: the sample question also plays the page-wide call so it can be looked at (nothing is sent anywhere).
+    const key = view.querySelector('[data-agent-reply]')?.dataset.executionId||(chatDemo()&&view.querySelector('.c2[data-asking="true"]')?'demo-wait':null);
     if (!key) { if (helpAlertKey) stopHelpAlert(); return; }
     if (key === helpAlertKey) return;
     stopHelpAlert(); helpAlertKey = key;
@@ -4889,8 +4997,8 @@
   function operatorOutcome(snapshot) {
     {const shared=Lobby.outcomeHtml(snapshot);if(shared)return shared;}
     const rc=snapshot.dev_v2?.run_controls;
-    if(rc?.state==='paused')return `<div class="op-outcome waiting" data-operator-outcome="paused" role="status"><strong>⏸ PAUSED</strong><div><p>${esc(rc.pause_detail || `Paused${rc.paused_since==null?'':` since ${dateTime(rc.paused_since)}`}. Nothing is running and the run's time budget is not counting.`)}</p><p>${esc(rc.can_resume?'Press Resume to continue with the next step.':rc.resume_blocked_reason||'')}</p></div></div>`;
-    if(rc?.state==='pausing')return `<div class="op-outcome waiting" data-operator-outcome="pausing" role="status"><strong>● PAUSING</strong><div><p>${esc(`The current step${rc.current_step?` (${rc.current_step})`:''} will finish normally, then the run pauses before the next step.`)}</p><p>Press Keep running to cancel the pause.</p></div></div>`;
+    // 11-18 (user, ui改动 02): Paused / Pausing show as a tag beside the title (with Resume), not as a status line here.
+    if(rc?.state==='paused'||rc?.state==='pausing')return '';
     const status=snapshot.run.status,reason=String(snapshot.dev_session?.reason||snapshot.eval?.stopped_reason||'');
     const modelReview=modelCallReview(snapshot);
     if(['condition_invalid','needs_review','cancelled','stopped','not_started'].includes(status)) {
@@ -4935,6 +5043,8 @@
     const reducedLine=lowered?`<p class="op-reduced" data-reduced-budget><b>Reduced budget</b> · ${esc(lowered.versions)} of ${esc(lowered.default_versions)} versions${timed?` · ${esc(lowered.wall_seconds/3600)} of ${esc(lowered.default_wall_seconds/3600)} hours`:' · no time limit'} · not directly comparable with the official 10-version results</p>`:'';
     const blind=(snapshot.agent?.text_only_roles||[]).map(role=>role==='eval'?'Eval':'Advisor');
     const blindLine=blind.length?`<p class="op-reduced" data-text-only-roles><b>No images</b> · ${esc(blind.join(' and '))} did not see images in this run, so ${blind.length>1?'they':'it'} worked from text alone.</p>`:'';
+    // 11-18 (user, ui改动 02): a plain success repeats the title's Solved tag; only its budget / no-image flags stay.
+    if(state==='success'&&!system&&!permissionStopped)return reducedLine||blindLine?`<div class="op-outcome-flags">${reducedLine}${blindLine}</div>`:'';
     return `<div class="op-outcome ${state}${system?' system':''}" data-operator-outcome="${state}" role="status"><strong>${title}</strong><div><p>${esc(copy)}</p>${sub?`<p>${esc(sub)}</p>`:''}${reducedLine}${blindLine}</div></div>`;
   }
   function operatorFlow(snapshot) {
@@ -4967,9 +5077,33 @@
     const terminal = isTerminal(snapshot), s = snapshot.dev_session;
     // A run in line has not started, so the harness offers no Stop; its owner may still leave the line.
     const canStop = snapshot.lobby?.mine && snapshot.lobby.state === 'queued' ? true : snapshot.dev_v2?.lifecycle ? snapshot.dev_v2.lifecycle.can_stop : s ? !terminal && s.state !== 'stopping' : snapshot.run.status === 'running' && ['robocasa_sim','robosuite_sim','robocasa365_sim'].includes(snapshot.run.execution_target) && !snapshot.station.interrupt;
-    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}${launchButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
+    return `<section class="panel ab-run-overview" data-core-region="status" data-run-overview="${esc(snapshot.run.run_id)}" data-expanded="true" data-tone="${operatorState(snapshot)}" aria-label="Status and progress">${operatorHeading('02','STATUS &amp; PROGRESS','')}${operatorOutcome(snapshot)}${unvalidatedMemoryTag(snapshot)}${memoryScopeNotice(snapshot)}${attentionEfficiency(snapshot)}<div class="op-controls" data-ended="${isTerminal(snapshot)}">${isTerminal(snapshot)?`<span class="op-controls-sp"></span>${canStop?`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}">■ Stop run</button>`:''}${/data-dev-resume(?![^>]*disabled)/.test(devStartButton(snapshot))?devStartButton(snapshot):''}`:`<button type="button" class="danger" id="${s?'ab-emergency-interrupt':'ab-cancel-run'}" ${canStop?'':'disabled'}>■ Stop run</button>${devStartButton(snapshot)}`}</div><p data-picture-warning hidden></p></section>`;
   }
 
+  // 11-18 (user, YouTube-style chapters): the seven stages as marks on the seek bar. Same rule as the backend
+  // replay_stages(): each SDK action maps to a stage; a stage starts at its first action. A rejected action marks the stop.
+  const REPLAY_STAGES=['Find objects','Pre-grasp','Descent','Close','Lift','Carry','Release'];
+  function replayChapters(events){
+    const first=new Map();let stop=null,closed=false,reached=false,lifted=false;
+    (events||[]).forEach((event,index)=>{
+      if(['started','running'].includes(event.status))return;
+      const op=String(event.operation||'').split('.').at(-1),source=String(event.source||''),result=event.result||{};
+      const rejected=['failed','blocked','rejected'].includes(event.status)||(result&&typeof result==='object'&&result.rejected===true);
+      const args=event.arguments?.args||[];let stage=null;
+      if(op==='find_objects')stage=0;else if(op==='close')stage=3;else if(op==='open'&&closed)stage=6;
+      else if(op.startsWith('move')){
+        if(source==='base'){if(closed)stage=5;}
+        else if(closed)stage=lifted?5:4;
+        else if(op==='move_delta'&&args.length>=3&&typeof args[2]==='number'&&args[2]<0&&reached)stage=2;
+        else stage=reached?2:1;
+      }
+      if(stage==null)return;
+      if(!first.has(stage))first.set(stage,index);
+      if(rejected){if(stop==null)stop={stage,index};}
+      else{if(stage===1)reached=true;if(stage===3)closed=true;if(stage===4)lifted=true;}
+    });
+    return {starts:[...first].sort((a,b)=>a[1]-b[1]),stop};
+  }
   function operatorEvents(trace, hasVideo) {
     const groups=[];
     const events=trace?.events||[];
@@ -4982,16 +5116,35 @@
     // A trimmed replay lists each skipped span where it happened; events inside the wait stay above the marker.
     const trimmedView=Boolean(hasVideo&&trace?.trim&&trimMode()==='trimmed'),breaks=trimmedView?[...trace.trim.breaks]:[];
     const pending=event=>{
+      // Back-to-back skips with no step between them read as one divider (their seconds added up).
       const rows=[];
-      while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(operatorSkipRow(breaks.shift()));
-      return rows.join('');
+      while(breaks.length&&(event==null||event.timestamp_basis==='relative'&&event.timestamp>=breaks[0].trace_end))rows.push(breaks.shift());
+      if(!rows.length)return '';
+      return operatorSkipRow({...rows[0],orig_end:rows.at(-1).orig_end,skipped_seconds:rows.reduce((t,r)=>t+Number(r.skipped_seconds||0),0),kind:rows.every(r=>r.kind==='still')?'still':'wait'});
     };
-    return groups.map(({operation,event,index,count,text})=>pending(event)+(()=>{
+    // Chapters for the seek bar, in this replay's own time (trimmed or original).
+    let chapters='';
+    if(hasVideo){
+      const {starts,stop}=replayChapters(events),at=i=>operatorReplayTarget(events,i,trace?.recording,hasVideo).seconds;
+      const list=starts.map(([stage,i])=>({label:REPLAY_STAGES[stage],at:at(i)})).filter(c=>Number.isFinite(c.at));
+      const stopAt=stop?at(stop.index):null;
+      chapters=`<i hidden data-replay-chapters="${esc(JSON.stringify({list,stop:Number.isFinite(stopAt)?{label:REPLAY_STAGES[stop.stage],at:stopAt}:null}))}"></i>`;
+    }
+    // 11-18 ui改动 (user picked A+B): the list is grouped by the same seven stages as the seek-bar chapters, and each
+    // step is a dot on one timeline rail coloured by what it did (move / gripper / look / other).
+    const {starts:stageStarts,stop:stageStop}=replayChapters(events),stageAt=new Map();
+    for(const [stage,start] of stageStarts){let gi=-1;groups.forEach((g,i)=>{if(g.index<=start)gi=i;});if(gi<0)continue;if(!stageAt.has(gi))stageAt.set(gi,[]);stageAt.get(gi).push(stage);}
+    const STAGE_KIND=['find','reach','reach','grip','lift','lift','grip'];
+    const stageHead=(gi)=>{const list=stageAt.get(gi);if(!list)return '';const g=groups[gi],t=operatorReplayTarget(events,g.index,trace?.recording,hasVideo).seconds;
+      const stopped=stageStop&&list.includes(stageStop.stage);
+      return `<div class="op-stage-h" data-kind="${STAGE_KIND[list[0]]}"${stopped?' data-stopped="true"':''}${Number.isFinite(t)?` data-replay-seconds="${t}" role="button" tabindex="0" title="Jump to this stage"`:''}><span>${esc(list.map(k=>REPLAY_STAGES[k]).join(' · '))}${stopped?' · stopped here':''}</span><i></i>${Number.isFinite(t)?`<time>${operatorTime(t)}</time>`:''}</div>`;};
+    const stepKind=event=>{const op=String(event.operation||'').split('.').at(-1);return op==='find_objects'||/look|observe|camera/.test(op)?'find':op==='close'||op==='open'||/grip/.test(op)?'grip':op.startsWith('move')?'move':'act';};
+    return chapters+groups.map(({operation,event,index,count,text},gi)=>pending(event)+stageHead(gi)+(()=>{
       const target=operatorReplayTarget(events,index,trace?.recording,hasVideo);
       const seconds=hasVideo ? target.seconds : (event.timestamp_basis==='relative' && Number.isFinite(event.timestamp) ? event.timestamp : null);
       const failed=event.status==='failed'||event.status==='blocked';
       const approximate=target.mode==='end'?'Near recording end':target.mode==='nearest'?'Near recorded step':'';
-      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||`Seek to recorded time${trimmedView&&event.timestamp_basis==='relative'?` · real ${operatorTime(event.timestamp)}`:''}`)}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span>${failed?'✕':event.status==='running'?'●':'✓'}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
+      return `<details data-history-event class="op-step${failed?' failed':''}"><summary data-replay-event="${index}" ${target.seconds==null?'':`data-replay-seconds="${target.seconds}" data-replay-mode="${target.mode}"`} title="${esc(approximate||`Seek to recorded time${trimmedView&&event.timestamp_basis==='relative'?` · real ${operatorTime(event.timestamp)}`:''}`)}"><time>${seconds==null?'':`${approximate?'~':''}${operatorTime(seconds)}`}</time><span class="op-rail-dot" data-kind="${stepKind(event)}" data-s="${failed?'fail':event.status==='running'?'run':'ok'}" aria-label="${failed?'Failed':event.status==='running'?'Running':'Done'}">${failed?'✕':''}</span><div><b>${esc(text)}</b>${count>1?`<small>${count} ${/^Checked/.test(text)?'checks':'times'}</small>`:''}${approximate?`<small>${approximate} · approximate seek</small>`:''}${failed?`<small class="op-why">${event.status==='blocked'?'Blocked':'Stopped'}: ${esc(plainError(event.error?.message || (typeof event.error === 'string' ? event.error : null) || executionFailure(trace)?.message))}</small>`:''}</div></summary></details>`;
     })()).join('')+pending(null);
   }
   function loadingOverlay(kind) {
@@ -5075,11 +5228,12 @@
     else if (busy) live=`${strip}<div class="op-stage" data-op-stage="live" data-op-phase="${prep}" data-state="loading"><div class="ab-camera-empty" data-camera-empty></div>${loadingOverlay('live')}</div>`;
     else live=`${strip}<div class="op-idle" data-camera-empty><b>Nothing is running right now</b><p>${last?'Pick an attempt above to watch what the robot did.':'Start a new run to see the robot live.'}</p>${last?`<button type="button" data-operator-attempt="${esc(last.attempt_id)}">Watch the last attempt</button>`:''}</div>`;
     const noVideo=neverStarted(snapshot)?'<div class="op-idle"><b>Nothing to replay</b><p>The robot never started, so there is no video and no steps.</p></div>':'<div class="op-idle"><b>No video was recorded for this attempt</b><p>The steps on the right still show what the robot did.</p></div>';
-    const plan=version && snapshot.dev_session && !neverStarted(snapshot)?operatorPlanRow(version,!!snapshot.agent):'';
+    // 11-18 ui改动 (user: "完全不需要了"): the PLAN line is no longer shown above the steps.
+    const plan='';
     const heading=!attempt&&active?'What the robot is doing':'What the robot did';
     const replayNote=currentReplay && selected==='live' && attempt
       ? `<p class="op-hint" data-current-replay-note>${(run.status==='running'||Lobby.isActive({lobby:snapshot.lobby})) ? 'Waiting for the next attempt. This is the starting scene it will begin from.' : 'The run has ended. This is the starting scene of the last attempt.'}</p><button type="button" class="op-starting-recording" data-history-select="${esc(attempt.attempt_id)}">Watch ${attemptName(attempt)}'s recording</button>` : '';
-    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${operatorAttemptPills(snapshot,attempts,attempt,currentReplay,active)}${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo):live}${attempt?.try_number?'':snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><div class="op-trace-head"><h4>${heading}</h4>${trimBar}</div>${attempt&&!currentReplay&&videos.length?'':`<p class="op-hint">${attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p>`}<div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || operatorStepsEmpty(snapshot,attempt)}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
+    return `<section class="panel ab-execution-viewer" data-core-region="execution" data-execution-viewer data-replay-attempt="${esc(attempt?.attempt_id || '')}">${operatorHeading('03','REPLAY &amp; ATTEMPTS','')}${operatorAttemptPills(snapshot,attempts,attempt,currentReplay,active)}${views}<div class="ab-viewer-layout"><div class="ab-viewer-media">${replayNote}${currentReplay?startingStill:attempt?(videoHTML || noVideo):live}${attempt?.try_number?'':snapshot.agent&&attempt?agentEvalStrip(version,attempt.attempt_id):''}</div><aside class="ab-viewer-trace"><div class="op-trace-head" data-bare="${Boolean(attempt&&!currentReplay&&videos.length)}">${attempt&&!currentReplay&&videos.length?'':`<h4>${heading}</h4>`}${trimBar}</div>${attempt&&!currentReplay&&videos.length?'':`<p class="op-hint">${attempt?'Steps are listed in the order they happened.':active?'New steps appear here as the robot works.':'Steps from the latest attempt.'}</p>`}<div class="ab-history-events" ${!attempt?'data-op-follow':''}>${plan}${operatorEvents(shownTrace,attempt&&!currentReplay&&videos.length>0) || operatorStepsEmpty(snapshot,attempt)}</div></aside></div>${attempt&&!snapshot.agent?(DEBUG_VIEW?operatorAIReview(version?.evaluator_review,version?.version,true):operatorEvalReview(version?.evaluator_review,attempt.attempt_id)):''}</section>`;
   }
 
   // 11-12 user: "No recorded actions yet" read as if the robot had done nothing while a try was running.
@@ -5114,7 +5268,7 @@
       const pickedTry=g.tries.find(t=>playable.get(t.number)?.attempt_id===shown);
       const on=g.attempt&&g.attempt.attempt_id===shown;
       const where=g.attempt?`${helpBefore(n)} · before ${attemptName(g.attempt)}`:`${helpBefore(n)} · no attempt yet`;
-      const list=g.tries.length?`<button type="button" class="op-pill-tries" data-tries-toggle aria-haspopup="listbox" aria-expanded="false"${pickedTry?' aria-pressed="true"':''}>${pickedTry?`Try ${pickedTry.number} · ${g.tries.indexOf(pickedTry)+1} of ${g.tries.length}`:`${g.tries.length} ${g.tries.length===1?'try':'tries'}`} <span aria-hidden="true">▾</span></button><div class="op-tries-list" role="listbox" aria-label="Trial runs ${esc(where)}" hidden><small>${esc(where)}</small>${g.tries.map(t=>{const a=playable.get(t.number);return `<button type="button" role="option" ${a?`data-history-select="${esc(a.attempt_id)}"`:'disabled title="No recording was saved for this try"'} aria-selected="${a?.attempt_id===shown}"><b>Try ${esc(t.number)}</b><i data-kind="${esc(t.kind||'other')}" aria-hidden="true"></i><span>${esc(t.why||'')}${a?'':' · no recording'}</span></button>`;}).join('')}</div>`:'';
+      const list=g.tries.length?`<button type="button" class="op-pill-tries" data-tries-toggle aria-haspopup="listbox" aria-expanded="false"${pickedTry?' aria-pressed="true"':''}>${pickedTry?`Try ${pickedTry.number} · ${g.tries.indexOf(pickedTry)+1} of ${g.tries.length}`:`${g.tries.length} ${g.tries.length===1?'try':'tries'}`} <span aria-hidden="true">▾</span></button><div class="op-tries-list" role="listbox" aria-label="Trial runs ${esc(where)}" hidden><small>${esc(where)}</small>${g.tries.map(t=>{const a=playable.get(t.number);return `<button type="button" role="option" ${a?`data-history-select="${esc(a.attempt_id)}"`:'disabled title="No recording was saved for this try"'} aria-selected="${a?.attempt_id===shown}"><b>Try ${esc(t.number)}</b><i data-kind="${esc(t.kind||'other')}" aria-hidden="true"></i><span>${chatActive(snapshot)?(t.ok?'ran through':'stopped'):esc(t.why||'')}${a?'':' · no recording'}</span></button>`;}).join('')}</div>`:'';
       const head=g.attempt?`<button type="button" class="op-pill-attempt" data-history-select="${esc(g.attempt.attempt_id)}" aria-pressed="${on}">${mark(g.attempt)} ${attemptName(g.attempt)}</button>`:'<span class="op-pill-attempt op-pill-none">Trial runs</span>';
       return `<span class="op-pill" data-tone="${g.attempt?tone(g.attempt):'none'}" data-on="${on?'attempt':pickedTry?'try':'no'}">${head}${list}</span>`;
     };
@@ -5148,7 +5302,7 @@
     const passed=native===true||(typeof native!=='boolean'&&review?.passed===true);
     const failed=native===false||review?.passed===false;
     const stages=agentStripStages(version?.eval_stages||[]),stopped=stages.find(stage=>stage.state==='failed');
-    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b>${agentStoryReason(version,stopped.cause)?` · ${esc(agentStoryReason(version,stopped.cause))}`:''}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
+    return `<section class="op-eval-strip" data-eval-strip data-attempt="${esc(attemptId)}"><h4>Eval <span class="op-review-tag" data-eval-verdict data-result="${passed?'pass':failed?'fail':'unavailable'}">${passed?'Completed':failed?'Not completed':'Not reviewed'}</span>${version?.eval_unavailable?`<span class="op-review-tag" data-eval-did-not-run data-result="unavailable">Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}</h4><div class="op-eval-stages" hidden aria-label="Attempt stages">${stages.map(stage=>`<span class="op-eval-stage ${esc(stage.state)}" title="${esc(`${stage.label} · ${stage.state==='completed'?'done':stage.state==='failed'?'stopped here':'not reached'}`)}"><i aria-hidden="true">${stage.state==='completed'?'✓':stage.state==='failed'?'✕':''}</i><b>${esc(stage.label)}</b></span>`).join('')}</div>${stopped?`<p class="op-eval-stopped" data-eval-stopped><b>Stopped at ${esc(stopped.label)}</b>${agentStoryReason(version,stopped.cause)?` · ${esc(agentStoryReason(version,stopped.cause))}`:''}</p>`:''}${!passed&&version?.try_next?`<p class="op-try-next"><b>Try next:</b> ${esc(version.try_next)}</p>`:''}</section>`;
   }
 
   function operatorEvalReview(review,attemptId) {
@@ -5375,6 +5529,24 @@
 
   // End operator presentation.
   // Page title, the same pattern as the Memory monitor's: amber eyebrow, condensed headline, the run's status on the right.
+  // 11-18 (user, 03 split): what this run is, in one line under the title.
+  function operatorRunLine(snapshot) {
+    const run=snapshot.run,config=snapshot.dev_session?.locked?.config||{};
+    const arm={both:'both arms',left:'left arm',right:'right arm',single:'single arm'}[run.robot?.execution_arm||config.execution_arm];
+    const robot=String(run.robot?.model||config.robot||'').replace('OpenArm365','OpenArm');
+    const description=snapshot.task_plan?.definition?.description;
+    return [description&&description!==taskTitle(run)?String(description).replace(/[.\s]+$/,''):'',robot?`${robot}${arm?' · '+arm:''}`:'',run.seed==null?'':`seed ${run.seed}`].filter(Boolean).join(' · ');
+  }
+  // How far along and how much is left: attempts and wall time (Remote has no time limit).
+  function operatorRunMeter(snapshot) {
+    const a=snapshot.agent;if(!a?.limits)return '';
+    const limit=a.limits.formal_versions,used=a.counts?.formal_versions??0,ended=isTerminal(snapshot);
+    const hours=t=>{const h=Math.floor(t/3600),m=Math.round(t%3600/60);return h?`${h} h${m?` ${m} min`:''}`:`${m} min`;};
+    const attempts=ended?`${used} of ${limit} attempts used`:`Attempt ${Math.min(limit,used+1)} of ${limit}`;
+    const time=a.wall_limit?`${hours(a.wall_seconds||0)} of ${hours(a.wall_limit)}`:'';
+    const pctA=Math.min(100,used/limit*100),pctT=a.wall_limit?Math.min(100,(a.wall_seconds||0)/a.wall_limit*100):0;
+    return `<span class="op-title-meter" title="Attempts used and time used (paused time does not count)"><span><b>${esc(attempts)}</b><i style="--p:${pctA}%"></i></span>${time?`<span><b>${esc(time)}</b><i style="--p:${pctT}%"></i></span>`:''}</span>`;
+  }
   function operatorTitle(snapshot) {
     const run = snapshot.run, name = taskTitle(run), cut = name.indexOf(':');
     const receipts = (snapshot.dev_v2?.jobs || []).map(job=>job.receipt || {}).filter(Boolean);
@@ -5388,7 +5560,9 @@
     const head = cut > 0 ? `${esc(name.slice(0, cut))} <em>${esc(name.slice(cut + 1).trim())}</em>` : esc(name);
     const word = record ? recordStatus(record) : '';
     const status = record ? `<span class="op-title-status" data-outcome="${outcomeKind(word)}">${esc(word)}</span>` : '';
-    const newRun = isTerminal(snapshot) || snapshot.lobby ? launchButton(snapshot, true) : '';
+    // 11-18 ui改动 (user): New run is always in the title; while a run is live it is the quiet outlined form, so it does not compete with Pause/Stop.
+    const ended = isTerminal(snapshot) || snapshot.lobby;
+    const newRun = ended ? launchButton(snapshot, true) : launchButton(snapshot, true).replace('op-new-run"', 'op-new-run op-new-run-quiet"');
     // 11-18 ui改动: the dev-test notice is a small tag beside the status (was a banner in the top bar).
     const devNote = snapshot.dev_session && !DEBUG_VIEW && root.dataset.remote !== '1' ? '<span class="op-title-dev" title="Development test · not counted in comparisons">Dev test</span>' : '';
     // 11-18 ui改动: Run again / Continue from an attempt sit in a ⋯ menu next to New run.
@@ -5573,6 +5747,8 @@
     // Agent runs draw Start 160 to the left of Attempt 1. Help asked before Attempt 1 arcs over that same gap (11-12:
     // it used to start left of Start, with its bar on the Start label), so no extra slot is kept for it.
     if(snapshot.agent){const shift=model.before?160-model.step:160;model.left+=shift;model.width+=shift;model.natural+=shift;if(model.endX!=null)model.endX+=shift;model.requests.forEach(r=>{if(r.after<0){const offset=r.x-r.mid;r.mid=model.left-80;r.x=r.mid+offset;}else{r.x+=shift;r.mid+=shift;}if(!r.help.delivered)r.dashed=true;});}
+    // 11-18 (user, ui改动 02): each gap is as wide as what happened in it (tries, help arcs), not one fixed step.
+    if(snapshot.agent)layoutAgentGaps(snapshot,model);
     const agentSelected=snapshot.agent?stored(`attention.history:${runId}`):null;
     const state=g.solved?'solved':g.terminal?'unsolved':'running';
     const filter=['all','human','paid','rate'].includes(stored(`attention.efficiency.filter:${runId}`))?stored(`attention.efficiency.filter:${runId}`):'all';
@@ -5595,16 +5771,16 @@
     const {baseline,step}=model,R=24;
     // Agent runs caption each segment at baseline+26 ("26 checks · 5 previews"); keep the cost bars clear of it (10-30).
     const costBottom=snapshot.agent?86:74,height=model.height+costBottom-74;
-    const x=index=>model.left+index*step;
+    const x=index=>model.xs?(model.xs[index]??(index<0?model.startX:model.xs.at(-1)+150)):model.left+index*step;
     const lines=model.attempts.slice(0,-1).map((_,i)=>`<line x1="${x(i)+R}" x2="${x(i+1)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`).join('');
-    const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${model.left-160}" cy="${baseline}" r="6"/><text x="${model.left-160}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${model.left-154}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
+    const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${(model.startX??model.left-160)}" cy="${baseline}" r="6"/><text x="${(model.startX??model.left-160)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${(model.startX??(model.startX??model.left-160))+6}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
     const outcome=g.solved?'Completed':(typeof systemFailure==='function'&&systemFailure(snapshot))?'System problem':'Not completed';
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
     const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&(r.help.delivered||r.help.charged===true)).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
-      const x0=r.after<0?(snapshot.agent?model.left-160:x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
+      const x0=r.after<0?(snapshot.agent?(model.startX??model.left-160):x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
       const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
       const bar=r.responder==='human_assisted'?0:snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
@@ -5615,7 +5791,9 @@
     }).join('');
     const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>${snapshot.agent?`<text class="op-agent-reason ${a.state}" x="${x(a.index)}" y="${baseline+62}" text-anchor="middle">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')}</text>`:''}</g>`).join('');
     const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
-    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 0 ${model.width} ${height}" style="${snapshot.agent?`width:${model.width}px;height:${height}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
+    // 11-18 (b1 test): with no help request there is nothing above the circles or in the cost row, so the drawing is cropped to the circles and their names.
+    const cropped=!model.requests.length&&model.attempts.length>0,vy=cropped?Math.max(0,baseline-R-10):0,vh=cropped?baseline+(snapshot.agent?70:54)-vy:height;
+    const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 ${vy} ${model.width} ${vh}" style="--nw:${model.width}px;${snapshot.agent?`width:${model.width}px;height:${vh}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
     const next=selected&&g.attempts.find(a=>a.index===selected.nextIndex);
     const number=selected?g.rows.indexOf(selected)+1:0;
     const whoTitle=selected?(snapshot.agent&&selected.state==='rejected'?'Refused · not delivered':selected.effect==='no_reply'?'No reply given':selected.state==='pending'?'Waiting for a '+(selected.responder==='human'?'person':'automatic advisor'):selected.responder==='human'?'Person':selected.responder==='human_assisted'?'Assisted (not a person)':'Automatic advisor'):'';
@@ -5624,7 +5802,8 @@
     const costMain=selected?(snapshot.agent?(selected.help.delivered?`${selected.seconds.toFixed(1)} s`:'Not charged'):selected.responder==='human'?attentionTime(selected.seconds).replace(/s$/,' s'):'1 credit'):'';
     const costNote=selected?(snapshot.agent?(selected.responder==='human_assisted'?'Assisted reply · no human attention':selected.help.cost_corrected?`corrected; recorded ${Number(selected.help.recorded_hint_human_seconds).toFixed(2)} s`:selected.help.delivered?'Recorded human attention':'Refused · not delivered'):selected.responder==='human'?'of human time · 1 credit':'no human time'):'';
     const detail=snapshot.agent?agentTimelineDetail(snapshot,selected):selected?`<div class="op-attn-detail-head"><h5><span class="op-attn-detail-num">${selected.kind==='demo'?'Example #'+number:'Help #'+number}</span><span class="op-attn-detail-who">${esc(whoTitle)}${selected.kind!=='demo'&&selected.kind!=='advisor'?' · '+esc(kind[selected.kind]||label(selected.kind)):''}</span></h5><div class="op-attn-detail-nav"><button type="button" class="op-attn-round" data-attn-step="-1" aria-label="Previous help request"${position<=0?' disabled':''}>‹</button><span class="op-attn-count">${position+1} / ${g.rows.length}</span><button type="button" class="op-attn-round" data-attn-step="1" aria-label="Next help request"${position>=g.rows.length-1?' disabled':''}>›</button><button type="button" class="op-attn-round" data-attn-close aria-label="Close details">×</button></div></div><div class="op-attn-tiles"><div class="op-attn-tile"><span>Why it was asked</span><b>${esc(selected.reason?label(selected.reason):'No reason recorded')}</b></div><div class="op-attn-tile"><span>Cost</span><b>${esc(costMain)}</b><small>${esc(costNote)}</small></div><div class="op-attn-tile effect ${effectCls}"><span>Effect</span><b>${effect[selected.effect][0]}</b></div><div class="op-attn-tile"><span>Replay</span>${next?`<a href="#" class="op-attn-watch" data-history-select="${esc(next.attempt_id)}">Watch Attempt ${next.index+1}</a>`:'<b class="op-attn-detail-note">Not started yet</b>'}</div></div>`:'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
-    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
+    const helpLeft=snapshot.agent?.limits?.help!=null?Math.max(0,snapshot.agent.limits.help-(snapshot.agent.counts?.help??g.requests)):null;
+    const kpis=[['all','progress',String(g.requests),`Help requests${g.assistedRows?' · '+g.assistedRows+' assisted':''}${helpLeft!=null?` · ${helpLeft} left`:''}`,''],['human','spent',time,'Human attention',snapshot.agent?'Recorded attention estimates; assisted replies are counted separately. '+corrections:'Time from a help request to a person\'s reply. Automatic-advisor replies count as credits, not human time.'],['paid','hit',hit,'Help that paid off',''],['rate','rate',rate,'Attention per solve',`${rateNote}. Human attention ÷ tasks solved; pass/fail only, no partial credit.`]].filter(([key])=>!(key==='rate'&&rate==='—')).map(([key,hook,value,name,note])=>`<button type="button" class="op-attn-filter" data-attn-filter="${key}" data-kpi="${hook}" aria-pressed="${filter===key}"${note?` title="${esc(note)}"`:''}><b>${esc(value)}</b><span>${name}</span></button>`).join('');
     // 10-30: the legend lists only marks this run shows; ✓/✕ attempts and the labelled cost bars explain themselves.
     const legend=[model.requests.some(r=>r.responder==='advisor')?'<span><i class="automatic"></i>Automatic advisor</span>':'',
       model.requests.some(r=>r.responder==='human')?'<span><i class="person"></i>Person replied</span>':'',
@@ -5634,7 +5813,37 @@
     const head=g.attemptsRun?`${g.solved?'1':'0'} of ${g.maximum||g.attemptsRun} attempts solved`:'No attempts yet';
     const sub=[state==='unsolved'?'not solved':state==='running'?'in progress':'',requestSummary,humanSummary,creditSummary].filter(Boolean).join(' · ');
     const progressLine=!g.attemptsRun?'No attempts yet':g.solved?`on attempt ${g.solved.index+1} of ${g.maximum||g.attemptsRun}`:`${g.attemptsRun} of ${g.maximum||g.attemptsRun} attempt${(g.maximum||g.attemptsRun)===1?'':'s'} used${state==='running'?' so far':''}`;
-    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}${legend?`<div class="op-attn-legend">${legend}</div>`:''}<div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+    // 11-18 (user): the cards and the attempt strip always show, even with no help (an empty 02 read as missing data).
+    return `<div class="op-attention" data-attention-efficiency data-attention-state="${state}" aria-label="Attention efficiency"><div class="op-attn-head" title="${esc(head+' · '+sub)}"><h4>Attention efficiency</h4><span class="op-attn-outcome ${state}">${state==='solved'?'Solved':state==='running'?'In progress':'Not solved'}</span><span class="op-attn-progress">${esc(progressLine)}</span><span class="op-attn-sr">${esc(head+' · '+sub)}</span></div><div class="op-attn-filters" role="group" aria-label="Highlight help requests">${kpis}</div>${strip}<div class="op-attn-detail" data-attn-detail aria-live="polite">${detail}</div>${frontier?`<details class="op-attn-compare" data-persist-detail="attention-compare:${esc(runId)}"><summary>Compare with other strategies</summary>${frontier}</details>`:''}</div>`;
+  }
+  // Width the b1 flow row has on screen (0 = not measured / not that layout); re-render when it changes.
+  let attnFitWidth=0;
+  new ResizeObserver(()=>{const box=view.querySelector('[data-b1] .op-attn-scroll');const w=box?Math.floor(box.clientWidth-16):0;
+    if(Math.abs(w-attnFitWidth)>12){attnFitWidth=w;lastRendered='';refresh();}}).observe(view);
+  function layoutAgentGaps(snapshot,model) {
+    const n=model.attempts.length,margin=48,helps=new Map(),gaps=[];
+    model.requests.forEach(r=>helps.set(r.after+1,(helps.get(r.after+1)||0)+1));
+    let loose=looseTries(snapshot).length;
+    for(let i=0;i<=n;i++){
+      const v=i<n?snapshot.dev_session.versions.find(v=>v.version===i+1):null;
+      let t=0;if(v)t=(v.before_attempt?.trials||[]).length;else if(i<n&&loose){t=loose;loose=0;}
+      gaps.push({tries:t,width:Math.max(i===0?100:110,64+t*20,(helps.get(i)||0)*92+48)});
+    }
+    // 11-18 (user, b1 proportions): in the one-screen layout the flow fills the row's width; the spare room is shared
+    // equally by the gaps, so circles, dots and text keep their size.
+    {const endW=model.ended?(helps.has(n)?gaps[n].width:130)+58:0,natural=gaps.slice(0,n).reduce((t,g)=>t+g.width,0)+(model.after?gaps[n].width:0)+endW+2*margin;
+     if(attnFitWidth>natural+20){const share=(attnFitWidth-natural)/(n+(model.after||model.ended?1:0)||1);gaps.forEach((g,i)=>{if(i<n||model.after||model.ended)g.width+=share;});}}
+    const startX=margin,xs=[];let at=startX;
+    for(let i=0;i<n;i++){at+=gaps[i].width;xs.push(at);}
+    const last=xs.at(-1)??startX,endsWithHelp=helps.has(n);
+    if(model.after)xs.push(last+gaps[n].width);
+    const endX=model.ended?(endsWithHelp?last+gaps[n].width:last+130):null;
+    model.startX=startX;model.xs=xs;model.gaps=gaps;model.left=xs[0]??startX;model.endX=endX;
+    model.width=model.natural=Math.round((model.ended?endX+58:xs.at(-1)??last)+margin);
+    model.requests.forEach(r=>{
+      const a=r.after<0?startX:xs[r.after],b=r.after+1<n?xs[r.after+1]:model.ended?endX:(xs[n]??last+gaps[n].width);
+      const offset=r.x-r.mid,mid=(a+b)/2;r.mid=mid;r.x=mid+offset;
+    });
   }
   function bindAttentionEfficiency(snapshot) {
     const runId=snapshot.run.run_id;
@@ -5707,7 +5916,8 @@
   function reuseConfirm(snapshot){
     const exp=snapshot?.dev_v2?.experiment_id;if(!exp)return '';
     loadReuse();
-    const notes=(reuseCache.notes||[]).filter(n=>n.original?.source_run===exp);
+    // Only notes still waiting for a decision (11-18 user: confirmed ones need no space here).
+    const notes=(reuseCache.notes||[]).filter(n=>n.original?.source_run===exp&&!(n.generalized?.level&&n.generalized.level!=='pending'));
     const error=reuseCache.error?`<p class="op-memory-error" role="alert">Could not load notes to confirm: ${esc(reuseCache.error)}</p>`:'';
     if(!notes.length)return error;
     const canOperate=root.dataset.remote!=='1'&&snapshot.lobby?.mine!==false;
@@ -5722,6 +5932,60 @@
     const waiting=notes.filter(n=>!(n.generalized?.level&&n.generalized.level!=='pending')).length;
     return `<div class="op-reuse-box" data-reuse-box><p><strong>Notes from this run · ${waiting?`${waiting} waiting for you`:'all confirmed'}</strong> <span class="minor">Choose how widely each note may be reused.</span></p>${canOperate?`<label class="op-reuse-actor">Your name <input data-reuse-actor maxlength="200" value="${esc(actor)}"></label>`:''}${rows}${error}</div>`;
   }
+  // 11-18 (user, ui改动 02): a try on the 02 chart shows its own card below the chart (what happened, why it stopped);
+  // "Watch this try" in that card opens it in 01 Replay through the same entry as the "N tries ▾" list.
+  function openTryRecording(id){
+    const option=[...view.querySelectorAll('.op-tries-list [data-history-select]')].find(b=>b.dataset.historySelect===id);
+    if(!option)return false;
+    option.click();
+    view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start',behavior:'smooth'});
+    return true;
+  }
+  // After a jump, the replay re-renders: bring 01 into view and start the new video from the beginning.
+  function chatPlaySoon(){
+    let tries=0;const go=()=>{const viewer=view.querySelector('[data-execution-viewer]'),video=viewer?.querySelector('video[data-history-replay]');
+      if(!video){if(++tries<20)setTimeout(go,100);return;}
+      requestAnimationFrame(()=>{const bar=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sh-bar'))||68;window.scrollTo({top:window.scrollY+viewer.getBoundingClientRect().top-bar-12,behavior:'auto'});});
+      const start=()=>{try{video.currentTime=0;}catch(_){}video.play?.().catch(()=>{});};
+      if(video.readyState>=1)start();else video.addEventListener('loadedmetadata',start,{once:true});};
+    setTimeout(go,120);
+  }
+  function pickTry(mark){
+    const runId=currentSnapshot?.run?.run_id;if(!runId||!mark?.dataset.tryNumber)return;
+    const same=stored(`attention.try:${runId}`)===mark.dataset.tryNumber;
+    stored(`attention.try:${runId}`,same?null:mark.dataset.tryNumber);
+    stored(`attention.efficiency.help:${runId}`,null);
+    render(currentSnapshot);
+  }
+  view.addEventListener('click',e=>{
+    const watch=e.target.closest?.('[data-try-watch]');if(watch){e.preventDefault();openTryRecording(watch.dataset.tryWatch);return;}
+    const close=e.target.closest?.('[data-try-close]');if(close){stored(`attention.try:${currentSnapshot?.run?.run_id}`,null);render(currentSnapshot);return;}
+    const mark=e.target.closest?.('.op-try-link');if(mark){e.preventDefault();e.stopPropagation();pickTry(mark);return;}
+    // choosing an attempt or a help request replaces the try card
+    if(e.target.closest?.('[data-attn-watch],[data-attn-help]')&&currentSnapshot)stored(`attention.try:${currentSnapshot.run.run_id}`,null);
+  },true);
+  view.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const mark=e.target.closest?.('.op-try-link');if(mark){e.preventDefault();pickTry(mark);}});
+  // 11-18 (user, ui改动 02): Dock-style magnification on the 02 chart: tries near the pointer grow and nudge their
+  // neighbours aside; attempts grow a little. Off for reduced motion.
+  const dockCalm=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  function dockReset(svg){svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{g.style.transform='';});svg.classList.remove('op-docking');}
+  function dockMove(svg,e){
+    const ctm=svg.getScreenCTM();if(!ctm)return;
+    const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(ctm.inverse());
+    svg.classList.add('op-docking');
+    svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{
+      const c=g.querySelector('circle');if(!c)return;
+      const cx=+c.getAttribute('cx'),cy=+c.getAttribute('cy'),d=cx-p.x,small=g.classList.contains('op-try-mark');
+      // 11-18 (user: too sensitive): only a band ±28 around the line wakes it, falling off smoothly with height;
+      // smaller growth (tries ×1.8 max, attempts ×1.08) and a gentler push.
+      const dy=Math.abs(p.y-cy),near=dy<28?1-(dy/28)**2:0,sigma=small?20:36;
+      const k=near*Math.exp(-(d*d)/(2*sigma*sigma)),scale=1+(small?0.8:0.08)*k;
+      const push=small?near*d*0.25*Math.exp(-(d*d)/(2*(2*sigma)**2)):0;
+      g.style.transform=`translate(${(cx+push).toFixed(2)}px,${cy}px) scale(${scale.toFixed(3)}) translate(${-cx}px,${-cy}px)`;
+    });
+  }
+  view.addEventListener('mousemove',e=>{if(dockCalm())return;const svg=e.target.closest?.('.op-attn-scroll svg');if(svg)dockMove(svg,e);},{passive:true});
+  view.addEventListener('mouseout',e=>{const svg=e.target.closest?.('.op-attn-scroll svg');if(svg&&!svg.contains(e.relatedTarget))dockReset(svg);});
   const reuseOpenedAt=new Map();  // survives re-renders; the server wants proof the note was opened before it is confirmed
   view.addEventListener('toggle',e=>{const d=e.target;if(d.matches?.('details[data-reuse-id]')&&d.open&&!reuseOpenedAt.has(d.dataset.reuseId))reuseOpenedAt.set(d.dataset.reuseId,Date.now()/1000)},true);
   view.addEventListener('click',async e=>{
@@ -5755,7 +6019,172 @@
       return `<li data-memory-note data-referenced="${explicit}"><div><strong>${esc(n.title)}</strong> <span>v${esc(n.version)} · ${esc(n.level)} · ${explicit?'used · explicit reference':n.considered_not_used?'considered · not used':'not used'}</span></div><small>${esc(n.memory_id)}</small>${evidence||hints?`<ul>${evidence}${hints}</ul>`:''}</li>`;
     }).join('');
     const failures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis'&&!versions.some(v=>v.version===e.error?.version&&(v.errors||[]).some(row=>row.error===e.error?.error))).map(e=>`<p class="op-memory-error" role="alert">Memory analysis error: ${esc(typeof e.error==='object'?JSON.stringify(e.error):e.error)}</p>`);
-    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used"><p><strong>Memory: received ${notes.length} notes · used ${used} · considered, not used ${considered}</strong></p><p class="minor">Used means an explicit application reference in Dev text or code comments. Declined notes are counted separately. Counts include each version’s delivery.</p>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}${errors.join('')}${failures.join('')}</div>`;
+    // 11-18 (user, ui改动 02): one line; evidence (files, events, ids) only when opened. Errors stay outside the fold.
+    if(!notes.length&&!errors.length&&!failures.length)return '';
+    return `<div class="op-memory-use" data-memory-use aria-label="Memory received and used">${notes.length?`<details data-persist-detail="memory-use:${esc(snapshot.run.run_id)}"><summary>Memory: received ${notes.length} note${notes.length===1?'':'s'} · used ${used}${considered?` · considered, not used ${considered}`:''}</summary>${rows?`<ul class="op-memory-notes">${rows}</ul>`:''}</details>`:''}${errors.join('')}${failures.join('')}</div>`;
+  }
+  // ---- 11-18 experiment (8897): 02 conversation. Chart = map, conversation = story, composer at the bottom. ----
+  const chatDemo=()=>new URLSearchParams(location.search).get('demo')==='wait';  // sample only: ?…&demo=wait
+  function chatActive(snapshot){return Boolean(!DEBUG_VIEW&&snapshot?.agent&&snapshot.rawCell&&window.Chat02&&window.LiteModel);}
+  // 11-18 (user): the right panel can be dragged wider or narrower; the width is remembered in this browser.
+  const C2_WIDTH_KEY='attention.c2.width',C2_DEFAULT=420;
+  const c2Clamp=w=>Math.round(Math.max(300,Math.min(w,Math.min(900,window.innerWidth-520))));
+  function c2SetWidth(w,save){const px=c2Clamp(w);root.style.setProperty('--c2w',`${px}px`);if(save)try{localStorage.setItem(C2_WIDTH_KEY,String(px));}catch(_){}}
+  try{const saved=Number(localStorage.getItem(C2_WIDTH_KEY));if(saved)c2SetWidth(saved,false);}catch(_){}
+  function c2StartResize(e){
+    const grip=e.target.closest?.('[data-c2-resize]');if(!grip||e.button>0)return;
+    e.preventDefault();root.classList.add('c2-resizing');
+    const x=ev=>(ev.touches?.[0]||ev).clientX;
+    const move=ev=>{c2SetWidth(window.innerWidth-x(ev),false);ev.preventDefault?.();};
+    const up=ev=>{['mousemove','pointermove','touchmove'].forEach(t=>window.removeEventListener(t,move));['mouseup','pointerup','touchend','pointercancel'].forEach(t=>window.removeEventListener(t,up));
+      root.classList.remove('c2-resizing');const w=parseInt(getComputedStyle(root).getPropertyValue('--c2w'))||C2_DEFAULT;c2SetWidth(w,true);};
+    ['mousemove','pointermove'].forEach(t=>window.addEventListener(t,move));window.addEventListener('touchmove',move,{passive:false});
+    ['mouseup','pointerup','touchend','pointercancel'].forEach(t=>window.addEventListener(t,up));
+  }
+  view.addEventListener('mousedown',c2StartResize);
+  view.addEventListener('touchstart',c2StartResize,{passive:false});
+  view.addEventListener('dblclick',e=>{if(e.target.closest?.('[data-c2-resize]'))c2SetWidth(C2_DEFAULT,true);});
+  window.addEventListener('resize',()=>{const w=parseInt(getComputedStyle(root).getPropertyValue('--c2w'))||C2_DEFAULT;c2SetWidth(w,false);});
+  let chatTab='chat';  // right panel tab: 'chat' | 'details' (11-18 user)
+  function chatSection(snapshot,detailsHtml=''){
+    if(!chatActive(snapshot))return '';
+    let m;
+    try{m=LiteModel.build({view:snapshot.rawCell,exp:snapshot.rawExperiment||{},now:Date.now()/1000});}
+    catch(error){return `<p class="op-memory-error" role="alert">The conversation could not be drawn: ${esc(error.message)}</p>`;}
+    const own=!(root.dataset.remote==='1'&&snapshot.lobby?.mine!==true),wait=own?snapshot.agent.human_wait:null;
+    if(wait)m.wait={...wait,question:wait.question||m.wait?.question||''};
+    else if(chatDemo()&&!m.status.ended){const now=Date.now()/1000;m.wait={execution_id:'e000099',cell:m.key,question:(m.helps[0]&&m.helps[0].question)||'Where exactly should I put the item down?',deadline_at:now+74,seconds:m.waitSeconds||120,demo:true};}
+    const attemptIds=new Map((snapshot.attempts||[]).filter(a=>!a.try_number).map(a=>[a.index+1,a.attempt_id]));
+    const tryRecordings=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a.attempt_id]));
+    // Memory goes into the conversation (11-18 user): one sentence per note before the attempt that got it.
+    const memory=(snapshot.agent.memory_use||[]).filter(v=>(v.notes||[]).length||(v.errors||[]).length);
+    const memoryFailures=(snapshot.agent.errors||[]).filter(e=>e.source==='Memory analysis').map(e=>typeof e.error==='object'?JSON.stringify(e.error):String(e.error));
+    let html=Chat02.feed(m,{attemptIds,tryRecordings,memory,memoryFailures});
+    if(m.wait&&!m.wait.demo)html=html.replace(/<div class="c2-count" data-c2-deadline="([^"]*)"><\/div>/,`<b class="c2-count" data-agent-reply-countdown data-deadline="$1" data-seconds="${esc(m.wait.seconds||'')}"></b>`);
+    const composer=wait?`<div class="c2-composer live">${agentReplyForm(wait)}</div>`:m.wait?.demo?Chat02.demoComposer(m):Chat02.idleComposer(m);
+    // 11-18 (user): a right-side panel, not part of 02. Opens by itself when the robot asks
+    // (once per question: closing it during that question is remembered); a manual open/close is kept for this run.
+    const runId=snapshot.run.run_id,choice=stored(`attention.c2:${runId}`),asking=Boolean(m.wait);
+    const dismissed=asking&&stored(`attention.c2.dismissed:${m.wait.execution_id}`)==='1';
+    // 11-18 (user): open by default on wide screens; a close is kept for this run until the robot asks a new question.
+    const wide=window.matchMedia?.('(min-width: 1181px)').matches!==false;
+    const open=choice==='open'||(asking&&!dismissed)||(choice!=='closed-now'&&wide);
+    const handle=`<button type="button" class="c2-handle${asking?' asking':''}" data-c2-toggle aria-expanded="${open}" title="${open?'Hide':'Show'} the conversation"><span class="c2-handle-dot" aria-hidden="true"></span><span class="c2-handle-text">${asking?'Robot asks you':'Conversation'}</span><b>${m.helps.length}</b></button>`;
+    if(asking&&m.wait.execution_id!==chatShownWait)chatTab='chat';  // a new question always shows the conversation
+    const tab=detailsHtml?chatTab:'chat';
+    const tabs=`<div class="c2-tabs" role="tablist"><button type="button" role="tab" data-c2-tab="chat" aria-selected="${tab==='chat'}">Conversation${asking?' <i class="c2-tab-dot" aria-label="the robot is asking"></i>':''}</button>${detailsHtml?`<button type="button" role="tab" data-c2-tab="details" aria-selected="${tab==='details'}">Details</button>`:''}</div>`;
+    return `<aside class="c2 c2-panel" data-c2 data-open="${open}" data-tab="${tab}" data-asking="${asking}" data-wait-id="${esc(m.wait?.execution_id||'')}" aria-label="Conversation and details">${handle}<div class="c2-body"><div class="c2-resizer" data-c2-resize role="separator" aria-orientation="vertical" aria-label="Resize the panel" title="Drag to resize · double-click to reset"></div><div class="c2-head-row">${tabs}<span></span><button type="button" class="c2-close" data-c2-toggle aria-label="Hide the panel" title="Hide">›</button></div><div class="c2-pane" data-pane="chat"><div class="c2-feed" data-c2-feed>${html}</div>${composer}</div>${detailsHtml?`<div class="c2-pane c2-details" data-pane="details"><div class="op-run-details-body">${detailsHtml}</div></div>`:''}</div></aside>`;
+  }
+  function chatSetOpen(open){
+    const panel=view.querySelector('[data-c2]');if(!panel)return;
+    panel.dataset.open=String(open);panel.querySelectorAll('[data-c2-toggle]').forEach(b=>b.setAttribute('aria-expanded',String(open)));
+    const runId=currentSnapshot?.run?.run_id;if(runId)stored(`attention.c2:${runId}`,open?'open':'closed-now');
+    if(!open&&panel.dataset.waitId)stored(`attention.c2.dismissed:${panel.dataset.waitId}`,'1');
+    chatLayout();
+  }
+  let chatShownWait='',chatUserScroll={run:null,moved:false};
+  // Stay on the newest message until the person scrolls the conversation themself (per run).
+  function chatPinned(){const run=currentSnapshot?.run?.run_id;if(chatUserScroll.run!==run)chatUserScroll={run,moved:false};return !chatUserScroll.moved;}
+  ['wheel','touchmove','keydown'].forEach(type=>view.addEventListener(type,e=>{if(e.target.closest?.('[data-c2-feed]'))chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},{passive:true,capture:true}));
+  view.addEventListener('mousedown',e=>{if(e.target.closest?.('[data-c2-feed]')&&e.offsetX>e.target.clientWidth)chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},true);
+  new MutationObserver(()=>{chatLayout();}).observe(view,{childList:true});
+  // 11-18 ui改动 (user): in 01 the split between the picture and "What the robot did" can be dragged; the share is
+  // remembered in this browser, double-click resets it. The handle is re-added after every redraw of the section.
+  const VSPLIT_KEY='attention.replay.split',VSPLIT_DEFAULT=62;
+  const vsClamp=v=>Math.round(Math.max(40,Math.min(80,v))*10)/10;
+  function vsSet(v,save){const pct=vsClamp(v);root.style.setProperty('--vsplit',`${pct}%`);if(save)try{localStorage.setItem(VSPLIT_KEY,String(pct));}catch(_){}}
+  try{const saved=Number(localStorage.getItem(VSPLIT_KEY));if(saved)vsSet(saved,false);}catch(_){}
+  function vsEnsure(){view.querySelectorAll('.ab-viewer-layout').forEach(layout=>{if(layout.querySelector(':scope>.op-vsplit'))return;
+    const h=document.createElement('div');h.className='op-vsplit';h.setAttribute('role','separator');h.setAttribute('aria-orientation','vertical');h.setAttribute('aria-label','Resize picture and step list');h.title='Drag to resize · double-click to reset';h.innerHTML='<i></i>';layout.append(h);});}
+  new MutationObserver(()=>vsEnsure()).observe(view,{childList:true,subtree:true});
+  view.addEventListener('dblclick',e=>{if(e.target.closest?.('.op-vsplit')){vsSet(VSPLIT_DEFAULT,true);}});
+  const vsStart=e=>{const h=e.target.closest?.('.op-vsplit');if(!h||e.button>0)return;e.preventDefault();
+    const layout=h.parentElement,x=ev=>(ev.touches?.[0]||ev).clientX;root.classList.add('vs-resizing');
+    const move=ev=>{const r=layout.getBoundingClientRect();vsSet(100*(x(ev)-r.left)/r.width,false);};
+    const up=ev=>{root.classList.remove('vs-resizing');const r=layout.getBoundingClientRect();if(ev&&ev.type!=='touchcancel'&&x(ev)!=null&&Number.isFinite(x(ev)))vsSet(100*(x(ev)-r.left)/r.width,true);
+      for(const [t,f] of [['pointermove',move],['mousemove',move],['touchmove',move],['pointerup',up],['mouseup',up],['touchend',up],['touchcancel',up]])window.removeEventListener(t,f,true);};
+    for(const [t,f] of [['pointermove',move],['mousemove',move],['touchmove',move],['pointerup',up],['mouseup',up],['touchend',up],['touchcancel',up]])window.addEventListener(t,f,true);};
+  view.addEventListener('pointerdown',vsStart,true);view.addEventListener('touchstart',vsStart,{capture:true,passive:false});
+  function chatLayout(){
+    const panel=view.querySelector('[data-c2]');
+    // A new question: once, bring it into view at the bottom of the conversation.
+    const waitId=panel?.dataset.asking==='true'?panel.dataset.waitId:'';
+    if(waitId&&waitId!==chatShownWait&&panel.dataset.open==='true'){chatShownWait=waitId;const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}
+    root.classList.toggle('c2-on',Boolean(panel));
+    root.classList.toggle('c2-open',panel?.dataset.open==='true');
+    if(panel){const feed=panel.querySelector('[data-c2-feed]');requestAnimationFrame(()=>{if(chatPinned()&&feed)feed.scrollTop=feed.scrollHeight;});}
+  }
+  function chatScrollTo(selector){
+    const feed=view.querySelector('[data-c2-feed]'),el=feed?.querySelector(selector);if(!el)return false;
+    if(view.querySelector('[data-c2]')?.dataset.open!=='true')chatSetOpen(true);
+    chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};
+    feed.scrollTo({top:feed.scrollTop+el.getBoundingClientRect().top-feed.getBoundingClientRect().top-12,behavior:'smooth'});
+    el.classList.remove('c2-flash');void el.offsetWidth;el.classList.add('c2-flash');
+    return true;
+  }
+  // Sample countdown (the real one is ticked by the reply form's own [data-agent-reply-countdown] code).
+  setInterval(()=>{view.querySelectorAll('[data-c2-deadline]').forEach(el=>{const left=Math.max(0,Math.round(Number(el.dataset.c2Deadline)-Date.now()/1000));el.textContent=left?`${left} s left, then the AI advisor answers`:'The AI advisor is answering';});},1000);
+  // Reverse link: what is at the top of the open conversation lights up on the chart.
+  let chatFocusFrame=0;
+  function chatFocus(){
+    chatFocusFrame=0;
+    view.querySelectorAll('.c2-focus').forEach(el=>el.classList.remove('c2-focus'));
+    const panel=view.querySelector('[data-c2]'),feed=panel?.querySelector('[data-c2-feed]');
+    if(!feed||panel.dataset.open!=='true')return;
+    const top=feed.getBoundingClientRect().top+24;
+    const item=[...feed.querySelectorAll('[data-feed-attempt],[data-feed-help],.c2-row')].find(el=>el.getBoundingClientRect().bottom>top);
+    if(!item)return;
+    if(item.dataset.feedAttempt)view.querySelector(`.op-attn-attempt[data-attn-attempt="${item.dataset.feedAttempt}"]`)?.classList.add('c2-focus');
+    else if(item.dataset.feedHelp)[...view.querySelectorAll('[data-attn-help]')].find(g=>new RegExp(`Help #${item.dataset.feedHelp}\\b`).test(g.getAttribute('aria-label')||''))?.classList.add('c2-focus');
+    else [...item.attributes].map(a=>a.name.match(/^data-feed-try-(\d+)$/)?.[1]).filter(Boolean).forEach(n=>view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('c2-focus'));
+  }
+  let chatFocusFade=0;
+  const chatFocusClear=()=>view.querySelectorAll('.c2-focus').forEach(el=>el.classList.remove('c2-focus'));
+  // 11-18 (user: "why the black rings"): only while the person scrolls the conversation, then it fades.
+  view.addEventListener('scroll',e=>{if(!e.target.matches?.('[data-c2-feed]')||!chatUserScroll.moved)return;if(!chatFocusFrame)chatFocusFrame=requestAnimationFrame(chatFocus);clearTimeout(chatFocusFade);chatFocusFade=setTimeout(chatFocusClear,1500);},true);
+  function chatMarkTry(n){view.querySelectorAll('.op-try-mark.selected').forEach(g=>g.classList.remove('selected'));view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('selected');}
+  view.addEventListener('click',e=>{
+    if(!view.querySelector('[data-c2-feed]'))return;
+    const t=e.target;
+    const tabButton=t.closest?.('[data-c2-tab],[data-c2-tab-open]');
+    if(tabButton){e.preventDefault();chatTab=tabButton.dataset.c2Tab||tabButton.dataset.c2TabOpen;const panel=view.querySelector('[data-c2]');panel.dataset.tab=chatTab;
+      panel.querySelectorAll('[data-c2-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.c2Tab===chatTab)));
+      if(panel.dataset.open!=='true')chatSetOpen(true);
+      if(chatTab==='chat'&&chatPinned()){const feed=panel.querySelector('[data-c2-feed]');feed.scrollTop=feed.scrollHeight;}
+      return;}
+    const toggle=t.closest?.('[data-c2-toggle]');
+    if(toggle){e.preventDefault();chatSetOpen(view.querySelector('[data-c2]').dataset.open!=='true');return;}
+    // 11-18 (user): a try or an attempt — on the chart or in the panel — opens its video in 01 and plays it.
+    const recordingOfTry=n=>[...(currentSnapshot?.attempts||[]),...(currentSnapshot?.try_attempts||[])].find(a=>String(a.try_number)===String(n))?.attempt_id;
+    const attemptIdOf=n=>(currentSnapshot?.attempts||[]).find(a=>!a.try_number&&a.index+1===Number(n))?.attempt_id;
+    const playAttempt=id=>{if(!id)return false;const pill=[...view.querySelectorAll('.op-pill-attempt[data-history-select]')].find(b=>b.dataset.historySelect===id);if(!pill)return false;pill.click();chatPlaySoon();return true;};
+    const playTry=n=>{const id=recordingOfTry(n);if(!id||!openTryRecording(id))return false;chatPlaySoon();return true;};
+    const mark=t.closest?.('.op-try-link');
+    if(mark){e.preventDefault();e.stopPropagation();chatMarkTry(mark.dataset.tryNumber);playTry(mark.dataset.tryNumber);return;}
+    const help=t.closest?.('[data-attn-help]');
+    if(help){const n=(help.getAttribute('aria-label')||'').match(/Help #(\d+)/)?.[1];if(n&&chatScrollTo(`[data-feed-help="${n}"]`)){e.preventDefault();e.stopPropagation();}return;}
+    const att=t.closest?.('[data-attn-attempt]');
+    if(att&&t.closest('.op-attn-scroll')){if(playAttempt(attemptIdOf(att.dataset.attnAttempt))){e.preventDefault();e.stopPropagation();}return;}
+    const tryButton=t.closest?.('[data-c2-try]');
+    if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);playTry(tryButton.dataset.c2Try);return;}
+    const row=t.closest?.('.c2-row');
+    if(row){const first=row.querySelector('[data-c2-try]');if(first){chatMarkTry(first.dataset.c2Try);playTry(first.dataset.c2Try);}return;}
+    const card=t.closest?.('[data-feed-attempt]');
+    if(card&&!t.closest('a,summary,details')){const watch=card.querySelector('[data-c2-attempt]');if(watch){e.preventDefault();playAttempt(watch.dataset.c2Attempt);}return;}
+    if(t.closest?.('[data-c2-demo-send]')){const err=view.querySelector('[data-c2-demo-err]');if(err)err.textContent='This is a sample request, so nothing was sent.';}
+  },true);
+  // 11-18 (user: the 03 cards were too big for a dropdown): the same facts as a small list.
+  function compactRunDetails(snapshot,settings,resources){
+    const strip=html=>String(html||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+    const rows=[...String(settings).matchAll(/<div class="op-field[^"]*"><span>([^<]*)<\/span><b>([\s\S]*?)<\/b>(?:<small>([\s\S]*?)<\/small>)?/g)]
+      .map(([,label,main,sub])=>`<div class="rd-row"><dt>${label}</dt><dd><b>${main}</b>${sub?`<small>${sub}</small>`:''}</dd></div>`).join('');
+    const a=snapshot.agent,clock=t=>{const h=Math.floor(t/3600),m=Math.round(t%3600/60);return h?`${h} h ${m} min`:`${m} min`;};
+    const budget=(label,used,limit,text)=>limit?`<div class="rd-row"><dt>${label}</dt><dd><b>${text||`${used} / ${limit}`}</b><i style="--p:${Math.min(100,used/limit*100)}%"></i></dd></div>`:'';
+    const budgets=a?.limits?[budget('Versions',a.counts?.formal_versions??0,a.limits.formal_versions),budget('Tries',a.counts?.moving_executions??0,a.limits.moving_executions),
+      budget('Probes',a.counts?.read_only_probes??0,a.limits.read_only_probes),budget('Help',a.counts?.help??0,a.limits.help),budget('Eval',a.counts?.eval_runs??0,a.limits.eval_runs),
+      a.wall_limit?budget('Time',a.wall_seconds||0,a.wall_limit,`${clock(a.wall_seconds||0)} / ${clock(a.wall_limit)}`):''].join(''):'';
+    const notes=[...String(resources).matchAll(/>((?:SDK description|Scene verification)[^<]*)</g)].map(m=>`<li>${m[1]}</li>`).join('');
+    return `<h5>Setup</h5><dl>${rows}</dl>${budgets?`<h5>Used</h5><dl class="rd-budgets">${budgets}</dl>`:''}${notes?`<h5>Notes</h5><ul class="rd-notes">${notes}</ul>`:''}`;
   }
   function operatorThreeParts(regions,snapshot) {
     if(DEBUG_VIEW)return regions.join('');
@@ -5765,8 +6194,17 @@
     const untitle=html=>html.replace(HEAD,'');
     const extra=html=>((html.match(HEAD)||[])[1]||'').replace(/^[\s\S]*<span>([\s\S]*)<\/span>$/,'$1');
     // The page title (task name, New run) is written in front of the setup section; it stays on top of the page.
-    const title=(settings.match(/^<header class="op-page-title"[\s\S]*?<\/header>/)||[''])[0];
+    let title=(settings.match(/^<header class="op-page-title"[\s\S]*?<\/header>/)||[''])[0];
     settings=settings.slice(title.length);
+    // 11-18 (user, ui改动 02): Stop / Pause / Resume control the whole run, so they sit beside the title's status.
+    // The run-control note ("Paused · the run's time budget is not counting") becomes a short tag with the full text as its tooltip.
+    const controls=(overview.match(/<div class="op-controls"[^>]*>[\s\S]*?<\/div>(?=<p data-picture-warning)/)||[''])[0];
+    if(controls&&title){
+      overview=overview.replace(controls,'');
+      const inner=controls.replace(/^<div[^>]*>/,'').replace(/<\/div>$/,'').replace('<span class="op-controls-sp"></span>','')
+        .replace(/<small data-run-control-note="([^"]*)">([^<]*)<\/small>/,(_,state,text)=>`<span class="op-title-dev op-run-note" data-run-control-note="${state}" title="${text}">${text.split(' · ')[0]}</span>`);
+      if(inner.trim())title=title.replace(/<\/div><\/header>$/,`<span class="op-title-controls">${inner}</span></div></header>`);
+    }
     const waiting=/data-state="waiting"/.test(request)&&/data-agent-reply|data-request-reply|<textarea/.test(request);
     const story=(overview.match(/<button type="button" class="op-agent-story-entry" data-agent-story-open>[\s\S]*?<\/button>/)||[''])[0];
     const replyExtra=waiting?extra(request):'';
@@ -5774,9 +6212,30 @@
     // 11-12 (user): the attempt track sits on the heading's row, at its right, as in the Refine drawing.
     const replayHead=operatorHeading('01','REPLAY',''),track=(execution.match(/<nav class="ab-history-tabs op-tabs op-pills"[\s\S]*?<\/nav>/)||[''])[0];
     if(track&&execution.includes(replayHead+track))execution=execution.replace(replayHead+track,`<div class="op-heading-row">${replayHead}${track}</div>`);
-    const progress=`<section class="panel op-part op-progress-help" data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${operatorHeading('02',`PROGRESS &amp; HELP${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${story}`)}${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}</section>`;
+    const chat=chatSection(snapshot,!DEBUG_VIEW&&title?compactRunDetails(snapshot,settings,resources):'');
+    // 11-18 (user, b1 test): no "01 REPLAY" heading or frame. The attention block (four numbers + attempt / try / Help flow) moves
+    // to the top of the replay, and its attempt circles replace the attempt pills (kept in the DOM, hidden, so keys and bindings still work).
+    let b1=false;
+    if(title&&chat){
+      const takeBlock=(html,open)=>{const i=html.indexOf(open);if(i<0)return null;const re=/<(\/?)div\b/g;re.lastIndex=i;let depth=0,m;
+        while((m=re.exec(html))){depth+=m[1]?-1:1;if(depth===0){const end=html.indexOf('>',m.index)+1;return {block:html.slice(i,end),rest:html.slice(0,i)+html.slice(end)};}}return null;};
+      const took=takeBlock(overview,'<div class="op-attention"');
+      if(took){
+        const row=`<div class="op-heading-row">${replayHead}${track}</div>`;
+        overview=took.rest;b1=true;
+        execution=(execution.includes(row)?execution.replace(row,`<div class="op-b1-top">${took.block}</div><div class="op-heading-row op-b1-hide">${track}</div>`):execution.replace(replayHead,`<div class="op-b1-top">${took.block}</div>`))
+          .replace('<section class="panel ab-execution-viewer"','<section class="panel ab-execution-viewer" data-b1="1"');
+        // the camera tabs sit on top of the video column, not in a full-width row of their own
+        execution=execution.replace(/(<div class="ab-camera-views"[\s\S]*?<\/div>)(<div class="ab-viewer-layout"><div class="ab-viewer-media">)/,'$2$1');
+      }
+    }
+    const progress=`<section class="panel op-part op-progress-help${chat?' op-has-chat':''}"${b1?' data-b1="1"':''} data-part="progress" data-waiting="${waiting}" aria-label="Progress and help">${b1&&!waiting?'':operatorHeading('02',`HUMAN ATTENTION${waiting?' <em class="op-your-move">YOUR MOVE</em>':''}`,`${isTerminal(snapshot)?'':'<span data-sound-slot></span>'}${replyExtra}${chat?'':story}`)}${chat?`${untitle(overview)}${waiting?'':untitle(request)}${reuseConfirm(snapshot)}`:`${waiting?untitle(request)+untitle(overview):untitle(overview)+untitle(request)}${agentMemoryUse(snapshot)}${reuseConfirm(snapshot)}`}</section>`;
     const setup=`<section class="panel op-part op-setup-resources" data-part="setup" aria-label="Setup and resources">${operatorHeading('03','SETUP &amp; RESOURCES','')}<div class="op-part-cols">${untitle(settings)}${untitle(resources)}</div></section>`;
-    return title+execution+progress+setup;
+    // 11-18 (user, 03 split): no Setup & resources section; the same content opens from ⓘ Run details beside the title.
+    // With the right panel, ⓘ Details opens its Details tab; without it (older runs) a small popover.
+    if(title){const details=chat?`<button type="button" class="op-run-details-btn" data-c2-tab-open="details" title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</button>`:`<details class="op-run-details" data-run-details><summary title="Setup and resources of this run"><span aria-hidden="true">ⓘ</span> Details</summary><div class="op-run-details-body">${compactRunDetails(snapshot,settings,resources)}</div></details>`;
+      return title.replace(/<\/div><\/header>$/,`${details}</div></header>`)+execution+progress+chat;}
+    return title+execution+progress+setup+chat;
   }
   function workspaceHTML(snapshot,chosen) {
     // One-call keeps the original five-module content (11-10: shown in three parts).
@@ -5886,7 +6345,9 @@
       const pageY=window.scrollY;view.style.minHeight=view.offsetHeight+'px';
       requestAnimationFrame(()=>{view.style.minHeight='';if(Math.abs(window.scrollY-pageY)>1)window.scrollTo(0,pageY);});
     }
+    const oldFeed=view.querySelector('[data-c2-feed]'),feedState=oldFeed?{top:oldFeed.scrollTop,bottom:oldFeed.scrollHeight-oldFeed.scrollTop-oldFeed.clientHeight<40}:null;
     view.innerHTML = html;
+    {const feed=view.querySelector('[data-c2-feed]');if(feed)feed.scrollTop=chatPinned()||!feedState||feedState.bottom?feed.scrollHeight:feedState.top;chatLayout();}
     view.querySelector('[data-sound-slot]')?.replaceWith(alertsButton);
     if(banner)view.insertAdjacentHTML('afterbegin',banner);
     {const held=view.querySelector('img[data-held-frame]');if(held&&previousHeld&&held.getAttribute('src')===previousHeld.getAttribute('src'))held.replaceWith(previousHeld);}
@@ -6504,6 +6965,15 @@
     return (trials.some(t=>t.color!=='red')?'<span><i class="op-agent-trial grey"></i>Trial run, kept going</span>':'')
       +(trials.some(t=>t.color==='red')?'<span><i class="op-agent-trial red"></i>Trial run stopped by a safety limit</span>':'');
   }
+  // 11-18 (user, ui改动 02): "11 tries · 7 fatal SDK fault · 2 move refused · 1 ran through" — counts by cause, most first.
+  // Each try's own reason is one click away on the chart.
+  function agentTrySummary(activity={}) {
+    const trials=activity.trials||[];if(!trials.length)return '';
+    const counts=new Map();
+    for(const t of trials){const cause=/^trial completed$/i.test(t.cause||'')?'ran through':(t.cause||(t.color==='red'?'stopped':'ran through'));counts.set(cause,(counts.get(cause)||0)+1);}
+    const parts=[...counts].sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${n} ${esc(c)}`);
+    return `<span class="op-agent-chip op-try-summary" title="Click a try on the chart for its reason"><b>${trials.length} ${trials.length===1?'try':'tries'}</b> · ${parts.join(' · ')}</span>`;
+  }
   function agentTrialChips(activity={}) {
     return (activity.trials||[]).map(t=>`<span class="op-agent-chip"><i class="op-agent-trial ${t.color==='red'?'red':'grey'}" aria-hidden="true"></i>1 trial run · ${esc(t.cause)}</span>`).join('');
   }
@@ -6513,13 +6983,35 @@
     return tries.slice(last+1).map(t=>({color:t.ok?'grey':'red',cause:tryLabel(t)}));
   }
   function agentActivityMarks(snapshot,model) {
+    // 11-18 (user, ui改动 02): each try is a small Attempt-style circle (dot = ran through / ✕ = stopped by a safety limit; no ✓,
+    // a try that ran is not a solved task),
+    // the caption says "N tries" (the word the replay pill uses), checks/previews moved to the caption tooltip,
+    // and a try with a recording opens it in 01 Replay (same data-history-select as the "N tries ▾" list).
     const loose=looseTries(snapshot);let placed=false;
+    const allTries=[...(snapshot.agent?.tries||[])].sort((a,b)=>a.number-b.number),byAttempt=new Map();let pending=[];
+    for(const t of allTries){if(t.submitted){if(!byAttempt.has(t.attempt-1))byAttempt.set(t.attempt-1,pending);pending=[];continue;}pending.push(t);}
+    const playable=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a]));
     return model.attempts.map((a,index)=>{
       const version=snapshot.dev_session.versions.find(v=>v.version===a.index+1);
-      const activity=version?.before_attempt||(!version&&!placed&&(placed=true)?{trials:loose}:{});
-      const mid=model.left+index*model.step-(index?model.step:160)/2,trials=activity.trials||[];
-      const spacing=Math.min(16,Math.max(3,((index?model.step:160)-60)/Math.max(1,trials.length)));
-      return `<g data-agent-interval="${a.index+1}">${trials.map((t,i)=>`<circle class="op-agent-trial ${t.color==='red'?'red':'grey'}" cx="${mid+(i-(trials.length-1)/2)*spacing}" cy="${model.baseline}" r="5"><title>${esc(t.cause)}</title></circle>`).join('')}<text class="op-agent-activity" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${esc(agentActivityCaption(activity)||(trials.length?`${trials.length} ${trials.length===1?'try':'tries'}`:''))}</text></g>`;
+      const isLoose=!version&&!placed;
+      const activity=version?.before_attempt||(isLoose&&(placed=true)?{trials:loose}:{});
+      const gapA=model.xs?(index?model.xs[index-1]:model.startX):model.left+index*model.step-(index?model.step:160),gapB=model.xs?model.xs[index]:model.left+index*model.step;
+      const mid=(gapA+gapB)/2,trials=activity.trials||[];
+      const spacing=Math.min(18,Math.max(4,((gapB-gapA)-60)/Math.max(1,trials.length)));
+      const r=Math.max(3,Math.min(7,spacing/2-1));
+      const group=isLoose?pending:byAttempt.get(a.index)||[];
+      const before=isLoose?'before the next attempt':`before Attempt ${a.index+1}`;
+      const marks=trials.map((t,i)=>{
+        const tr=group.length===trials.length?group[i]:null,rec=tr&&playable.get(tr.number),red=t.color==='red';
+        const cx=mid+(i-(trials.length-1)/2)*spacing,cy=model.baseline;
+        const tip=`${tr?`Try ${tr.number}`:`Try ${i+1}`} ${before} · ${red?'stopped by a safety limit':'ran through without a safety stop (not a task check)'}${t.cause&&red?': '+t.cause:''}${tr?' · click for details':''}`;
+        const glyph=r>=5?(red?`<path class="op-try-glyph" d="M ${cx-r*.45} ${cy-r*.45} L ${cx+r*.45} ${cy+r*.45} M ${cx+r*.45} ${cy-r*.45} L ${cx-r*.45} ${cy+r*.45}"/>`:`<circle class="op-try-dot" cx="${cx}" cy="${cy}" r="${(r*.32).toFixed(2)}"/>`):'';  // a plain dot: the try ran through; no ✓ (it is not a task check)
+        const picked=tr&&String(tr.number)===stored(`attention.try:${snapshot.run.run_id}`);
+        return `<g class="op-try-mark ${red?'red':'ok'}${tr?' op-try-link':''}${picked?' selected':''}"${tr?` data-try-number="${esc(tr.number)}" role="button" tabindex="0"`:''} aria-label="${esc(tip)}"><title>${esc(tip)}</title><circle cx="${cx}" cy="${cy}" r="${r}"/>${glyph}</g>`;
+      }).join('');
+      const extra=agentActivityCaption(activity);
+      const caption=trials.length?`${trials.length} ${trials.length===1?'try':'tries'}`:'';
+      return `<g data-agent-interval="${a.index+1}">${marks}${caption?`<text class="op-agent-activity op-try-caption" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${extra?`<title>${esc(extra)}</title>`:''}${caption}</text>`:''}</g>`;
     }).join('');
   }
   function agentPlainHelpReason(help) {
@@ -6683,13 +7175,26 @@
     const story=version.story||{},activity=version.before_attempt||{},help=version.help_content;
     const passed=version.evaluator_review?.passed;
     const result=`${version.native_success===true?'Solved':'Not solved'} · Eval ${passed===true?'pass':passed===false?'fail':version.eval_unavailable?'did not run':'unavailable'}`;
-    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`${help.provider==='human'?'Person replied':help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} · ${(help.provider==='human_assisted'?0:Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentActivityCaption(activity)?`<span class="op-agent-chip">${esc(agentActivityCaption(activity))}</span>`:''}${agentTrialChips(activity)}</div>`:''}</div>`;
+    return `<div data-agent-attempt-card="${version.version}"><div class="op-agent-card-head"><b>Attempt ${version.version}</b><span class="op-agent-chip ${version.native_success===true?'solved':'failed'}">${esc(result)}</span>${passed===false&&agentStoryReason(version)?`<span class="op-agent-chip failed" data-agent-failure-reason>${esc(agentStoryReason(version))}</span>`:''}${version.eval_unavailable?`<span class="op-agent-chip refused" data-eval-did-not-run>Eval did not run · ${esc(version.eval_unavailable)}</span>`:''}${snapshot?continueButton(snapshot,version.version):''}</div>${before?`<div class="op-agent-before"><span>Before this attempt</span>${help?`<span class="op-agent-chip ${help.delivered?'advisor':'refused'}">${help.delivered?`${help.provider==='human'?'Person replied':help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} · ${(help.provider==='human_assisted'?0:Number(help.hint_human_seconds)||0).toFixed(1)} s`:'help not delivered'}</span>`:''}${agentTrySummary(activity)}</div>`:''}</div>`;
+  }
+  function agentTryCard(snapshot,number) {
+    const tries=snapshot.agent?.tries||[],t=tries.find(x=>x.number===number);if(!t)return '';
+    const next=tries.find(x=>x.submitted&&x.number>number),before=next?`before Attempt ${next.attempt}`:'before the next attempt';
+    const rec=[...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].find(a=>a.try_number===number);
+    const state=t.ok?'<span class="op-try-state">Ran through · not a task check</span>':'<span class="op-try-state stopped">Stopped</span>';
+    const watch=rec?`<button type="button" class="op-try-watch" data-try-watch="${esc(rec.attempt_id)}">Watch <span aria-hidden="true">→</span></button>`:'<small class="op-try-norec">No recording</small>';
+    const help=t.help?`<p class="op-try-help"><b>${t.help.provider==='human'?'Person replied':t.help.provider==='human_assisted'?'Assisted reply':'Advisor hint'} before this try</b> · ${esc(t.help.why||'')}</p>`:'';
+    // 11-18 (user: "too ugly"): one tidy row — title + state on the left, Watch → and × on the right, never wrapping apart.
+    return `<div class="op-try-card${t.ok?'':' stopped'}" data-try-card="${esc(number)}"><div class="op-try-head"><div class="op-try-title"><b>Try ${esc(number)}</b><small>${esc(before)}</small>${state}</div><div class="op-try-actions">${watch}</div></div><p class="op-try-why">${esc(t.why||'No reason was recorded.')}</p>${help}</div>`;
   }
   function agentTimelineDetail(snapshot,helpRow) {
+    if(chatActive(snapshot))return '';  // 11-18 experiment: the conversation below the chart is the detail
     if(helpRow)return agentHelpCard(helpRow.help,attentionLedger(snapshot).rows.findIndex(r=>r.id===helpRow.id)+1);
+    const tryNumber=Number(stored(`attention.try:${snapshot.run.run_id}`));
+    if(tryNumber){const card=agentTryCard(snapshot,tryNumber);if(card)return card;}
     const attempt=snapshot.attempts.find(a=>a.attempt_id===stored(`attention.history:${snapshot.run.run_id}`));
     const version=snapshot.dev_session.versions.find(v=>v.version===attempt?.dev_version);
-    return version?agentAttemptCard(version,true,snapshot):'<p>Click a help request to see why it was asked, what it cost and whether the next attempt improved.</p>';
+    return version?agentAttemptCard(version,true,snapshot):'';  // 11-18: no instruction text; the marks have tooltips
   }
   function agentFullStory(snapshot) {
     const versions=snapshot.dev_session.versions,rows=attentionLedger(snapshot).rows;
@@ -6914,10 +7419,11 @@
     if(cell.dev_mode==='agent'){
       const fingerprint=JSON.stringify([experiment.state,experiment.reason,{...cell.agent,wall_seconds:0},cell.dev_v2_compat.versions,cell.dev_v2_compat.jobs,Lobby.fingerprintOf(s.experiment_id)]);
       if(lastRendered===fingerprint && currentSnapshot?.agent){
-        currentSnapshot.agent=cell.agent;
+        currentSnapshot.agent=cell.agent;currentSnapshot.rawCell=cell;currentSnapshot.rawExperiment=experiment;
         return;
       }
       const snapshot=await agentWorkspaceSnapshot(s,cell,experiment);if(selectedDev!==s.session_id)return;
+      snapshot.rawCell=cell;snapshot.rawExperiment=experiment;  // 11-18 experiment: 02 conversation (Chat02 + LiteModel)
       enterAgentWorkspace(snapshot);
       selectedRun=s.session_id;render(snapshot);lastRendered=fingerprint;
       if(experimentFromHash(location.hash)!==s.experiment_id){const url=new URL(location.href);url.hash=`exp=${s.experiment_id}`;history.replaceState(null,'',url);}
