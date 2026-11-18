@@ -1018,3 +1018,10 @@ html body #attentionbench-clear .lc-strip button.asking::after{content:"";displa
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-strip{display:none}
 #attentionbench-clear.c2-left[data-lc="runs"] .ab-sidebar{box-shadow:6px 0 24px -14px #0006}
 html body #attentionbench-clear.c2-left [data-sidebar-toggle][aria-pressed="true"]{box-shadow:inset 0 0 0 2px #fff8,0 0 0 3px color-mix(in srgb,var(--sh-fill) 35%,transparent)!important}
+/* 11-18 option A: a level line above the tabs — "← Runs · <this run>"; the tabs belong to that run */
+.lc-strip:has(.lc-crumb){display:block;padding:0;background:transparent;border-radius:0}
+.lc-crumb{display:flex;align-items:center;gap:8px;margin:0 0 8px;min-width:0}
+html body #attentionbench-clear .lc-crumb button{flex:none!important;height:28px!important;padding:0 10px!important;border-radius:999px!important;background:var(--sh-chip)!important;color:var(--sh-ink)!important;font:600 12px "DM Sans",system-ui,sans-serif!important;box-shadow:none!important}
+html body #attentionbench-clear .lc-crumb button:hover{background:var(--sh-fill)!important;color:#fff!important}
+.lc-crumb b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 14px "Barlow Condensed",sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--sh-ink)}
+.lc-tabs{display:flex;gap:4px;padding:3px;border-radius:999px;background:var(--sh-chip)}

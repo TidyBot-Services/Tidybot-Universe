@@ -6133,10 +6133,12 @@
     if(panel.dataset.asking==='true'&&panel.dataset.waitId&&panel.dataset.waitId!==leftSeenWait){leftSeenWait=panel.dataset.waitId;leftTab='chat';}
     let strip=sidebar.querySelector(':scope>.lc-strip');
     if(!strip){strip=document.createElement('div');strip.className='lc-strip';strip.setAttribute('role','tablist');
-      strip.innerHTML='<button type="button" role="tab" data-lc="chat">Conversation</button><button type="button" role="tab" data-lc="details">Details</button>';
+      strip.innerHTML='<div class="lc-crumb"><button type="button" data-lc="runs" title="All runs">← Runs</button><b data-lc-title></b></div><div class="lc-tabs"><button type="button" role="tab" data-lc="chat">Conversation</button><button type="button" role="tab" data-lc="details">Details</button></div>';
       sidebar.prepend(strip);}
     strip.querySelectorAll('[data-lc]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.lc===leftTab));b.classList.toggle('asking',b.dataset.lc==='chat'&&panel.dataset.asking==='true');});
     root.dataset.lc=leftTab;sidebarToggle.setAttribute('aria-pressed',String(leftTab==='runs'));
+    // option A: the column says which run it is about; "← Runs" goes up a level to the list
+    const crumb=strip.querySelector('[data-lc-title]');if(crumb){const name=view.querySelector('.op-page-title h1')?.textContent?.trim()||'';crumb.textContent=name;crumb.title=name;}
     if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
     const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
     root.style.setProperty('--lc-left',`${r.left}px`);root.style.setProperty('--lc-top',`${t.bottom+6}px`);root.style.setProperty('--lc-w',`${r.width}px`);
