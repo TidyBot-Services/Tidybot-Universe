@@ -16,11 +16,11 @@
   let signedInShown = null;
   function signedIn(yes) {
     if (yes === signedInShown) return; signedInShown = yes;
-    const h1 = document.querySelector('#guest-gallery h1'), lead = document.querySelector('#guest-gallery .gg-lead'), go = document.querySelector('[data-guest-new-run]');
+    const h1 = document.querySelector('#guest-gallery h1'), lead = document.querySelector('#guest-gallery .gg-lead'), go = document.querySelectorAll('[data-guest-new-run]');
     if (yes) {
       if (h1) h1.innerHTML = 'Pick a run, <em>or start one</em>';
       if (lead) lead.textContent = 'Every run on this robot is open to watch. Pick one below to see its replay and result, or start your own.';
-      if (go) go.setAttribute('href', '/ui/#new-run');
+      go.forEach(link => link.setAttribute('href', '/ui/#new-run'));  // both New run buttons (top and hero)
     }
   }
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
