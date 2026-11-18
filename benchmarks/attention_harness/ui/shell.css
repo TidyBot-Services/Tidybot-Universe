@@ -981,3 +981,14 @@ html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text{
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text b{font:600 13px/1.3 "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important}
 html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-chip{font-size:11px!important;padding:1px 7px!important}
 html body #attentionbench-clear .lb-readonly.lb-readonly-line{background:color-mix(in srgb,#2f5a86 8%,var(--sh-card))!important;border-color:color-mix(in srgb,#2f5a86 25%,transparent)!important}
+/* 11-18 (user: cramped on a laptop): the owner tag above the title repeats the read-only line — hide it there */
+html body #attentionbench-clear .view:has(.lb-readonly) .op-page-title .lb-owner{display:none!important}
+html body #attentionbench-clear .view:has(.lb-readonly) .op-page-title>div>p:empty{display:none}
+/* short screens: smaller title and tighter gaps so the replay keeps its room */
+@media (min-height:640px) and (max-height:860px){
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title h1{font-size:30px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title{margin-bottom:6px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view:has([data-b1])>.op-page-title button.op-new-run{height:36px!important;font-size:15px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{padding:5px 14px 4px!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:19px!important}
+}

@@ -85,7 +85,8 @@
   window.Lobby=window.Lobby||new Proxy({enabled:false,isMine:()=>true,isActive:()=>false,visible:()=>true,groupOf:()=>null,tone:()=>null,statusWord:()=>null,card:()=>null},{get:(t,k)=>k in t?t[k]:()=>''});
   let sidebarFilter='all';
   const preference=(key,value)=>{try {if(value===undefined)return localStorage.getItem(key);localStorage.setItem(key,value);}catch(_){}};
-  let sidebarOpen=preference('attention.sidebar-open')===null?!matchMedia('(max-width:900px)').matches:preference('attention.sidebar-open')!=='false';
+  // 11-18 (user: cramped on a laptop): without a saved choice the run list starts closed below 1500 px of width (Tasks opens it).
+  let sidebarOpen=preference('attention.sidebar-open')===null?!matchMedia('(max-width:1499px)').matches:preference('attention.sidebar-open')!=='false';
   let policyControllerElement=null;
   const expandedHistory=new Set();
   const taskGroupChoices=new Map();
@@ -5770,7 +5771,8 @@
     const kind={hint:'Hint',approval:'Approval',interrupt:'Interrupt',advisor:'Automatic advisor',demo:'Example'};
     const {baseline,step}=model,R=24;
     // Agent runs caption each segment at baseline+26 ("26 checks · 5 previews"); keep the cost bars clear of it (10-30).
-    const costBottom=snapshot.agent?86:74,height=model.height+costBottom-74;
+    // 11-18 (user): Agent runs carry the human time in the Help label, so nothing is drawn below the captions.
+    const costBottom=snapshot.agent?86:74,height=snapshot.agent?baseline+72:model.height+costBottom-74;
     const x=index=>model.xs?(model.xs[index]??(index<0?model.startX:model.xs.at(-1)+150)):model.left+index*step;
     const lines=model.attempts.slice(0,-1).map((_,i)=>`<line x1="${x(i)+R}" x2="${x(i+1)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`).join('');
     const start=snapshot.agent?`<g class="op-attn-endpoint"><circle cx="${(model.startX??model.left-160)}" cy="${baseline}" r="6"/><text x="${(model.startX??model.left-160)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${(model.startX??(model.startX??model.left-160))+6}" x2="${model.left-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:model.before?`<g class="op-attn-endpoint"><circle cx="${x(-1)}" cy="${baseline}" r="6"/><text x="${x(-1)}" y="${baseline+44}" text-anchor="middle">Start</text></g><line x1="${x(-1)+6}" x2="${x(0)-R}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/>`:'';
@@ -5782,12 +5784,14 @@
     const marks=model.requests.map(r=>{
       const x0=r.after<0?(snapshot.agent?(model.startX??model.left-160):x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
       const y0=baseline-5, apex=r.top, cx=2*r.x-(x0+x1)/2, cy=2*apex-y0;
-      const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`, pill=Math.max(66,tag.length*7+18);
+      const tag=`${r.kind==='demo'?'Example #':'Help #'}${r.number}`;
       const bar=r.responder==='human_assisted'?0:snapshot.agent?((r.help.delivered||r.help.charged===true)?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):0):r.responder==='human'?Math.max(10,Math.round(48*r.seconds/maxHumanSeconds)):8;
       const cost=snapshot.agent?((r.help.delivered||r.help.charged===true)?`${r.seconds.toFixed(1)} s`:'not delivered'):r.responder==='human'?attentionTime(r.seconds).replace(/s$/,' s'):'1 credit';
       const who=snapshot.agent&&r.state==='rejected'?'Refused · not delivered':r.responder==='human'?'Person replied':r.responder==='human_assisted'?'Assisted reply':'Automatic advisor';
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
-      return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${tag}</text><rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text></g>`;
+      // 11-18 (user): Agent runs show the human time inside the Help label ("Help #1 · 420.1 s"), no bar below.
+      const shown=snapshot.agent&&(r.help.delivered||r.help.charged===true)?`${tag} · ${cost}`:tag, pill=Math.max(66,shown.length*6.6+18);
+      return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${esc(shown)}</text>${snapshot.agent?'':`<rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text>`}</g>`;
     }).join('');
     const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text><text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>${snapshot.agent?`<text class="op-agent-reason ${a.state}" x="${x(a.index)}" y="${baseline+62}" text-anchor="middle">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')}</text>`:''}</g>`).join('');
     const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
@@ -6067,7 +6071,7 @@
     const runId=snapshot.run.run_id,choice=stored(`attention.c2:${runId}`),asking=Boolean(m.wait);
     const dismissed=asking&&stored(`attention.c2.dismissed:${m.wait.execution_id}`)==='1';
     // 11-18 (user): open by default on wide screens; a close is kept for this run until the robot asks a new question.
-    const wide=window.matchMedia?.('(min-width: 1181px)').matches!==false;
+    const wide=window.matchMedia?.('(min-width: 1500px)').matches!==false;  // 11-18: on a laptop the panel starts as its edge tab (it still opens itself when the robot asks)
     const open=choice==='open'||(asking&&!dismissed)||(choice!=='closed-now'&&wide);
     const handle=`<button type="button" class="c2-handle${asking?' asking':''}" data-c2-toggle aria-expanded="${open}" title="${open?'Hide':'Show'} the conversation"><span class="c2-handle-dot" aria-hidden="true"></span><span class="c2-handle-text">${asking?'Robot asks you':'Conversation'}</span><b>${m.helps.length}</b></button>`;
     if(asking&&m.wait.execution_id!==chatShownWait)chatTab='chat';  // a new question always shows the conversation

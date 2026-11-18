@@ -346,15 +346,16 @@ test('the launch name suffix stays in the run list but not in the headline, 01 T
   assert.doesNotMatch(setup,/line B agent sol/);
 });
 test('agent cost bars sit clear of the segment caption above them (10-30)',async()=>{
+  // 11-18 (user): Agent runs no longer draw cost bars; the human time sits in the Help label and nothing is drawn below the captions.
   const snapshot=await timelineSnapshot(),{api}=apiFor(snapshot,{sessionStorage:memoryStorage()});
   const html=api.attentionEfficiency(snapshot);
-  const captions=[...html.matchAll(/<text class="op-agent-activity(?: [^"]*)?" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
-  const bars=[...html.matchAll(/<rect class="op-attn-cost" x="[^"]+" y="([\d.]+)" width="26" height="([\d.]+)"/g)].map(m=>({top:Number(m[1]),bottom:Number(m[1])+Number(m[2])}));
-  const labels=[...html.matchAll(/<text class="op-attn-cost-label" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  assert.doesNotMatch(html,/class="op-attn-cost/);
+  assert.match(html,/<text x="[^"]+" y="[^"]+" text-anchor="middle">Help #2 · [\d.]+ s<\/text>/);  // delivered: time in the label
+  assert.match(html,/text-anchor="middle">Help #1<\/text>/);  // refused: no time
   const height=Number(html.match(/<svg viewBox="0 0 [\d.]+ ([\d.]+)"/)[1]);
-  assert.ok(captions.length&&bars.length&&labels.length);
-  for(const bar of bars)assert.ok(bar.top-Math.max(...captions)>=8,`bar top ${bar.top} vs caption ${Math.max(...captions)}`);
-  for(const label of labels)assert.ok(label+6<=height,`cost label ${label} inside svg height ${height}`);
+  const texts=[...html.matchAll(/<text class="op-(?:attn-attempt-name|agent-reason)[^"]*" x="[^"]+" y="([\d.]+)"/g)].map(m=>Number(m[1]));
+  assert.ok(texts.length);
+  for(const y of texts)assert.ok(y+4<=height,`caption ${y} inside svg height ${height}`);
 });
 test('task-group run cards lead with the robot and a compact time, show only explicit renames; other lists keep the task name (10-30)',()=>{
   const {api}=apiFor(null,{selectedDev:null,selectedRun:null,pins:new Set()});
