@@ -6141,8 +6141,8 @@
     if(crumb){crumb.textContent=name;crumb.title=name;}
     // 11-18 (user: the Tasks button repeated "← Runs"): on a small screen this one button goes both ways —
     // "← Runs" from a run, "Back to run →" from the list (only when a run is open).
-    // 11-18 (user: "run" outside and "run" inside): the list is "All runs"; the way back is named after the open run itself.
-    if(up){const inList=leftTab==='runs',short=name.charAt(0)+name.slice(1).toLowerCase();up.textContent=inList?`← ${short}`:'← All runs';up.dataset.lc=inList?leftBack:'runs';up.hidden=inList&&!name;up.title=inList?`Back to ${short}`:'All runs';}
+    // 11-18 (user: "run" outside and "run" inside): the list is "All runs"; the way back reads "← Back to run" (user: a run's own name, e.g. "open drawer", read oddly); hover names the run.
+    if(up){const inList=leftTab==='runs',short=name.charAt(0)+name.slice(1).toLowerCase();up.textContent=inList?'← Back to run':'← All runs';up.dataset.lc=inList?leftBack:'runs';up.hidden=inList&&!name;up.title=inList?`Back to ${short}`:'All runs';}
     if(crumb)crumb.hidden=leftTab==='runs';
     if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
     const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
