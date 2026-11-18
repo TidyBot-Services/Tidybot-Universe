@@ -38,3 +38,12 @@ h1 .l2.glint{background:linear-gradient(105deg,var(--orange) 0 40%,#ffe0cf 50%,v
 @media (prefers-reduced-motion:reduce){.bgimg,.grid,.scan,h1 .ch,h1 .l2.glint,.go,.go .ring,.inst.enter>div,.pulse{animation:none!important}h1 .ch,.inst.enter>div{opacity:1;transform:none}.scan{display:none}.go,.go .tri,.bgimg{transition:none}}
 @media (max-width:1200px){.inst{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:860px){.wrap{height:auto}.content{padding:32px 20px}.inst{grid-template-columns:1fr 1fr}h1 .l1,h1 .l2{white-space:normal}}
+/* 11-18 (user): phones. The two-line title fits the width; the status cards stack as rows */
+@media (max-width:760px){
+  h1{font-size:clamp(40px,13.2vw,72px)!important;line-height:.95!important}
+  .inst{grid-template-columns:1fr!important}
+  .inst>div{display:grid;grid-template-columns:auto 1fr;align-items:baseline;column-gap:12px;padding:12px 16px}
+  .inst .k{grid-column:1/-1}
+  .inst .s{font-size:22px;margin-top:4px}
+  .inst .d{grid-column:2;align-self:center}
+}

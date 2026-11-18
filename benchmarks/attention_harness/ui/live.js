@@ -6114,7 +6114,7 @@
     if(!panel)return;
     const trace=view.querySelector('.ab-viewer-trace');
     let pane=panel.querySelector('[data-pane="steps"]'),tabBtn=panel.querySelector('[data-c2-tab="steps"]');
-    if(tier==='mid'&&trace){
+    if((tier==='mid'||root.classList.contains('c2-phone'))&&trace){  // phones: the step list is a tab under the video
       if(!tabBtn){const tabs=panel.querySelector('.c2-tabs');tabBtn=document.createElement('button');tabBtn.type='button';tabBtn.setAttribute('role','tab');tabBtn.dataset.c2Tab='steps';tabBtn.textContent='Steps';tabs?.insertBefore(tabBtn,tabs.children[1]||null);}
       tabBtn.setAttribute('aria-selected',String(panel.dataset.tab==='steps'));
       if(!pane){pane=document.createElement('div');pane.dataset.pane='steps';pane.className='c2-steps-pane';panel.querySelector('[data-pane="chat"]')?.after(pane);}
@@ -6130,8 +6130,11 @@
   // the top bar's Tasks button swaps it in (and back); picking a run returns to the conversation.
   let leftTab='chat',leftBack='chat',leftSeenWait='',leftRunKey='';
   // below 1800 CSS px (every MacBook at its default scaling: 1440-1728) the panel moves left; ?layout=left|right forces it
-  const leftOn=()=>{const f=new URLSearchParams(location.search).get('layout');return Boolean(view.querySelector('[data-c2]'))&&(f==='left'||f!=='right'&&innerWidth<1800);};
+  // 11-18 (user: phone support): at phone width (≤760 px) there is no side column; the page is one column (shell.css .c2-phone)
+  const phoneOn=()=>innerWidth<=760&&Boolean(view.querySelector('[data-c2]'));
+  const leftOn=()=>{const f=new URLSearchParams(location.search).get('layout');return !phoneOn()&&Boolean(view.querySelector('[data-c2]'))&&(f==='left'||f!=='right'&&innerWidth<1800);};
   function applyLeft(){
+    root.classList.toggle('c2-phone',phoneOn());
     const on=leftOn();root.classList.toggle('c2-left',on);
     if(!on){sidebar.querySelector(':scope>.lc-strip')?.remove();delete root.dataset.lc;return;}
     if(!sidebarOpen){sidebarOpen=true;sidebarLayout();}
