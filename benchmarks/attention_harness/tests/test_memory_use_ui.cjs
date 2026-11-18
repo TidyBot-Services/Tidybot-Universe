@@ -12,7 +12,7 @@ const fragment=source.slice(source.indexOf('  function agentMemoryUse('),source.
 const node={addEventListener(){},querySelectorAll:()=>[],querySelector:()=>null,style:{setProperty(){},removeProperty(){}}};
 const api=vm.runInNewContext(fragment+'\n({agentMemoryUse,operatorThreeParts})',{
   esc,DEBUG_VIEW:false,operatorHeading:(n,title)=>`<div class="panel-title op-heading"><h3>${n} ${title}</h3><span></span></div>`,
-  view:node,root:node,sidebar:node,window:{innerWidth:1600,addEventListener(){}},ResizeObserver:class{observe(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
+  view:node,root:node,sidebar:node,sidebarToggle:node,window:{innerWidth:1600,addEventListener(){}},ResizeObserver:class{observe(){}},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},
   location:{search:''},MutationObserver:class{observe(){}},setInterval:()=>0,getComputedStyle:()=>({getPropertyValue:()=>''}),
   requestAnimationFrame:()=>0,isTerminal:()=>false,reuseConfirm:()=>'',currentSnapshot:null
 });
