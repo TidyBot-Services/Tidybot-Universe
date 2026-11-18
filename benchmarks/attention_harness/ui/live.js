@@ -7582,7 +7582,9 @@
       noticeController?.clientError(phase === 'render' ? 'page display' : 'run data');
       bootError(message);
       if (status) { status.textContent = message; status.dataset.readError = 'true'; }
-      else view.innerHTML = `<section class="panel"><h2>Could not load run data</h2><p class="lead">${esc(message)}</p></section>`;
+      else view.innerHTML = `<section class="panel"><h2>Could not load run data</h2><p class="lead">${esc(message)}</p><p class="minor" data-render-error>${esc(String(error?.message||error))}</p></section>`;
+      // 11-18: always surface the real cause (it was swallowed, so a Remote-only failure could not be diagnosed)
+      console.error('[attention] '+(phase==='render'?'render':'load')+' failed:',error);
     } finally {
       refreshing = false;
       if (refreshQueued) { refreshQueued = false; queueMicrotask(refresh); }

@@ -956,3 +956,8 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-agent-reason{font-size:11px!important}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg :is(.op-attn-endpoint text,.op-try-caption,.op-attn-end-small){font-size:10.5px!important}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-scroll svg .op-attn-end text:not(.op-attn-end-small){font-size:13px!important}
+/* 11-18 (user): the "watching someone else" note is one slim line */
+html body #attentionbench-clear .lb-readonly.lb-readonly-line{flex-wrap:nowrap;gap:8px;margin:0 0 8px!important;padding:4px 10px!important;border-radius:8px;font-size:13px;min-height:0}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text{flex-wrap:nowrap;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;min-width:0}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line .lb-readonly-text>small:last-child{overflow:hidden;text-overflow:ellipsis}
+html body #attentionbench-clear .lb-readonly.lb-readonly-line :is(.lb-mine-run,.lb-back){flex:none;white-space:nowrap;padding-top:2px!important;padding-bottom:2px!important}

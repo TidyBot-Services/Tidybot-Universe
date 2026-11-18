@@ -277,7 +277,8 @@
     const since = Number(mine?.started_at || 0), minutes = since ? Math.max(0, Math.round((Date.now() / 1000 - since) / 60)) : null;
     const task = mine && (mine.task_key || mine.task_title) ? taskName(mine.task_key || mine.task_title) : '';
     const yours = open ? `<span class="lb-mine-run"><span class="lb-mine-dot" aria-hidden="true"></span><span class="lb-mine-label">Your run</span><b>${esc(statusWord({lobby: mine}))}</b>${task ? `<span>${esc(task)}</span>` : ''}${minutes === null ? '' : `<span>${minutes} min</span>`}</span>` : '';
-    return `<div class="lb-readonly" data-lobby-readonly role="note">${avatar(c, 'lg')}<span class="lb-readonly-text"><small class="lb-readonly-chip">Watching someone else · Read-only</small><b>${esc(personOf(c))}'s run</b><small>You can watch, but not answer or stop it.</small></span>${yours}${mine ? '<button type="button" class="lb-back" data-lb-back>Back to my run →</button>' : ''}</div>${provenance(c)}`;
+    // 11-18 (user: too big): one line — small avatar, whose run, read-only; the full sentence is the tooltip.
+    return `<div class="lb-readonly lb-readonly-line" data-lobby-readonly role="note" title="You can watch, but not answer or stop it.">${avatar(c, 'sm')}<span class="lb-readonly-text"><b>${esc(personOf(c))}'s run</b><small class="lb-readonly-chip">Read-only</small><small>watch only · you cannot answer or stop it</small></span>${yours}${mine ? '<button type="button" class="lb-back" data-lb-back>Back to my run →</button>' : ''}</div>${provenance(c)}`;
   }
   // The sidebar's times are on the demo's own clock, not the wall clock.
   const simAgo = text => state.snap?.demo ? `sim · ${text}` : text;
