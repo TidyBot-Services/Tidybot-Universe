@@ -992,3 +992,25 @@ html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] 
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter{padding:5px 14px 4px!important}
 html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"] .view [data-b1] .op-attn-filters>.op-attn-filter b{font-size:19px!important}
 }
+/* 11-18 draft: mid tier — the replay is video only (full width); the step list is the panel's Steps tab */
+html body #attentionbench-clear[data-tier="mid"] .view [data-b1] .ab-viewer-layout{grid-template-columns:minmax(0,1fr)!important}
+html body #attentionbench-clear[data-tier="mid"] .view [data-b1] .op-vsplit{display:none}
+.c2-panel[data-tab="steps"] [data-pane="chat"],.c2-panel[data-tab="steps"] [data-pane="details"],.c2-panel:not([data-tab="steps"]) [data-pane="steps"]{display:none!important}
+.c2-steps-pane{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:4px 10px 0}
+.c2-steps-pane .ab-viewer-trace{flex:1;min-height:0;display:flex;flex-direction:column;border:0!important;padding:0!important;background:transparent!important}
+.c2-steps-pane .ab-history-events{flex:1;min-height:0;overflow:auto;max-height:none!important}
+.c2-panel[data-tab="steps"] .c2-composer,.c2-panel[data-tab="steps"] form[data-agent-reply]{display:none}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"][data-tier="mid"] .view [data-b1] .ab-viewer-layout{grid-template-columns:minmax(0,1fr)!important}
+html body #attentionbench-clear#attentionbench-clear[data-operator-view="true"][data-tier="mid"] .view [data-b1] .ab-viewer-media>figure.op-video>video{object-fit:contain!important}
+/* 11-18 draft (user idea): small screens — Conversation and Details live in the left column as tabs beside Runs */
+#attentionbench-clear.c2-left .ab-workspace,#attentionbench-clear.c2-left.c2-on.c2-open .ab-workspace{padding-right:0!important}
+.lc-strip{display:flex;gap:4px;margin:0 0 10px;padding:3px;border-radius:999px;background:var(--sh-chip);position:relative;z-index:46}
+html body #attentionbench-clear .lc-strip button{flex:1;height:30px!important;margin:0!important;padding:0 8px!important;border:0!important;border-radius:999px!important;background:transparent!important;color:var(--sh-mut)!important;font:600 12px "DM Sans",system-ui,sans-serif!important;text-transform:none!important;letter-spacing:0!important;box-shadow:none!important;cursor:pointer;white-space:nowrap}
+html body #attentionbench-clear .lc-strip button[aria-selected="true"]{background:var(--sh-card)!important;color:var(--sh-ink)!important;box-shadow:0 1px 3px #0002!important}
+html body #attentionbench-clear .lc-strip button.asking::after{content:"";display:inline-block;width:7px;height:7px;margin-left:6px;border-radius:50%;background:var(--sh-acc);vertical-align:1px}
+#attentionbench-clear.c2-left:not([data-lc="runs"]) .ab-sidebar>:not(.lc-strip){visibility:hidden}
+#attentionbench-clear.c2-left[data-lc="runs"] .c2-panel{display:none!important}
+#attentionbench-clear.c2-left .c2-panel{left:var(--lc-left)!important;right:auto!important;top:var(--lc-top)!important;width:var(--lc-w)!important;bottom:0!important}
+#attentionbench-clear.c2-left .c2-panel .c2-body{width:100%!important;border-left:0!important;border-right:1px solid var(--sh-line);box-shadow:none!important;transform:none!important;visibility:visible!important}
+#attentionbench-clear.c2-left .c2-panel :is(.c2-tabs,.c2-handle,.c2-resizer,[data-c2-toggle]){display:none!important}
+#attentionbench-clear.c2-left .c2-panel .c2-head-row{padding-top:6px;padding-bottom:6px}

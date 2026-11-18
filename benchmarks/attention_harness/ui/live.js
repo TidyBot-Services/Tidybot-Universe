@@ -6088,6 +6088,7 @@
     const runId=currentSnapshot?.run?.run_id;if(runId)stored(`attention.c2:${runId}`,open?'open':'closed-now');
     if(!open&&panel.dataset.waitId)stored(`attention.c2.dismissed:${panel.dataset.waitId}`,'1');
     chatLayout();
+    if(typeof applyTier==='function')applyTier();
   }
   let chatShownWait='',chatUserScroll={run:null,moved:false};
   // Stay on the newest message until the person scrolls the conversation themself (per run).
@@ -6095,6 +6096,55 @@
   ['wheel','touchmove','keydown'].forEach(type=>view.addEventListener(type,e=>{if(e.target.closest?.('[data-c2-feed]'))chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},{passive:true,capture:true}));
   view.addEventListener('mousedown',e=>{if(e.target.closest?.('[data-c2-feed]')&&e.offsetX>e.target.clientWidth)chatUserScroll={run:currentSnapshot?.run?.run_id,moved:true};},true);
   new MutationObserver(()=>{chatLayout();}).observe(view,{childList:true});
+  // 11-18 draft (user: cramped on a 13-inch MacBook): layout tiers by the width the page actually has, not the screen.
+  //  wide  (>= 1100 px for the run page): video + steps side by side, as before.
+  //  mid   (700-1099 px): the step list moves into the right panel as a "Steps" tab; the video takes the whole width.
+  //  narrow (< 700 px): everything stacks (unchanged here).
+  function applyTier(){
+    if(root.classList.contains('c2-left')){delete root.dataset.tier;return;}
+    const replay=view.querySelector('.ab-execution-viewer[data-b1]'),panel=view.querySelector('[data-c2]');
+    const w=view.clientWidth,open=panel?.dataset.open==='true',tier=!replay||!panel?'':w<700?'narrow':(w<1000&&open)?'mid':'wide';  // mid only while the panel is open (closed = the steps stay beside the video)
+    if(root.dataset.tier!==tier){if(tier)root.dataset.tier=tier;else delete root.dataset.tier;}
+    if(!panel)return;
+    const trace=view.querySelector('.ab-viewer-trace');
+    let pane=panel.querySelector('[data-pane="steps"]'),tabBtn=panel.querySelector('[data-c2-tab="steps"]');
+    if(tier==='mid'&&trace){
+      if(!tabBtn){const tabs=panel.querySelector('.c2-tabs');tabBtn=document.createElement('button');tabBtn.type='button';tabBtn.setAttribute('role','tab');tabBtn.dataset.c2Tab='steps';tabBtn.textContent='Steps';tabs?.insertBefore(tabBtn,tabs.children[1]||null);}
+      tabBtn.setAttribute('aria-selected',String(panel.dataset.tab==='steps'));
+      if(!pane){pane=document.createElement('div');pane.dataset.pane='steps';pane.className='c2-steps-pane';panel.querySelector('[data-pane="chat"]')?.after(pane);}
+      if(trace.parentElement!==pane)pane.append(trace);
+    }else{
+      if(pane&&trace&&trace.parentElement===pane)view.querySelector('.ab-viewer-layout')?.append(trace);
+      tabBtn?.remove();pane?.remove();if(panel.dataset.tab==='steps'){panel.dataset.tab='chat';chatTab='chat';}
+    }
+  }
+  // 11-18 (user idea): on a small screen the right panel moves to the left column and shares it with the run list as
+  // tabs — Runs · Conversation · Details. The page body gets the whole width; a new robot question opens Conversation.
+  let leftTab='runs',leftSeenWait='';
+  const leftOn=()=>innerWidth<1500&&Boolean(view.querySelector('[data-c2]'));
+  function applyLeft(){
+    const on=leftOn();root.classList.toggle('c2-left',on);
+    if(!on){sidebar.querySelector(':scope>.lc-strip')?.remove();delete root.dataset.lc;return;}
+    if(!sidebarOpen){sidebarOpen=true;sidebarLayout();}
+    const panel=view.querySelector('[data-c2]');
+    if(panel.dataset.asking==='true'&&panel.dataset.waitId&&panel.dataset.waitId!==leftSeenWait){leftSeenWait=panel.dataset.waitId;leftTab='chat';}
+    let strip=sidebar.querySelector(':scope>.lc-strip');
+    if(!strip){strip=document.createElement('div');strip.className='lc-strip';strip.setAttribute('role','tablist');
+      strip.innerHTML='<button type="button" role="tab" data-lc="runs">Runs</button><button type="button" role="tab" data-lc="chat">Conversation</button><button type="button" role="tab" data-lc="details">Details</button>';
+      sidebar.prepend(strip);}
+    strip.querySelectorAll('[data-lc]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.lc===leftTab));b.classList.toggle('asking',b.dataset.lc==='chat'&&panel.dataset.asking==='true');});
+    root.dataset.lc=leftTab;
+    if(leftTab!=='runs'){if(panel.dataset.tab!==leftTab){panel.dataset.tab=leftTab;chatTab=leftTab;}if(panel.dataset.open!=='true')panel.dataset.open='true';}
+    const r=sidebar.getBoundingClientRect(),t=strip.getBoundingClientRect();
+    root.style.setProperty('--lc-left',`${r.left}px`);root.style.setProperty('--lc-top',`${t.bottom+6}px`);root.style.setProperty('--lc-w',`${r.width}px`);
+  }
+  sidebar.addEventListener('click',e=>{const b=e.target.closest?.('[data-lc]');if(!b)return;e.preventDefault();leftTab=b.dataset.lc;applyLeft();
+    if(leftTab==='chat'){const feed=view.querySelector('[data-c2-feed]');if(feed)requestAnimationFrame(()=>{feed.scrollTop=feed.scrollHeight;});}});
+  new MutationObserver(()=>applyLeft()).observe(view,{childList:true});
+  new MutationObserver(()=>{if(!sidebar.querySelector(':scope>.lc-strip'))applyLeft();}).observe(sidebar,{childList:true});
+  window.addEventListener('resize',()=>applyLeft());
+  new MutationObserver(()=>applyTier()).observe(view,{childList:true});
+  new ResizeObserver(()=>applyTier()).observe(view);
   // 11-18 ui改动 (user): in 01 the split between the picture and "What the robot did" can be dragged; the share is
   // remembered in this browser, double-click resets it. The handle is re-added after every redraw of the section.
   const VSPLIT_KEY='attention.replay.split',VSPLIT_DEFAULT=62;
@@ -6155,6 +6205,7 @@
     const t=e.target;
     const tabButton=t.closest?.('[data-c2-tab],[data-c2-tab-open]');
     if(tabButton){e.preventDefault();chatTab=tabButton.dataset.c2Tab||tabButton.dataset.c2TabOpen;const panel=view.querySelector('[data-c2]');panel.dataset.tab=chatTab;
+      if(root.classList.contains('c2-left')){leftTab=chatTab;applyLeft();return;}
       panel.querySelectorAll('[data-c2-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.c2Tab===chatTab)));
       if(panel.dataset.open!=='true')chatSetOpen(true);
       if(chatTab==='chat'&&chatPinned()){const feed=panel.querySelector('[data-c2-feed]');feed.scrollTop=feed.scrollHeight;}
@@ -6915,7 +6966,8 @@
   function enterAgentWorkspace(snapshot) {
     const index=devSessions.findIndex(s=>s.session_id===snapshot.dev_session.session_id);
     if(index>=0)devSessions[index]={...devSessions[index],...snapshot.dev_session};
-    if(currentSnapshot?.run?.run_id!==snapshot.run.run_id&&!matchMedia('(max-width:900px)').matches){sidebarOpen=true;sidebarLayout();}
+    // 11-18: only on a wide screen, and never against the person's own choice (it reopened the list on a laptop)
+    if(currentSnapshot?.run?.run_id!==snapshot.run.run_id&&!matchMedia('(max-width:1499px)').matches&&preference('attention.sidebar-open')!=='false'){sidebarOpen=true;sidebarLayout();}
   }
   function bindHistorySelection(snapshot) {
     view.querySelectorAll('[data-history-select]:not(.op-attn-watch)').forEach(button => button.addEventListener('click', () => {
