@@ -139,9 +139,9 @@
   const replaySelections = new Map();
   const cameraChoices = new Map();
   const handReplayCache = new Map();
-  function cameraContext(snapshot) {
-    return `${snapshot.run.run_id}:${stored(`attention.history:${snapshot.run.run_id}`)||'live'}`;
-  }
+  // 11-20 (user): the chosen camera stays chosen when another try, attempt or run is opened (one choice for the page;
+  // a view that recording lacks falls back to the overview for it without forgetting the choice).
+  function cameraContext() { return 'page'; }
   function cameraChoice(snapshot) { return cameraChoices.get(cameraContext(snapshot))||'external'; }
   function cameraStation(snapshot) {
     const chosen=snapshot.station.camera_views?.[cameraChoice(snapshot)];
@@ -2548,9 +2548,10 @@
   // Remote opens what a newcomer came for: their own live run, else the run on the robot now, else the lobby.
   // Someone else's finished run is history, never the first page.
   function remoteLanding(devs) {
-    const ready=devs.filter(d=>resolvedTask(devNavigationRecord(d))&&d.lobby);
+    // 11-20 (user): no gallery; the Run page always opens a run. Own live run, any live run, own latest, latest.
+    const ready=devs.filter(d=>resolvedTask(devNavigationRecord(d))&&d.lobby).sort((a,b)=>(b.lobby.started_at||0)-(a.lobby.started_at||0));
     const live=d=>['queued','running','waiting_human'].includes(d.lobby.state);
-    return ready.find(d=>d.lobby.mine&&live(d))||ready.find(d=>['running','waiting_human'].includes(d.lobby.state))||null;
+    return ready.find(d=>d.lobby.mine&&live(d))||ready.find(d=>['running','waiting_human'].includes(d.lobby.state))||ready.find(d=>d.lobby.mine)||ready[0]||null;
   }
   function devPolicyChoices(options) {
     return (options?.agent_policies?.policies||[]).map(p=>p.policy_id);
@@ -5179,6 +5180,61 @@
     const m=snapshot.agent&&station.camera_monitor_v2&&/^(\/api\/dev-v2\/experiments\/devexp-[a-f0-9]{24}\/cells\/[a-f0-9]{64})\/live(?:\?view=[a-z_]+)?$/.exec(station.camera_state_url||'');
     return m?`<button type="button" data-free-view="${esc(`${m[1]}/agent/files/free-view/live`)}" data-free-view-label="" aria-pressed="false" title="Rotate, zoom and pan a live 3D view of the attempt running now. View only.">3D view</button>`:'';
   }
+  // 11-20 (user: "3D view only full screen is not reasonable"): 3D view is one more camera. It shows in the camera's own
+  // box, the same size as the others. The frame lives outside the re-rendered page (moving an iframe reloads it) and is
+  // laid over the camera box each frame; it follows the chosen attempt and goes away when another camera is chosen.
+  let inlineFree=null;
+  function closeInlineFreeView(){
+    if(!inlineFree)return;
+    cancelAnimationFrame(inlineFree.raf);inlineFree.frame.remove();window.removeEventListener('message',inlineFree.onMessage);inlineFree=null;
+    view.querySelectorAll('[data-free-view]').forEach(b=>b.setAttribute('aria-pressed','false'));
+    view.querySelectorAll('[data-camera-view]').forEach(b=>b.removeAttribute('data-free-hidden'));
+    view.classList.remove('op-free-on');
+  }
+  function inlineFreeTarget(){
+    return view.querySelector('[data-execution-viewer] figure.op-video:not([data-starting-scene])')||view.querySelector('[data-op-stage="live"]');
+  }
+  function openInlineFreeView(base,attempt){
+    if(inlineFree?.base!==base){
+      closeInlineFreeView();
+      const frame=document.createElement('iframe');
+      frame.className='op-free-inline';frame.title='3D replay, look only';frame.setAttribute('sandbox','allow-scripts allow-same-origin');frame.setAttribute('allow','fullscreen');
+      const title=document.querySelector('[data-page-title] h1')?.textContent.replace(/\s+/g,' ').trim()||'';
+      frame.src=`/ui/free_view.html?embed=1&inline=1&data=${encodeURIComponent(base)}&title=${encodeURIComponent(title)}&attempt=${encodeURIComponent(attempt)}`;
+      const onMessage=event=>{if(event.origin===location.origin&&event.source===frame.contentWindow&&event.data?.source==='attentionbench-free-view'&&event.data.type==='close')closeInlineFreeView();};
+      window.addEventListener('message',onMessage);
+      document.body.append(frame);
+      inlineFree={base,frame,onMessage,raf:0};
+      const place=()=>{
+        if(!inlineFree||inlineFree.frame!==frame)return;
+        const target=inlineFreeTarget(),r=target?.getBoundingClientRect();
+        const shown=Boolean(r&&r.width>0&&r.height>0&&target.offsetParent!==null);
+        const bar=document.querySelector('.ab-shell-top')?.getBoundingClientRect().bottom||0;
+        frame.style.display=shown?'block':'none';
+        if(shown){
+          Object.assign(frame.style,{left:`${r.left}px`,top:`${r.top}px`,width:`${r.width}px`,height:`${r.height}px`});
+          // Scrolled under the sticky top bar: cut the covered part off instead of drawing over the bar.
+          frame.style.clipPath=r.top<bar?`inset(${bar-r.top}px 0 0 0)`:'none';
+        }
+        inlineFree.raf=requestAnimationFrame(place);
+      };
+      place();
+    }
+    view.classList.add('op-free-on');
+    view.querySelectorAll('[data-free-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.freeView===base)));
+    view.querySelectorAll('[data-camera-view]').forEach(b=>b.setAttribute('aria-pressed','false'));
+  }
+  function attemptLabelNow(button){
+    return button.dataset.freeViewLabel??(view.querySelector('.ab-history-tabs [aria-pressed="true"],.ab-history-tabs [aria-selected="true"]')?.textContent.trim()||'attempt');
+  }
+  // After each render: keep 3D on if it was on (switching to this attempt's 3D when another attempt is open).
+  function keepInlineFreeView(){
+    if(!inlineFree)return;
+    const buttons=[...view.querySelectorAll('[data-free-view]')];
+    const same=buttons.find(b=>b.dataset.freeView===inlineFree.base),next=same||buttons[0];
+    if(!next){closeInlineFreeView();return;}
+    openInlineFreeView(next.dataset.freeView,attemptLabelNow(next));
+  }
   function openFreeView(base,attempt) {
     // Full-window, look-only 3D replay. The page inside draws its own header, controls and waiting screen.
     document.querySelector('[data-free-view-dialog]')?.remove();
@@ -5212,7 +5268,7 @@
     const views=viewOptions?`<div class="ab-camera-views" role="group" aria-label="Camera view">${Object.entries(viewOptions).map(([key,row])=>`<button type="button" data-camera-view="${esc(key)}" aria-pressed="${key===chosenView}">${esc(row.name)}</button>`).join('')}${attempt&&!currentReplay?freeViewButton(trace):!attempt?liveFreeViewButton(snapshot):''}</div>`:'';
     // 11-18 (user: no way back to live): the b1 page hides the Live pill row, so a recording of a run still going carries its own way back
     const backLive=attempt&&!isTerminal(snapshot)?`<button type="button" class="op-back-live" data-history-select="live"><i class="op-live-dot on" aria-hidden="true"></i>Back to live</button>`:'';
-    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${index===0?backLive:''}${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
+    const videoHTML=videos.map((e,index)=>`<figure class="op-video" data-op-stage="replay" data-state="loading">${index===0?backLive:''}${failed?`<span class="op-failure-tag">${attemptName(attempt)} · failed${failureTime==null?'':` at ${operatorTime(failureTime)}`}</span>`:''}${loadingOverlay('replay')}<video data-history-replay ${index===0?'id="ab-history-replay"':''} data-replay-key="${esc(JSON.stringify([run.run_id,attempt.attempt_id,trace?.trace_id,...(recordingViews?["synchronized_views"]:[e.evidence_id||null,e.sha256||null,e.media_url]),...(trimmedShown?['trim']:[])]))}" ${trimmedShown?'data-trim-active':''} controls loop playsinline preload="metadata" src="${esc(e.media_url)}" aria-label="${attemptName(attempt)} execution replay" ${failed&&failureTime!=null?`data-operator-failure-seconds="${failureTime}"`:failed?'data-operator-failure-end':''}></video></figure>`).join('');
     // Saved still frames are not shown under the replay (user 11-08): the video already shows the attempt.
     const station=cameraStation(snapshot);
     const devJobs=(!isTerminal(snapshot) && snapshot.dev_session?.jobs) || [];
@@ -6558,11 +6614,12 @@
     bindOperatorEnhancements(snapshot,previousRun!==run.run_id);
     const replayForPolicy=view.querySelector('video[data-history-replay]');if(replayForPolicy)updateReplayPolicy(snapshot,replayForPolicy);
     view.querySelectorAll('[data-policy-marker-seconds]').forEach(b=>b.addEventListener('click',()=>{const v=view.querySelector('video[data-history-replay]');if(v&&b.dataset.policyMarkerSeconds!==''){v.pause();v.currentTime=Number(b.dataset.policyMarkerSeconds);}}));
-    view.querySelectorAll('[data-free-view]').forEach(button=>button.addEventListener('click',()=>openFreeView(button.dataset.freeView,button.dataset.freeViewLabel??(view.querySelector('.ab-history-tabs [aria-pressed="true"],.ab-history-tabs [aria-selected="true"]')?.textContent.trim()||'attempt'))));
+    view.querySelectorAll('[data-free-view]').forEach(button=>button.addEventListener('click',()=>openInlineFreeView(button.dataset.freeView,attemptLabelNow(button))));
     view.querySelectorAll('[data-camera-view]').forEach(button=>{
       button.addEventListener('pointerdown',event=>event.preventDefault());
-      button.addEventListener('click',()=>{cameraChoices.set(cameraContext(snapshot),button.dataset.cameraView);render(snapshot);});
+      button.addEventListener('click',()=>{closeInlineFreeView();cameraChoices.set(cameraContext(snapshot),button.dataset.cameraView);render(snapshot);});
     });
+    keepInlineFreeView();
     view.querySelector('[data-overview-open-sidebar]')?.addEventListener('click',()=>{sidebarOpen=true;sidebarLayout();});
     bindDevGuidance(snapshot);
     bindAgentReply(snapshot);
@@ -6860,10 +6917,7 @@
     });
   }
 
-  // 11-18 (user): on Remote a signed-in person with no run open gets the run gallery (pick a run or start one), not
-  // empty frames. Not while New run is being opened or its dialog is up.
   function renderNoRuns(){
-    if(root.dataset.remote==='1'&&root.dataset.guest!=='1'&&!launchRequested&&!launchDialog.open&&!pendingLaunch&&location.pathname==='/ui/'){location.replace('/ui/gallery');return;}
     renderInactive(null);
   }
   function renderInactive(launch = null) {

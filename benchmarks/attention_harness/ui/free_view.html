@@ -114,6 +114,14 @@
     .pill small{display:none}
     #row1{gap:10px}
   }
+  /* 11-20 (user): inside the run page the 3D view sits in the camera's own box (?inline=1): no title, no Close, smaller tools. */
+  body.inline #head,body.inline .shade.t,body.inline #shut{display:none!important}
+  body.inline #close{top:10px;right:10px}
+  body.inline #tools{top:54px;right:10px;gap:6px}
+  body.inline .pill{height:28px;padding:0 10px;font-size:11px}
+  body.inline #bar{left:10px;right:10px;bottom:10px}
+  body.inline #hint,body.inline #about{display:none}
+  @media (max-width:560px),(max-height:380px){body.inline #tools,body.inline #close{display:none!important}}
 </style>
 </head>
 <body data-state="loading">
@@ -169,6 +177,7 @@ const clockText = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).pad
 const on = id => $(id).getAttribute('aria-pressed') === 'true';
 const press = (id, v) => $(id).setAttribute('aria-pressed', v ? 'true' : 'false');
 const embedded = window.parent !== window;
+if (new URLSearchParams(location.search).get('inline') === '1') document.body.classList.add('inline');
 const tellParent = what => { if (embedded) window.parent.postMessage({source: 'attentionbench-free-view', type: what}, location.origin); };
 window.addEventListener('error', e => fail('Viewer error: ' + e.message));
 window.addEventListener('unhandledrejection', e => fail('Viewer error: ' + (e.reason && e.reason.message || e.reason)));
@@ -271,7 +280,8 @@ function draw(now) {
     time = Math.min(frames - 1, Math.max(time + step / dt, frames - 1 - 1.5 / dt)); $('seek').value = time;
   } else if (playing) {
     time += step * speed / dt;
-    if (time >= frames - 1) { time = frames - 1; if (live && !liveEnded) setLiveFollow(true); else setPlaying(false); }
+    // 11-20 (user): a replay keeps playing from the start; only a live view waits at its newest frame.
+    if (time >= frames - 1) { if (live && !liveEnded) { time = frames - 1; setLiveFollow(true); } else if (!live) time = 0; else { time = frames - 1; setPlaying(false); } }
     $('seek').value = time;
   }
   const dpr = Math.min(2, window.devicePixelRatio || 1);

@@ -135,12 +135,14 @@ def owned(world, browser, experiment=OWN):
 def test_anyone_can_watch_but_only_an_invite_can_act(world):
     anonymous = Browser(world.port)
     assert anonymous.send('GET', '/')[2].getheader('Location') == '/ui/home.html'
-    # 11-14: the Run page itself is a gallery of everyone's runs for a visitor; a link to one run opens the run page.
-    gallery = anonymous.send('GET', '/ui/')[1].decode()
-    assert 'id="guest-gallery"' in gallery and 'data-guest="1"' in gallery and 'href="/login" data-guest-new-run' in gallery and 'data-control-token' not in gallery
+    # 11-20 (user): no gallery; a visitor at /ui/ gets the run page read-only, and the old gallery link goes there.
+    page = anonymous.send('GET', '/ui/')[1].decode()
+    assert 'data-guest="1"' in page and 'data-remote="1"' in page and 'data-control-token' not in page.split('<body', 1)[0]
+    assert anonymous.send('GET', '/ui/gallery')[2].getheader('Location') == '/ui/'
+    assert anonymous.send('GET', '/ui/guest.js')[0] == 404
     page = anonymous.send('GET', '/ui/?dev=v2-' + CELL)[1].decode()
     assert 'guest-gallery' not in page and 'data-guest="1"' in page and 'data-remote="1"' in page and 'data-control-token' not in page.split('<body', 1)[0]
-    for path in ('/ui/live.js', '/ui/guest.js', '/ui/guest.css', '/api/runs', '/api/run-options', '/api/lobby'):assert anonymous.send('GET', path)[0] == 200
+    for path in ('/ui/live.js', '/api/runs', '/api/run-options', '/api/lobby'):assert anonymous.send('GET', path)[0] == 200
     # Task picker pictures are public like the page; files outside the pattern, or missing, are not served.
     status, body, response = anonymous.send('GET', '/ui/tasks/manifest.json')
     assert status == 200 and response.getheader('Content-Type').startswith('application/json') and json.loads(body)['tasks']

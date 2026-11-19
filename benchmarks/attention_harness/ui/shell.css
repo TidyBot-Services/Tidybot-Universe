@@ -1032,7 +1032,8 @@ html body #attentionbench-clear.c2-left [data-sidebar-toggle]{display:none!impor
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row-reverse;justify-content:space-between}
 /* list mode: the one button "← <open run>" spans the line; no repeated title */
 #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb{flex-direction:row!important}
-html body #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb button{flex:1 1 auto!important;justify-content:flex-start;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+/* 11-20 (user): "← Back to run" is the same small pill as "← All runs". */
+html body #attentionbench-clear.c2-left[data-lc="runs"] .lc-crumb button{flex:none!important;white-space:nowrap}
 /* 11-18 (user): whose run it is sits as a small bubble in the top bar, not a full-width line above the title */
 @media (min-width:761px){
 html body #attentionbench-clear .lb-readonly.lb-readonly-line{position:fixed!important;top:calc((var(--sh-bar,68px) - 34px)/2);left:50%;transform:translateX(-50%);z-index:60;max-width:min(560px,40vw);height:34px;margin:0!important;padding:0 12px 0 4px!important;border-radius:999px!important;box-shadow:0 2px 8px -4px #0004}
@@ -1132,3 +1133,6 @@ html body #attentionbench-clear#attentionbench-clear :is(.op-video,.ab-viewer-me
   /* the run list sheet starts under the top bar, so Tasks stays there to close it */
   html body #attentionbench-clear#attentionbench-clear.c2-phone .ab-sidebar{top:var(--sh-bar,57px)!important;height:calc(100dvh - var(--sh-bar,57px))!important;border-radius:0!important}
 }
+/* 11-20 (user): 3D view sits in the camera's own box (laid over it by live.js), not full screen. */
+.op-free-inline{position:fixed;z-index:5;border:0;border-radius:6px;background:#070907;display:none}
+#attentionbench-clear .view.op-free-on [data-execution-viewer] figure.op-video video{visibility:hidden}
