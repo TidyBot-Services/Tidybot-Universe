@@ -5973,6 +5973,7 @@
   // Same data and endpoint as the old Memory page: /api/dev-v2/automatic-checks .reuse, POST /api/dev-memories/<id>/level.
   let reuseCache={at:0,notes:null,loading:false};
   function loadReuse(){
+    if(root.dataset.guest==='1')return;  // a visitor cannot confirm notes; the endpoint answers 401
     if(reuseCache.loading||Date.now()-reuseCache.at<30000)return;
     reuseCache.loading=true;
     fetch('/api/dev-v2/automatic-checks',{cache:'no-store',credentials:'same-origin'}).then(r=>r.ok?r.json():Promise.reject(Error('HTTP '+r.status)))
@@ -6964,7 +6965,14 @@
   async function readDevEvidence(session, ref) {
     const url = devFile(session, ref?.uri);
     if (!url || !/^[a-f0-9]{64}$/.test(ref.sha256)) throw new Error('Invalid evidence reference');
-    const response = await fetch(url, {cache:'no-store'});
+    // 11-20: Remote limits requests per person (all visitors without an invite share one allowance). A big run reads
+    // many evidence files at once; on 429 wait and try again instead of failing the whole page.
+    let response;
+    for (let tries=0;;tries++) {
+      response = await fetch(url, {cache:'no-store'});
+      if (response.status !== 429 || tries >= 6) break;
+      await new Promise(r=>setTimeout(r, 600*(tries+1)+Math.random()*400));
+    }
     if (!response.ok) throw new Error(`Evidence HTTP ${response.status}`);
     const bytes = await response.arrayBuffer();
     const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(n => n.toString(16).padStart(2,'0')).join('');
