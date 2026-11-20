@@ -123,7 +123,6 @@ unit was installed or started.
 - `benchmarks/attention_harness/memory_independent_validator.py`
 - `benchmarks/attention_harness/run_storage.py`
 - `benchmarks/attention_harness/tests/test_run_storage.py`
-- `docs/REPORT-run-storage-compress-20261120.md`
 - `docs/run-storage-impl-notes-20261120.md`
 - `docs/run-storage-readers-20261120.md`
 - `remote_gateway/deploy/abctl.py`
@@ -317,9 +316,7 @@ The after/before ratio is 0.3708%. Logical candidate bytes were 3,308,503:
 1,462,500 physics bytes plus 1,846,003 projected state bytes. This highly
 repetitive synthetic input verifies allocation accounting and round-trip
 behavior; it is **not** evidence for the plan's real-run compression forecasts.
-No real-run or qifei before/after comparison was performed. See the companion
-[report](REPORT-run-storage-compress-20261120.md) for the unmeasured acceptance
-items.
+No real-run or qifei before/after comparison was performed. Real-run acceptance measurements remain unperformed in this worktree.
 
 Residual limits: derived state logs are reconstructed and verified before being
 returned, which buffers their physics/projected JSON and can cost substantial
@@ -337,3 +334,99 @@ should merge the oracle work first, then integrate these reader fallbacks and
 materialization hooks around the resulting raw workspace functions; preserve
 both changes and rerun workspace/reader, policy and golden tests. The oracle
 worktree was not inspected or changed, and no merge was attempted here.
+
+
+## Round 2
+
+This section supersedes Round 1's snapshot exclusion, unbounded derivation and
+automatic-compaction behavior described above. All work remains confined to this
+worktree and synthetic temporary fixtures, with no commit, deployment, live run,
+other-checkout mutation or Memory service source change. The extra Round 1
+`docs/REPORT-run-storage-compress-20261120.md` has been deleted as requested.
+
+Changes:
+
+- Snapshot-object groups are eligible when every non-object alias is an
+  allowlisted public/ws/Eval JSON path and every object's hex64 basename equals
+  the SHA-256 of the original bytes. They always use zstd, never derivation.
+  Standalone objects, image aliases, wrong digests, metadata, native-log aliases,
+  external aliases and Memory-pinned groups remain excluded. Receipt recovery
+  and restore validate the same group rule. All compressed aliases share one
+  inode; restore re-creates the original shared raw inode and verifies bytes.
+- The secure reader sharing contract now covers historical read-only state,
+  trace, frames and planner JSON under executions. Current publisher hardlink/
+  copy behavior is unchanged. Existing public, Eval, UI and snapshot readers inherit it;
+  no-follow, read-only shared-inode and expanded-byte limits are retained.
+  Freeze now securely reads/verifies existing raw or compressed object seals.
+  Replay already used the secure fallback and verifies original SHA/length;
+  missing non-image errors and image-cleaned classification remain intact.
+  State-log dedupe verifies compressed object bytes securely, then skips the
+  representation rather than linking it into a raw path.
+- Private probe-owner planner HTTP/client journals and numbered world snapshots
+  join the allowlist. The reader audit and A-table additions are in the companion
+  inventory. Their existing unified readers and Memory rehydration boundaries
+  suffice; the diagnostic, catalog-pin and original-byte regressions exercise
+  actual compressed private probe paths. Unrelated planner classes stay raw.
+- Run-end chaining and startup compaction recovery require
+  `ATTENTIONBENCH_RUN_COMPACT=1`; frame cleanup still runs without it. The pending
+  marker is created only when enabled. Manual compaction remains ungated. An
+  enabled host without `ATTENTIONBENCH_MEMORY_STORES` still compacts with an empty
+  store list. **Deployments with Memory must set all relevant stores before
+  enabling automatic compaction.** Plans and persisted receipts record absolute
+  consulted store paths; recovered receipts also retain earlier consulted paths.
+- `DERIVE_MAX_BYTES = 64 * 1024 * 1024`, overridden in bytes by
+  `ATTENTIONBENCH_DERIVE_MAX_BYTES`, bounds new derivations by original state-log
+  size. Above the cap, the planner skips projection entirely and selects zstd.
+  Existing derived stubs retain their pinned reader semantics.
+
+Verification uses the requested interpreter, PYTHONPATH and pytest options.
+Final requested selection — **271 passed in 81.46 s (0:01:21)**:
+
+```sh
+PYTHONPATH=/tmp/run-storage-test-deps:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service /home/truares/.cache/tidybot-attention/venv/bin/python -m pytest -q -p no:cacheprovider benchmarks/attention_harness/tests/test_run_storage.py benchmarks/attention_harness/tests/test_frame_cleanup.py benchmarks/attention_harness/tests/test_state_log_dedupe.py benchmarks/attention_harness/tests/test_dev_agent_replay_ui.py benchmarks/attention_harness/tests/test_dev_agent_workspace.py benchmarks/attention_harness/tests/test_home_status.py benchmarks/attention_harness/tests/test_start_collision_diagnose.py benchmarks/attention_harness/tests/test_dev_v2_memory_import_evidence.py
+```
+
+| Requested file | Cases passed in final selection |
+|---|---:|
+| `test_run_storage.py` | 65 |
+| `test_frame_cleanup.py` | 111 |
+| `test_state_log_dedupe.py` | 11 |
+| `test_dev_agent_replay_ui.py` | 27 |
+| `test_dev_agent_workspace.py` | 12 |
+| `test_home_status.py` | 18 |
+| `test_start_collision_diagnose.py` | 3 |
+| `test_dev_v2_memory_import_evidence.py` | 24 |
+
+Additional affected-reader selection — **91 passed in 29.38 s**:
+
+```sh
+PYTHONPATH=/tmp/run-storage-test-deps:/home/truares/桌面/AttentionBench-Workspace/development/attention_memory_service /home/truares/.cache/tidybot-attention/venv/bin/python -m pytest -q -p no:cacheprovider benchmarks/attention_harness/tests/test_dev_agent_d5.py benchmarks/attention_harness/tests/test_dev_agent_eval_repair.py benchmarks/attention_harness/tests/test_dev_agent_try_story.py benchmarks/attention_harness/tests/test_memory_independent_validator.py benchmarks/attention_harness/tests/test_family_live_path_replay.py
+```
+
+New coverage includes three-link ws/public/object groups for each selected public
+JSON class, zstd-only action selection, secure UI reads, identical-byte replay,
+one-inode/nlink-3 restore, raw/zstd object seals at freeze/replay, genuinely
+missing object errors, and exclusion of image/native/metadata/standalone/wrong-SHA
+object groups. Two image tests compact a historically shared frame-index object,
+then verify cleaned-image replay both with a cleanup receipt and with only a
+verified index. Compressed-object dedupe verifies original bytes and rejects a
+valid zstd frame with a wrong original SHA. Probe tests cover all three named
+planner classes, unchanged diagnostic parsing/world checks, and Memory catalog
+pinning of original bytes. Gate cases cover unset, `0`, `true` and exact `1`,
+startup pending recovery, enabled children without configured Memory stores,
+and ungated manual CLI behavior. Cap tests cover the exact boundary, above-cap
+zstd selection without projection, and the 64 MiB default.
+
+Development runs before the final fixes produced **62 passed, 2 failed in
+60.60 s**, **202 passed, 1 failed in 30.01 s**, and **267 passed, 1 failed in
+80.89 s**. These exposed incomplete historical-alias fixture construction and a
+producer-permission change. The final implementation preserves current producer
+behavior while extending secure readers; valid frame-index fixtures and the
+unchanged corruption test now pass. The final complete runs above supersede
+those observations. No failing cases were skipped or checks relaxed.
+
+`git diff --check` and AST parsing of all eight changed Python files passed.
+The existing temporary PyYAML support under `/tmp/run-storage-test-deps` was reused;
+no dependencies were installed. All compaction/replay fixtures were synthetic
+and temporary. Round 1's broad historical failure table is retained above as a
+record of that round, not a claim that those unrelated suites were rerun here.

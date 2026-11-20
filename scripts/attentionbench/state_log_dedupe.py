@@ -17,7 +17,7 @@ import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from benchmarks.attention_harness.frame_cleanup import safe, state, run_lock, atomic, load
-from benchmarks.attention_harness.dev_agent_workspace import shared_name
+from benchmarks.attention_harness.dev_agent_workspace import shared_name, read_beneath
 
 
 def fingerprint(path):
@@ -60,7 +60,12 @@ def groups(root):
         duplicates = []
         for path in candidates:
             # Sidecars are representations, never raw snapshot objects.
-            if any(Path(str(path)+suffix).exists() for suffix in ('.zst', '.derived')):continue
+            if any(Path(str(path)+suffix).exists() for suffix in ('.zst', '.derived')):
+                if path.parent == snapshots/'objects':
+                    data = read_beneath(snapshots, 'objects/'+sha, info.st_size, shared=True)
+                    if len(data) != info.st_size or hashlib.sha256(data).hexdigest() != sha:
+                        raise ValueError('snapshot object digest mismatch: '+str(path))
+                continue
             safe(path)
             if not path.exists(): continue
             if path.stat().st_size != info.st_size: continue

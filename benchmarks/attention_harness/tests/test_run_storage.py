@@ -172,7 +172,7 @@ def test_memory_catalog_excludes_whole_inode_group_and_fail_closed(run, tmp_path
 
 
 def test_protected_snapshot_external_alias_and_nonallowlist(run, tmp_path):
-    obj = run.ws.private/'snapshots/objects'/hashlib.sha256(run.state).hexdigest()
+    obj = run.ws.private/'snapshots/objects'/('0'*64)
     obj.parent.mkdir(parents=True)
     os.link(run.canonical, obj)
     write(run.root/'config.json', b' '* (storage.MIN_BYTES+1))
@@ -358,10 +358,13 @@ def test_resume_freeze_retains_snapshot_safety_and_logical_names(run):
 
 
 def test_detached_cleanup_chains_compaction_and_sweep_recovers_pending(run, monkeypatch):
+    monkeypatch.setenv('ATTENTIONBENCH_RUN_COMPACT', '1')
+    monkeypatch.delenv('ATTENTIONBENCH_MEMORY_STORES', raising=False)
     monkeypatch.setattr(storage, '_backend', lambda:('cli',None))
     monkeypatch.setattr(frames.sys,'argv',['frame_cleanup',str(run.root),'0'])
     frames._main()
     assert json.loads((run.root/'run-compact.json').read_bytes())['status']=='complete'
+    assert json.loads((run.root/'run-compact.json').read_bytes())['memory_stores']==[]
     assert storage.read_bytes(run.public)==run.state
     assert not (run.root/'run-compact-pending.json').exists()
     # Recovery only queues explicit pending/in-progress work; completed legacy
@@ -486,3 +489,180 @@ def test_v1_derivation_components_are_pinned_until_legacy_reader_is_preserved():
     material+=json.dumps(dict(forbidden=FORBIDDEN.pattern,flags=FORBIDDEN.flags,fields=sorted(FIELDS)),sort_keys=True)
     assert hashlib.sha256(material.encode()).hexdigest()=='34d8e528e234c3e5b706006549d4a06e2b8cffbef587e8fbd1dac6dc39bb47a0', (
         'state-log-v1 components changed: preserve the legacy derivation before adding a new version')
+
+
+@pytest.mark.parametrize('name', ['trace.json', 'frames.json', 'diagnostics/planner.json'])
+def test_snapshot_alias_of_non_shared_class_stays_raw(run, name):
+    logical = 'executions/e000001/'+name
+    raw = b'[]'+b' '*(storage.MIN_BYTES+1)
+    run.ws.publish(logical, raw)
+    canonical, public = run.ws.canonical/logical, run.ws.ws/logical
+    obj = run.ws.private/'snapshots/objects'/hashlib.sha256(raw).hexdigest()
+    obj.parent.mkdir(parents=True, exist_ok=True)
+    canonical.chmod(0o444); public.unlink()
+    os.link(canonical, public); os.link(canonical, obj)
+    result = storage.compact(run.root)
+    assert not any(str(obj.relative_to(run.root)) in a['paths'] for a in result['actions'])
+    assert all(p.read_bytes() == raw for p in (canonical, public, obj))
+
+
+@pytest.mark.parametrize('name', ['state_log.json'])
+def test_snapshot_alias_compacts_replays_and_restores_one_inode(run, name):
+    from benchmarks.attention_harness.dev_agent_replay import freeze_origin, provision_replay
+    from benchmarks.attention_harness.dev_agent_view import artifact
+    from scripts.attentionbench import state_log_dedupe
+    logical = 'executions/e000001/'+name
+    raw = run.state if name == 'state_log.json' else b'[]'+b' '*(storage.MIN_BYTES+1)
+    if name != 'state_log.json':
+        run.ws.publish(logical, raw)
+        # Reproduce historical shared JSON without changing today's producer.
+        (run.ws.canonical/logical).chmod(0o444)
+        (run.ws.ws/logical).unlink()
+        os.link(run.ws.canonical/logical, run.ws.ws/logical)
+    cut = freeze_origin(run.ws, 'post-exec-v1')
+    digest = hashlib.sha256(raw).hexdigest()
+    obj = run.ws.private/'snapshots/objects'/digest
+    canonical, public = run.ws.canonical/logical, run.ws.ws/logical
+    assert obj.stat().st_nlink == 3
+    result = storage.compact(run.root)
+    action = next(a for a in result['actions'] if str(obj.relative_to(run.root)) in a['paths'])
+    assert action['action'] == 'zstd' and action['derived'] is None
+    sides = [Path(str(p)+'.zst') for p in (canonical, public, obj)]
+    assert len({p.stat().st_ino for p in sides}) == 1 and sides[0].stat().st_nlink == 3
+    assert all(not p.exists() for p in (canonical, public, obj))
+    assert storage.read_bytes(obj) == raw
+    assert obj in storage.logical_paths(run.ws.private/'snapshots/objects')
+    assert artifact(dict(dev_mode='agent', artifact_dir=str(run.root)), logical)[0] == json.loads(raw)
+    replay = provision_replay(cut, run.root/'replay')
+    assert (replay.canonical/logical).read_bytes() == raw
+    assert frames.plan(run.root)['frames_deleted'] == 0
+    assert list(state_log_dedupe.groups(run.root)) == []
+    storage.restore(run.root)
+    assert all(p.read_bytes() == raw for p in (canonical, public, obj))
+    assert len({p.stat().st_ino for p in (canonical, public, obj)}) == 1
+    assert obj.stat().st_nlink == 3 and all(not p.exists() for p in sides)
+
+
+def test_freeze_verifies_existing_compressed_object_and_missing_replay_errors(run):
+    from benchmarks.attention_harness.dev_agent_replay import freeze_origin, provision_replay
+    cut = freeze_origin(run.ws, 'post-exec-v1')
+    obj = run.ws.private/'snapshots/objects'/hashlib.sha256(run.state).hexdigest()
+    storage.compact(run.root)
+    side = Path(str(obj)+'.zst')
+    freeze_origin(run.ws, 'post-feedback-v1')
+    assert side.exists() and not obj.exists()
+    side.unlink()
+    with pytest.raises(ValueError, match='snapshot_object_missing'):
+        provision_replay(cut, run.root/'missing-replay')
+
+
+def test_compressed_snapshot_object_seal_is_checked_on_replay_and_freeze(run, tmp_path):
+    from benchmarks.attention_harness.dev_agent_replay import freeze_origin, provision_replay
+    cut = freeze_origin(run.ws, 'post-exec-v1')
+    obj = run.ws.private/'snapshots/objects'/hashlib.sha256(run.state).hexdigest()
+    storage.compact(run.root)
+    # Replace only the object representation with a valid zstd frame containing
+    # wrong original bytes, leaving canonical evidence intact.
+    side = Path(str(obj)+'.zst'); side.unlink()
+    wrong = write(tmp_path/'wrong', b'X'*len(run.state))
+    storage._compress(wrong, side); side.chmod(0o444)
+    with pytest.raises(ValueError, match='snapshot_object_mismatch'):
+        provision_replay(cut, run.root/'corrupt-replay')
+    with pytest.raises(ValueError, match='snapshot_object_mismatch'):
+        freeze_origin(run.ws, 'post-feedback-v1')
+
+
+@pytest.mark.parametrize('alias', ['bad_digest', 'manifest', 'image', 'object_only', 'native'])
+def test_snapshot_exception_remains_closed(run, alias):
+    digest = hashlib.sha256(run.state).hexdigest()
+    target = run.ws.private/'snapshots/objects'/digest
+    if alias == 'bad_digest':target = target.with_name('0'*64)
+    elif alias == 'manifest':target = run.ws.private/'snapshots/manifests'/('a'*64+'.json')
+    elif alias == 'image':target = run.ws.canonical/'executions/e000001/frames/image.png'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    os.link(run.canonical, target)
+    if alias == 'object_only':
+        run.canonical.unlink(); run.public.unlink()
+    elif alias == 'native':
+        run.canonical.unlink(); run.public.unlink()
+        native = run.physics.parent/'native-actions.jsonl'
+        os.link(target, native)
+    assert not any(str(target.relative_to(run.root)) in a['paths'] for a in storage.plan(run.root)['actions'])
+
+
+def test_derive_size_cap_falls_back_without_projection(run, monkeypatch):
+    monkeypatch.setenv('ATTENTIONBENCH_DERIVE_MAX_BYTES', str(len(run.state)))
+    assert next(a for a in storage.plan(run.root)['actions'] if a['action']=='derive')
+    monkeypatch.setenv('ATTENTIONBENCH_DERIVE_MAX_BYTES', str(len(run.state)-1))
+    monkeypatch.setattr(storage, 'derive_state_log', lambda *a: pytest.fail('oversize derivation attempted'))
+    result = storage.compact(run.root)
+    assert all(a['action']=='zstd' for a in result['actions'])
+    assert storage.read_bytes(run.public) == run.state
+    monkeypatch.delenv('ATTENTIONBENCH_DERIVE_MAX_BYTES')
+    assert storage.DERIVE_MAX_BYTES == 64*1024*1024
+    assert storage._derivation(run.canonical, '0'*64, storage.DERIVE_MAX_BYTES+1) is None
+
+
+@pytest.mark.parametrize('gate', [None, '0', 'true'])
+def test_automatic_compaction_disabled_and_startup_ignores_pending(run, monkeypatch, gate):
+    if gate is None:monkeypatch.delenv('ATTENTIONBENCH_RUN_COMPACT', raising=False)
+    else:monkeypatch.setenv('ATTENTIONBENCH_RUN_COMPACT', gate)
+    monkeypatch.setattr(frames.sys, 'argv', ['frame_cleanup', str(run.root), '0'])
+    monkeypatch.setattr(storage, 'compact', lambda *a, **kw: pytest.fail('automatic compaction without opt-in'))
+    frames._main()
+    assert (run.root/'frame-cleanup.json').is_file() and run.public.exists()
+    assert not (run.root/'run-compact.json').exists()
+    assert not (run.root/'run-compact-pending.json').exists()
+    write(run.root/'run-compact-pending.json', dict(status='in_progress'))
+    write(run.root/'run-compact.json', dict(status='in_progress'))
+    queued = []
+    monkeypatch.setattr(frames, 'schedule', lambda *a, **kw: queued.append(a))
+    thread = frames.startup_sweep(run.root); thread.join(10)
+    assert not thread.is_alive() and queued == []
+
+
+def test_manual_compaction_ungated_records_environment_and_explicit_stores(run, tmp_path, monkeypatch):
+    monkeypatch.delenv('ATTENTIONBENCH_RUN_COMPACT', raising=False)
+    dbpath = tmp_path/'empty.sqlite'
+    with sqlite3.connect(dbpath) as db:db.execute('CREATE TABLE dev_v2_catalogs(payload TEXT)')
+    monkeypatch.setenv('ATTENTIONBENCH_MEMORY_STORES', str(dbpath))
+    assert storage.plan(run.root)['memory_stores'] == [str(dbpath)]
+    result = storage.compact(run.root, memory_stores=[])
+    assert result['status'] == 'complete' and result['memory_stores'] == []
+
+
+def test_probe_planner_logs_allowlisted_and_diagnostic_reads_original_bytes(run):
+    from benchmarks.attention_harness.tests.test_start_collision_diagnose import _recording
+    from benchmarks.attention_harness.diagnostics.start_collision_diagnose import read_recording
+    probe = run.ws.private/'probe-owner-0001'
+    _recording(run.ws.private).rename(probe)
+    planner = probe/'planner'
+    write(planner/'v2_client.jsonl', b'{"response":{}}\n')
+    originals = {}
+    for path in planner.iterdir():
+        data = path.read_bytes()
+        data += b' '*(storage.MIN_BYTES+1)
+        path.write_bytes(data)
+        originals[path] = data
+    before = read_recording(probe)
+    excluded = write(planner/'continuous-0001.json', b' '*(storage.MIN_BYTES+1))
+    result = storage.compact(run.root)
+    compacted = {n for a in result['actions'] for n in a['paths']}
+    assert all(str(p.relative_to(run.root)) in compacted for p in originals)
+    assert str(excluded.relative_to(run.root)) not in compacted
+    assert all(storage.read_bytes(p) == raw and not p.exists() for p, raw in originals.items())
+    assert read_recording(probe) == before
+
+
+def test_memory_import_pins_compressed_probe_planner_bytes(tmp_path, monkeypatch):
+    from benchmarks.attention_harness.tests.agent_origin_fakes import build
+    from benchmarks.attention_harness.tests.test_dev_v2_memory_import_evidence import attach, export
+    f = build(tmp_path, monkeypatch)
+    path = write(f.ws.private/'probe-owner-0001/planner/world-0001.json', dict(cuboids=[]))
+    raw = path.read_bytes(); digest = hashlib.sha256(raw).hexdigest()
+    attach(f, [dict(uri=str(path), sha256=digest)])
+    pack(path)
+    result = export(f, f.root/'probe-export')
+    catalog = json.loads(Path(result['uri']).read_bytes())
+    assert catalog['files'][str(path.relative_to(f.native.root))] == digest
+    assert path.read_bytes() == raw

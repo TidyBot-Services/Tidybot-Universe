@@ -26,6 +26,25 @@ def legacy(tmp_path, monkeypatch):
 def inode(path):return path.stat().st_dev,path.stat().st_ino
 
 
+def test_compacted_snapshot_is_verified_and_never_replaced_by_raw(legacy):
+    from benchmarks.attention_harness import run_storage
+    root, copies, raw, sha = legacy
+    obj = copies[2]
+    side = Path(str(obj)+'.zst')
+    run_storage._compress(obj, side)
+    obj.unlink()
+    groups = list(dedupe.groups(root))
+    assert obj not in [p for _, _, _, duplicates in groups for p, _ in duplicates]
+    dedupe.apply_run(root)
+    assert not obj.exists() and run_storage.read_bytes(obj) == raw
+    wrong = obj.parent/'wrong'
+    wrong.write_bytes(b'X'*len(raw))
+    side.unlink()
+    run_storage._compress(wrong, side)
+    with pytest.raises(ValueError, match='snapshot object digest mismatch'):
+        list(dedupe.groups(root))
+
+
 def test_dry_run_counts_inodes_and_never_mutates(legacy, tmp_path):
     root,copies,raw,sha=legacy
     alias=copies[-1].parent.parent.parent/'v0002/ws/state_log.json';alias.parent.mkdir(parents=True);os.link(copies[-1],alias)

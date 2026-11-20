@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import stat
 from .dev_agent_workspace import Workspace, atomic_write, encode, read_beneath, share, shared_name
+from . import run_storage
 
 TREE_LIMIT=32*1024*1024  # Untrusted authored work/scratch only.
 PUBLIC_FILE_LIMIT=512*1024*1024
@@ -42,13 +43,20 @@ def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
                 total+=len(raw)
                 digest=hashlib.sha256(raw).hexdigest()
                 obj = store/'objects'/digest
-                if obj.exists() and not linked and obj.lstat().st_nlink > 1:
+                if not obj.exists() and run_storage.exists(obj):
+                    # Compacted (post-run) object: verify its original-byte seal
+                    # before reuse. Raw objects keep the original cheap path below.
+                    existing = read_beneath(store, 'objects/'+digest, PUBLIC_FILE_LIMIT, shared=True)
+                    if len(existing) != len(raw) or hashlib.sha256(existing).hexdigest() != digest:
+                        raise ValueError('snapshot_object_mismatch')
+                    if not linked:atomic_write(store, 'objects/'+digest, raw)
+                elif obj.exists() and not linked and obj.lstat().st_nlink > 1:
                     # Identical bytes can have both shared and non-shared logical
                     # names. Keep that object private so the strict reader still works.
                     existing = read_beneath(store, 'objects/'+digest, PUBLIC_FILE_LIMIT, shared=True)
                     if hashlib.sha256(existing).hexdigest() != digest:raise ValueError('snapshot_object_mismatch')
                     atomic_write(store, 'objects/'+digest, raw)
-                if not obj.exists():
+                if not run_storage.exists(obj):
                     # Shared evidence objects reuse the canonical read-only inode.
                     if linked:share(root,name,store,'objects/'+digest)
                     else:atomic_write(store,'objects/'+digest,raw)

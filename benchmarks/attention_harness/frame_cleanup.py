@@ -678,6 +678,7 @@ def _schedule(run_dir, *, wait_parent=True):
     if not status['terminal'] or status['paused'] or _cleanup_alive(root): return
     receipt = root/'frame-cleanup.json'
     if receipt.exists() and load(receipt).get('status') != 'in_progress':
+        if os.environ.get('ATTENTIONBENCH_RUN_COMPACT') != '1': return
         compact_receipt = root/'run-compact.json'
         if compact_receipt.exists() and load(compact_receipt).get('status') == 'complete': return
     log = safe(root/'frame-cleanup.log')
@@ -704,8 +705,11 @@ def startup_sweep(*roots):
             if directory is None: continue
             root = Path(directory)
             try:
-                for receipt in [*root.rglob('frame-cleanup.json'), *root.rglob('run-compact.json'),
-                                *root.rglob('run-compact-pending.json')]:
+                receipts = list(root.rglob('frame-cleanup.json'))
+                if os.environ.get('ATTENTIONBENCH_RUN_COMPACT') == '1':
+                    receipts.extend(root.rglob('run-compact.json'))
+                    receipts.extend(root.rglob('run-compact-pending.json'))
+                for receipt in receipts:
                     try:
                         if load(receipt).get('status') == 'in_progress':schedule(receipt.parent, wait_parent=False)
                     except Exception as exc: _notice_error(receipt.parent, exc)
@@ -735,12 +739,14 @@ def _main():
         if status['terminal'] and not status['paused']:
             _guard(root)
             pending = root/'run-compact-pending.json'
-            atomic(pending, dict(status='in_progress'))
+            enabled = os.environ.get('ATTENTIONBENCH_RUN_COMPACT') == '1'
+            if enabled: atomic(pending, dict(status='in_progress'))
             apply(root)
-            from .run_storage import compact
-            result = compact(root)
-            if result.get('status') == 'complete':
-                pending.unlink(missing_ok=True)
+            if enabled:
+                from .run_storage import compact
+                result = compact(root)
+                if result.get('status') == 'complete':
+                    pending.unlink(missing_ok=True)
     except Exception as exc:
         message = f'{type(exc).__name__}: {exc}'
         print(message, file=sys.stderr, flush=True)

@@ -27,6 +27,7 @@ SCHEMA = 'attentionbench.run-compact.v1'
 DERIVED_SCHEMA = 'attentionbench.derived-state-log.v1'
 DERIVATION = 'state-log-v1'
 MIN_BYTES = 1024 * 1024
+DERIVE_MAX_BYTES = 64 * 1024 * 1024
 
 
 def _backend():
@@ -137,7 +138,7 @@ def logical_paths(root, pattern='*'):
             continue
         if path.name.endswith(('.zst', '.derived')):
             original = Path(str(path).rsplit('.', 1)[0])
-            if original.suffix in ('.json', '.jsonl'):
+            if original.suffix in ('.json', '.jsonl') or _snapshot_digest(original):
                 path = original
         relative = path.relative_to(root)
         if '/' in pattern and '**' not in pattern:
@@ -297,25 +298,40 @@ def _signature(info):
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode)
 
 
+def _public_allowed(rel):
+    public = r'agent/(?:ws|private/public)/executions/e\d+/'
+    evaluation = r'agent/private/eval/v\d+/ws/'
+    return bool(re.search(r'(?:^|/)(?:'+public+'|'+evaluation+r')(?:state_log\.json|trace\.json|frames\.json|diagnostics/planner\.json)$', rel.as_posix()))
+
+
+def _snapshot_digest(rel):
+    match = re.search(r'(?:^|/)agent/private/snapshots/objects/([a-f0-9]{64})$', rel.as_posix())
+    return match[1] if match else None
+
+
 def _allowed(rel):
     text = rel.as_posix()
     if any(p.startswith('.') for p in rel.parts) or 'snapshots' in rel.parts:
         return False
     if rel.name in {'manifest.json', 'identity-lock.json', 'config.json', 'run-compact.json'} or 'lock' in rel.name or rel.name.startswith('frame-cleanup'):
         return False
-    public = r'agent/(?:ws|private/public)/executions/e\d+/'
-    evaluation = r'agent/private/eval/v\d+/ws/'
-    if re.search(r'(?:^|/)(?:'+public+'|'+evaluation+r')(?:state_log\.json|trace\.json|frames\.json|diagnostics/planner\.json)$', text):
+    if _public_allowed(rel):
+        return True
+    if re.search(r'(?:^|/)agent/private/probe-owner-\d+/planner/(?:planner_http\.jsonl|v2_client\.jsonl|world-\d+\.json)$', text):
         return True
     # Both one-call and agent episode paths end in executions/<episode>/... .
     return bool(re.search(r'(?:^|/)executions/(?:e\d+/)?[^/]+/(?:native-(?:physics|actions)\.jsonl|rpc-receipts\.jsonl|planner/(?:planner_http\.jsonl|v2_client\.jsonl|world-\d+\.json))$', text))
 
 
-def _memory_files(stores=None):
+def _stores(stores=None):
     if stores is None:
         stores = [p for p in os.environ.get('ATTENTIONBENCH_MEMORY_STORES', '').split(os.pathsep) if p]
+    return [str(Path(p).absolute()) for p in stores]
+
+
+def _memory_files(stores=None):
     protected = set()
-    for path in stores:
+    for path in _stores(stores):
         path = Path(path).absolute()
         # mode=ro also reads committed WAL contents; immutable=1 would not.
         with sqlite3.connect(path.as_uri()+'?mode=ro', uri=True) as db:
@@ -341,7 +357,7 @@ def _hash(path):
 
 
 def _derivation(path, sha, size):
-    if path.name != 'state_log.json':
+    if path.name != 'state_log.json' or size > int(os.environ.get('ATTENTIONBENCH_DERIVE_MAX_BYTES', DERIVE_MAX_BYTES)):
         return None
     try:
         cell = _cell(path)
@@ -378,10 +394,12 @@ def plan(run_dir, *, memory_stores=None):
     from . import frame_cleanup as frames
     root = frames.safe(run_dir)
     frames._guard(root)
+    memory_stores = _stores(memory_stores)
     try:
         protected = _memory_files(memory_stores)
     except (OSError, sqlite3.Error, ValueError, KeyError, TypeError) as exc:
-        return dict(schema=SCHEMA, run=str(root), actions=[], blocked='Memory store unreadable: '+str(exc), bytes=0)
+        return dict(schema=SCHEMA, run=str(root), memory_stores=memory_stores,
+                    actions=[], blocked='Memory store unreadable: '+str(exc), bytes=0)
     groups = defaultdict(list)
     for path in frames._scan(root):
         info = path.stat()
@@ -389,18 +407,39 @@ def plan(run_dir, *, memory_stores=None):
     actions = []
     for paths in groups.values():
         info = paths[0].stat()
+        relatives = [p.relative_to(root) for p in paths]
         if (info.st_size <= MIN_BYTES or len(paths) != info.st_nlink or
-                any(not _allowed(p.relative_to(root)) or p in protected for p in paths)):
+                any((not _allowed(p) and not _snapshot_digest(p)) for p in relatives) or
+                any(p in protected for p in paths)):
             continue
         sha, size = _hash(paths[0])
-        stub = _derivation(paths[0], sha, size)
+        if not _eligible_group(relatives, sha):
+            continue
+        stub = None if any(_snapshot_digest(p) for p in relatives) else _derivation(paths[0], sha, size)
         if stub and any(_cell(p) != _cell(paths[0]) or _derivation(p, sha, size) != stub for p in paths):
             stub = None
         actions.append(dict(paths=[str(p.relative_to(root)) for p in sorted(paths)], bytes=size,
                             sha256=sha, mode=stat.S_IMODE(info.st_mode),
                             action='derive' if stub else 'zstd', derived=stub,
                             status='pending'))
-    return dict(schema=SCHEMA, run=str(root), actions=actions, bytes=sum(a['bytes'] for a in actions))
+    return dict(schema=SCHEMA, run=str(root), memory_stores=memory_stores,
+                actions=actions, bytes=sum(a['bytes'] for a in actions))
+
+
+def _eligible_group(relatives, sha, action='zstd'):
+    objects = [p for p in relatives if _snapshot_digest(p)]
+    if not objects:
+        return all(_allowed(p) for p in relatives)
+    # An object alone might be an image. Only known public JSON aliases prove
+    # this is an eligible log; every seal must name the original-byte digest.
+    public = [p for p in relatives if not _snapshot_digest(p)]
+    return (action == 'zstd' and bool(public) and
+            all(not any(part.startswith('.') for part in p.parts) for p in relatives) and
+            # Only state logs are shared with snapshot objects by the producer
+            # (dev_agent_workspace.shared_name); other public JSON stays nlink 1
+            # and its reader keeps rejecting shared inodes, so keep such groups raw.
+            all(_allowed(p) and _public_allowed(p) and p.name == 'state_log.json' for p in public) and
+            all(_snapshot_digest(p) == sha for p in objects))
 
 
 def _sync(directory):
@@ -471,6 +510,7 @@ def _discard_temporary(root, action):
 def compact(run_dir, *, trash_dir=None, memory_stores=None):
     from . import frame_cleanup as frames
     root = frames.safe(run_dir)
+    memory_stores = _stores(memory_stores)
     with frames.run_lock(root):
         frames._guard(root)
         receipt = root/'run-compact.json'
@@ -495,6 +535,8 @@ def compact(run_dir, *, trash_dir=None, memory_stores=None):
             frames.atomic(receipt, value)
         # A newly registered catalog must protect a pending/recovered operation,
         # too. Failure to read any configured store blocks *all* mutation.
+        value['memory_stores'] = sorted(set(value.get('memory_stores', [])) | set(memory_stores))
+        frames.atomic(receipt, value)
         try:
             protected = _memory_files(memory_stores)
         except (OSError, sqlite3.Error, ValueError, KeyError, TypeError) as exc:
@@ -503,7 +545,7 @@ def compact(run_dir, *, trash_dir=None, memory_stores=None):
             if action['status'] == 'complete':
                 continue
             paths = [frames._beneath(root, name) for name in action['paths']]
-            if any(not _allowed(p.relative_to(root)) for p in paths):
+            if not _eligible_group([p.relative_to(root) for p in paths], action['sha256'], action['action']):
                 raise ValueError('receipt contains non-allowlisted path')
             if any(p in protected for p in paths):
                 # Catalogs always require raw bytes, even if registration raced
@@ -583,7 +625,7 @@ def compact(run_dir, *, trash_dir=None, memory_stores=None):
 def _restore_action(root, action):
     from . import frame_cleanup as frames
     paths = [frames._beneath(root, n) for n in action['paths']]
-    if any(not _allowed(p.relative_to(root)) for p in paths):
+    if not _eligible_group([p.relative_to(root) for p in paths], action['sha256'], action['action']):
         raise ValueError('receipt contains non-allowlisted path')
     source = next((p for p in paths if p.is_file()), None)
     if source is None:

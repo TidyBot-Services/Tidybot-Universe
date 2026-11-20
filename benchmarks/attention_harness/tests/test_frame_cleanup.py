@@ -444,6 +444,27 @@ def test_missing_frame_object_without_cleanup_receipt_uses_verified_index(run,tm
     assert not (cell/'frame-cleanup.json').exists()
 
 
+def test_shared_frame_index_object_group_stays_raw(run, monkeypatch):
+    # Only state logs are produced as shared inodes; a (synthetic) shared
+    # frames.json + snapshot object group must not be compacted, because its
+    # readers keep rejecting shared inodes for this class.
+    from benchmarks.attention_harness import run_storage
+    cell, w, rows, ep, cut = agent(run)
+    manifest = json.loads(Path(cut['path']).read_bytes())
+    digest = manifest['files']['executions/e000001/frames.json']['sha256']
+    obj = w.private/'snapshots/objects'/digest
+    canonical = w.canonical/'executions/e000001/frames.json'
+    public = w.ws/'executions/e000001/frames.json'
+    canonical.chmod(0o444)
+    public.unlink(); obj.unlink()
+    os.link(canonical, public); os.link(canonical, obj)
+    monkeypatch.setattr(run_storage, 'MIN_BYTES', 0)
+    result = run_storage.compact(cell)
+    assert not any(str(obj.relative_to(cell)) in a['paths'] for a in result['actions'])
+    assert obj.is_file() and canonical.is_file() and public.is_file()
+    assert not Path(str(obj)+'.zst').exists()
+
+
 def test_missing_unlisted_frame_object_still_fails(run,tmp_path):
     cell,w,rows,ep,cut=agent(run)
     name='executions/e000001/frames/overview-999999-sim-9.000000s.jpg'
