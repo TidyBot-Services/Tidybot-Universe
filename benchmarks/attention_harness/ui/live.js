@@ -6369,7 +6369,8 @@
     const ops=(trace.events||[]).map(e=>String(e.operation||'')),left=ops.filter(o=>/left/.test(o)).length,right=ops.filter(o=>/right/.test(o)).length;
     const arm=left>=right&&left?'left':right?'right':null;
     const pick=k=>videos.find(e=>e.kind===(k==='external'?'advisor_replay':`advisor_replay_${k}`));
-    const video=(arm&&pick(`${arm}_wrist`))||pick('left_wrist')||pick('right_wrist')||pick('external')||videos[0];
+    // No arm moved (sensors only): there is no close-up to give, so show the overview.
+    const video=(arm&&pick(`${arm}_wrist`))||pick('external')||videos[0];
     const view=String(video.kind||'').replace(/^advisor_replay_?/,'')||'external';
     let fail=null;try{fail=operatorFailureTime(trace,true);}catch(_){fail=null;}
     const stopped=att.status==='failed';
