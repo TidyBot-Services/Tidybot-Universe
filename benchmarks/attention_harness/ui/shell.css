@@ -438,12 +438,9 @@ html body #attentionbench-clear .op-attention .op-attn-detail:empty{display:none
 .op-try-link:focus{outline:none}
 .op-try-caption{font-weight:700;fill:var(--sh-ink)}
 
-/* 11-18 ui改动 02: neutral "ran through" dot; Dock magnification */
+/* 11-18 ui改动 02: neutral "ran through" dot (11-20: Dock magnification removed) */
 .op-try-mark .op-try-dot{fill:var(--sh-mut);stroke:none}
-.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:transform .14s cubic-bezier(.2,.7,.3,1);transform-box:view-box}
-.op-attn-scroll svg.op-docking .op-try-mark,.op-attn-scroll svg.op-docking .op-attn-attempt{transition:transform .22s cubic-bezier(.2,.7,.3,1)}
 .op-attn-scroll svg{overflow:visible}
-@media (prefers-reduced-motion:reduce){.op-try-mark,.op-attn-scroll .op-attn-attempt{transition:none}}
 
 /* 11-18 ui改动 02: try card + summary */
 .op-try-mark.selected circle{stroke:var(--sh-ink);stroke-width:2.6}

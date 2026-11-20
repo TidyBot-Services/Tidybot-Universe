@@ -6092,27 +6092,7 @@
     if(e.target.closest?.('[data-attn-watch],[data-attn-help]')&&currentSnapshot)stored(`attention.try:${currentSnapshot.run.run_id}`,null);
   },true);
   view.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const mark=e.target.closest?.('.op-try-link');if(mark){e.preventDefault();pickTry(mark);}});
-  // 11-18 (user, ui改动 02): Dock-style magnification on the 02 chart: tries near the pointer grow and nudge their
-  // neighbours aside; attempts grow a little. Off for reduced motion.
-  const dockCalm=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  function dockReset(svg){svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{g.style.transform='';});svg.classList.remove('op-docking');}
-  function dockMove(svg,e){
-    const ctm=svg.getScreenCTM();if(!ctm)return;
-    const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const p=pt.matrixTransform(ctm.inverse());
-    svg.classList.add('op-docking');
-    svg.querySelectorAll('.op-try-mark,.op-attn-attempt').forEach(g=>{
-      const c=g.querySelector('circle');if(!c)return;
-      const cx=+c.getAttribute('cx'),cy=+c.getAttribute('cy'),d=cx-p.x,small=g.classList.contains('op-try-mark');
-      // 11-18 (user: too sensitive): only a band ±28 around the line wakes it, falling off smoothly with height;
-      // smaller growth (tries ×1.8 max, attempts ×1.08) and a gentler push.
-      const dy=Math.abs(p.y-cy),near=dy<28?1-(dy/28)**2:0,sigma=small?20:36;
-      const k=near*Math.exp(-(d*d)/(2*sigma*sigma)),scale=1+(small?0.8:0.08)*k;
-      const push=small?near*d*0.25*Math.exp(-(d*d)/(2*(2*sigma)**2)):0;
-      g.style.transform=`translate(${(cx+push).toFixed(2)}px,${cy}px) scale(${scale.toFixed(3)}) translate(${-cx}px,${-cy}px)`;
-    });
-  }
-  view.addEventListener('mousemove',e=>{if(dockCalm())return;const svg=e.target.closest?.('.op-attn-scroll svg');if(svg)dockMove(svg,e);},{passive:true});
-  view.addEventListener('mouseout',e=>{const svg=e.target.closest?.('.op-attn-scroll svg');if(svg&&!svg.contains(e.relatedTarget))dockReset(svg);});
+  // 11-20 (user): no Dock-style magnification on the flow chart; hover only darkens the outline.
   const reuseOpenedAt=new Map();  // survives re-renders; the server wants proof the note was opened before it is confirmed
   view.addEventListener('toggle',e=>{const d=e.target;if(d.matches?.('details[data-reuse-id]')&&d.open&&!reuseOpenedAt.has(d.dataset.reuseId))reuseOpenedAt.set(d.dataset.reuseId,Date.now()/1000)},true);
   view.addEventListener('click',async e=>{
