@@ -206,7 +206,9 @@ test('02 attempt click and 03 replay click share selection and clear a selected 
   clicks.get('tab:click')();
   assert.equal(sessionStorage.getItem(`attention.history:${snapshot.run.run_id}`),snapshot.attempts[0].attempt_id);
   assert.equal(sessionStorage.getItem(`attention.efficiency.help:${snapshot.run.run_id}`),null);
-  assert.match(api.attentionEfficiency(snapshot),/op-attn-attempt failed selected" data-attn-attempt="1"/);
+  // 11-20 (user): the flow marks only what was clicked on it (attempt 2), not the attempt picked in 03.
+  assert.doesNotMatch(api.attentionEfficiency(snapshot),/op-attn-attempt failed selected" data-attn-attempt="1"/);
+  assert.match(api.attentionEfficiency(snapshot),/op-attn-attempt \w+ selected" data-attn-attempt="2"/);
   assert.match(api.agentTimelineDetail(snapshot,null),/data-agent-attempt-card="1"/);
   assert.equal(rendered,2);
 });

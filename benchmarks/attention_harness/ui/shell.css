@@ -1159,3 +1159,12 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-replay-tran
 @media (hover:none){.op-trim-tip{display:none}}
 /* 11-20 (user): "Who answers help" uses the policy cards' look; a gap separates it from the policy groups. */
 #attentionbench-clear .ab-help-mode{margin:0 0 18px;padding:0 0 16px;border-bottom:1px solid var(--line)}
+/* 11-20 (user): no hover / focus / conversation-hover highlight on the flow chart; only the clicked try, attempt or
+   help changes its style (.selected). Keyboard focus keeps a thin outline for accessibility. */
+html body #attentionbench-clear .op-attn-scroll .op-try-link:hover circle{stroke-width:1.5;stroke:var(--sh-mut)}
+html body #attentionbench-clear .op-attn-scroll .op-try-mark.red.op-try-link:hover circle{stroke:var(--sh-acc)}
+html body #attentionbench-clear .op-attn-scroll .op-attn-attempt[data-attn-watch]:hover circle{stroke-width:2.5}
+html body #attentionbench-clear .op-attn-scroll .op-attn-help:hover path{stroke-width:2.5}
+html body #attentionbench-clear .op-attn-scroll .op-attn-help.selected:hover path{stroke-width:4}
+html body #attentionbench-clear .op-attn-scroll .c2-focus circle,html body #attentionbench-clear .op-attn-scroll .c2-focus .op-attn-arc,html body #attentionbench-clear .op-attn-scroll .c2-focus .op-attn-help-label{filter:none!important}
+html body #attentionbench-clear .op-attn-scroll .op-try-mark.selected circle{stroke:var(--sh-ink);stroke-width:2.6}

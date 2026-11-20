@@ -5916,7 +5916,7 @@
       }
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${esc(shown)}</text>${snapshot.agent?'':`<rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text>`}</g>`;
     }).join('');
-    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text>${snapshot.agent?`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+42}" text-anchor="middle">Attempt ${a.index+1}<tspan class="op-agent-reason ${a.state}">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')?' · '+esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||''):''}</tspan></text>`:`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>`}</g>`).join('');
+    const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&stored(`attention.flow-attempt:${runId}`)===a.id&&!selected&&!stored(`attention.try:${runId}`)?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text>${snapshot.agent?`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+42}" text-anchor="middle">Attempt ${a.index+1}<tspan class="op-agent-reason ${a.state}">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')?' · '+esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||''):''}</tspan></text>`:`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>`}</g>`).join('');
     // 11-18 (b1 test): with no help request there is nothing above the circles or in the cost row, so the drawing is cropped to the circles and their names.
     const cropped=!model.requests.length&&model.attempts.length>0,vy=cropped?Math.max(0,baseline-R-10):0,vh=cropped?baseline+(snapshot.agent?52:54)-vy:height;
     const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 ${vy} ${model.width} ${vh}" style="--nw:${model.width}px;${snapshot.agent?`width:${model.width}px;height:${vh}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
@@ -5978,7 +5978,7 @@
       const redraw=(attribute,value)=>{
         const scroll=panel.querySelector('.op-attn-scroll')?.scrollLeft||0;
         const key=attribute==='data-attn-filter'?'attention.efficiency.filter:':'attention.efficiency.help:';
-        stored(key+runId,value);
+        stored(key+runId,value);if(attribute==='data-attn-help')stored(`attention.flow-attempt:${runId}`,null);
         panel.outerHTML=attentionEfficiency(snapshot);
         const updated=view.querySelector('[data-attention-efficiency]');
         if(updated.querySelector('.op-attn-scroll'))updated.querySelector('.op-attn-scroll').scrollLeft=scroll;
@@ -5997,7 +5997,7 @@
       }));
       panel.querySelector('[data-attn-close]')?.addEventListener('click',()=>{stored(`attention.efficiency.help:${runId}`,null);panel.outerHTML=attentionEfficiency(snapshot);bind();});
       panel.querySelectorAll('[data-attn-watch]').forEach(circle=>{
-        const watch=()=>{selectAgentAttempt(snapshot,circle.dataset.attnWatch);stored(`attention.history:${runId}`,circle.dataset.attnWatch);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});};
+        const watch=()=>{stored(`attention.flow-attempt:${runId}`,circle.dataset.attnWatch);selectAgentAttempt(snapshot,circle.dataset.attnWatch);stored(`attention.history:${runId}`,circle.dataset.attnWatch);render(currentSnapshot);view.querySelector('[data-execution-viewer]')?.scrollIntoView({block:'start'});};
         circle.addEventListener('click',watch);
         circle.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();watch();}});
       });
@@ -6080,6 +6080,7 @@
   function pickTry(mark){
     const runId=currentSnapshot?.run?.run_id;if(!runId||!mark?.dataset.tryNumber)return;
     const same=stored(`attention.try:${runId}`)===mark.dataset.tryNumber;
+    stored(`attention.flow-attempt:${runId}`,null);
     stored(`attention.try:${runId}`,same?null:mark.dataset.tryNumber);
     stored(`attention.efficiency.help:${runId}`,null);
     render(currentSnapshot);
@@ -6379,7 +6380,7 @@
     const help=t.closest?.('[data-attn-help]');
     if(help){const n=(help.getAttribute('aria-label')||'').match(/Help #(\d+)/)?.[1];if(n&&chatScrollTo(`[data-feed-help="${n}"]`)){e.preventDefault();e.stopPropagation();}return;}
     const att=t.closest?.('[data-attn-attempt]');
-    if(att&&t.closest('.op-attn-scroll')){if(playAttempt(attemptIdOf(att.dataset.attnAttempt))){e.preventDefault();e.stopPropagation();}showInConversation(`[data-feed-attempt="${att.dataset.attnAttempt}"]`);return;}
+    if(att&&t.closest('.op-attn-scroll')){const rid=currentSnapshot?.run?.run_id,aid=attemptIdOf(att.dataset.attnAttempt);if(rid&&aid){stored(`attention.flow-attempt:${rid}`,aid);stored(`attention.try:${rid}`,null);}if(playAttempt(aid)){e.preventDefault();e.stopPropagation();}showInConversation(`[data-feed-attempt="${att.dataset.attnAttempt}"]`);return;}
     const tryButton=t.closest?.('[data-c2-try]');
     if(tryButton){e.preventDefault();chatMarkTry(tryButton.dataset.c2Try);playTry(tryButton.dataset.c2Try);return;}
     const row=t.closest?.('.c2-row');
