@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from benchmarks.attention_harness.workspace_paths import lazy
+from benchmarks.attention_harness import run_storage
 
 TASK = 'pick_place_counter_to_sink'
 SEEDS = (102, 104, 107, 114)
@@ -112,7 +113,7 @@ def build_verdict(out, experiment_id):
 
     def read(path, *, lines=False, optional=False):
         try:
-            text = path.read_text(encoding='utf-8')
+            text = run_storage.read_text(path, encoding='utf-8')
             value = [json.loads(s) for s in text.splitlines() if s.strip()] if lines else json.loads(text)
             if (lines and any(not isinstance(v, dict) for v in value)) or (not lines and not isinstance(value, dict)):
                 raise ValueError('expected JSON objects')
@@ -196,7 +197,7 @@ def build_verdict(out, experiment_id):
 
     # Audit all evidence, not just the first receipt/spawn encountered.
     for name in ('reset_receipt.json', 'sandbox_receipt.json', 'service_spawn.json'):
-        paths = sorted((out / 'artifacts').rglob(name))
+        paths = run_storage.logical_paths(out / 'artifacts', name)
         if not paths:
             errors.append('missing ' + name)
         for path in paths:
@@ -206,7 +207,7 @@ def build_verdict(out, experiment_id):
                 errors.append(f'{path.relative_to(out)}: lock_sha256 mismatch')
     all_rpc, actions = [], []
     for name in ('rpc-receipts.jsonl', 'native-actions.jsonl'):
-        paths = sorted((out / 'artifacts').rglob(name))
+        paths = run_storage.logical_paths(out / 'artifacts', name)
         if not paths and name == 'rpc-receipts.jsonl':
             errors.append('missing ' + name)
         for path in paths:

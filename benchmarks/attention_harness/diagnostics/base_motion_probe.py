@@ -3,6 +3,7 @@
 Dry run is offline. Real execution is explicit and uses one scripted provider
 response and one new deterministic episode for each trial.
 """
+from .. import run_storage
 import argparse
 import hashlib
 import json
@@ -33,7 +34,7 @@ def collision_command(world_path):
     from openarm365_dev.base_motion import check_chassis_path
     from curobo_v2.client import PlanningRejected
     from openarm365_dev.config import LOCK
-    world = json.loads(Path(world_path).read_text())
+    world = json.loads(run_storage.read_text(world_path))
     lock = json.loads(LOCK.read_text())
     config = Path(lock['project_root']) / 'config/openarm_fixed.yml'
     binding = yaml.safe_load(config.read_text())['service']['native_chassis']
@@ -53,7 +54,7 @@ def collision_command(world_path):
 
 
 def _jsonl(path):
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.is_file() else []
+    return [json.loads(line) for line in run_storage.read_text(path).splitlines() if line.strip()] if run_storage.exists(path) else []
 
 
 def summarize(name, trial_dir, wall_seconds, error=None):

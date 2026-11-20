@@ -3,6 +3,7 @@
 Planning never mutates a run. Only enumerated RGB producers are disposable;
 unknown producers, missing manifests and undecodable videos retain their frames.
 """
+from . import run_storage
 from collections import defaultdict
 from datetime import datetime, timezone
 import fcntl
@@ -49,7 +50,7 @@ def safe(path):
 
 
 def load(path):
-    return json.loads(safe(path).read_bytes())
+    return json.loads(run_storage.read_bytes(safe(path)))
 
 
 # 11-18: a finished receipt lists every cleaned frame of a cell (227k names in a long run). Reading it took ~65 ms
@@ -178,7 +179,7 @@ def plan(run_dir):
             g['paths'].add(path)
     # Agent frames: canonical and ws use the same manifest; Eval names are
     # mapped through its frames.json. Snapshot object names have no suffix.
-    manifests = [p for p in files if p.name == 'frames.json' and
+    manifests = [p for p in run_storage.logical_paths(root) if p.name == 'frames.json' and
                  ('agent' in p.parts) and ('public' in p.parts or 'ws' in p.parts)]
     for manifest in manifests:
         rows = load(manifest)
@@ -378,17 +379,19 @@ def _processes(proc_root=Path('/proc')):
 
 
 def _is_cleanup_process(args):
-    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+    return (any(a == '-m' and b in {'benchmarks.attention_harness.frame_cleanup', 'benchmarks.attention_harness.run_storage'}
                 for a, b in zip(args, args[1:])) or
             bool(args and Path(args[0]).name.startswith('python') and
-                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py', 'run_storage.py'} for arg in args)))
 
 
 def _cleanup_alive(root):
     for proc, args in _processes():
         if not _is_cleanup_process(args): continue
         roots = [args[i+2] for i in range(len(args)-2)
-                 if args[i:i+2] == ['-m', 'benchmarks.attention_harness.frame_cleanup']]
+                 if args[i] == '-m' and args[i+1] == 'benchmarks.attention_harness.frame_cleanup']
+        roots += [args[i+3] for i in range(len(args)-3)
+                  if args[i:i+2] == ['-m', 'benchmarks.attention_harness.run_storage']]
         roots += [args[i+1] for i in range(len(args)-1) if args[i] == '--runs-root']
         roots += [arg.split('=', 1)[1] for arg in args if arg.startswith('--runs-root=')]
         for arg in roots:
@@ -674,7 +677,9 @@ def _schedule(run_dir, *, wait_parent=True):
     status = state(root)
     if not status['terminal'] or status['paused'] or _cleanup_alive(root): return
     receipt = root/'frame-cleanup.json'
-    if receipt.exists() and load(receipt).get('status') != 'in_progress': return
+    if receipt.exists() and load(receipt).get('status') != 'in_progress':
+        compact_receipt = root/'run-compact.json'
+        if compact_receipt.exists() and load(compact_receipt).get('status') == 'complete': return
     log = safe(root/'frame-cleanup.log')
     repo = Path(__file__).resolve().parents[2]
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
@@ -699,7 +704,8 @@ def startup_sweep(*roots):
             if directory is None: continue
             root = Path(directory)
             try:
-                for receipt in root.rglob('frame-cleanup.json'):
+                for receipt in [*root.rglob('frame-cleanup.json'), *root.rglob('run-compact.json'),
+                                *root.rglob('run-compact-pending.json')]:
                     try:
                         if load(receipt).get('status') == 'in_progress':schedule(receipt.parent, wait_parent=False)
                     except Exception as exc: _notice_error(receipt.parent, exc)
@@ -727,7 +733,14 @@ def _main():
     try:
         status = state(root)
         if status['terminal'] and not status['paused']:
+            _guard(root)
+            pending = root/'run-compact-pending.json'
+            atomic(pending, dict(status='in_progress'))
             apply(root)
+            from .run_storage import compact
+            result = compact(root)
+            if result.get('status') == 'complete':
+                pending.unlink(missing_ok=True)
     except Exception as exc:
         message = f'{type(exc).__name__}: {exc}'
         print(message, file=sys.stderr, flush=True)

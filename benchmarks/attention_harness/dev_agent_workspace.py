@@ -56,7 +56,7 @@ def directory(root, components=(), *, create=False):
         raise
 
 
-def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
+def _read_raw_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
     """shared=True also accepts a read-only shared evidence inode (nlink > 1, no write bits)."""
     components = parts(name)
     parent = directory(root, components[:-1])
@@ -81,7 +81,7 @@ def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
     finally: os.close(parent)
 
 
-def digest_beneath(root, name, limit=PUBLIC_EVIDENCE_LIMIT, *, shared=False):
+def _digest_raw_beneath(root, name, limit=PUBLIC_EVIDENCE_LIMIT, *, shared=False):
     """SHA-256 with read_beneath's safety rules and constant-size read buffers.
 
     The 1 GiB default is for trusted Dev-tier public execution evidence, not
@@ -117,7 +117,7 @@ def digest_beneath(root, name, limit=PUBLIC_EVIDENCE_LIMIT, *, shared=False):
     finally: os.close(parent)
 
 
-def stat_beneath(root, name, *, shared=False):
+def _stat_raw_beneath(root, name, *, shared=False):
     """Size of a safe file (same no-follow/regular/nlink rules as read_beneath) without reading it."""
     components = parts(name)
     parent = directory(root, components[:-1])
@@ -129,6 +129,56 @@ def stat_beneath(root, name, *, shared=False):
     if not stat.S_ISREG(info.st_mode) or (info.st_nlink != 1 and not (shared and not info.st_mode & 0o222)):
         raise ValueError('unsafe_file')
     return info.st_size
+
+
+def read_beneath(root, name, limit=SOURCE_LIMIT, *, shared=False):
+    try:
+        return _read_raw_beneath(root, name, limit, shared=shared)
+    except FileNotFoundError:
+        from .run_storage import open_beneath
+        with open_beneath(root, name, limit, shared=shared) as stream:
+            return stream.read()
+
+
+def digest_beneath(root, name, limit=PUBLIC_EVIDENCE_LIMIT, *, shared=False):
+    try:
+        return _digest_raw_beneath(root, name, limit, shared=shared)
+    except FileNotFoundError:
+        from .run_storage import open_beneath
+        digest = hashlib.sha256()
+        with open_beneath(root, name, limit, shared=shared) as stream:
+            for chunk in iter(lambda: stream.read(65536), b''):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+
+def stat_beneath(root, name, *, shared=False):
+    try:
+        return _stat_raw_beneath(root, name, shared=shared)
+    except FileNotFoundError:
+        from .run_storage import open_beneath
+        with open_beneath(root, name, PUBLIC_EVIDENCE_LIMIT, shared=shared) as stream:
+            return sum(len(chunk) for chunk in iter(lambda: stream.read(65536), b''))
+
+
+def materialize_beneath(root, name, *, shared=False):
+    """Restore a compacted file before raw stat/link or sandbox use."""
+    try:
+        _stat_raw_beneath(root, name, shared=shared)
+        return
+    except FileNotFoundError:
+        pass
+    from .run_storage import _safe_source
+    # Read securely, then preserve the representation's original permission.
+    data = read_beneath(root, name, PUBLIC_EVIDENCE_LIMIT, shared=shared)
+    for suffix in ('.zst', '.derived'):
+        try:
+            with _safe_source(root, name+suffix, shared=shared) as (_, info):
+                mode = stat.S_IMODE(info.st_mode)
+            break
+        except FileNotFoundError:
+            continue
+    atomic_write(root, name, data, mode)
 
 
 def atomic_write(root, name, data, mode=0o600):
@@ -156,6 +206,7 @@ def share(source_root, name, root, destination=None):
     Returns 'linked', 'present' (already the same inode) or 'copied'.
     """
     destination = destination or name
+    materialize_beneath(source_root, name, shared=True)
     src, dst = parts(name), parts(destination)
     source = directory(source_root, src[:-1])
     try:
@@ -209,11 +260,19 @@ class Workspace:
         # or Dev-written history. Avoid fsync/rewrite of thousands of intact frames.
         try:
             if read_beneath(root,name,len(data),shared=linked)==data:
-                if not linked or not os.lstat(root/name).st_mode & 0o222:return
+                materialize_beneath(root, name, shared=linked)
+                if not linked:return
+                if not os.lstat(root/name).st_mode & 0o222:return
         except (OSError,ValueError):pass
         atomic_write(root,name,data,SHARED_MODE if linked else 0o600)
 
     def regenerate(self):
+        # A restarted Workspace has no in-memory published set yet. Restore the
+        # canonical logical tree before consumers enumerate or share it.
+        for side in sorted([*self.canonical.rglob('*.zst'), *self.canonical.rglob('*.derived')]):
+            path = Path(str(side).rsplit('.', 1)[0])
+            name = str(path.relative_to(self.canonical))
+            materialize_beneath(self.canonical, name, shared=shared_name(name))
         for name in sorted(self.published):
             # A shared frame is re-linked from the trusted canonical inode, never copied from ws.
             if shared_name(name) and not os.lstat(self.canonical / name).st_mode & 0o222:

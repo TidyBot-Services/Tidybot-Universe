@@ -1,4 +1,5 @@
 """Agent-only collaborators. Constructors do not start any simulator."""
+from . import run_storage
 import concurrent.futures
 import hashlib
 import json
@@ -178,12 +179,12 @@ class Executor:
         # Never load the private evaluator file. Only enumerated public inputs.
         def read(name, default):
             path=episode/name if episode else None
-            return path.read_text() if path and path.is_file() else default
+            return run_storage.read_text(path) if path and run_storage.exists(path) else default
         trace=json.loads(read('trace.json','{}'))
         diagnostics=[]
         path=episode/'planner/v2_client.jsonl' if episode else None
-        if path and path.is_file():
-            for line in path.read_text().splitlines():
+        if path and run_storage.exists(path):
+            for line in run_storage.read_text(path).splitlines():
                 row=json.loads(line)
                 if row.get('path','').startswith('/plan'):
                     diagnostics.append(project_planner_result(row.get('response',{})))
@@ -197,7 +198,7 @@ class Executor:
             control_steps=receipt.get('control_steps'),wall_seconds=receipt.get('elapsed_seconds'))
         public['state_log']=[]
         physics=episode/'native-physics.jsonl' if episode else None
-        if physics and physics.is_file():public['state_log']=[public_observation(json.loads(line)) for line in physics.read_text().splitlines()]
+        if physics and run_storage.exists(physics):public['state_log']=[public_observation(json.loads(line)) for line in run_storage.read_text(physics).splitlines()]
         from .dev_agent_recording import recording_frames
         public['frames']=recording_frames(episode,self.config['control_freq']) if episode and ((episode/'recording_frames').is_dir() or (episode/'advisor_replay.mp4').is_file()) else []
         return public

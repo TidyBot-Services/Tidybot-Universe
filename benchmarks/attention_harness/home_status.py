@@ -2,6 +2,7 @@
 
 Display only; nothing here starts or changes a run. New runs start from the main UI's dialog.
 """
+from . import run_storage
 import json
 import os
 import re
@@ -148,8 +149,8 @@ def planner_seconds(row):
     """Median planner answer time in this run's executions (no live probe; the planner starts per run)."""
     root = Path(row.get('artifact_dir') or '/nonexistent')
     times = []
-    for log in root.glob('v*/executions/*/planner/planner_http.jsonl'):
-        for line in log.read_text(errors='replace').splitlines():
+    for log in run_storage.logical_paths(root, 'v*/executions/*/planner/planner_http.jsonl'):
+        for line in run_storage.read_text(log, errors='replace').splitlines():
             try:
                 item = json.loads(line)
             except ValueError:

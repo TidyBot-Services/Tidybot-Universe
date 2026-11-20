@@ -72,9 +72,10 @@ def _done(events):
 
 def _verified(ref):
     path = Path(ref['uri'])
-    if not path.is_file() or sha(path) != ref['sha256']:
+    from .run_storage import exists, rehydrate
+    if not exists(path) or sha(path) != ref['sha256']:
         raise Refused('evidence digest drift: ' + path.name)
-    return path
+    return path if path.is_file() else rehydrate(path)
 
 
 def summary_for(guidance):

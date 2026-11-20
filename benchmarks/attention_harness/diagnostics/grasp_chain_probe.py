@@ -1,5 +1,6 @@
 """Scripted development seed 101–125 grasp-chain probe; real execution is explicit."""
 from __future__ import annotations
+from .. import run_storage
 import argparse, hashlib, json, math, os, sys, time
 from pathlib import Path
 from openarm365_dev.policy_validation import validate_generated_policy
@@ -482,14 +483,14 @@ def slip_metrics(samples):
 def held_physics_samples(episode):
     if not episode:return []
     journal=episode/'native-actions.jsonl';physics=episode/'native-physics.jsonl'
-    if not journal.is_file() or not physics.is_file():return []
-    actions=[json.loads(line) for line in journal.read_text().splitlines()]
+    if not run_storage.exists(journal) or not run_storage.exists(physics):return []
+    actions=[json.loads(line) for line in run_storage.read_text(journal).splitlines()]
     close=next((i for i,row in enumerate(actions) if row.get('event')=='gripper_intent' and row.get('command')==1.),None)
     if close is None:return []
     lift_ids=[row['request_id'] for row in actions[close+1:] if row.get('event')=='intent']
     if not lift_ids:return []
     last={}
-    for line in physics.read_text().splitlines():
+    for line in run_storage.read_text(physics).splitlines():
         row=json.loads(line);rid=row.get('request_id')
         if rid in lift_ids and row.get('held_trace'):last[rid]=row
     samples=[]

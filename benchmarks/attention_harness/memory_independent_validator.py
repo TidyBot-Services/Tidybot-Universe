@@ -1,6 +1,7 @@
 """Deterministic offline validation of sealed execution evidence; never model judgement."""
 import hashlib,json,sqlite3,tempfile
 from pathlib import Path
+from . import run_storage
 from .frame_cleanup import is_frame_image
 from .dev_v2_loop import immutable
 from .gpu_meter import GpuMeter
@@ -13,16 +14,16 @@ class Refused(ValueError):pass
 def sealed_files(root, *, recursive=False):
     """Catalog JSON/code/video evidence, excluding disposable RGB frames."""
     root = Path(root)
-    paths = root.rglob('*') if recursive else root.iterdir()
-    return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in paths if p.is_file() and not is_frame_image(str(p.relative_to(root)))}
+    paths = run_storage.logical_paths(root) if recursive else [p for p in run_storage.logical_paths(root) if p.parent == root]
+    return {str(p.relative_to(root)): hashlib.sha256(run_storage.rehydrate(p).read_bytes()).hexdigest()
+            for p in paths if run_storage.exists(p) and not is_frame_image(str(p.relative_to(root)))}
 
 
 def sealed(ref,root,files):
     p=Path(ref['uri']);root=Path(root)
     if not p.is_absolute() or p!=p.resolve() or not p.is_relative_to(root):raise Refused('evidence outside canonical executor root')
     if files.get(str(p.relative_to(root)))!=ref['sha256']:raise Refused('evidence is not sealed')
-    data=p.read_bytes()
+    data=run_storage.read_bytes(p)
     if hashlib.sha256(data).hexdigest()!=ref['sha256']:raise Refused('evidence digest mismatch')
     return data
 
@@ -190,7 +191,7 @@ def validate_arm(*,experiment_dir,experiments_root,cell,version,execution_import
                     obs,state,receipt=policy_replay(config['task_id'],config['seed'],replay_config,source=source,directory=policy_root/str(i),cell=cell,version=version)
                     from attention_memory_service.agent_origin import verify_replays
                     def replay_read(ref,raw=False):
-                        data=Path(ref['uri']).read_bytes()
+                        data=run_storage.read_bytes(ref['uri'])
                         return data if raw else json.loads(data)
                     verify_replays([receipt],replay_read,replay_config,source_ref['sha256'],vr,count=1)
                     policy_replays.append(receipt)

@@ -16,6 +16,7 @@ the run store (ATTENTIONBENCH_FREE_VIEW_LIVE_DIR).  Every request marks the atte
 a minute after the last request, or shortly after the attempt ends, and removes its folder.  Doors and drawers
 stay where they started until the attempt ends (their final position is only known then).
 """
+from . import run_storage
 import gzip, json, os, re, shutil, subprocess, threading, time
 from pathlib import Path
 
@@ -63,7 +64,7 @@ def build(episode, out, export=None):
         if (out/'scene.json').is_file():return out
         if note.is_file() and not note.is_symlink() and time.time()-note.stat().st_mtime < RETRY_SECONDS:
             raise FileNotFoundError(note.read_text(encoding='utf-8'))
-        missing = [n for n in SOURCES if not (episode/n).is_file()]
+        missing = [n for n in SOURCES if not run_storage.exists(episode/n)]
         if missing:
             raise FileNotFoundError('This attempt cannot be shown in 3D: it has no '+', '.join(missing)+' on this machine.')
         if out.is_symlink() or note.is_symlink():raise FileNotFoundError('3D view unavailable')

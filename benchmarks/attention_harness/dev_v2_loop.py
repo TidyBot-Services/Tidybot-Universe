@@ -26,7 +26,9 @@ def immutable(path,value):
 
 def checked(ref):
     if sha(ref['uri'])!=ref['sha256']:raise DevConflict('immutable evidence digest mismatch')
-    return Path(ref['uri'])
+    from .run_storage import rehydrate
+    path = Path(ref['uri'])
+    return path if path.exists() else rehydrate(path)
 def job_for(cell,version,kind):return next((j for j in cell['jobs'] if j['version']==version and j['kind']==kind),None)
 def eval_ref(receipt):return receipt.get('eval_review') or receipt.get('review')
 def screen_model_packet(packet):

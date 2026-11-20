@@ -6,6 +6,7 @@ No derived field is written into public feedback.
 """
 from __future__ import annotations
 
+from . import run_storage
 import json
 import math
 from bisect import bisect_right
@@ -14,7 +15,7 @@ from pathlib import Path
 
 def _rows(path):
     try:
-        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+        return [json.loads(line) for line in run_storage.read_text(path).splitlines() if line.strip()]
     except FileNotFoundError:
         raise ValueError(path.name + '_missing') from None
     except (OSError, ValueError):

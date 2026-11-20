@@ -18,10 +18,10 @@ def _processes(proc_root=Path('/proc')):
         if args: yield proc.parent, args
 
 def _is_cleanup_process(args):
-    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+    return (any(a == '-m' and b in {'benchmarks.attention_harness.frame_cleanup', 'benchmarks.attention_harness.run_storage'}
                 for a, b in zip(args, args[1:])) or
             bool(args and Path(args[0]).name.startswith('python') and
-                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py', 'run_storage.py'} for arg in args)))
 
 busy = False
 result = subprocess.run(['pgrep', '-af', '[d]aily_dev_v2 --worker'], capture_output=True, text=True)
@@ -43,17 +43,19 @@ def entries(path):
     except FileNotFoundError: return
 def inspect(folder, run_id):
     global busy
-    receipt = folder/'frame-cleanup.json'
-    try:
-        with receipt.open('rb') as stream: raw = stream.read(1024*1024*1024+1)
-        if len(raw) > 1024*1024*1024: raise ValueError('receipt too large')
-        value = json.loads(raw)
-        if not isinstance(value, dict): raise ValueError('cleanup receipt must be an object')
-        if value.get('status') == 'in_progress':
-            print('in_progress cleanup: '+run_id+' '+str(receipt)); busy = True
-    except FileNotFoundError: pass
-    except (OSError, ValueError) as exc:
-        print('cannot check cleanup: '+run_id+' '+str(receipt)+': '+str(exc)); busy = True
+    for name in ('frame-cleanup.json', 'run-compact.json', 'run-compact-pending.json'):
+        receipt = folder/name
+        try:
+            with receipt.open('rb') as stream: raw = stream.read(1024*1024*1024+1)
+            if len(raw) > 1024*1024*1024: raise ValueError('receipt too large')
+            value = json.loads(raw)
+            if not isinstance(value, dict): raise ValueError('cleanup receipt must be an object')
+            if value.get('status') == 'in_progress':
+                print('in_progress cleanup: '+run_id+' '+str(receipt)); busy = True
+        except FileNotFoundError: pass
+        except (OSError, ValueError) as exc:
+            print('cannot check cleanup: '+run_id+' '+str(receipt)+': '+str(exc)); busy = True
+
 def inspect_run(folder, run_id):
     inspect(folder, run_id)
     for cell in entries(folder/'cells'):

@@ -13,6 +13,39 @@ except ImportError:  # standalone docs/devtool.py
     from dev_agent_exec_summary import _moved, _objects
 
 
+def _storage_text(path):
+    try:
+        from .run_storage import read_text
+    except ImportError:  # published standalone tool; live sandbox files are raw
+        return path.read_text()
+    return read_text(_storage_safe(path))
+
+
+def _storage_safe(path):
+    from .frame_cleanup import safe
+    for suffix in ('', '.zst', '.derived'):
+        candidate = safe(Path(str(path)+suffix))
+        if candidate.exists():
+            break
+    return path
+
+
+def _storage_files(folder):
+    try:
+        from .run_storage import logical_paths
+    except ImportError:
+        return sorted(p for p in folder.rglob('*') if p.is_file())
+    return logical_paths(folder)
+
+
+def _storage_size(path):
+    try:
+        from .run_storage import logical_size
+    except ImportError:
+        return path.stat().st_size
+    return logical_size(_storage_safe(path))
+
+
 def execution_id(value):
     if not isinstance(value, str) or not re.fullmatch(r'e?\d{1,12}', value):
         raise ValueError('expected execution id e000007 or 7')
@@ -36,7 +69,7 @@ def safe_path(path, allowed):
 
 def read_json(path, allowed, notes):
     try:
-        return json.loads(safe_path(path, allowed).read_text())
+        return json.loads(_storage_text(safe_path(path, allowed)))
     except (OSError, ValueError) as exc:
         notes.append(f'{path.name}: unavailable ({type(exc).__name__})')
         return None
@@ -387,17 +420,17 @@ def build(root, eid):
             notes.append(name + ': not present in execution folder')
     files = {}
     # Listing/stat only; never open frames or other non-input artifacts.
-    for path in sorted(folder.rglob('*')):
-        if path.name != 'diagnose.json' and not path.is_symlink() and path.is_file():
+    for path in _storage_files(folder):
+        if path.name != 'diagnose.json' and not path.is_symlink():
             try:
                 safe_path(path, allowed)
                 relative = path.relative_to(folder)
                 if relative.parts[0] == 'frames' and len(relative.parts) > 1:
                     # Hundreds of frame images: one summary line instead of one entry each.
                     entry = files.setdefault('frames/', dict(files=0, bytes=0))
-                    entry['files'] += 1; entry['bytes'] += path.stat().st_size
+                    entry['files'] += 1; entry['bytes'] += _storage_size(path)
                 else:
-                    files[str(relative)] = path.stat().st_size
+                    files[str(relative)] = _storage_size(path)
             except ValueError:
                 continue
     out['pointers'] = dict(lines=pointers, full_files=files)

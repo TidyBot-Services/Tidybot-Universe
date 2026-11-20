@@ -103,10 +103,10 @@ def _processes(proc_root=Path('/proc')):
 
 
 def _is_cleanup_process(args):
-    return (any(a == '-m' and b == 'benchmarks.attention_harness.frame_cleanup'
+    return (any(a == '-m' and b in {'benchmarks.attention_harness.frame_cleanup', 'benchmarks.attention_harness.run_storage'}
                 for a, b in zip(args, args[1:])) or
             bool(args and Path(args[0]).name.startswith('python') and
-                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py'} for arg in args)))
+                 any(Path(arg).name in {'frame_cleanup_backfill.py', 'state_log_dedupe.py', 'run_storage.py'} for arg in args)))
 
 
 def cleanup_workers(cfg):
@@ -138,9 +138,11 @@ def cleanup_workers(cfg):
         except FileNotFoundError: pass
         except (OSError, ValueError): ids.add(run_id+':unreadable-cleanup')
     def inspect_run(folder, run_id):
-        inspect(folder/'frame-cleanup.json', run_id)
+        for name in ('frame-cleanup.json', 'run-compact.json', 'run-compact-pending.json'):
+            inspect(folder/name, run_id)
         for cell in entries(folder/'cells'):
-            inspect(cell/'frame-cleanup.json', run_id)
+            for name in ('frame-cleanup.json', 'run-compact.json', 'run-compact-pending.json'):
+                inspect(cell/name, run_id)
     for root in roots:
         try:
             for folder in entries(Path(root)):

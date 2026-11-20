@@ -20,14 +20,15 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from benchmarks.attention_harness.workspace_paths import get
+from benchmarks.attention_harness import run_storage
 
 
 def read(path):
-    return json.loads(Path(path).read_bytes())
+    return json.loads(run_storage.read_bytes(path))
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(run_storage.read_bytes(path)).hexdigest()
 
 
 def snapshot(source, destination):
@@ -82,7 +83,7 @@ class CopyEvidence:
                         db.execute(f'UPDATE "{table}" SET payload=? WHERE rowid=?',
                                    (json.dumps(self.value(json.loads(raw))), rowid))
         elif source.suffix == '.json':
-            raw = source.read_bytes()
+            raw = run_storage.read_bytes(source)
             value = read(source)
             result = self.value(value)
             target.write_bytes(raw if result == value else json.dumps(result, sort_keys=True, indent=2).encode())
@@ -90,14 +91,15 @@ class CopyEvidence:
                 from benchmarks.attention_harness.dev_planner import digest as config_digest
                 self.hashes[config_digest(value)] = config_digest(result)
         else:
-            shutil.copyfile(source, target)
+            with run_storage.open_binary(source) as reader, target.open('wb') as writer:
+                shutil.copyfileobj(reader, writer)
         self.hashes[digest(source)] = digest(target)
         return target
 
     def experiment(self, directory):
         # Full independent copies; no hardlinks to writable historical evidence.
-        for source in sorted(directory.rglob('*')):
-            if source.is_file() and 'validation-import' not in source.relative_to(directory).parts:
+        for source in run_storage.logical_paths(directory):
+            if run_storage.exists(source) and 'validation-import' not in source.relative_to(directory).parts:
                 self.file(source)
 
 

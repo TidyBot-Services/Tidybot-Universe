@@ -28,6 +28,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmarks.attention_harness import run_storage
+
 import mujoco
 import numpy as np
 
@@ -167,9 +170,9 @@ def mat_from(pos, quat):
 # ---------------------------------------------------------------- motion
 def jsonl(path: Path):
     """Complete rows of a log that may still be written to (a half-written last line is left out)."""
-    if not path.is_file():
+    if not run_storage.exists(path):
         return []
-    text = path.read_text(encoding="utf-8")
+    text = run_storage.read_text(path, encoding="utf-8")
     rows = text.split("\n")[:-1]  # the part after the last newline is not finished yet
     out = []
     for line in rows:
@@ -189,7 +192,7 @@ def load_motion(m, exe: Path, live=False, physics=None):
     to_native = reset["physical_to_native"]
     if live:
         receipts = [r for r in jsonl(exe / "rpc-receipts.jsonl") if isinstance(r.get("response"), dict) and isinstance(r.get("request"), dict)]
-        physics = (exe / "native-physics.jsonl").read_text().split("\n")[:-1] if physics is None else physics
+        physics = run_storage.read_text(exe / "native-physics.jsonl").split("\n")[:-1] if physics is None else physics
         # One frame is one control step.  The finished bundle derives the ratio from the whole log; while running it
         # comes from the latest receipt that has both counts (25 physics steps per control step in every run so far).
         ratios = [int(r["response"]["physics_steps"]) / int(r["response"]["sequence"]) for r in receipts
@@ -198,9 +201,9 @@ def load_motion(m, exe: Path, live=False, physics=None):
         frames = max(1, len(physics) // per_seq + 1)
         last_seq = frames - 1
     else:
-        receipts = [json.loads(line) for line in (exe / "rpc-receipts.jsonl").read_text().splitlines() if line.strip()]
+        receipts = [json.loads(line) for line in run_storage.read_text(exe / "rpc-receipts.jsonl").splitlines() if line.strip()]
         last_seq = max(int(r["response"].get("sequence", 0)) for r in receipts)
-        physics = (exe / "native-physics.jsonl").read_text().splitlines()
+        physics = run_storage.read_text(exe / "native-physics.jsonl").splitlines()
         per_seq = max(1, round(len(physics) / max(1, last_seq)))
         frames = last_seq + 1
 
@@ -545,9 +548,16 @@ def follow(exe: Path, out: Path, tick=0.5, clock=None, sleep=None):
         def pull():
             nonlocal offset
             log = exe / "native-physics.jsonl"
-            if log.is_file():
-                with log.open("rb") as f:
-                    f.seek(offset)
+            if run_storage.exists(log):
+                with run_storage.open_binary(log) as f:
+                    if log.is_file():
+                        f.seek(offset)
+                    else:
+                        left = offset
+                        while left:
+                            skipped = f.read(min(left, 65536))
+                            if not skipped:break
+                            left -= len(skipped)
                     chunk = f.read()
                 cut = chunk.rfind(b"\n") + 1  # only whole lines
                 if cut:

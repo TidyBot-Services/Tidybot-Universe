@@ -6,6 +6,7 @@ ATTN_DIAG_JOINT_KP can override the diagnostic gain.
 
 from __future__ import annotations
 
+from .. import run_storage
 import argparse
 import json
 import math
@@ -177,8 +178,8 @@ def summarize_execution(run_dir, stage, step_cap, wall_seconds, error=None):
     native = _read_json(execution / "native_result.json") if execution else {}
     physics = []
     physics_path = execution / "native-physics.jsonl" if execution else None
-    if physics_path and physics_path.is_file():
-        with physics_path.open() as stream:
+    if physics_path and run_storage.exists(physics_path):
+        with run_storage.open_binary(physics_path) as stream:
             for line in stream:
                 if line.strip():
                     row = json.loads(line)

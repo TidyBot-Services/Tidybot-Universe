@@ -1,0 +1,7 @@
+[Unit]
+Description=AttentionBench disk pressure markers
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/ab-remote-20261107/repos/attentionbench/remote_gateway/deploy/disk_watch.py
+# Override ExecStart or ATTENTIONBENCH_DATA in a user drop-in for other layouts.

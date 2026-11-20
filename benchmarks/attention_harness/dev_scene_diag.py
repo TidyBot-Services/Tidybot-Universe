@@ -1,4 +1,5 @@
 """Meter native public resets; prepare local worker contracts before claims."""
+from . import run_storage
 import json,math,time,hashlib,tempfile
 from pathlib import Path
 from .dev_experiment import snapshot,verify_manifest,acquire
@@ -50,7 +51,7 @@ def file_ref(path):
 def reset_rpc_receipt(directory,job,payload,config_ref,version,*,simulated=False):
  journal=Path(directory)/'rpc-receipts.jsonl';matches=[]
  if journal.exists():
-  for raw in journal.read_bytes().splitlines(keepends=True):
+  for raw in run_storage.read_bytes(journal).splitlines(keepends=True):
    row=json.loads(raw)
    if row['request']['request_id']==job['job_id']:matches.append((raw,row))
  if simulated and not matches:

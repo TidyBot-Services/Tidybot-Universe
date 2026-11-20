@@ -51,6 +51,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
         from .memory_origin_evidence import OriginalStore
         return OriginalStore(store.path).planner_snapshot(cell)
     c=store.cell(cell)
+    from .run_storage import restore
+    restore(c['artifact_dir'])
     agent_validation=c.get('dev_mode')=='agent' and c.get('validation_experiment') is True and import_purpose==PURPOSE and source is None
     if c.get('dev_mode')=='agent':
         from .dev_agent_export import exported
@@ -211,6 +213,8 @@ def prepare(store, cell, version, namespace, output, catalog_root, *, source=Non
                     if sha(p)!=expected:raise DevConflict('source evidence digest drift: '+str(p))
                     return
         if not p.is_relative_to(root) or not p.resolve().is_relative_to(root):raise ValueError('catalog root must contain only explicitly pinned evidence: '+str(p))
+        from .run_storage import rehydrate
+        if not p.exists():rehydrate(p)
         if actual is None:actual=sha(p)
         if expected and actual!=expected:raise DevConflict('source evidence digest drift: '+str(p))
         files[str(p.relative_to(root))]=actual

@@ -21,6 +21,9 @@ import tarfile
 import tempfile
 from collections import Counter
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from benchmarks.attention_harness import run_storage
 from urllib.parse import quote
 
 try:
@@ -131,9 +134,17 @@ def identity_hits(name: str, data: bytes, hostname: str) -> list[dict]:
 
 def safe_file(path: Path) -> bool:
     parts = path.parts
-    return (path.suffix.lower() not in EXCLUDED_SUFFIXES
-            and not any(part in EXCLUDED_PARTS or part.startswith("probe-owner-") for part in parts)
-            and path.name != "keys.env" and not path.is_symlink())
+    if (path.suffix.lower() in EXCLUDED_SUFFIXES
+            or any(part in EXCLUDED_PARTS or part.startswith("probe-owner-") for part in parts)
+            or path.name == "keys.env"):
+        return False
+    for suffix in ('', '.zst', '.derived'):
+        candidate = Path(str(path)+suffix)
+        if candidate.is_symlink():
+            return False
+        if candidate.exists():
+            break
+    return True
 
 
 def load_reviewed(path: Path | None) -> list[dict]:
@@ -202,7 +213,7 @@ def export(run_root: Path, memory_store: Path, out: Path, *, extra_secret_files:
         def copy(source: Path, dest: str) -> None:
             if not safe_file(source):
                 raise ValueError(f"excluded source: {source}")
-            add(dest, source.read_bytes(), str(source), binary=source.suffix.lower() == ".mp4")
+            add(dest, run_storage.read_bytes(source), str(source), binary=source.suffix.lower() == ".mp4")
 
         def jrows(conn: sqlite3.Connection, table: str) -> list[dict]:
             rows = []
@@ -271,12 +282,14 @@ def export(run_root: Path, memory_store: Path, out: Path, *, extra_secret_files:
                 dest = f"run/cells/{cid}/executions/{eid}"
                 for name in ("execution.json", "result.json", "evidence.json", "trace.json", "initial_observation.json",
                              "final_observation.json", "stdout.txt", "stderr.txt"):
-                    if (execution / name).is_file():
+                    if run_storage.exists(execution / name):
                         copy(execution / name, f"{dest}/{name}")
                 copy(execution / "result.json", f"{dest}/public-feedback.json")
                 state_log = execution / "state_log.json"
-                if state_log.is_file():
-                    digest = hashlib.sha256(state_log.read_bytes()).hexdigest()
+                if run_storage.exists(state_log):
+                    if not safe_file(state_log):
+                        raise ValueError(f"excluded source: {state_log}")
+                    digest = hashlib.sha256(run_storage.read_bytes(state_log)).hexdigest()
                     if digest in seen_state_logs:
                         omitted.append(f"{dest}/state_log.json duplicates {seen_state_logs[digest]} (sha256 {digest})")
                     else:

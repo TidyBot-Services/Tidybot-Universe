@@ -5,6 +5,7 @@ approval records. Native evaluation is saved for UI, never used in model inputs,
 diagnosis, branching, stopping or version selection.
 """
 from __future__ import annotations
+from . import run_storage
 from benchmarks.attention_harness.workspace_paths import get
 import argparse
 import difflib
@@ -55,7 +56,7 @@ def dev_options(profiles):
 
 
 def dump(value):return json.dumps(value,ensure_ascii=False,sort_keys=True,allow_nan=False)
-def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+def sha(path):return hashlib.sha256(run_storage.read_bytes(path)).hexdigest()
 def immutable(path,value):
     path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
     data=value if isinstance(value,str) else json.dumps(value,ensure_ascii=False,sort_keys=True,indent=2,allow_nan=False)+'\n'

@@ -5,6 +5,7 @@ same planner core, world update, attachment and validate methods as the service.
 """
 from __future__ import annotations
 
+from .. import run_storage
 import argparse
 import hashlib
 import json
@@ -29,7 +30,7 @@ def read_recording(execution_dir: Path):
     planner_dir = execution_dir / 'planner'
     log = planner_dir / 'planner_http.jsonl'
     last = None
-    with log.open() as stream:
+    with run_storage.open_binary(log) as stream:
         for line in stream:
             if line.strip():
                 row = json.loads(line)
@@ -42,11 +43,11 @@ def read_recording(execution_dir: Path):
         request = json.loads(request)
     if not isinstance(request, dict):
         raise ValueError('Recorded request must be a JSON object')
-    worlds = sorted(planner_dir.glob('world-*.json'))
+    worlds = sorted(run_storage.logical_paths(planner_dir, 'world-*.json'))
     if not worlds:
         raise ValueError(f'No world-*.json in {planner_dir}')
     world_path = worlds[-1]
-    payload = json.loads(world_path.read_text())
+    payload = json.loads(run_storage.read_text(world_path))
     cuboids = payload['cuboids'] if isinstance(payload, dict) else payload
     if not isinstance(cuboids, list) or not cuboids:
         raise ValueError('World snapshot has no cuboids')

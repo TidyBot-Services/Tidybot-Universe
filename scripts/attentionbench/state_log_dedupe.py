@@ -59,6 +59,8 @@ def groups(root):
         candidates.extend(sorted((agent/'private/eval').glob('v*/ws/state_log.json')))
         duplicates = []
         for path in candidates:
+            # Sidecars are representations, never raw snapshot objects.
+            if any(Path(str(path)+suffix).exists() for suffix in ('.zst', '.derived')):continue
             safe(path)
             if not path.exists(): continue
             if path.stat().st_size != info.st_size: continue

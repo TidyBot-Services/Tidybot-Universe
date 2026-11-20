@@ -1,0 +1,11 @@
+[Unit]
+Description=Check AttentionBench disk space every 30 minutes
+
+[Timer]
+OnStartupSec=2min
+OnUnitActiveSec=30min
+Persistent=true
+Unit=ab-disk-watch.service
+
+[Install]
+WantedBy=timers.target

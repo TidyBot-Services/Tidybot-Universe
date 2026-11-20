@@ -2,6 +2,7 @@
 
 Use --dry-run to inspect the matrix without creating an experiment or worker.
 """
+from .. import run_storage
 import argparse
 import hashlib
 import json
@@ -66,21 +67,21 @@ def policy_source(trial):
 
 
 def last_jsonl(path):
-    if not path.is_file():return None
+    if not run_storage.exists(path):return None
     last=None
-    with path.open() as stream:
+    with run_storage.open_binary(path) as stream:
         for line in stream:
             if line.strip():last=json.loads(line)
     return last
 
 
 def read_jsonl(path):
-    if not path.is_file():return []
-    with path.open() as stream:return [json.loads(line) for line in stream if line.strip()]
+    if not run_storage.exists(path):return []
+    with run_storage.open_binary(path) as stream:return [json.loads(line) for line in stream if line.strip()]
 
 
 def summarize(trial,feedback_path,episode):
-    feedback=json.loads(feedback_path.read_text())
+    feedback=json.loads(run_storage.read_text(feedback_path))
     moves=[row for row in feedback.get('action_trace',[]) if row.get('operation')=='move_delta']
     move=moves[-1] if moves else {}
     journals=read_jsonl(episode/'native-actions.jsonl')

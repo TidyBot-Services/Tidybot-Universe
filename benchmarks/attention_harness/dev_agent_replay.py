@@ -28,6 +28,8 @@ def freeze_origin(workspace, cut, *, metadata=None, quiesce=nullcontext):
                 if stat.S_ISLNK(mode) or not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
                     raise ValueError('unsafe_snapshot_file')
                 if path.is_dir():continue
+                if (root == workspace.canonical and path.name.endswith(('.json.zst', '.jsonl.zst', '.json.derived'))
+                        and Path(str(path).rsplit('.', 1)[0]).is_file()):continue
                 name=str(path.relative_to(workspace.canonical)) if root==workspace.canonical else str(path.relative_to(workspace.ws))
                 if name.startswith('rpc/'):continue # never replay request ids/responses
                 public=root==workspace.canonical
