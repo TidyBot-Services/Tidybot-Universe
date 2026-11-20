@@ -1506,6 +1506,10 @@
       bar.setAttribute('aria-label', 'Replay controls');
       bar.innerHTML = `<button type="button" data-replay-play aria-label="Play replay">${icon('play')}</button><time data-replay-clock>00:00</time><div class="ab-replay-scrubber"><input type="range" data-replay-seek min="0" max="0" step="0.01" value="0" aria-label="Replay position" disabled><output class="ab-replay-bubble" aria-hidden="true">00:00</output></div><time data-replay-duration>00:00</time><button type="button" data-replay-rate aria-label="Playback speed: 1×">1×</button><button type="button" data-replay-mute aria-label="Mute replay">${icon('volume')}</button><button type="button" data-replay-fullscreen aria-label="Fullscreen replay">${icon('fullscreen')}</button><button type="button" data-replay-native aria-label="More playback controls" aria-expanded="false">${icon('more')}</button>`;
       video.after(bar);
+      // 11-20 (user: "Trimmed / Original should be near the timeline; now they are hard to see"): the length switch sits
+      // in the replay's own control bar, right after the duration it changes.
+      const trimSwitch=video.id==='ab-history-replay'&&video.closest('[data-execution-viewer]')?.querySelector('[data-trim-bar]');
+      if(trimSwitch){trimSwitch.classList.add('op-trim-in-bar');bar.querySelector('[data-replay-duration]').after(trimSwitch);}
       // Full browser playback controls (volume, download, picture-in-picture)
       // are still accessible through More; avoid two permanent transport bars.
       video.controls = video.industrialNativeControls === true;
