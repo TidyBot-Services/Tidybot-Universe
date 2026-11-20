@@ -6357,6 +6357,63 @@
   const chatFocusClear=()=>view.querySelectorAll('.c2-focus').forEach(el=>el.classList.remove('c2-focus'));
   // 11-18 (user: "why the black rings"): only while the person scrolls the conversation, then it fades.
   view.addEventListener('scroll',e=>{if(!e.target.matches?.('[data-c2-feed]')||!chatUserScroll.moved)return;if(!chatFocusFrame)chatFocusFrame=requestAnimationFrame(chatFocus);clearTimeout(chatFocusFade);chatFocusFade=setTimeout(chatFocusClear,1500);},true);
+  // 11-20 (user: "hover over numbers → jump to a zoomed-in view of the described state"): resting the pointer on a try
+  // number in the conversation opens a small preview beside it — that try's recording from the wrist camera of the arm
+  // it moved (the close-up view), starting 3 s before the moment it stopped (or the last 4 s when it ran through), looped.
+  // Pointer devices only; click still opens the try in the main player.
+  function tryPeekSource(n){
+    const snap=currentSnapshot;if(!snap)return null;
+    const att=[...(snap.attempts||[]),...(snap.try_attempts||[])].find(a=>String(a.try_number)===String(n));if(!att)return null;
+    const trace=Object.values(snap.traces||{}).find(t=>t.attempt_id===att.attempt_id);if(!trace)return null;
+    const videos=(trace.evidence||[]).filter(e=>e.mime_type?.startsWith('video/')&&e.media_url);if(!videos.length)return null;
+    const ops=(trace.events||[]).map(e=>String(e.operation||'')),left=ops.filter(o=>/left/.test(o)).length,right=ops.filter(o=>/right/.test(o)).length;
+    const arm=left>=right&&left?'left':right?'right':null;
+    const pick=k=>videos.find(e=>e.kind===(k==='external'?'advisor_replay':`advisor_replay_${k}`));
+    const video=(arm&&pick(`${arm}_wrist`))||pick('left_wrist')||pick('right_wrist')||pick('external')||videos[0];
+    const view=String(video.kind||'').replace(/^advisor_replay_?/,'')||'external';
+    let fail=null;try{fail=operatorFailureTime(trace,true);}catch(_){fail=null;}
+    const stopped=att.status==='failed';
+    return {url:video.media_url,view:{left_wrist:'left wrist',right_wrist:'right wrist',external:'overview',side:'side',top:'top-down'}[view]||view,fail:Number.isFinite(fail)?fail:null,stopped,label:att.try_label||''};
+  }
+  let peekTimer=0,peekFor=null;
+
+  function closeTryPeek(){clearTimeout(peekTimer);peekFor=null;const box=document.querySelector('[data-try-peek]');if(box){box.querySelector('video')?.pause();box.remove();}}
+  function openTryPeek(chip){
+    const n=chip.dataset.c2Try,src=tryPeekSource(n);if(!src)return;
+    closeTryPeek();peekFor=chip;
+    const box=document.createElement('div');box.className='c2-peek';box.dataset.tryPeek='';box.setAttribute('role','tooltip');
+    const at=src.fail!=null?`${Math.floor(src.fail/60)}:${String(Math.floor(src.fail%60)).padStart(2,'0')}`:'';
+    // A stop after the last saved frame has no time inside the video; the recording's end is then where it stopped.
+    const where=at?` · ${src.stopped?'stopped':'event'} at ${at}`:src.stopped?' · where it stopped (end of recording)':' · its last seconds';
+    box.innerHTML=`<video muted playsinline preload="auto"></video><p><b>Try ${esc(n)}</b> · ${esc(src.view)}${where}</p>`;
+    const video=box.querySelector('video');video.src=src.url;
+    document.body.append(box);
+    const r=chip.getBoundingClientRect(),w=320,h=box.offsetHeight||220;
+    const left=Math.min(innerWidth-w-12,r.right+12),top=Math.max(12,Math.min(innerHeight-h-12,r.top+r.height/2-h/2));
+    box.style.left=`${Math.max(12,left)}px`;box.style.top=`${top}px`;
+    let from=0,to=Infinity;
+    video.addEventListener('loadedmetadata',()=>{
+      const d=Number.isFinite(video.duration)?video.duration:0;
+      if(src.fail!=null){from=Math.max(0,src.fail-3);to=Math.min(d||src.fail+1,src.fail+1);}else{from=Math.max(0,d-4);to=d;}
+      if(to-from<1)from=Math.max(0,to-2);
+      video.currentTime=from;video.play().catch(()=>{});
+    },{once:true});
+    video.addEventListener('timeupdate',()=>{if(video.currentTime>=to-0.05||video.ended){video.currentTime=from;video.play().catch(()=>{});}});
+    video.addEventListener('ended',()=>{video.currentTime=from;video.play().catch(()=>{});});
+    requestAnimationFrame(()=>box.classList.add('on'));
+  }
+  {
+    view.addEventListener('pointerover',e=>{
+      if(e.pointerType!=='mouse')return;  // touch and pen: no hover, click opens the try as before
+      const chip=e.target.closest?.('[data-c2-try]');
+      if(!chip){if(peekFor&&!e.target.closest?.('[data-try-peek]'))closeTryPeek();return;}
+      if(chip===peekFor)return;
+      clearTimeout(peekTimer);peekTimer=setTimeout(()=>{if(chip.isConnected&&chip.matches(':hover'))openTryPeek(chip);},180);
+    });
+    view.addEventListener('mouseleave',closeTryPeek);
+    view.addEventListener('click',e=>{if(e.target.closest?.('[data-c2-try]'))closeTryPeek();},true);
+    globalThis.addEventListener?.('scroll',()=>{if(peekFor)closeTryPeek();},true);
+  }
   // 11-20 (user: from the conversation it took two clicks): the mark is remembered, so the redraw that opening the
   // recording causes keeps it; marking a try clears the attempt mark and the reverse.
   function chatMarkTry(n){const rid=currentSnapshot?.run?.run_id;if(rid){stored(`attention.flow-try:${rid}`,String(n));stored(`attention.flow-attempt:${rid}`,null);}view.querySelectorAll('.op-try-mark.selected,.op-attn-attempt.selected').forEach(g=>g.classList.remove('selected'));view.querySelector(`.op-try-mark[data-try-number="${n}"]`)?.classList.add('selected');}

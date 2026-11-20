@@ -1168,3 +1168,9 @@ html body #attentionbench-clear .op-attn-scroll .op-attn-help:hover path{stroke-
 html body #attentionbench-clear .op-attn-scroll .op-attn-help.selected:hover path{stroke-width:4}
 html body #attentionbench-clear .op-attn-scroll .c2-focus circle,html body #attentionbench-clear .op-attn-scroll .c2-focus .op-attn-arc,html body #attentionbench-clear .op-attn-scroll .c2-focus .op-attn-help-label{filter:none!important}
 html body #attentionbench-clear .op-attn-scroll .op-try-mark.selected circle{stroke:var(--sh-ink);stroke-width:2.6}
+/* 11-20 (user): hover preview of a try — close-up recording at the moment the conversation describes. */
+.c2-peek{position:fixed;z-index:80;width:320px;padding:6px;border-radius:12px;background:#111410;border:1px solid #ffffff22;box-shadow:0 14px 40px -12px #000c;opacity:0;transform:translateY(4px);transition:opacity .15s ease,transform .15s ease;pointer-events:none}
+.c2-peek.on{opacity:1;transform:none}
+.c2-peek video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#000}
+.c2-peek p{margin:6px 4px 2px;font:500 12px/1.35 "DM Sans",system-ui,sans-serif;color:#d9dccf}
+.c2-peek p b{color:#fff}
