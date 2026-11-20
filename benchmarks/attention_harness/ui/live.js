@@ -1105,7 +1105,13 @@
   }
   function operatorTrimBar(trim) {
     const mode=trimMode();
-    return `<div class="op-trim-bar" data-trim-bar><div class="op-trim-toggle" role="group" aria-label="Replay length"><button type="button" data-trim-mode="trimmed" aria-pressed="${mode==='trimmed'}">Trimmed</button><button type="button" data-trim-mode="original" aria-pressed="${mode==='original'}">Original</button></div></div>`;
+    // 11-20 (user): hovering either side says what it shows, with both lengths.
+    const mmss=v=>Number.isFinite(v)?`${Math.floor(v/60)}:${String(Math.floor(v%60)).padStart(2,'0')}`:'';
+    const cutLen=mmss(trim?.trimmed_duration_seconds),realLen=mmss(trim?.original_duration_seconds);
+    const tips={trimmed:`Trimmed${cutLen?` · ${cutLen}`:''} — waiting is cut out (planning, settling, pauses between steps). Only the robot's motion is left, so it is quicker to watch.`,
+      original:`Original${realLen?` · ${realLen}`:''} — the full recording in real time, waiting included. Shows how long the attempt really took.`};
+    const side=k=>`<button type="button" data-trim-mode="${k}" aria-pressed="${mode===k}" aria-describedby="op-trim-tip-${k}">${k==='trimmed'?'Trimmed':'Original'}<span class="op-trim-tip" id="op-trim-tip-${k}" role="tooltip">${esc(tips[k])}</span></button>`;
+    return `<div class="op-trim-bar" data-trim-bar><div class="op-trim-toggle" role="group" aria-label="Replay length">${side('trimmed')}${side('original')}</div></div>`;
   }
   function operatorReplayTarget(events, index, recording, hasVideo) {
     const exact=replayTarget(events[index],recording,hasVideo);

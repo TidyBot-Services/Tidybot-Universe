@@ -1156,3 +1156,10 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-replay-tran
   html body #attentionbench-clear#attentionbench-clear.c2-phone[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video:has(>.ab-replay-transport){aspect-ratio:auto!important;display:flex!important;flex-direction:column!important}
   html body #attentionbench-clear#attentionbench-clear.c2-phone[data-operator-view="true"] .view [data-b1] .ab-viewer-media>figure.op-video:has(>.ab-replay-transport)>video{flex:none!important;width:100%!important;height:auto!important;aspect-ratio:16/9!important;object-fit:contain}
 }
+/* 11-20 (user): a short explanation appears above each side of the Trimmed / Original switch on hover or focus. */
+.op-trim-toggle button{position:relative}
+.op-trim-tip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translate(-50%,4px);width:max-content;max-width:260px;padding:8px 11px;border-radius:9px;background:#1d201c;color:#f6f2e6;border:1px solid #ffffff26;box-shadow:0 8px 24px -10px #000;font:500 12px/1.45 "DM Sans",system-ui,sans-serif;letter-spacing:0;text-transform:none;text-align:left;white-space:normal;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s ease,transform .18s ease,visibility .18s;z-index:60}
+.op-trim-toggle button:hover .op-trim-tip,.op-trim-toggle button:focus-visible .op-trim-tip{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.op-trim-in-bar .op-trim-toggle button:last-child .op-trim-tip{left:auto;right:-6px;transform:translate(0,4px)}
+.op-trim-in-bar .op-trim-toggle button:last-child:hover .op-trim-tip,.op-trim-in-bar .op-trim-toggle button:last-child:focus-visible .op-trim-tip{transform:translate(0,0)}
+@media (hover:none){.op-trim-tip{display:none}}
