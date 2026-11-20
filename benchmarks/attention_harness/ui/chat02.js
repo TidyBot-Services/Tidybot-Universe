@@ -27,7 +27,9 @@
     if (!tries.length) return '';
     const groups = new Map();
     tries.forEach(t => { const key = (t.ok ? 'ok|' : 'no|') + (t.ok ? '' : t.why); if (!groups.has(key)) groups.set(key, {ok: t.ok, why: t.why, items: []}); groups.get(key).items.push(t); });
-    const rows = [...groups.values()].sort((a, b) => (a.ok - b.ok) || (b.items.length - a.items.length));
+    // 11-20 (user: the order looked out of time): rows follow the tries' own order (the row whose first try came first leads).
+    const first = g => Math.min(...g.items.map(t => Number(t.number) || Infinity));
+    const rows = [...groups.values()].sort((a, b) => first(a) - first(b));
     const stopped = tries.filter(t => !t.ok).length;
     const body = rows.map(r => {
       const nums = r.items.map(t => `<button type="button" class="c2-try ${t.ok ? 'ok' : 'no'}" data-c2-try="${t.number}" title="Try ${t.number}${recordings.has(t.number) ? ' · click to watch' : ''}">${t.number}</button>`).join('');

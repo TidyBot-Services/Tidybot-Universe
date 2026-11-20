@@ -88,6 +88,9 @@
     const limit = num(a.limits && a.limits.formal_versions) || num(sel.max_versions) || 10;
     const used = num(a.counts && a.counts.formal_versions) != null ? a.counts.formal_versions : versions.length;
 
+    // 11-20: some records (refused runs) carry no time; Math.min over them gave 0, so Attempt 1 "started" at 08:00.
+    const ats = timeline.map(t => t.at).filter(t => Number.isFinite(t) && t > 0);
+    const firstAt = num(exp.created_at) || (ats.length ? Math.min(...ats) : null);
     // Attempts = submitted versions. Practice runs before one belong to it.
     const eventsByExec = {};
     timeline.forEach(t => { if (t.execution_id) (eventsByExec[t.execution_id] = eventsByExec[t.execution_id] || []).push(t); });
@@ -95,7 +98,7 @@
     // A run whose tries list lacks its submits still has its versions: show those, without practice runs.
     if (!submitted.length && versions.length) submitted = versions.map((v, i) => ({execution_id: v.execution_id, number: Number(String(v.execution_id || 'e0').slice(1)) || i + 1, why: 'The attempt was submitted'}));
     const attempts = [];
-    let prev = 0, prevEnd = timeline.length ? Math.min(...timeline.map(t => t.at)) : null;
+    let prev = 0, prevEnd = firstAt;
     submitted.forEach((sub, i) => {
       const practice = tries.filter(t => !t.submitted && t.number > prev && t.number < sub.number);
       const ver = versions.find(v => v.execution_id === sub.execution_id) || versions[i] || {};
@@ -131,7 +134,7 @@
     const counted = sortedVersions.reduce((n, v) => n + ((v.before_attempt && v.before_attempt.trials) || []).length, 0);
     if (sortedVersions.length && counted <= ordered.length && sortedVersions.length >= attempts.length) {
       const formalAt = vid => { const e = timeline.find(t => t.kind === 'formal_version' && t.version_id === vid); return e ? e.at : null; };
-      let cursor = 0, startAt = timeline.length ? Math.min(...timeline.map(t => t.at)) : null;
+      let cursor = 0, startAt = firstAt;
       const byVersion = sortedVersions.map((ver, i) => {
         const k = ((ver.before_attempt && ver.before_attempt.trials) || []).length, practice = ordered.slice(cursor, cursor + k);cursor += k;
         const sub = (ver.execution_id && tries.find(t => t.submitted && t.execution_id === ver.execution_id)) || {};
@@ -183,7 +186,7 @@
     const humanHints = helps.filter(h => h.human);
     const ownKey = Boolean(sel.agent_provider && Object.values(sel.agent_provider.roles || {}).some(r => r && r.credential && r.credential !== 'lab'));
     const ctl = compat.run_controls || {};
-    const start = num(exp.created_at) || (timeline.length ? Math.min(...timeline.map(t => t.at)) : null);
+    const start = firstAt;
     const lastAt = timeline.length ? Math.max(...timeline.map(t => t.at)) : num(view.updated_at);
     const endAt = status.ended ? (lastAt || null) : null;
     const task = [...(options.tasks || []), ...(options.fixture_tasks || [])].find(t => t.task_id === view.task_id) || {};
