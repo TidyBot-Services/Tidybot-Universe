@@ -226,7 +226,12 @@ def rebuild(body, *, user, options, limits, credentials, lab_codex=None):
                   agent_provider=dict(roles=roles),
                   # No time limit on Remote: the wall field is recorded at its nominal value whatever the page sends.
                   agent_limits=dict(versions=_integer(wanted.get('versions', limits.versions), 1, limits.versions, 'versions'), wall_seconds=NOMINAL_WALL_SECONDS))
-    if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', human_reply_seconds=limits.human_reply_seconds)
+    # 11-20 (user): who answers help — the AI advisor at once, the person first (then the AI after the wait), or the person only.
+    help_mode = selection.get('help_mode', 'human_first' if selection['mode'] == 'interactive' else 'ai')
+    if help_mode not in ('ai', 'human_first', 'human_only'):raise Refused('invalid_body', 'Choose who answers help: AI, you first, or only you.', 400)
+    if help_mode != 'ai' and selection['mode'] != 'interactive':raise Refused('invalid_body', 'Only an interactive run can wait for you.', 400)
+    if selection['mode'] == 'interactive':result.update(agent_policy_version='agent-policy-v2', help_mode=help_mode)
+    if help_mode == 'human_first':result['human_reply_seconds'] = limits.human_reply_seconds
     if rules:result['rules_profile'] = rules
     # 11-12 (user): long arm moves on Remote too. Only the two named values; anything else is refused.
     motion = selection.get('arm_motion', 'short')

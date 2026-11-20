@@ -390,6 +390,7 @@ def helper_config(config, manifest, cell, agent_policy_version):
     result=dict(config,initial_source=manifest['initial_sources'][cell['task_id']]['source'])
     seconds=manifest.get('selection',{}).get('human_reply_seconds')
     if seconds:result['human_reply_seconds']=seconds
+    if manifest.get('selection',{}).get('help_mode')=='human_only':result['help_mode']='human_only'
     return result
 
 

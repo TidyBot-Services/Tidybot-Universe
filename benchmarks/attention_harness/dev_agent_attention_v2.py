@@ -404,6 +404,10 @@ class HelperV2(Helper):
                 content=reply, replied_by=outcome['replied_by'],
                 actual_human_seconds=0 if assisted else outcome['at']-wait['started_at'], **cost)
             atomic_write(self.workspace.private, 'help/'+eid+'/human.json', encode(dict(content=reply)))
+        elif self.config.get('help_mode')=='human_only':
+            # 11-20 (user): Human only — no reply in time (or a skip, or a forced stop) means no help; the Advisor is
+            # never asked. The robot goes on without a hint.
+            row.update(status='unavailable', reason='no_human_reply')
         else:
             try:
                 record = self.ask_provider(view, self.config['advisor_proxy'], self.client,

@@ -1138,11 +1138,8 @@ html body #attentionbench-clear#attentionbench-clear :is(.op-video,.ab-viewer-me
 #attentionbench-clear .view.op-free-on [data-execution-viewer] figure.op-video video{visibility:hidden}
 /* 11-20 (user): an Agent help points at the try it followed (label, stem, arrowhead) instead of arcing over the gap. */
 .op-attn-help-point .op-attn-pointer-head{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
-/* 11-20 (user: choppy timeline): the current step, the dimmed later steps and the stage tags ease between states. */
-html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step{transition:opacity .45s cubic-bezier(.25,.1,.25,1)}
-html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary b,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-stage-h>span{transition:background-color .35s cubic-bezier(.25,.1,.25,1),color .35s cubic-bezier(.25,.1,.25,1),box-shadow .35s cubic-bezier(.25,.1,.25,1)}
-html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-rail-dot{transition:box-shadow .35s cubic-bezier(.25,.1,.25,1),background-color .35s cubic-bezier(.25,.1,.25,1)}
-@media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events *{transition:none!important}}
+/* 11-20 (user): no animation in the step timeline — states change at once. */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
 /* 11-20 (user): Trimmed / Original lives in the replay bar, next to the duration it changes — a clear two-way switch. */
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-replay-transport .op-trim-bar.op-trim-in-bar{margin:0!important;flex:none;display:flex}
 html body #attentionbench-clear[data-operator-view="true"] .view .ab-replay-transport .op-trim-in-bar .op-trim-toggle{display:flex!important;gap:2px!important;padding:2px!important;border:1px solid #ffffff38!important;border-radius:999px!important;background:#ffffff12!important}
@@ -1163,3 +1160,16 @@ html body #attentionbench-clear[data-operator-view="true"] .view .ab-replay-tran
 .op-trim-in-bar .op-trim-toggle button:last-child .op-trim-tip{left:auto;right:-6px;transform:translate(0,4px)}
 .op-trim-in-bar .op-trim-toggle button:last-child:hover .op-trim-tip,.op-trim-in-bar .op-trim-toggle button:last-child:focus-visible .op-trim-tip{transform:translate(0,0)}
 @media (hover:none){.op-trim-tip{display:none}}
+/* 11-20 (user): "Who answers help" — three choices in a row, the chosen one filled. */
+.ab-help-mode{margin:0 0 12px}
+.ab-help-mode-label{display:block;margin:0 0 6px;font:600 12px "DM Sans",system-ui,sans-serif;color:var(--sh-mut,#686e64);letter-spacing:.02em;text-transform:none}
+.ab-help-mode-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ab-help-mode-option{position:relative;display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--sh-line,#d8d4c6);border-radius:12px;background:var(--sh-card,#fff);cursor:pointer;text-transform:none;letter-spacing:normal;transition:border-color .2s,background-color .2s,box-shadow .2s}
+.ab-help-mode-option input{position:absolute;opacity:0;pointer-events:none}
+.ab-help-mode-option b{font:700 13.5px "DM Sans",system-ui,sans-serif;color:var(--sh-ink,#242822)}
+.ab-help-mode-option small{font:400 12px/1.4 "DM Sans",system-ui,sans-serif;color:var(--sh-mut,#686e64)}
+.ab-help-mode-option:hover{border-color:var(--sh-ink,#242822)}
+.ab-help-mode-option[data-on="true"]{border-color:var(--sh-acc,#d94d27);box-shadow:0 0 0 1px var(--sh-acc,#d94d27) inset;background:color-mix(in srgb,var(--sh-acc,#d94d27) 6%,var(--sh-card,#fff))}
+.ab-help-mode-option[data-on="true"] b{color:var(--sh-acc,#d94d27)}
+.ab-help-mode-option:has(input:focus-visible){outline:2px solid var(--sh-acc,#d94d27);outline-offset:2px}
+@media (max-width:760px){.ab-help-mode-options{grid-template-columns:1fr}}

@@ -1236,24 +1236,8 @@
       const timed=rows.filter(r=>r.hasAttribute('data-replay-seconds')).map(r=>({row:r,t:Number(r.dataset.replaySeconds),el:r.closest('[data-history-event]')}));
       const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')],all=[...list.querySelectorAll('[data-history-event]')];
       let holdUntil=0,lastEl=null;
-      // 11-20 (user: the timeline was choppy, "make it like the Mac"): the list glides to each new step with an
-      // ease-out (each frame closes a share of the remaining distance), instead of restarting a browser smooth scroll on
-      // every step. A hand scroll stops the glide at once.
-      let glideTo=null,glideRaf=0;
-      const glide=(top,instant)=>{
-        cancelAnimationFrame(glideRaf);glideTo=top;
-        if(instant||matchMedia('(prefers-reduced-motion: reduce)').matches){list.scrollTop=top;glideTo=null;return;}
-        let last=performance.now();
-        const frame=now=>{
-          if(glideTo==null||!list.isConnected)return;
-          const dt=Math.min(64,now-last);last=now;
-          const gap=glideTo-list.scrollTop,step=gap*(1-Math.pow(0.0025,dt/1000));
-          if(Math.abs(gap)<0.6){list.scrollTop=glideTo;glideTo=null;return;}
-          list.scrollTop+=step;glideRaf=requestAnimationFrame(frame);
-        };
-        glideRaf=requestAnimationFrame(frame);
-      };
-      const hold=()=>{holdUntil=Date.now()+4000;cancelAnimationFrame(glideRaf);glideTo=null;};
+      // 11-20 (user: "remove the timeline animation"): the list jumps to the current step, no glide.
+      const hold=()=>{holdUntil=Date.now()+4000;};
       list.addEventListener('wheel',hold,{passive:true});list.addEventListener('touchmove',hold,{passive:true});list.addEventListener('pointerdown',hold);
       video.followSteps=()=>{
         if(!list.isConnected||!timed.length)return;
@@ -1268,7 +1252,7 @@
         if(cur&&cur.el!==lastEl){lastEl=cur.el;
           if(Date.now()>holdUntil&&list.scrollHeight>list.clientHeight){
             const lr=list.getBoundingClientRect(),er=cur.el.getBoundingClientRect(),want=list.scrollTop+(er.top-lr.top)-list.clientHeight*0.35;
-            glide(Math.max(0,Math.min(want,list.scrollHeight-list.clientHeight)),video.paused);}}
+            list.scrollTop=Math.max(0,Math.min(want,list.scrollHeight-list.clientHeight));}}
       };
       video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);video.addEventListener('loadeddata',video.followSteps);
       // the list's saved scroll position is restored after this runs; scroll to the current step once layout has settled
@@ -2615,8 +2599,24 @@
     const groups=[...POLICY_GROUPS,{key:'other',title:'Other',note:''}].map(group=>({...group,ids:ids.filter(id=>(POLICY_HELP[id]?.[0]||'other')===group.key)})).filter(group=>group.ids.length);
     return `<fieldset class="ab-launch-field wide ab-policy-field"><legend>Attention policy</legend>
       <select name="v2_policy" aria-label="Attention policy" hidden>${ids.map(id=>`<option value="${esc(id)}">${esc(policyTitle(id))}</option>`).join('')}</select>
-      <p class="ab-policy-human-note" data-policy-human-note>In an interactive run, every help request comes to you first. You get 2 minutes to answer; after that an AI advisor answers for you.</p>
+      ${helpModePicker()}
       <div class="ab-policy-columns">${groups.map(group=>`<div class="ab-policy-group" data-policy-group="${group.key}"><p><b>${esc(group.title)}</b>${group.note?`<small>${esc(group.note)}</small>`:''}</p>${group.ids.map(card).join('')}</div>`).join('')}</div></fieldset>`;
+  }
+  // 11-20 (user): who answers a help request is a choice, not a sentence. The person-first modes need an interactive run.
+  const HELP_MODES=[
+    ['ai','AI advisor only','The AI advisor answers every help request right away.'],
+    ['human_first','You first, then AI','Help comes to you first. No reply within 2 minutes and the AI advisor answers.'],
+    ['human_only','Only you','Help comes only to you. You get up to 10 minutes; no reply means no hint and the robot goes on alone.']];
+  function helpModePicker() {
+    return `<div class="ab-help-mode" role="radiogroup" aria-label="Who answers help" data-help-mode-picker><span class="ab-help-mode-label">Who answers help</span><div class="ab-help-mode-options">${HELP_MODES.map(([value,title,note],i)=>`<label class="ab-help-mode-option"><input type="radio" name="help_mode" value="${value}"${i===1?' checked':''}><b>${title}</b><small>${note}</small></label>`).join('')}</div></div>`;
+  }
+  function syncHelpMode(form,from) {
+    const pick=form.querySelector('[name="help_mode"]:checked')?.value,mode=form.v2_mode;
+    if(!pick||!mode)return;
+    const canWait=[...mode.options].some(o=>o.value==='interactive');
+    if(from==='help'&&pick!=='ai'&&canWait&&mode.value!=='interactive'){mode.value='interactive';mode.dispatchEvent(new Event('change',{bubbles:true}));}
+    if(from!=='help'&&mode.value!=='interactive'&&pick!=='ai'){const ai=form.querySelector('[name="help_mode"][value="ai"]');if(ai)ai.checked=true;}
+    form.querySelectorAll('[name="help_mode"]').forEach(input=>{input.closest('label').dataset.on=String(input.checked);});
   }
   function syncPolicyCards(form) {
     form.querySelectorAll('[data-policy-card]').forEach(input=>{input.checked=input.value===form.v2_policy.value;});
@@ -3920,9 +3920,12 @@
       form.querySelector('[data-keys-source]').addEventListener('input',chooseSource);
       form.querySelector('[data-keys-source]').addEventListener('change',chooseSource);
       form.v2_mode.addEventListener('change',()=>{
+        syncHelpMode(form,'mode');
         syncSeedOptions();
         updatePreview();
       });
+      form.addEventListener('change',event=>{if(event.target.name==='help_mode')syncHelpMode(form,'help');});
+      syncHelpMode(form,'mode');
       for(const button of form.querySelectorAll('[data-start-no],[data-start-yes]')){
         button.addEventListener('click',()=>{form.v2_start.value=button.hasAttribute('data-start-yes')?'yes':'no';});
       }
@@ -3949,6 +3952,8 @@
           }
           // 11-12 (user): long arm moves are the default, here and on Remote; Short steps stays selectable.
           if(form.arm_motion?.value==='long')selection.arm_motion='long';
+          const helpMode=form.querySelector('[name="help_mode"]:checked')?.value;
+          if(helpMode&&selection.dev_mode==='agent')selection.help_mode=selection.mode==='interactive'?helpMode:'ai';
           const provider=keys.selection();if(provider)selection.agent_provider=provider;
           if(form.name_suffix.value.trim()&&options?.dev_v2?.bridge_schema!=='main-dev-v3')selection.name_suffix=form.name_suffix.value.trim();
           if(window.Lobby.enabled&&window.Lobby.snap?.demo){
@@ -6352,7 +6357,7 @@
     return true;
   }
   // Sample countdown (the real one is ticked by the reply form's own [data-agent-reply-countdown] code).
-  setInterval(()=>{view.querySelectorAll('[data-c2-deadline]').forEach(el=>{const left=Math.max(0,Math.round(Number(el.dataset.c2Deadline)-Date.now()/1000));el.textContent=left?`${left} s left, then the AI advisor answers`:'The AI advisor is answering';});},1000);
+  setInterval(()=>{view.querySelectorAll('[data-c2-deadline]').forEach(el=>{const left=Math.max(0,Math.round(Number(el.dataset.c2Deadline)-Date.now()/1000));const only=currentSnapshot?.agent?.help_mode==='human_only';el.textContent=left?(only?`${left} s left · no AI fallback`:`${left} s left, then the AI advisor answers`):(only?'No reply · the robot goes on without a hint':'The AI advisor is answering');});},1000);
   // Reverse link: what is at the top of the open conversation lights up on the chart.
   let chatFocusFrame=0;
   function chatFocus(){
@@ -7408,7 +7413,7 @@
   // anywhere (user: use the Remote look everywhere). The hidden, never-checked input keeps the form's assisted field false.
   function agentReplyForm(wait) {
     const draft=stored('attention.agent-reply:'+wait.execution_id)||'';
-    return `<form class="op-reply" data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}"><div class="op-reply-ask"><div class="op-reply-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v1M15 13v1"/></svg></div><div class="op-reply-bubble"><small>Robot</small>${esc(wait.question)}</div></div>${operatorQuickReplies().replace(/<\/div>$/,`${HumanReply.skipButton('Not sure — let the AI answer')}</div>`)}<div class="op-reply-compose"><textarea name="content" maxlength="2000" rows="1" required aria-label="Your reply" placeholder="Write a short tip…">${esc(draft)}</textarea><button class="op-reply-send" type="submit" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div><input type="checkbox" name="assisted" hidden><p data-agent-reply-message role="status"></p></form>`;
+    return `<form class="op-reply" data-agent-reply data-cell="${esc(wait.cell)}" data-execution-id="${esc(wait.execution_id)}"><div class="op-reply-ask"><div class="op-reply-face"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v1M15 13v1"/></svg></div><div class="op-reply-bubble"><small>Robot</small>${esc(wait.question)}</div></div>${operatorQuickReplies().replace(/<\/div>$/,`${HumanReply.skipButton(currentSnapshot?.agent?.help_mode==='human_only'?'Skip — no hint this time':'Not sure — let the AI answer')}</div>`)}<div class="op-reply-compose"><textarea name="content" maxlength="2000" rows="1" required aria-label="Your reply" placeholder="Write a short tip…">${esc(draft)}</textarea><button class="op-reply-send" type="submit" aria-label="Send reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button></div><input type="checkbox" name="assisted" hidden><p data-agent-reply-message role="status"></p></form>`;
   }
   function agentPolicyHelp(snapshot) {
     const agent=snapshot.agent,rows=attentionLedger(snapshot).rows;

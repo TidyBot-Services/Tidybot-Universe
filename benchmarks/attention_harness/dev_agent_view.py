@@ -321,7 +321,7 @@ def _projection(store,cell,*,api='/api/dev-v2',now=None):
         attention=soft(private,'attention.json',{}) or {}
         result['agent'].update(agent_policy_version='agent-policy-v2',
             pending_ask=clean(attention.get('pending_ask')), active_help=clean(attention.get('active_help')),
-            human_wait=clean(human_pending(private,cell=key)),
+            human_wait=clean(human_pending(private,cell=key)),help_mode=selection.get('help_mode'),
             tries=clean(story_tries(private)),executing=None if stopped else story_active(private),
             forced_fallback=clean(soft(public,'events/forced-fallback.json')),
             ask_required=[r for r in records if r.get('error')=='ask_required'])

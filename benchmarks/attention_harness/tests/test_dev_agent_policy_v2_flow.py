@@ -842,3 +842,53 @@ def test_interactive_help_goes_to_a_person_first_on_any_entry(mode, policy, wait
     from benchmarks.attention_harness.dev_agent_config import normalize
     selection=dict(dev_mode='agent',budget_tier='dev',tasks=['t'],seeds=[1],policies=[policy],mode=mode,agent_policy_version='agent-policy-v2')
     assert normalize(selection).get('human_reply_seconds')==wait
+
+
+# 11-20 (user): "Only you" — the Advisor is never asked; a skip or silence means the help is not delivered.
+def test_human_only_skip_never_asks_the_advisor(tmp_path):
+    r=human_rig(tmp_path);r.helper.config=dict(r.helper.config,help_mode='human_only')
+    try:
+        r.submit();thread=reply_when_open(r,skip=True)
+        value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20);thread.join()
+        assert value['delivered'] is False and value['status']=='unavailable' and not r.advisor.calls
+    finally:r.close()
+
+
+def test_human_only_silence_never_asks_the_advisor(tmp_path):
+    r=human_rig(tmp_path,seconds=.2);r.helper.config=dict(r.helper.config,help_mode='human_only')
+    try:
+        r.submit()
+        value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20)
+        assert value['delivered'] is False and not r.advisor.calls
+    finally:r.close()
+
+
+def test_human_only_reply_is_delivered(tmp_path):
+    r=human_rig(tmp_path);r.helper.config=dict(r.helper.config,help_mode='human_only')
+    try:
+        r.submit();thread=reply_when_open(r,content='Pull slower.')
+        value=r.helper.ask({'question':'Help?'},deadline=time.monotonic()+20);thread.join()
+        assert value['provider']=='human' and value['content']=='Pull slower.' and not r.advisor.calls
+    finally:r.close()
+
+
+@pytest.mark.parametrize('help_mode,mode,extra,wait,ok', [
+    ('ai','interactive',{},None,True), ('ai','experiment',{},None,True), ('ai','interactive',{'human_reply_seconds':120},None,False),
+    ('human_first','interactive',{},120,True), ('human_first','interactive',{'human_reply_seconds':60},60,True), ('human_first','experiment',{},None,False),
+    ('human_only','interactive',{},600,True), ('human_only','interactive',{'human_reply_seconds':600},600,True),
+    ('human_only','interactive',{'human_reply_seconds':120},None,False), ('human_only','experiment',{},None,False), ('nobody','interactive',{},None,False)])
+def test_help_mode_selection(help_mode, mode, extra, wait, ok):
+    from benchmarks.attention_harness.dev_agent_config import normalize
+    selection=dict(dev_mode='agent',budget_tier='dev',tasks=['t'],seeds=[1],policies=['reactive_help'],mode=mode,agent_policy_version=V2,help_mode=help_mode,**extra)
+    if not ok:
+        with pytest.raises(ValueError):normalize(selection)
+        return
+    result=normalize(selection)
+    assert result['help_mode']==help_mode and result.get('human_reply_seconds')==wait
+    assert normalize({**selection,**result}).get('human_reply_seconds')==wait  # stored selection re-normalizes the same
+
+
+def test_human_only_reaches_the_help_policy_from_the_run_selection():
+    from benchmarks.attention_harness.dev_agent_loop import helper_config
+    manifest=dict(selection=dict(human_reply_seconds=600,help_mode='human_only'),initial_sources=dict(t=dict(source='s')))
+    assert helper_config({},manifest,dict(task_id='t'),V2)==dict(initial_source='s',human_reply_seconds=600,help_mode='human_only')

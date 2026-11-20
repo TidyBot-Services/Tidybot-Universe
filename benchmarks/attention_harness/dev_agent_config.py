@@ -2,7 +2,7 @@
 import math
 
 NO_HELP_POLICIES={'autonomous','demo_first'}
-FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','dev_context_profile'}
+FIELDS={'dev_mode','dev_model','dev_reasoning_effort','eval_model','quota_stop_percent','advisor_model','agent_policy_version','agent_provider','agent_limits','human_reply_seconds','help_mode','dev_context_profile'}
 # The Agent envelope. A run may lower versions and run time (cheaper tests); it can never raise them.
 DEFAULT_VERSIONS=10
 DEFAULT_WALL_SECONDS=21600
@@ -165,7 +165,21 @@ def normalize(selection, *, validation_origin=None):
         if origin is not None:raise ValueError('agent_limits_not_supported_for_validation')
         limits=agent_limits(selection['agent_limits'])
         if limits:result['agent_limits']=limits
-    if 'human_reply_seconds' in selection:
+    # 11-20 (user): who answers a help request is a per-run choice. 'ai' = the Advisor answers at once; 'human_first' =
+    # the person gets human_reply_seconds (default 120), then the Advisor answers; 'human_only' = the person gets up to
+    # the longest wait (600 s) and the Advisor never answers — no reply means the help is not delivered.
+    help_mode=selection.get('help_mode')
+    if help_mode is not None:
+        from .dev_agent_human_reply import MAX_SECONDS
+        if help_mode not in ('ai','human_first','human_only'):raise ValueError('invalid_help_mode')
+        if help_mode!='ai' and (selection.get('mode','experiment')!='interactive' or version!='agent-policy-v2'):raise ValueError('human_reply_needs_interactive_policy_v2')
+        if help_mode=='ai' and 'human_reply_seconds' in selection:raise ValueError('ai_help_mode_has_no_human_wait')
+        if help_mode=='human_only':
+            if selection.get('human_reply_seconds',MAX_SECONDS)!=MAX_SECONDS:raise ValueError('human_only_waits_the_longest')
+            selection={**selection,'human_reply_seconds':MAX_SECONDS}
+        result['help_mode']=help_mode
+    if help_mode=='ai':pass
+    elif 'human_reply_seconds' in selection:
         from .dev_agent_human_reply import MIN_SECONDS,MAX_SECONDS
         seconds=selection['human_reply_seconds']
         if type(seconds) is not int or not MIN_SECONDS<=seconds<=MAX_SECONDS:raise ValueError('invalid_human_reply_seconds')

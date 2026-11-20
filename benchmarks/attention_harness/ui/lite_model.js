@@ -171,7 +171,7 @@
       ['Mode', clean(view.mode || sel.mode || 'unknown').replace(/^./, c => c.toUpperCase())],
       ['Asks for help', (POLICY_TEXT[view.policy_id] || clean(view.policy_id)).replace(/\.$/, '').replace(/^Asks you /, '').replace(/^./, c => c.toLowerCase())],
       ['Limits', `${limit} attempts · ${num(sel.help_budget) || num(a.limits && a.limits.help) || '?'} asks · ${Math.round((num(a.wall_limit) || num(sel.wall_limit) || 0) / 3600 * 10) / 10} h`],
-      ['Waits for you', num(sel.human_reply_seconds) ? `${sel.human_reply_seconds} s, then the AI advisor answers` : 'no wait recorded'],
+      ['Who answers help', sel.help_mode === 'human_only' ? `only you · up to ${num(sel.human_reply_seconds) || 600} s, no AI fallback` : sel.help_mode === 'ai' ? 'the AI advisor, right away' : num(sel.human_reply_seconds) ? `you first · ${sel.human_reply_seconds} s, then the AI advisor` : 'the AI advisor'],
       ['Robot model', clean(a.dev_model || sel.dev_model || 'unknown')],
       ['Checker / advisor', [a.eval_model, a.advisor_model].filter(Boolean).filter((m, i, l) => l.indexOf(m) === i).join(' / ') || 'unknown'],
       ['Scene', 'seed ' + view.seed],

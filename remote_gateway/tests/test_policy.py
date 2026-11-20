@@ -158,6 +158,20 @@ def test_only_an_interactive_run_waits_for_its_owner():
     assert 'human_reply_seconds' not in made('experiment')
 
 
+def test_who_answers_help_is_a_choice():
+    # 11-20 (user): AI only, you first (then AI after the wait), or only you.
+    made = lambda mode, **extra: policy.rebuild(body(mode=mode, **extra), user='u-1', options=OPTIONS, limits=LIMITS, credentials=MINE)
+    first = made('interactive')
+    assert first['help_mode'] == 'human_first' and first['human_reply_seconds'] == LIMITS.human_reply_seconds
+    ai = made('interactive', help_mode='ai')
+    assert ai['help_mode'] == 'ai' and 'human_reply_seconds' not in ai
+    only = made('interactive', help_mode='human_only')
+    assert only['help_mode'] == 'human_only' and 'human_reply_seconds' not in only  # the harness gives it the longest wait
+    assert 'help_mode' not in made('experiment') and 'help_mode' not in made('experiment', help_mode='ai')
+    for bad in (dict(mode='experiment', help_mode='human_only'), dict(mode='experiment', help_mode='human_first'), dict(mode='interactive', help_mode='nobody')):
+        with pytest.raises(policy.Refused):made(**bad)
+
+
 def test_new_run_says_there_is_no_time_limit_whatever_an_old_config_says():
     limits = Limits(wall_seconds=1200, run_slots=3).public()
     assert limits['noTimeLimit'] is True and limits['wall'] == 21600 and limits['wallRange'].startswith('No time limit')
