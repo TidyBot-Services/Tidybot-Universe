@@ -1138,3 +1138,8 @@ html body #attentionbench-clear#attentionbench-clear :is(.op-video,.ab-viewer-me
 #attentionbench-clear .view.op-free-on [data-execution-viewer] figure.op-video video{visibility:hidden}
 /* 11-20 (user): an Agent help points at the try it followed (label, stem, arrowhead) instead of arcing over the gap. */
 .op-attn-help-point .op-attn-pointer-head{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+/* 11-20 (user: choppy timeline): the current step, the dimmed later steps and the stage tags ease between states. */
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step{transition:opacity .45s cubic-bezier(.25,.1,.25,1)}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step>summary,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-step summary b,html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-stage-h>span{transition:background-color .35s cubic-bezier(.25,.1,.25,1),color .35s cubic-bezier(.25,.1,.25,1),box-shadow .35s cubic-bezier(.25,.1,.25,1)}
+html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events .op-rail-dot{transition:box-shadow .35s cubic-bezier(.25,.1,.25,1),background-color .35s cubic-bezier(.25,.1,.25,1)}
+@media (prefers-reduced-motion:reduce){html body #attentionbench-clear[data-operator-view="true"] .view .ab-history-events *{transition:none!important}}

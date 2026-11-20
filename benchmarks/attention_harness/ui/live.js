@@ -1230,7 +1230,24 @@
       const timed=rows.filter(r=>r.hasAttribute('data-replay-seconds')).map(r=>({row:r,t:Number(r.dataset.replaySeconds),el:r.closest('[data-history-event]')}));
       const heads=[...list.querySelectorAll('.op-stage-h[data-replay-seconds]')],all=[...list.querySelectorAll('[data-history-event]')];
       let holdUntil=0,lastEl=null;
-      const hold=()=>{holdUntil=Date.now()+4000;};
+      // 11-20 (user: the timeline was choppy, "make it like the Mac"): the list glides to each new step with an
+      // ease-out (each frame closes a share of the remaining distance), instead of restarting a browser smooth scroll on
+      // every step. A hand scroll stops the glide at once.
+      let glideTo=null,glideRaf=0;
+      const glide=(top,instant)=>{
+        cancelAnimationFrame(glideRaf);glideTo=top;
+        if(instant||matchMedia('(prefers-reduced-motion: reduce)').matches){list.scrollTop=top;glideTo=null;return;}
+        let last=performance.now();
+        const frame=now=>{
+          if(glideTo==null||!list.isConnected)return;
+          const dt=Math.min(64,now-last);last=now;
+          const gap=glideTo-list.scrollTop,step=gap*(1-Math.pow(0.0025,dt/1000));
+          if(Math.abs(gap)<0.6){list.scrollTop=glideTo;glideTo=null;return;}
+          list.scrollTop+=step;glideRaf=requestAnimationFrame(frame);
+        };
+        glideRaf=requestAnimationFrame(frame);
+      };
+      const hold=()=>{holdUntil=Date.now()+4000;cancelAnimationFrame(glideRaf);glideTo=null;};
       list.addEventListener('wheel',hold,{passive:true});list.addEventListener('touchmove',hold,{passive:true});list.addEventListener('pointerdown',hold);
       video.followSteps=()=>{
         if(!list.isConnected||!timed.length)return;
@@ -1245,7 +1262,7 @@
         if(cur&&cur.el!==lastEl){lastEl=cur.el;
           if(Date.now()>holdUntil&&list.scrollHeight>list.clientHeight){
             const lr=list.getBoundingClientRect(),er=cur.el.getBoundingClientRect(),want=list.scrollTop+(er.top-lr.top)-list.clientHeight*0.35;
-            list.scrollTo({top:Math.max(0,want),behavior:video.paused?'auto':'smooth'});}}
+            glide(Math.max(0,Math.min(want,list.scrollHeight-list.clientHeight)),video.paused);}}
       };
       video.addEventListener('timeupdate',video.followSteps);video.addEventListener('seeked',video.followSteps);video.addEventListener('loadeddata',video.followSteps);
       // the list's saved scroll position is restored after this runs; scroll to the current step once layout has settled
@@ -1581,6 +1598,18 @@
       for (const event of ['loadedmetadata','durationchange','timeupdate','play','pause','ended','ratechange','volumechange','seeked']) {
         video.addEventListener(event, update, options);
       }
+      // 11-20 (user: choppy timeline): timeupdate fires only ~4 times a second, so the playhead hopped. While playing,
+      // move the playhead and clock every frame; the rest of the bar still updates on the events above.
+      let headRaf=0,shownClock='';
+      const head=()=>{
+        if(!video.isConnected||video.paused||controller.signal.aborted){headRaf=0;return;}
+        const duration=Number.isFinite(video.duration)?video.duration:0,position=Math.min(duration,video.currentTime||0);
+        if(duration>0&&document.activeElement!==range){range.value=String(position);scrubber.style.setProperty('--seek',`${position/duration*100}%`);}
+        const c=clock(position);if(c!==shownClock){shownClock=c;bar.querySelector('[data-replay-clock]').textContent=c;}
+        headRaf=requestAnimationFrame(head);
+      };
+      video.addEventListener('play',()=>{if(!headRaf)headRaf=requestAnimationFrame(head);},options);
+      if(!video.paused)headRaf=requestAnimationFrame(head);
       update();
     });
   }
