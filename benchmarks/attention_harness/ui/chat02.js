@@ -52,7 +52,7 @@
   function attempt(m, a, ids) {
     const dur = a.end && a.start ? span(a.end - a.start) : '';
     const tag = a.solved ? '<span class="c2-tag good">solved</span>' : `<span class="c2-tag bad">${esc(a.headline || 'not solved')}</span>`;
-    return `<div class="c2-msg" data-feed-attempt="${a.n}"><div class="c2-av">R</div><div class="c2-card"><div class="c2-head"><div class="c2-meta"><b>Attempt ${a.n}</b> · ${clock(a.start)}–${clock(a.end)}${dur ? ' · ' + dur : ''}</div>${tag}${watch('data-c2-attempt', ids.get(a.n))}</div>
+    return `<div class="c2-msg" data-feed-attempt="${a.n}"><div class="c2-av">R</div><div class="c2-card"><div class="c2-head"><div class="c2-meta"><b>Attempt ${a.n}</b> · ${clock(a.start)}–${clock(a.end)}${dur ? ' · ' + dur : ''}</div>${tag}${watch('data-c2-attempt', a.notRun ? null : ids.get(a.n))}</div>
       ${a.sentence ? `<p>${esc(a.sentence)}</p>` : ''}${a.next && !a.solved ? `<p class="c2-next"><b>Checker suggests</b> ${esc(a.next)}</p>` : ''}</div></div>`;
   }
 

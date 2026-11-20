@@ -121,8 +121,37 @@
     });
     // Tries after the last submitted attempt belong to the attempt in progress.
     // 11-18 (user): the tries of the attempt in progress showed raw class names ("RecoverablePlanRejection: start_state_…"); same words as finished attempts
-    const current = tries.filter(t => !t.submitted && t.number > prev).map(t => ({...t, why: plainWhy(t.why)}));
-    const currentStart = prevEnd;
+    let current = tries.filter(t => !t.submitted && t.number > prev).map(t => ({...t, why: plainWhy(t.why)}));
+    let currentStart = prevEnd;
+    // 11-20 (user: the chart said Attempt 3, the conversation Attempt 2): number attempts the way the chart does — one per
+    // version, including a version Eval never ran (it has no submitted try) — and hand the tries out in order using
+    // each version's own try count. Only when the counts agree; otherwise keep the submission-based list above.
+    const sortedVersions = versions.slice().sort((x, y) => (x.version || 0) - (y.version || 0));
+    const ordered = tries.filter(t => !t.submitted).sort((x, y) => x.number - y.number);
+    const counted = sortedVersions.reduce((n, v) => n + ((v.before_attempt && v.before_attempt.trials) || []).length, 0);
+    if (sortedVersions.length && counted <= ordered.length && sortedVersions.length >= attempts.length) {
+      const formalAt = vid => { const e = timeline.find(t => t.kind === 'formal_version' && t.version_id === vid); return e ? e.at : null; };
+      let cursor = 0, startAt = timeline.length ? Math.min(...timeline.map(t => t.at)) : null;
+      const byVersion = sortedVersions.map((ver, i) => {
+        const k = ((ver.before_attempt && ver.before_attempt.trials) || []).length, practice = ordered.slice(cursor, cursor + k);cursor += k;
+        const sub = (ver.execution_id && tries.find(t => t.submitted && t.execution_id === ver.execution_id)) || {};
+        const old = attempts.find(x => ver.execution_id && x.executionId === ver.execution_id);
+        const end = formalAt(ver.version_id) ?? (old ? old.end : startAt);
+        const solved = ver.native_success === true, story = ver.story || {};
+        const row = {
+          n: ver.version || i + 1, version: ver.version || i + 1, executionId: ver.execution_id || null, start: startAt, end, solved,
+          headline: solved ? 'solved' : clean(story.short || 'not solved'),
+          sentence: clean(solved ? story.sentence || '' : sub.wrong || story.sentence || sub.why || ''),
+          wrong: clean(sub.wrong), next: clean(sub.next), checkerAgrees: ver.agree !== false,
+          practice: practice.map(t => ({number: t.number, ok: t.ok, why: plainWhy(t.why), kind: t.kind, video: t.video ? fileUrl(base, t.video) : null})),
+          replay: old ? old.replay : null, notRun: !ver.execution_id
+        };
+        startAt = end;return row;
+      });
+      attempts.splice(0, attempts.length, ...byVersion);
+      current = ordered.slice(cursor).map(t => ({...t, why: plainWhy(t.why)}));
+      currentStart = startAt;
+    }
 
     // Help: one entry per ask_help event. A person's reply is "hint", anything else is the AI advisor.
     const questionOf = eid => {

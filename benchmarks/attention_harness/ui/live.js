@@ -7242,7 +7242,9 @@
         return `<g class="op-try-mark ${red?'red':'ok'}${tr?' op-try-link':''}${picked?' selected':''}"${tr?` data-try-number="${esc(tr.number)}" role="button" tabindex="0"`:''} aria-label="${esc(tip)}"><title>${esc(tip)}</title><circle cx="${cx}" cy="${cy}" r="${r}"/>${glyph}</g>`;
       }).join('');
       const extra=agentActivityCaption(activity);
-      const caption=trials.length?`${trials.length} ${trials.length===1?'try':'tries'}`:'';
+      // 11-20 (user): the caption names the tries ("Tries 5–8"), the same numbers the conversation uses.
+      const nums=trials.map((_,i)=>group.length===trials.length?group[i]?.number:null).filter(n=>Number.isFinite(n));
+      const caption=!trials.length?'':nums.length===trials.length?(nums.length===1?`Try ${nums[0]}`:`Tries ${Math.min(...nums)}–${Math.max(...nums)}`):`${trials.length} ${trials.length===1?'try':'tries'}`;
       return `<g data-agent-interval="${a.index+1}">${marks}${caption?`<text class="op-agent-activity op-try-caption" x="${mid}" y="${model.baseline+26}" text-anchor="middle">${extra?`<title>${esc(extra)}</title>`:''}${caption}</text>`:''}</g>`;
     }).join('');
   }
