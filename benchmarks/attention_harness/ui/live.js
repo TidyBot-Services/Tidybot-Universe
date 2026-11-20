@@ -2608,7 +2608,8 @@
     ['human_first','You first, then AI','Help comes to you first. No reply within 2 minutes and the AI advisor answers.'],
     ['human_only','Only you','Help comes only to you. You get up to 10 minutes; no reply means no hint and the robot goes on alone.']];
   function helpModePicker() {
-    return `<div class="ab-help-mode" role="radiogroup" aria-label="Who answers help" data-help-mode-picker><span class="ab-help-mode-label">Who answers help</span><div class="ab-help-mode-options">${HELP_MODES.map(([value,title,note],i)=>`<label class="ab-help-mode-option"><input type="radio" name="help_mode" value="${value}"${i===1?' checked':''}><b>${title}</b><small>${note}</small></label>`).join('')}</div></div>`;
+    // Same look as the policy cards below (11-20 user): a group heading, then radio cards.
+    return `<div class="ab-policy-columns ab-help-mode" role="radiogroup" aria-label="Who answers help" data-help-mode-picker>${HELP_MODES.map(([value,title,note],i)=>`<div class="ab-policy-group">${i===0?'<p><b>Who answers help</b><small>When the robot asks, who replies.</small></p>':'<p aria-hidden="true"><b>&nbsp;</b><small>&nbsp;</small></p>'}<label class="ab-policy-card"><input type="radio" name="help_mode" value="${value}"${i===1?' checked':''}><b>${title}</b><small>${note}</small></label></div>`).join('')}</div>`;
   }
   function syncHelpMode(form,from) {
     const pick=form.querySelector('[name="help_mode"]:checked')?.value,mode=form.v2_mode;
@@ -2616,7 +2617,6 @@
     const canWait=[...mode.options].some(o=>o.value==='interactive');
     if(from==='help'&&pick!=='ai'&&canWait&&mode.value!=='interactive'){mode.value='interactive';mode.dispatchEvent(new Event('change',{bubbles:true}));}
     if(from!=='help'&&mode.value!=='interactive'&&pick!=='ai'){const ai=form.querySelector('[name="help_mode"][value="ai"]');if(ai)ai.checked=true;}
-    form.querySelectorAll('[name="help_mode"]').forEach(input=>{input.closest('label').dataset.on=String(input.checked);});
   }
   function syncPolicyCards(form) {
     form.querySelectorAll('[data-policy-card]').forEach(input=>{input.checked=input.value===form.v2_policy.value;});
