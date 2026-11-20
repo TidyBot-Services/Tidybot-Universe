@@ -1136,3 +1136,5 @@ html body #attentionbench-clear#attentionbench-clear :is(.op-video,.ab-viewer-me
 /* 11-20 (user): 3D view sits in the camera's own box (laid over it by live.js), not full screen. */
 .op-free-inline{position:fixed;z-index:5;border:0;border-radius:6px;background:#070907;display:none}
 #attentionbench-clear .view.op-free-on [data-execution-viewer] figure.op-video video{visibility:hidden}
+/* 11-20 (user): an Agent help points at the try it followed (label, stem, arrowhead) instead of arcing over the gap. */
+.op-attn-help-point .op-attn-pointer-head{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}

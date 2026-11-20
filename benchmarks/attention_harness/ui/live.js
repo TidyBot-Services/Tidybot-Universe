@@ -5843,6 +5843,15 @@
     const endX=model.endX;
     const endMark=model.ended?`<line x1="${x(model.attempts.length-1)+R}" x2="${endX-58}" y1="${baseline}" y2="${baseline}" class="op-attn-connector"/><g class="op-attn-end ${g.solved?'solved':'unsolved'}"><rect x="${endX-58}" y="${baseline-21}" width="116" height="42" rx="21"/><text class="op-attn-end-small" x="${endX}" y="${baseline-4}" text-anchor="middle">Ended</text><text x="${endX}" y="${baseline+12}" text-anchor="middle">${outcome}</text></g>`:'';
     const extra=model.after?`<line x1="${x(model.attempts.length-1)+R}" x2="${x(model.attempts.length)-14}" y1="${baseline}" y2="${baseline}" class="op-attn-connector op-attn-unreached"/><g class="op-attn-endpoint next"><circle cx="${x(model.attempts.length)}" cy="${baseline}" r="14"/><text x="${x(model.attempts.length)}" y="${baseline+44}" text-anchor="middle">Next</text></g>`:'';
+    const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
+    // 11-20 (user: "help needs to point to the timeline, not across timeline points"): an Agent help is asked after one
+    // try, so it is drawn as a pointer to that try's dot instead of an arc over the whole gap.
+    const helpTry=r=>{
+      const tries=snapshot.agent?.tries||[],h=r.help||{};
+      const t=(h.after_execution_id&&tries.find(t=>t.execution_id===h.after_execution_id))
+        ||(h.content&&tries.find(t=>t.help?.content&&t.help.content===h.content));
+      return t&&model.tryX?.has(t.number)?model.tryX.get(t.number):null;
+    };
     const maxHumanSeconds=Math.max(1,...model.requests.filter(r=>r.responder==='human'||snapshot.agent&&(r.help.delivered||r.help.charged===true)).map(r=>r.seconds));
     const marks=model.requests.map(r=>{
       const x0=r.after<0?(snapshot.agent?(model.startX??model.left-160):x(-1))+6:x(r.after)+R, x1=r.after+1>=model.attempts.length?(model.ended?endX-58:x(model.attempts.length)-14):x(r.after+1)-R;
@@ -5854,10 +5863,16 @@
       const tip=`${tag} · ${kind[r.kind]||label(r.kind)} · ${who} · ${cost} · ${effect[r.effect][0].replace(/^[^A-Za-z]+/,'')}`;
       // 11-18 (user): Agent runs show the human time inside the Help label ("Help #1 · 420.1 s"), no bar below.
       const shown=snapshot.agent&&(r.help.delivered||r.help.charged===true)?`${tag} · ${cost}`:tag, pill=Math.max(66,shown.length*6.6+18);
+      const px=snapshot.agent?helpTry(r):null;
+      if(px!=null){
+        // Label straight above the try (stacked helps keep their heights), a stem down to the dot, and a small arrowhead.
+        const tipY=baseline-11,lx=px;
+        const shape=`<path class="op-attn-arc op-attn-pointer" d="M ${lx} ${apex+11} L ${px} ${tipY}"/><path class="op-attn-pointer-head" d="M ${px-4.5} ${tipY-6} L ${px} ${tipY} L ${px+4.5} ${tipY-6}"/>`;
+        return `<g class="op-attn-help op-attn-help-point ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title>${shape}<rect class="op-attn-help-label" x="${lx-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${lx}" y="${apex+4}" text-anchor="middle">${esc(shown)}</text></g>`;
+      }
       return `<g class="op-attn-help ${r.responder==='human'?'person':'automatic'}${r.dashed?' dashed':''}${snapshot.agent&&!r.help.delivered?' op-agent-refused':''}${!attentionFilterMatches(r,filter)?' dim':''}${selected?.id===r.id?' selected':''}" role="button" tabindex="0" data-attn-help="${esc(r.id)}" aria-label="${esc(tip)}"><title>${esc(tip)}</title><path class="op-attn-arc" d="M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y0}"/><rect class="op-attn-help-label" x="${r.x-pill/2}" y="${apex-11}" width="${pill}" height="22" rx="11"/><text x="${r.x}" y="${apex+4}" text-anchor="middle">${esc(shown)}</text>${snapshot.agent?'':`<rect class="op-attn-cost" x="${r.x-13}" y="${baseline+costBottom-bar}" width="26" height="${bar}" rx="4"/><text class="op-attn-cost-label" x="${r.x}" y="${baseline+costBottom+16}" text-anchor="middle">${esc(cost)}</text>`}</g>`;
     }).join('');
     const circles=model.attempts.map(a=>`<g class="op-attn-attempt ${a.state}${snapshot.agent&&agentSelected===a.id&&!selected?' selected':''}" data-attn-attempt="${a.index+1}"${a.id?` data-attn-watch="${esc(a.id)}" role="button" tabindex="0" aria-label="Watch Attempt ${a.index+1}"`:''}>${a.id?`<title>Watch Attempt ${a.index+1}</title>`:''}<circle cx="${x(a.index)}" cy="${baseline}" r="${R}"/><text x="${x(a.index)}" y="${baseline+7}" text-anchor="middle">${a.state==='solved'?'✓':a.state==='failed'?'✕':a.state==='running'?'●':''}</text>${snapshot.agent?`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+42}" text-anchor="middle">Attempt ${a.index+1}<tspan class="op-agent-reason ${a.state}">${esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||'')?' · '+esc(snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.story?.short||''):''}</tspan></text>`:`<text class="op-attn-attempt-name" x="${x(a.index)}" y="${baseline+44}" text-anchor="middle">Attempt ${a.index+1}</text>`}</g>`).join('');
-    const activity=snapshot.agent?agentActivityMarks(snapshot,model):'';
     // 11-18 (b1 test): with no help request there is nothing above the circles or in the cost row, so the drawing is cropped to the circles and their names.
     const cropped=!model.requests.length&&model.attempts.length>0,vy=cropped?Math.max(0,baseline-R-10):0,vh=cropped?baseline+(snapshot.agent?52:54)-vy:height;
     const strip=model.attempts.length?`<div class="op-attn-scroll" tabindex="0" aria-label="Attempts and help requests; scroll for more"><svg viewBox="0 ${vy} ${model.width} ${vh}" style="--nw:${model.width}px;${snapshot.agent?`width:${model.width}px;height:${vh}px;min-width:${model.width}px`:`width:100%;min-width:${model.natural}px;max-width:${model.width}px`}" preserveAspectRatio="xMinYMin meet" role="group" aria-label="Attempts and help requests in order">${start}${lines}${endMark}${extra}${marks}${activity}${circles}</svg></div>`:'<p class="op-attn-empty">Attempts will appear here when the run starts.</p>';
@@ -7178,6 +7193,11 @@
     const allTries=[...(snapshot.agent?.tries||[])].sort((a,b)=>a.number-b.number),byAttempt=new Map();let pending=[];
     for(const t of allTries){if(t.submitted){if(!byAttempt.has(t.attempt-1))byAttempt.set(t.attempt-1,pending);pending=[];continue;}pending.push(t);}
     const playable=new Map([...(snapshot.attempts||[]),...(snapshot.try_attempts||[])].filter(a=>a.try_number).map(a=>[a.try_number,a]));
+    // 11-20 (user: clicking a try did nothing): an attempt Eval never ran has no submitted try, so grouping by submission
+    // shifts every later group and no count matched. When the totals agree, hand the tries out in order instead.
+    const ordered=allTries.filter(t=>!t.submitted);let cursor=0;
+    const versionTrials=model.attempts.reduce((n,a)=>n+((snapshot.dev_session.versions.find(v=>v.version===a.index+1)?.before_attempt?.trials||[]).length),0);
+    const inOrder=ordered.length===versionTrials+loose.length;
     return model.attempts.map((a,index)=>{
       const version=snapshot.dev_session.versions.find(v=>v.version===a.index+1);
       const isLoose=!version&&!placed;
@@ -7186,13 +7206,14 @@
       const mid=(gapA+gapB)/2,trials=activity.trials||[];
       const spacing=Math.min(18,Math.max(4,((gapB-gapA)-60)/Math.max(1,trials.length)));
       const r=Math.max(3,Math.min(7,spacing/2-1));
-      const group=isLoose?pending:byAttempt.get(a.index)||[];
+      const group=inOrder?ordered.slice(cursor,cursor+=(activity.trials||[]).length):isLoose?pending:byAttempt.get(a.index)||[];
       const before=isLoose?'before the next attempt':`before Attempt ${a.index+1}`;
       const marks=trials.map((t,i)=>{
         const tr=group.length===trials.length?group[i]:null,rec=tr&&playable.get(tr.number),red=t.color==='red';
         const cx=mid+(i-(trials.length-1)/2)*spacing,cy=model.baseline;
         const tip=`${tr?`Try ${tr.number}`:`Try ${i+1}`} ${before} · ${red?'stopped by a safety limit':'ran through without a safety stop (not a task check)'}${t.cause&&red?': '+t.cause:''}${tr?' · click for details':''}`;
         const glyph=r>=5?(red?`<path class="op-try-glyph" d="M ${cx-r*.45} ${cy-r*.45} L ${cx+r*.45} ${cy+r*.45} M ${cx+r*.45} ${cy-r*.45} L ${cx-r*.45} ${cy+r*.45}"/>`:`<circle class="op-try-dot" cx="${cx}" cy="${cy}" r="${(r*.32).toFixed(2)}"/>`):'';  // a plain dot: the try ran through; no ✓ (it is not a task check)
+        if(tr)(model.tryX||(model.tryX=new Map())).set(tr.number,cx);
         const picked=tr&&String(tr.number)===stored(`attention.try:${snapshot.run.run_id}`);
         return `<g class="op-try-mark ${red?'red':'ok'}${tr?' op-try-link':''}${picked?' selected':''}"${tr?` data-try-number="${esc(tr.number)}" role="button" tabindex="0"`:''} aria-label="${esc(tip)}"><title>${esc(tip)}</title><circle cx="${cx}" cy="${cy}" r="${r}"/>${glyph}</g>`;
       }).join('');
